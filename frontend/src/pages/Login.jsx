@@ -39,13 +39,42 @@ const Login = () => {
         email: decoded.email,
         picture: decoded.picture,
         googleId: decoded.sub,
+        token: credentialResponse.credential
       }
       
       console.log('✅ Google Login Success:', googleUser)
       
+      // Save user to backend database
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+      try {
+        const saveResponse = await fetch(`${API_URL}/api/users/save`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            uid: decoded.sub,
+            email: decoded.email,
+            displayName: decoded.name || 'User',
+            photoURL: decoded.picture || null,
+            authProvider: 'google'
+          })
+        })
+
+        if (!saveResponse.ok) {
+          throw new Error(`Failed to save user: ${saveResponse.status}`)
+        }
+
+        const dbResponse = await saveResponse.json()
+        console.log('✅ User saved to backend:', dbResponse.user)
+      } catch (dbError) {
+        console.error('⚠️ Error saving user to backend:', dbError)
+      }
+      
       // Save user profile to localStorage
       localStorage.setItem('user', JSON.stringify(googleUser))
       localStorage.setItem('authProvider', 'google')
+      localStorage.setItem('userInfo', JSON.stringify(googleUser))
       
       // Redirect to chat after a brief delay
       setTimeout(() => {

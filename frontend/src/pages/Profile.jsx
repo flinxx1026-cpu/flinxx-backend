@@ -5,10 +5,11 @@ import flinxxLogo from '../assets/flinxx-logo.svg'
 
 const Profile = () => {
   const navigate = useNavigate()
-  const { user: googleUser } = useContext(AuthContext) || {}
+  const { user: contextUser } = useContext(AuthContext) || {}
 
-  // Use Google user data directly
-  const user = googleUser || {
+  // First, try to get user from localStorage (Google OAuth), then from context
+  const localUser = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null
+  const user = localUser || contextUser || {
     name: 'Guest User',
     email: 'guest@flinxx.local',
     picture: null,
@@ -54,17 +55,35 @@ const Profile = () => {
         const data = await response.json()
         console.log('✅ Profile data fetched from backend:', data.profile)
 
-        // Update profile with backend data
+        // Update profile with backend data and current user data
         if (data.profile) {
           setProfile(prev => ({
             ...prev,
-            email: data.profile.email || prev.email,
-            displayName: data.profile.name || prev.displayName,
-            photoURL: data.profile.picture || prev.photoURL,
+            email: data.profile.email || user.email || prev.email,
+            displayName: data.profile.name || user.name || prev.displayName,
+            photoURL: data.profile.picture || user.picture || prev.photoURL,
+            googleId: user.googleId || data.profile.id || prev.googleId,
+          }))
+        } else {
+          // Fallback to localStorage user data if backend doesn't have it
+          setProfile(prev => ({
+            ...prev,
+            email: user.email || prev.email,
+            displayName: user.name || prev.displayName,
+            photoURL: user.picture || prev.photoURL,
+            googleId: user.googleId || prev.googleId,
           }))
         }
       } catch (error) {
         console.error('❌ Error fetching profile:', error)
+        // Fallback to localStorage data
+        setProfile(prev => ({
+          ...prev,
+          email: user.email || prev.email,
+          displayName: user.name || prev.displayName,
+          photoURL: user.picture || prev.photoURL,
+          googleId: user.googleId || prev.googleId,
+        }))
       } finally {
         setLoading(false)
       }
