@@ -1,8 +1,8 @@
+@import "remixicon/fonts/remixicon.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import "remixicon/fonts/remixicon.css";
 
 * {
   margin: 0;
