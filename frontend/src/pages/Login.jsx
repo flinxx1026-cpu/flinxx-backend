@@ -1,0 +1,159 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { jwtDecode } from 'jwt-decode'
+import { GoogleLogin } from '@react-oauth/google'
+import flinxxLogo from '../assets/flinxx-logo.svg'
+import { signInWithGoogle, signInWithFacebook, checkRedirectResult } from '../config/firebase'
+
+const Login = () => {
+  const navigate = useNavigate()
+  const [isSigningIn, setIsSigningIn] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    // Check if user was redirected back from OAuth
+    const checkLogin = async () => {
+      try {
+        const result = await checkRedirectResult()
+        if (result) {
+          console.log('✅ Login successful:', result.email)
+          navigate('/chat')
+        }
+      } catch (err) {
+        console.error('❌ Login check failed:', err)
+      }
+    }
+    
+    checkLogin()
+  }, [navigate])
+
+  const handleGoogleLoginSuccess = async (credentialResponse) => {
+    setIsSigningIn(true)
+    setError(null)
+    try {
+      // Decode the JWT credential from Google
+      const decoded = jwtDecode(credentialResponse.credential)
+      
+      const googleUser = {
+        name: decoded.name,
+        email: decoded.email,
+        picture: decoded.picture,
+        googleId: decoded.sub,
+      }
+      
+      console.log('✅ Google Login Success:', googleUser)
+      
+      // Save user profile to localStorage
+      localStorage.setItem('user', JSON.stringify(googleUser))
+      localStorage.setItem('authProvider', 'google')
+      
+      // Redirect to chat after a brief delay
+      setTimeout(() => {
+        setIsSigningIn(false)
+        navigate('/chat')
+      }, 1000)
+    } catch (err) {
+      console.error('❌ Google login error:', err)
+      setError('Google login failed. Please try again.')
+      setIsSigningIn(false)
+    }
+  }
+
+  const handleGoogleLoginError = () => {
+    console.log('❌ Google Login Failed')
+    setError('Google login failed. Please try again.')
+    setIsSigningIn(false)
+  }
+
+  const handleFacebookLogin = async () => {
+    setIsSigningIn(true)
+    setError(null)
+    try {
+      console.log('📱 Starting Facebook login...')
+      console.log('Facebook App ID:', import.meta.env.VITE_FACEBOOK_APP_ID)
+      console.log('Redirect URL:', import.meta.env.VITE_FIREBASE_REDIRECT_URL)
+      
+      await signInWithFacebook()
+      // Note: signInWithFacebook uses redirect, so page will reload after authentication
+      // The checkRedirectResult in useEffect will handle the response
+    } catch (err) {
+      console.error('❌ Facebook login error:', err)
+      setError('Facebook login failed. Please try again.')
+      setIsSigningIn(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        {/* Welcome Card */}
+        <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 text-center mb-8">
+          <h1 className="text-4xl font-black text-white mb-4">Welcome to Flinxx</h1>
+          <p className="text-lg text-white/80">Connect with strangers instantly</p>
+          <p className="text-sm text-white/70 mt-2">Sign up to get started</p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+            <p className="text-red-200 text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Sign In / Login Buttons */}
+        <div className="space-y-4">
+          {/* Signing In Button (when loading) */}
+          {isSigningIn && (
+            <button
+              disabled
+              className="w-full bg-gray-400 cursor-not-allowed text-gray-700 font-bold py-3 px-6 rounded-full transition-all text-lg flex items-center justify-center gap-2"
+            >
+              <span className="animate-spin">⟳</span> Signing in...
+            </button>
+          )}
+
+          {/* Google Login Button */}
+          <div className="w-full">
+            <GoogleLogin
+              onSuccess={handleGoogleLoginSuccess}
+              onError={handleGoogleLoginError}
+              theme="filled_black"
+              size="large"
+              width="100%"
+              locale="en"
+            />
+          </div>
+
+          {/* Facebook Login Button */}
+          <button
+            onClick={handleFacebookLogin}
+            disabled={isSigningIn}
+            className={`w-full py-3 px-6 rounded-full transition-all text-lg font-bold flex items-center justify-center gap-3 ${
+              isSigningIn
+                ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+            }`}
+          >
+            <span className="text-xl">f</span> Continue with Facebook
+          </button>
+        </div>
+
+        {/* Terms */}
+        <div className="text-center mt-8">
+          <p className="text-xs text-white/60">
+            By signing in, you agree to our{' '}
+            <a href="#" className="text-white/80 hover:text-white underline">
+              Terms of Service
+            </a>
+            {' '}and{' '}
+            <a href="#" className="text-white/80 hover:text-white underline">
+              Privacy Policy
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default Login
