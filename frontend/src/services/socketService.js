@@ -13,7 +13,7 @@ const socket = io(SOCKET_URL, {
   secure: false,
   rejectUnauthorized: false,
   forceNew: false,
-  withCredentials: false,
+  withCredentials: true,  // ✅ Enable credentials (cookies)
   // Add these to ensure proper connection
   upgrade: true,
   rememberUpgrade: false,
@@ -22,7 +22,8 @@ const socket = io(SOCKET_URL, {
   timeout: 60000,
   // Add headers if needed
   extraHeaders: {
-    'Access-Control-Allow-Origin': '*'
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Credentials': 'true'
   }
 })
 

@@ -123,7 +123,6 @@ const httpServer = createServer(app)
 
 // SET COOP/COEP headers FIRST - before everything else
 app.use((req, res, next) => {
-  console.log('Setting COOP/COEP headers for:', req.url)
   res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none')
   res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none')
   res.removeHeader('Cross-Origin-Resource-Policy')
@@ -133,26 +132,30 @@ app.use((req, res, next) => {
 // Get the frontend URL from environment or default to localhost:3000
 const FRONTEND_URL = process.env.CLIENT_URL || 'http://localhost:3000'
 
+// Allowed origins for CORS
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:3002",
+  "http://localhost:3003",
+  "http://localhost:3004",
+  "http://localhost:3005",
+  "http://localhost:3006",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:3001",
+  "http://127.0.0.1:3002",
+  "http://127.0.0.1:3003",
+  "http://127.0.0.1:3004",
+  "http://127.0.0.1:3005",
+  "http://127.0.0.1:3006"
+]
+
 const io = new Server(httpServer, {
   cors: {
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://localhost:3002",
-      "http://localhost:3003",
-      "http://localhost:3004",
-      "http://localhost:3005",
-      "http://localhost:3006",
-      "http://127.0.0.1:3000",
-      "http://127.0.0.1:3001",
-      "http://127.0.0.1:3002",
-      "http://127.0.0.1:3003",
-      "http://127.0.0.1:3004",
-      "http://127.0.0.1:3005",
-      "http://127.0.0.1:3006"
-    ],
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
   },
   transports: ['websocket', 'polling'],
   pingInterval: 25000,
@@ -161,26 +164,21 @@ const io = new Server(httpServer, {
 
 console.log("Socket server running on port 5000")
 
-// Middleware
+// Middleware - Enable CORS with credentials support
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
-    'http://localhost:3003',
-    'http://localhost:3004',
-    'http://localhost:3005',
-    'http://localhost:3006',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-    'http://127.0.0.1:3002',
-    'http://127.0.0.1:3003',
-    'http://127.0.0.1:3004',
-    'http://127.0.0.1:3005',
-    'http://127.0.0.1:3006'
-  ],
-  methods: ['GET', 'POST'],
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'X-JSON-Response'],
+  maxAge: 86400 // 24 hours
 }))
 
 app.use(express.json())

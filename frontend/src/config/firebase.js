@@ -144,6 +144,7 @@ const handleLoginSuccess = async (user, provider) => {
       headers: {
         'Content-Type': 'application/json'
       },
+      credentials: 'include',  // ✅ Send cookies with request
       body: JSON.stringify({
         uid: user.uid,
         email: user.email,

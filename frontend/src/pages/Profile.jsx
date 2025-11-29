@@ -54,7 +54,13 @@ const Profile = () => {
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
         console.log(`📋 Profile Component - Fetching from: ${API_URL}/api/user/profile?email=${user.email}`)
 
-        const response = await fetch(`${API_URL}/api/user/profile?email=${encodeURIComponent(user.email)}`)
+        const response = await fetch(`${API_URL}/api/user/profile?email=${encodeURIComponent(user.email)}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'  // ✅ Send cookies with request
+        })
 
         if (!response.ok) {
           throw new Error(`Failed to fetch profile: ${response.status}`)
