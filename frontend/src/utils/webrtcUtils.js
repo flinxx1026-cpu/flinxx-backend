@@ -7,11 +7,17 @@ export const logError = (error, context) => {
 export const getIceServers = () => {
   return {
     iceServers: [
+      // Google STUN servers
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
       { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' }
+      { urls: 'stun:stun4.l.google.com:19302' },
+      // Fallback STUN servers
+      { urls: 'stun:stun.stunprotocols.org:3478' },
+      { urls: 'stun:stun.ekiga.net:3478' }
+      // Add TURN servers here if available
+      // { urls: 'turn:turnserver.com:3478', username: 'user', credential: 'pass' }
     ]
   }
 }

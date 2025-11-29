@@ -181,10 +181,13 @@ const Chat = () => {
   }, []);
 
   const createPeerConnection = () => {
+    const iceConfig = getIceServers();
     const config = {
-      iceServers: getIceServers()
+      iceServers: iceConfig.iceServers,
+      iceCandidatePoolSize: 10
     };
 
+    console.log('🔧 RTCPeerConnection config:', config);
     const peerConnection = new RTCPeerConnection(config);
 
     peerConnection.onicecandidate = event => {

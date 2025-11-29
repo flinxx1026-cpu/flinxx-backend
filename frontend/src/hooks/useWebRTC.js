@@ -23,12 +23,17 @@ export const useWebRTC = (socketId, onRemoteStream) => {
   }
 
   const createPeerConnection = () => {
-    const peerConnection = new RTCPeerConnection({
+    const config = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-      ]
-    })
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' }
+      ],
+      iceCandidatePoolSize: 10
+    };
+    console.log('🔧 RTCPeerConnection config:', config);
+    const peerConnection = new RTCPeerConnection(config)
 
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
