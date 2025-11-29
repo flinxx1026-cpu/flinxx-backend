@@ -31,21 +31,35 @@ const Login = () => {
     setIsSigningIn(true)
     setError(null)
     try {
+      console.log('📱 Google credential response received:', credentialResponse)
+      
+      // Check if credential exists
+      if (!credentialResponse.credential) {
+        throw new Error('No credential received from Google')
+      }
+
       // Decode the JWT credential from Google
       const decoded = jwtDecode(credentialResponse.credential)
+      console.log('🔐 Decoded Google JWT:', decoded)
       
       const googleUser = {
-        name: decoded.name,
-        email: decoded.email,
-        picture: decoded.picture,
-        googleId: decoded.sub,
+        name: decoded.name || 'User',
+        email: decoded.email || '',
+        picture: decoded.picture || null,
+        googleId: decoded.sub || '',
         token: credentialResponse.credential
       }
       
-      console.log('✅ Google Login Success:', googleUser)
+      console.log('✅ Extracted Google User Data:', googleUser)
+      console.log('   - Name:', googleUser.name)
+      console.log('   - Email:', googleUser.email)
+      console.log('   - Picture:', googleUser.picture)
+      console.log('   - GoogleID:', googleUser.googleId)
       
       // Save user to backend database
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+      console.log(`🔗 Saving user to backend at: ${API_URL}`)
+      
       try {
         const saveResponse = await fetch(`${API_URL}/api/users/save`, {
           method: 'POST',
@@ -62,19 +76,22 @@ const Login = () => {
         })
 
         if (!saveResponse.ok) {
-          throw new Error(`Failed to save user: ${saveResponse.status}`)
+          const errorText = await saveResponse.text()
+          throw new Error(`Failed to save user: ${saveResponse.status} - ${errorText}`)
         }
 
         const dbResponse = await saveResponse.json()
         console.log('✅ User saved to backend:', dbResponse.user)
       } catch (dbError) {
         console.error('⚠️ Error saving user to backend:', dbError)
+        // Continue anyway - data is in localStorage
       }
       
       // Save user profile to localStorage
       localStorage.setItem('user', JSON.stringify(googleUser))
       localStorage.setItem('authProvider', 'google')
       localStorage.setItem('userInfo', JSON.stringify(googleUser))
+      console.log('✅ User data stored in localStorage')
       
       // Redirect to chat after a brief delay
       setTimeout(() => {
@@ -83,7 +100,7 @@ const Login = () => {
       }, 1000)
     } catch (err) {
       console.error('❌ Google login error:', err)
-      setError('Google login failed. Please try again.')
+      setError(`Google login failed: ${err.message}`)
       setIsSigningIn(false)
     }
   }
@@ -150,6 +167,7 @@ const Login = () => {
               size="large"
               width="100%"
               locale="en"
+              scope="openid profile email"
             />
           </div>
 

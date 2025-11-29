@@ -16,6 +16,8 @@ const Profile = () => {
     googleId: 'N/A'
   }
 
+  console.log('👤 Profile Component - Loaded User:', user)
+
   // Use Google user data or defaults
   const [profile, setProfile] = useState({
     username: user?.name || 'User',
@@ -38,13 +40,19 @@ const Profile = () => {
     const fetchProfile = async () => {
       try {
         if (!user?.email) {
-          console.log('⚠️ No user email found')
+          console.log('⚠️ No user email found, using localStorage data only')
+          console.log('📋 Profile from localStorage:', {
+            name: user?.name,
+            email: user?.email,
+            picture: user?.picture,
+            googleId: user?.googleId
+          })
           setLoading(false)
           return
         }
 
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-        console.log(`📋 Fetching profile from: ${API_URL}/api/user/profile`)
+        console.log(`📋 Profile Component - Fetching from: ${API_URL}/api/user/profile?email=${user.email}`)
 
         const response = await fetch(`${API_URL}/api/user/profile?email=${encodeURIComponent(user.email)}`)
 
