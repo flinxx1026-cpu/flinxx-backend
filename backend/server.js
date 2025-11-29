@@ -412,6 +412,53 @@ app.get('/api/users/email/:email', async (req, res) => {
   }
 })
 
+// Get user profile by ID or email (for frontend)
+app.get('/api/user/profile', async (req, res) => {
+  try {
+    const { userId, email } = req.query
+
+    if (!userId && !email) {
+      return res.status(400).json({ error: 'Missing userId or email parameter' })
+    }
+
+    let result
+    if (userId) {
+      result = await pool.query(
+        'SELECT id, email, display_name, photo_url, auth_provider, created_at, updated_at FROM users WHERE id = $1',
+        [userId]
+      )
+    } else {
+      result = await pool.query(
+        'SELECT id, email, display_name, photo_url, auth_provider, created_at, updated_at FROM users WHERE email = $1',
+        [email]
+      )
+    }
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    const user = result.rows[0]
+    console.log(`✅ Profile fetched for user: ${user.email}`)
+    
+    res.json({
+      success: true,
+      profile: {
+        id: user.id,
+        email: user.email,
+        name: user.display_name,
+        picture: user.photo_url,
+        authProvider: user.auth_provider,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at
+      }
+    })
+  } catch (error) {
+    console.error('❌ Error fetching user profile:', error)
+    res.status(500).json({ error: 'Failed to fetch profile', details: error.message })
+  }
+})
+
 // Initialize database on startup
 await initializeDatabase()
 

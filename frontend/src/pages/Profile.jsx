@@ -30,6 +30,49 @@ const Profile = () => {
     googleId: user?.googleId || 'N/A',
   })
 
+  const [loading, setLoading] = useState(true)
+
+  // Fetch user profile from backend on component mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        if (!user?.email) {
+          console.log('⚠️ No user email found')
+          setLoading(false)
+          return
+        }
+
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+        console.log(`📋 Fetching profile from: ${API_URL}/api/user/profile`)
+
+        const response = await fetch(`${API_URL}/api/user/profile?email=${encodeURIComponent(user.email)}`)
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch profile: ${response.status}`)
+        }
+
+        const data = await response.json()
+        console.log('✅ Profile data fetched from backend:', data.profile)
+
+        // Update profile with backend data
+        if (data.profile) {
+          setProfile(prev => ({
+            ...prev,
+            email: data.profile.email || prev.email,
+            displayName: data.profile.name || prev.displayName,
+            photoURL: data.profile.picture || prev.photoURL,
+          }))
+        }
+      } catch (error) {
+        console.error('❌ Error fetching profile:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProfile()
+  }, [user?.email])
+
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState(profile)
 

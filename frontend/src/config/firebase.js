@@ -35,9 +35,10 @@ export const db = getFirestore(app)
 
 // Create Google Auth Provider with your OAuth Client ID
 export const googleProvider = new GoogleAuthProvider()
-// Set proper scopes for Google
+// Set proper scopes for Google - include profile, email, and openid
 googleProvider.addScope('profile')
 googleProvider.addScope('email')
+googleProvider.addScope('openid')
 
 // Create Facebook Auth Provider with App ID and permissions
 export const facebookProvider = new FacebookAuthProvider()
