@@ -191,6 +191,26 @@ const activeSessions = new Map() // sessionId -> session details
 
 // ===== HELPER FUNCTIONS =====
 
+// Get TURN credentials from Metered service
+async function getTurnCredentials() {
+  try {
+    const response = await fetch(
+      `https://${process.env.METERED_TURN_DOMAIN}/api/v1/turn/credential?secretKey=${process.env.METERED_SECRET_KEY}`,
+      { method: "POST" }
+    )
+
+    if (!response.ok) {
+      throw new Error(`Failed to get TURN credentials: ${response.status}`)
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error('❌ Error getting TURN credentials:', error)
+    return null
+  }
+}
+
 // Get online users from Redis
 async function getOnlineUsers() {
   try {
@@ -292,6 +312,23 @@ app.get('/api/stats', async (req, res) => {
   } catch (error) {
     console.error('❌ Error getting stats:', error)
     res.status(500).json({ error: 'Failed to get stats' })
+  }
+})
+
+// Get TURN credentials endpoint
+app.get('/api/turn/credentials', async (req, res) => {
+  try {
+    const credentials = await getTurnCredentials()
+    if (!credentials) {
+      return res.status(500).json({ error: 'Failed to get TURN credentials' })
+    }
+    res.json({
+      success: true,
+      iceServers: credentials.iceServers || []
+    })
+  } catch (error) {
+    console.error('❌ Error in /api/turn/credentials:', error)
+    res.status(500).json({ error: 'Failed to retrieve TURN credentials', details: error.message })
   }
 })
 
