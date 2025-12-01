@@ -719,7 +719,7 @@ const Chat = () => {
               </div>
             ) : (
               /* Waiting for partner - show in message area */
-              <div className="w-full h-full flex items-center justify-center flex-col bg-black rounded-2xl">
+              <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl min-h-0">
                 <div className="text-center">
                   <div className="animate-spin mb-4 text-5xl inline-block">⟳</div>
                   <p className="text-white font-semibold text-base">Looking for a partner...</p>
