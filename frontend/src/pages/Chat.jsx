@@ -696,14 +696,14 @@ const Chat = () => {
           <div className="flex-1 overflow-y-auto bg-black px-4 py-4 space-y-3 flex flex-col min-h-0">
             {/* Partner video or waiting screen - ALWAYS show in messages area */}
             {hasPartner && partnerInfo ? (
-              <div className="relative flex-1 w-full rounded-2xl overflow-hidden bg-black flex items-center justify-center flex-shrink-0 min-h-0">
+              <div className="relative flex-1 min-h-0 w-full h-full bg-black overflow-hidden rounded-2xl">
                 {/* Partner video */}
                 <video
                   ref={remoteVideoRef}
                   autoPlay={true}
                   playsInline={true}
                   muted={false}
-                  className="w-full h-full object-cover block"
+                  className="w-full h-full object-cover"
                   style={{
                     backgroundColor: '#000000'
                   }}
