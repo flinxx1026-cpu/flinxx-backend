@@ -189,11 +189,15 @@ const Chat = () => {
 
       const config = {
         iceServers: data.iceServers,
-        iceCandidatePoolSize: 10
+        iceCandidatePoolSize: 10,
+        sdpSemantics: "unified-plan"
       };
 
       console.log('🔧 RTCPeerConnection config:', config);
       const peerConnection = new RTCPeerConnection(config);
+
+      // Guard against duplicate remote stream attachment
+      let remoteStreamSet = false;
 
       peerConnection.onicecandidate = event => {
         if (event.candidate) {
@@ -206,15 +210,37 @@ const Chat = () => {
 
       peerConnection.ontrack = event => {
         console.log('🎥 Received remote track:', event.track.kind, 'Streams:', event.streams.length);
-        if (remoteVideoRef.current && event.streams[0]) {
+        
+        // Guard: Only attach the FIRST valid remote stream
+        if (remoteStreamSet) {
+          console.log('⏭️ Remote stream already attached, skipping duplicate');
+          return;
+        }
+
+        const inboundStream = event.streams[0];
+        
+        if (!inboundStream) {
+          console.warn('⚠️ Empty stream received, skipping attachment');
+          return;
+        }
+
+        remoteStreamSet = true;
+        console.log('📹 Final valid remote stream:', inboundStream);
+
+        if (remoteVideoRef.current) {
           console.log('✅ Attaching remote stream to video element');
-          remoteVideoRef.current.srcObject = event.streams[0];
+          remoteVideoRef.current.srcObject = inboundStream;
           
           // Ensure the remote video plays
           remoteVideoRef.current.play().catch(err => {
             console.error('❌ Error playing remote video:', err);
           });
         }
+      };
+
+      // Disable unnecessary negotiation events
+      peerConnection.onnegotiationneeded = () => {
+        console.log('ℹ️ Negotiation needed event (ignored)');
       };
 
       peerConnection.onconnectionstatechange = () => {
