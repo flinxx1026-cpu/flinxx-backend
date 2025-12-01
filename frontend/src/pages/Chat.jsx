@@ -195,39 +195,44 @@ const Chat = () => {
       console.log('🔧 RTCPeerConnection config:', config);
       const peerConnection = new RTCPeerConnection(config);
 
-    peerConnection.onicecandidate = event => {
-      if (event.candidate) {
-        socket.emit('ice_candidate', {
-          candidate: event.candidate
-        });
-      }
-    };
+      peerConnection.onicecandidate = event => {
+        if (event.candidate) {
+          console.log('📤 Sending ICE candidate');
+          socket.emit('ice_candidate', {
+            candidate: event.candidate
+          });
+        }
+      };
 
-    peerConnection.ontrack = event => {
-      console.log('Received remote track:', event.track.kind);
-      if (remoteVideoRef.current) {
-        console.log('Attaching remote stream to video element');
-        remoteVideoRef.current.srcObject = event.streams[0];
-        
-        // Ensure the remote video plays
-        remoteVideoRef.current.play().catch(err => {
-          console.error('Error playing remote video:', err);
-        });
-      }
-    };
+      peerConnection.ontrack = event => {
+        console.log('🎥 Received remote track:', event.track.kind, 'Streams:', event.streams.length);
+        if (remoteVideoRef.current && event.streams[0]) {
+          console.log('✅ Attaching remote stream to video element');
+          remoteVideoRef.current.srcObject = event.streams[0];
+          
+          // Ensure the remote video plays
+          remoteVideoRef.current.play().catch(err => {
+            console.error('❌ Error playing remote video:', err);
+          });
+        }
+      };
 
-    peerConnection.onconnectionstatechange = () => {
-      console.log('Connection state:', peerConnection.connectionState);
-      if (peerConnection.connectionState === 'connected') {
-        setIsConnected(true);
-      } else if (peerConnection.connectionState === 'disconnected' || 
-                 peerConnection.connectionState === 'failed' ||
-                 peerConnection.connectionState === 'closed') {
-        setIsConnected(false);
-      }
-    };
+      peerConnection.onconnectionstatechange = () => {
+        console.log('🔗 Connection state:', peerConnection.connectionState);
+        if (peerConnection.connectionState === 'connected') {
+          setIsConnected(true);
+        } else if (peerConnection.connectionState === 'disconnected' || 
+                   peerConnection.connectionState === 'failed' ||
+                   peerConnection.connectionState === 'closed') {
+          setIsConnected(false);
+        }
+      };
 
-    return peerConnection;
+      return peerConnection;
+    } catch (err) {
+      console.error('❌ Error creating peer connection:', err);
+      throw err;
+    }
   };
 
   const startVideoChat = async () => {
@@ -317,72 +322,105 @@ const Chat = () => {
   const setupSocketListeners = () => {
     // Partner found
     socket.on('partner_found', async (data) => {
-      console.log('Partner found:', data);
+      console.log('👥 Partner found:', data);
       setHasPartner(true);
       setPartnerInfo(data);
 
       // Create peer connection and send offer
-      const pc = await createPeerConnection();
-      peerConnectionRef.current = pc;
+      try {
+        console.log('🔧 Creating peer connection for offerer');
+        const pc = await createPeerConnection();
+        peerConnectionRef.current = pc;
 
-      // Add local stream tracks to peer connection
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => {
-          pc.addTrack(track, localStreamRef.current);
-        });
-      }
-
-      // Create and send offer
-      pc.createOffer()
-        .then(offer => pc.setLocalDescription(offer))
-        .then(() => {
-          socket.emit('webrtc_offer', {
-            offer: peerConnectionRef.current.localDescription
+        // Add local stream tracks to peer connection
+        if (localStreamRef.current) {
+          const tracks = localStreamRef.current.getTracks();
+          console.log(`📹 Adding ${tracks.length} local tracks to peer connection`);
+          tracks.forEach(track => {
+            console.log(`  - Adding ${track.kind} track`);
+            pc.addTrack(track, localStreamRef.current);
           });
-        })
-        .catch(err => console.error('Error creating offer:', err));
+        } else {
+          console.warn('⚠️ No local stream available');
+        }
+
+        // Create and send offer
+        console.log('🎬 Creating WebRTC offer');
+        const offer = await pc.createOffer();
+        console.log('✅ Offer created');
+        
+        await pc.setLocalDescription(offer);
+        console.log('✅ Local description set');
+        
+        socket.emit('webrtc_offer', {
+          offer: peerConnectionRef.current.localDescription
+        });
+        console.log('📤 Offer sent to peer');
+      } catch (err) {
+        console.error('❌ Error in partner_found handler:', err);
+      }
     });
 
     // Receive offer
     socket.on('webrtc_offer', async (data) => {
-      console.log('Received offer');
+      console.log('📨 Received WebRTC offer');
       try {
         if (!peerConnectionRef.current) {
+          console.log('📍 Creating new peer connection for answerer');
           const pc = await createPeerConnection();
           peerConnectionRef.current = pc;
 
           // Add local stream tracks
           if (localStreamRef.current) {
-            localStreamRef.current.getTracks().forEach(track => {
+            const tracks = localStreamRef.current.getTracks();
+            console.log(`📹 Adding ${tracks.length} local tracks to peer connection`);
+            tracks.forEach(track => {
+              console.log(`  - Adding ${track.kind} track`);
               pc.addTrack(track, localStreamRef.current);
             });
+          } else {
+            console.warn('⚠️ No local stream available to add tracks');
           }
         }
 
+        console.log('🔄 Setting remote description (offer)');
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(data.offer)
         );
+        console.log('✅ Remote description set successfully');
 
+        console.log('🎬 Creating answer');
         const answer = await peerConnectionRef.current.createAnswer();
+        console.log('✅ Answer created');
+        
+        console.log('🔄 Setting local description (answer)');
         await peerConnectionRef.current.setLocalDescription(answer);
+        console.log('✅ Local description set successfully');
 
         socket.emit('webrtc_answer', {
           answer: peerConnectionRef.current.localDescription
         });
+        console.log('📤 Answer sent to peer');
       } catch (err) {
-        console.error('Error handling offer:', err);
+        console.error('❌ Error handling offer:', err);
       }
     });
 
     // Receive answer
     socket.on('webrtc_answer', async (data) => {
-      console.log('Received answer');
+      console.log('📨 Received WebRTC answer');
       try {
+        if (!peerConnectionRef.current) {
+          console.error('❌ No peer connection available to handle answer');
+          return;
+        }
+        console.log('🔄 Setting remote description (answer)');
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(data.answer)
         );
+        console.log('✅ Remote description (answer) set successfully');
       } catch (err) {
-        console.error('Error handling answer:', err);
+        console.error('❌ Error handling answer:', err);
       }
     });
 
@@ -390,12 +428,16 @@ const Chat = () => {
     socket.on('ice_candidate', async (data) => {
       try {
         if (peerConnectionRef.current) {
+          console.log('🧊 Adding ICE candidate');
           await peerConnectionRef.current.addIceCandidate(
             new RTCIceCandidate(data.candidate)
           );
+          console.log('✅ ICE candidate added successfully');
+        } else {
+          console.warn('⚠️ No peer connection available for ICE candidate');
         }
       } catch (err) {
-        console.error('Error adding ICE candidate:', err);
+        console.error('❌ Error adding ICE candidate:', err);
       }
     });
 
