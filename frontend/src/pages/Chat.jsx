@@ -624,7 +624,7 @@ const Chat = () => {
 
   // Video Chat Screen Component
   const VideoChatScreen = () => (
-    <div className="flex-1 flex items-center justify-center gap-10 p-8 w-full h-full overflow-hidden bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative">
+    <div className="flex-1 flex items-center justify-center gap-10 p-8 w-full h-full overflow-hidden bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative min-h-0">
       {/* Close Button - Round X Icon at Top Right */}
       <button
         onClick={() => {
@@ -662,7 +662,7 @@ const Chat = () => {
 
       {/* Right - Chat panel with proper 3-section layout */}
       <div className="right-panel flex items-center justify-center" style={{ width: '520px', height: '620px' }}>
-        <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-white/10">
+        <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-white/10 min-h-0">
           
           {/* SECTION 1: TOP - Header with partner info */}
           <div className="h-16 px-4 py-3 flex items-center justify-between bg-black/80 backdrop-blur-sm border-b border-white/10 flex-shrink-0">
@@ -786,7 +786,7 @@ const Chat = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 overflow-hidden">
+    <div className="flex flex-col h-screen w-screen bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 overflow-hidden min-h-0">
       {/* Main content */}
       {!cameraStarted ? <IntroScreen /> : <VideoChatScreen />}
       
