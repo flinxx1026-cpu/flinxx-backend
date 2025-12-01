@@ -199,6 +199,29 @@ const Login = () => {
             </a>
           </p>
         </div>
+
+        {/* Features Section */}
+        <div className="mt-10 flex flex-col items-center gap-3 text-white/80 text-sm">
+          <div className="flex items-center gap-2">
+            <span>⚡</span>
+            <p>Instant connection with strangers</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span>👤</span>
+            <p>100% Anonymous & Safe</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span>🎥</span>
+            <p>High-quality Video Chat</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span>🌍</span>
+            <p>Connect Worldwide</p>
+          </div>
+        </div>
       </div>
     </div>
   )
