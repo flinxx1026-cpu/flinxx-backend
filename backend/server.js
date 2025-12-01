@@ -333,20 +333,23 @@ app.get('/api/turn/credentials', async (req, res) => {
 })
 
 // TURN Server Credentials Route
-app.all("/api/get-turn-credentials", async (req, res) => {
+app.post('/api/get-turn-credentials', async (req, res) => {
   try {
-    const response = await fetch(`https://${process.env.METERED_DOMAIN}/api/v1/turn/credential`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ secretKey: process.env.METERED_SECRET_KEY })
-    });
+    const response = await fetch(
+      `https://flinxx.metered.live/api/v1/turn/credential`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secretKey: process.env.METERED_SECRET_KEY
+        })
+      }
+    );
 
     const data = await response.json();
-    res.json(data);
-
+    return res.json(data);
   } catch (error) {
-    console.error("TURN ERROR:", error);
-    res.status(500).json({ error: "Failed to fetch TURN credentials" });
+    return res.status(500).json({ error: "Failed to fetch TURN credentials" });
   }
 });
 
