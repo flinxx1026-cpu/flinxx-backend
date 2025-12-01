@@ -466,6 +466,11 @@ await initializeDatabase()
 // Get Google OAuth tokens
 const getGoogleTokens = async (code) => {
   try {
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI
+    if (!redirectUri) {
+      throw new Error('GOOGLE_REDIRECT_URI environment variable is not set')
+    }
+    console.log(`🔐 Exchanging code with redirect_uri: ${redirectUri}`)
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -474,7 +479,7 @@ const getGoogleTokens = async (code) => {
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
         code: code,
         grant_type: 'authorization_code',
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'https://flinxx-backend-frontend.vercel.app/auth/google/callback'
+        redirect_uri: redirectUri
       })
     })
     
@@ -513,9 +518,14 @@ const getGoogleUserInfo = async (accessToken) => {
 // Step 1: Redirect to Google OAuth consent screen
 app.get('/auth/google', (req, res) => {
   try {
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI
+    if (!redirectUri) {
+      throw new Error('GOOGLE_REDIRECT_URI environment variable is not set')
+    }
+    console.log(`🔗 Google OAuth initiated with redirect_uri: ${redirectUri}`)
     const params = new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID,
-      redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'https://flinxx-backend-frontend.vercel.app/auth/google/callback',
+      redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'openid profile email',
       access_type: 'offline',
@@ -523,7 +533,7 @@ app.get('/auth/google', (req, res) => {
     })
     
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
-    console.log(`🔗 Redirecting to Google OAuth: ${authUrl}`)
+    console.log(`🔗 Redirecting to Google consent screen`)
     res.redirect(authUrl)
   } catch (error) {
     console.error('❌ Error in /auth/google:', error)
