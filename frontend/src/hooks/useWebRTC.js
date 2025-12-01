@@ -22,14 +22,11 @@ export const useWebRTC = (socketId, onRemoteStream) => {
     }
   }
 
-  const createPeerConnection = () => {
+  const createPeerConnection = async () => {
+    const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials");
+    const data = await res.json();
     const config = {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' }
-      ],
+      iceServers: data.iceServers,
       iceCandidatePoolSize: 10
     };
     console.log('🔧 RTCPeerConnection config:', config);

@@ -180,15 +180,18 @@ const Chat = () => {
     };
   }, []);
 
-  const createPeerConnection = () => {
-    const iceConfig = getIceServers();
-    const config = {
-      iceServers: iceConfig.iceServers,
-      iceCandidatePoolSize: 10
-    };
+  const createPeerConnection = async () => {
+    try {
+      const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials");
+      const data = await res.json();
 
-    console.log('🔧 RTCPeerConnection config:', config);
-    const peerConnection = new RTCPeerConnection(config);
+      const config = {
+        iceServers: data.iceServers,
+        iceCandidatePoolSize: 10
+      };
+
+      console.log('🔧 RTCPeerConnection config:', config);
+      const peerConnection = new RTCPeerConnection(config);
 
     peerConnection.onicecandidate = event => {
       if (event.candidate) {
@@ -311,13 +314,13 @@ const Chat = () => {
 
   const setupSocketListeners = () => {
     // Partner found
-    socket.on('partner_found', (data) => {
+    socket.on('partner_found', async (data) => {
       console.log('Partner found:', data);
       setHasPartner(true);
       setPartnerInfo(data);
 
       // Create peer connection and send offer
-      const pc = createPeerConnection();
+      const pc = await createPeerConnection();
       peerConnectionRef.current = pc;
 
       // Add local stream tracks to peer connection
@@ -343,7 +346,7 @@ const Chat = () => {
       console.log('Received offer');
       try {
         if (!peerConnectionRef.current) {
-          const pc = createPeerConnection();
+          const pc = await createPeerConnection();
           peerConnectionRef.current = pc;
 
           // Add local stream tracks
