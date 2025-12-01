@@ -138,7 +138,7 @@ const handleLoginSuccess = async (user, provider) => {
   
   // ===== SAVE USER TO BACKEND DATABASE (Neon PostgreSQL) =====
   try {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+    const API_URL = import.meta.env.VITE_API_URL || 'https://flinxx-backend.onrender.com'
     const response = await fetch(`${API_URL}/api/users/save`, {
       method: 'POST',
       headers: {

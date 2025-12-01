@@ -51,7 +51,7 @@ const Profile = () => {
           return
         }
 
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+        const API_URL = import.meta.env.VITE_API_URL || 'https://flinxx-backend.onrender.com'
         console.log(`📋 Profile Component - Fetching from: ${API_URL}/api/user/profile?email=${user.email}`)
 
         const response = await fetch(`${API_URL}/api/user/profile?email=${encodeURIComponent(user.email)}`, {
