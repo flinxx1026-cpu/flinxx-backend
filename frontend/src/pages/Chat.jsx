@@ -682,7 +682,7 @@ const Chat = () => {
       </button>
 
       {/* Left - Local camera video */}
-      <div className="video-box flex items-center justify-center" style={{ width: '520px', height: '620px' }}>
+      <div className="video-box flex items-center justify-center min-h-0" style={{ width: '520px', height: '620px' }}>
         <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
           <video
             ref={localVideoRef}
@@ -703,7 +703,7 @@ const Chat = () => {
       </div>
 
       {/* Right - Chat panel with proper 3-section layout */}
-      <div className="right-panel flex items-center justify-center" style={{ width: '520px', height: '620px' }}>
+      <div className="right-panel flex items-center justify-center min-h-0" style={{ width: '520px', height: '620px' }}>
         <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-white/10 min-h-0">
           
           {/* SECTION 1: TOP - Header with partner info */}
