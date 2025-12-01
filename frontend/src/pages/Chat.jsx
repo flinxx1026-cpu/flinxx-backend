@@ -693,7 +693,7 @@ const Chat = () => {
           </div>
 
           {/* SECTION 2: MIDDLE - Messages area (scrollable) */}
-          <div className="flex-1 overflow-y-auto bg-black px-4 py-4 space-y-3 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto bg-black px-4 py-4 flex flex-col min-h-0">
             {/* Partner video or waiting screen - ALWAYS show in messages area */}
             {hasPartner && partnerInfo ? (
               <div className="relative flex-1 min-h-0 w-full h-full bg-black overflow-hidden rounded-2xl">
