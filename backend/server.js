@@ -333,22 +333,20 @@ app.get('/api/turn/credentials', async (req, res) => {
 })
 
 // TURN Server Credentials Route
-app.post('/api/get-turn-credentials', async (req, res) => {
+app.all("/api/get-turn-credentials", async (req, res) => {
   try {
-    const response = await fetch(
-      `https://${process.env.METERED_DOMAIN}/api/v1/turn/credential`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secretKey: process.env.METERED_SECRET_KEY })
-      }
-    );
+    const response = await fetch(`https://${process.env.METERED_DOMAIN}/api/v1/turn/credential`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secretKey: process.env.METERED_SECRET_KEY })
+    });
 
     const data = await response.json();
-    return res.json(data);
+    res.json(data);
+
   } catch (err) {
-    console.error("TURN Error:", err);
-    return res.status(500).json({ error: "Failed to get TURN credentials" });
+    console.error("TURN Credential Error:", err);
+    res.status(500).json({ error: "Failed to fetch TURN credentials" });
   }
 });
 
