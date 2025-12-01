@@ -6,7 +6,7 @@ import Chat from '../pages/Chat'
 import Matching from '../pages/Matching'
 import Profile from '../pages/Profile'
 import AuthCallback from '../pages/AuthCallback'
-import Callback from '../pages/auth/callback'
+import Callback from '../pages/callback'
 import './Layout.css'
 
 function Layout() {
