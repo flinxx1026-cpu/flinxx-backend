@@ -1,9 +1,34 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { jwtDecode } from 'jwt-decode'
-import { GoogleLogin } from '@react-oauth/google'
+import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google'
 import flinxxLogo from '../assets/flinxx-logo.svg'
+import googleIcon from '../assets/google-icon.svg'
 import { signInWithGoogle, signInWithFacebook, checkRedirectResult } from '../config/firebase'
+
+// Custom Google Login Button Component
+const GoogleCustomButton = ({ onSuccess, onError, isSigningIn }) => {
+  const googleLogin = useGoogleLogin({
+    onSuccess: onSuccess,
+    onError: onError,
+    flow: 'implicit',
+  })
+
+  return (
+    <button
+      onClick={() => googleLogin()}
+      disabled={isSigningIn}
+      className={`w-full py-3 px-6 rounded-full transition-all text-lg font-bold flex items-center justify-center gap-3 ${
+        isSigningIn
+          ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+          : 'bg-white hover:bg-gray-50 text-black shadow-lg hover:shadow-xl transform hover:scale-105'
+      }`}
+    >
+      <img src={googleIcon} alt="Google" className="w-6 h-6" />
+      Continue with Google
+    </button>
+  )
+}
 
 const Login = () => {
   const navigate = useNavigate()
@@ -33,13 +58,16 @@ const Login = () => {
     try {
       console.log('📱 Google credential response received:', credentialResponse)
       
+      // For custom button, we get the credential from the response
+      const credential = credentialResponse.credential || credentialResponse.id_token
+      
       // Check if credential exists
-      if (!credentialResponse.credential) {
+      if (!credential) {
         throw new Error('No credential received from Google')
       }
 
       // Decode the JWT credential from Google
-      const decoded = jwtDecode(credentialResponse.credential)
+      const decoded = jwtDecode(credential)
       console.log('🔐 Decoded Google JWT:', decoded)
       
       const googleUser = {
@@ -47,7 +75,7 @@ const Login = () => {
         email: decoded.email || '',
         picture: decoded.picture || null,
         googleId: decoded.sub || '',
-        token: credentialResponse.credential
+        token: credential
       }
       
       console.log('✅ Extracted Google User Data:', googleUser)
@@ -159,18 +187,12 @@ const Login = () => {
             </button>
           )}
 
-          {/* Google Login Button */}
-          <div className="w-full">
-            <GoogleLogin
-              onSuccess={handleGoogleLoginSuccess}
-              onError={handleGoogleLoginError}
-              theme="filled_black"
-              size="large"
-              width="100%"
-              locale="en"
-              scope="openid profile email"
-            />
-          </div>
+          {/* Custom Google Login Button */}
+          <GoogleCustomButton 
+            onSuccess={handleGoogleLoginSuccess}
+            onError={handleGoogleLoginError}
+            isSigningIn={isSigningIn}
+          />
 
           {/* Facebook Login Button */}
           <button
