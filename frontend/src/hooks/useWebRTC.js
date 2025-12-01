@@ -23,7 +23,9 @@ export const useWebRTC = (socketId, onRemoteStream) => {
   }
 
   const createPeerConnection = async () => {
-    const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials");
+    const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials", {
+      method: "POST"
+    });
     const data = await res.json();
     const config = {
       iceServers: data.iceServers,

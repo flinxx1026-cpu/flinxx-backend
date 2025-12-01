@@ -182,7 +182,9 @@ const Chat = () => {
 
   const createPeerConnection = async () => {
     try {
-      const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials");
+      const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials", {
+        method: "POST"
+      });
       const data = await res.json();
 
       const config = {

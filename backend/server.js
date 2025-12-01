@@ -333,26 +333,22 @@ app.get('/api/turn/credentials', async (req, res) => {
 })
 
 // TURN Server Credentials Route
-app.get("/api/get-turn-credentials", async (req, res) => {
+app.post("/api/get-turn-credentials", async (req, res) => {
   try {
-    const response = await fetch("https://flinxx.metered.live/api/v1/turn/credential", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        secretKey: process.env.METERED_SECRET_KEY
-      })
-    });
+    const response = await fetch(
+      `https://${process.env.METERED_DOMAIN}/api/v1/turn/credential`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secretKey: process.env.METERED_SECRET_KEY })
+      }
+    );
 
     const data = await response.json();
-
-    if (!data || !data.iceServers) {
-      return res.status(400).json({ error: "Invalid TURN credential response" });
-    }
-
     res.json(data);
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "TURN server error" });
+    res.json({ error: "TURN credential error" });
   }
 });
 
