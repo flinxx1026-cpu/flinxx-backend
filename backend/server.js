@@ -344,8 +344,8 @@ app.all("/api/get-turn-credentials", async (req, res) => {
     const data = await response.json();
     res.json(data);
 
-  } catch (err) {
-    console.error("TURN Credential Error:", err);
+  } catch (error) {
+    console.error("TURN ERROR:", error);
     res.status(500).json({ error: "Failed to fetch TURN credentials" });
   }
 });
