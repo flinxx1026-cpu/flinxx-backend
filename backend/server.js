@@ -548,12 +548,14 @@ app.get('/auth/google/callback', async (req, res) => {
     
     if (error) {
       console.error(`❌ Google OAuth error: ${error}`)
-      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3003'}?error=${error}`)
+      const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
+      return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=${error}`)
     }
     
     if (!code) {
       console.error('❌ No authorization code received')
-      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3003'}?error=no_code`)
+      const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
+      return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=no_code`)
     }
     
     console.log(`📝 Received authorization code: ${code.substring(0, 10)}...`)
@@ -599,8 +601,8 @@ app.get('/auth/google/callback', async (req, res) => {
     })).toString('base64')
     
     // Redirect to frontend with user data
-    const frontendUrl = process.env.CLIENT_URL || 'http://localhost:3003'
-    const redirectUrl = `${frontendUrl}/auth/callback?token=${sessionToken}&user=${encodeURIComponent(JSON.stringify({
+    const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
+    const redirectUrl = `${frontendUrl || 'http://localhost:3003'}/auth/callback?token=${sessionToken}&user=${encodeURIComponent(JSON.stringify({
       id: user.id,
       email: user.email,
       name: user.display_name,
@@ -612,8 +614,8 @@ app.get('/auth/google/callback', async (req, res) => {
     res.redirect(redirectUrl)
   } catch (error) {
     console.error('❌ Error in /auth/google/callback:', error)
-    const frontendUrl = process.env.CLIENT_URL || 'http://localhost:3003'
-    res.redirect(`${frontendUrl}?error=${encodeURIComponent(error.message)}`)
+    const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
+    res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=${encodeURIComponent(error.message)}`)
   }
 })
 
