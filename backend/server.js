@@ -336,15 +336,12 @@ app.get('/api/turn/credentials', async (req, res) => {
 app.get('/api/get-turn-credentials', async (req, res) => {
   try {
     const response = await fetch(
-      "https://flinxx.metered.live/api/v1/turn/credential",
+      "https://flinxx.metered.live/api/v1/turn/credential?secretKey=" + process.env.METERED_SECRET_KEY,
       {
-        method: "POST",
+        method: "GET",
         headers: {
           "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          secretKey: process.env.METERED_SECRET_KEY
-        })
+        }
       }
     );
 
@@ -358,15 +355,12 @@ app.get('/api/get-turn-credentials', async (req, res) => {
 app.post('/api/get-turn-credentials', async (req, res) => {
   try {
     const response = await fetch(
-      "https://flinxx.metered.live/api/v1/turn/credential",
+      "https://flinxx.metered.live/api/v1/turn/credential?secretKey=" + process.env.METERED_SECRET_KEY,
       {
-        method: "POST",
+        method: "GET",
         headers: {
           "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          secretKey: process.env.METERED_SECRET_KEY
-        })
+        }
       }
     );
 
