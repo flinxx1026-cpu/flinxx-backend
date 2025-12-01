@@ -336,19 +336,21 @@ app.get('/api/turn/credentials', async (req, res) => {
 app.get("/api/get-turn-credentials", async (req, res) => {
   try {
     const response = await fetch(
-      "https://flinxx.metered.live/api/v1/turn/credential",
+      "https://flinxx.metered.live/api/v1/turn/credentials?secretKey=wH_lOTZIs_gQm9wcixkCkp78HcVz1eYL2_dT6UOggdg_lVal",
       {
-        method: "POST",
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          secretKey: "wH_lOTZIs_gQm9wcixkCkp78HcVz1eYL2_dT6UOggdg_lVal"
-        }),
       }
     );
 
     const data = await response.json();
+
+    if (!data || !data.username) {
+      return res.status(500).json({ error: "Invalid TURN credential response" });
+    }
+
     return res.json({
       iceServers: [
         {
@@ -359,8 +361,8 @@ app.get("/api/get-turn-credentials", async (req, res) => {
       ],
     });
   } catch (err) {
-    console.error("TURN API ERROR:", err);
-    return res.status(500).json({ error: "Failed to fetch TURN credentials" });
+    console.error("TURN ERROR:", err);
+    res.status(500).json({ error: "TURN server error" });
   }
 });
 
