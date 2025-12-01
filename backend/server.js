@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import dotenv from 'dotenv'
 import pg from 'pg'
 import { createClient } from 'redis'
+import fetch from 'node-fetch'
 
 dotenv.config()
 
@@ -459,6 +460,152 @@ app.get('/api/user/profile', async (req, res) => {
 
 // Initialize database on startup
 await initializeDatabase()
+
+// ===== GOOGLE OAUTH ROUTES =====
+
+// Get Google OAuth tokens
+const getGoogleTokens = async (code) => {
+  try {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        code: code,
+        grant_type: 'authorization_code',
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'https://flinxx-backend-frontend.vercel.app/auth/google/callback'
+      })
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to get tokens: ${response.status} - ${errorText}`)
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('❌ Error getting Google tokens:', error)
+    throw error
+  }
+}
+
+// Get Google user info
+const getGoogleUserInfo = async (accessToken) => {
+  try {
+    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get user info: ${response.status}`)
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('❌ Error getting Google user info:', error)
+    throw error
+  }
+}
+
+// Step 1: Redirect to Google OAuth consent screen
+app.get('/auth/google', (req, res) => {
+  try {
+    const params = new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'https://flinxx-backend-frontend.vercel.app/auth/google/callback',
+      response_type: 'code',
+      scope: 'openid profile email',
+      access_type: 'offline',
+      prompt: 'consent'
+    })
+    
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
+    console.log(`🔗 Redirecting to Google OAuth: ${authUrl}`)
+    res.redirect(authUrl)
+  } catch (error) {
+    console.error('❌ Error in /auth/google:', error)
+    res.status(500).json({ error: 'Failed to initiate Google login' })
+  }
+})
+
+// Step 2: Handle Google OAuth callback
+app.get('/auth/google/callback', async (req, res) => {
+  try {
+    const { code, error } = req.query
+    
+    if (error) {
+      console.error(`❌ Google OAuth error: ${error}`)
+      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3003'}?error=${error}`)
+    }
+    
+    if (!code) {
+      console.error('❌ No authorization code received')
+      return res.redirect(`${process.env.CLIENT_URL || 'http://localhost:3003'}?error=no_code`)
+    }
+    
+    console.log(`📝 Received authorization code: ${code.substring(0, 10)}...`)
+    
+    // Exchange code for tokens
+    const tokens = await getGoogleTokens(code)
+    console.log(`✅ Got access token from Google`)
+    
+    // Get user info
+    const userInfo = await getGoogleUserInfo(tokens.access_token)
+    console.log(`✅ Retrieved user info:`, userInfo.email)
+    
+    // Save user to database
+    const result = await pool.query(
+      `INSERT INTO users (id, email, display_name, photo_url, auth_provider, provider_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (email) DO UPDATE SET
+         display_name = EXCLUDED.display_name,
+         photo_url = EXCLUDED.photo_url,
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [
+        uuidv4(),
+        userInfo.email,
+        userInfo.name || 'User',
+        userInfo.picture || null,
+        'google',
+        userInfo.id
+      ]
+    )
+    
+    const user = result.rows[0]
+    console.log(`✅ User saved to database:`, user.email)
+    
+    // Create a session token (simple JWT-like token)
+    const sessionToken = Buffer.from(JSON.stringify({
+      userId: user.id,
+      email: user.email,
+      name: user.display_name,
+      picture: user.photo_url,
+      provider: 'google',
+      timestamp: Date.now()
+    })).toString('base64')
+    
+    // Redirect to frontend with user data
+    const frontendUrl = process.env.CLIENT_URL || 'http://localhost:3003'
+    const redirectUrl = `${frontendUrl}/auth/callback?token=${sessionToken}&user=${encodeURIComponent(JSON.stringify({
+      id: user.id,
+      email: user.email,
+      name: user.display_name,
+      picture: user.photo_url,
+      googleId: userInfo.id
+    }))}`
+    
+    console.log(`🔗 Redirecting to frontend: ${redirectUrl}`)
+    res.redirect(redirectUrl)
+  } catch (error) {
+    console.error('❌ Error in /auth/google/callback:', error)
+    const frontendUrl = process.env.CLIENT_URL || 'http://localhost:3003'
+    res.redirect(`${frontendUrl}?error=${encodeURIComponent(error.message)}`)
+  }
+})
 
 // WebSocket Events
 io.on('connection', (socket) => {

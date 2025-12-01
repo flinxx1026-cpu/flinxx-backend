@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { jwtDecode } from 'jwt-decode'
-import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 import googleIcon from '../assets/google-icon.svg'
 import { signInWithGoogle, signInWithFacebook, checkRedirectResult } from '../config/firebase'
 
 // Custom Google Login Button Component
-const GoogleCustomButton = ({ onSuccess, onError, isSigningIn }) => {
-  const googleLogin = useGoogleLogin({
-    onSuccess: onSuccess,
-    onError: onError,
-    flow: 'implicit',
-  })
+const GoogleCustomButton = ({ isSigningIn }) => {
+  const handleGoogleClick = () => {
+    // Get backend URL from environment or use production URL
+    const BACKEND_URL = import.meta.env.VITE_API_URL || 'https://flinxx-backend.onrender.com'
+    console.log('🔗 Redirecting to Google OAuth:', `${BACKEND_URL}/auth/google`)
+    window.location.href = `${BACKEND_URL}/auth/google`
+  }
 
   return (
     <button
-      onClick={() => googleLogin()}
+      onClick={handleGoogleClick}
       disabled={isSigningIn}
       className={`w-full py-3 px-6 rounded-full transition-all text-lg font-bold flex items-center justify-center gap-3 ${
         isSigningIn
@@ -189,8 +189,6 @@ const Login = () => {
 
           {/* Custom Google Login Button */}
           <GoogleCustomButton 
-            onSuccess={handleGoogleLoginSuccess}
-            onError={handleGoogleLoginError}
             isSigningIn={isSigningIn}
           />
 

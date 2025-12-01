@@ -5,6 +5,7 @@ import Login from '../pages/Login'
 import Chat from '../pages/Chat'
 import Matching from '../pages/Matching'
 import Profile from '../pages/Profile'
+import AuthCallback from '../pages/AuthCallback'
 import './Layout.css'
 
 function Layout() {
@@ -15,6 +16,7 @@ function Layout() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/matching" element={<Matching />} />
             <Route path="/profile" element={<Profile />} />
