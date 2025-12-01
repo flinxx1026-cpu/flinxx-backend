@@ -15,9 +15,13 @@ export const getIceServers = () => {
       { urls: 'stun:stun4.l.google.com:19302' },
       // Fallback STUN servers
       { urls: 'stun:stun.stunprotocols.org:3478' },
-      { urls: 'stun:stun.ekiga.net:3478' }
-      // Add TURN servers here if available
-      // { urls: 'turn:turnserver.com:3478', username: 'user', credential: 'pass' }
+      { urls: 'stun:stun.ekiga.net:3478' },
+      // TURN server for relaying through firewalls/NAT
+      {
+        urls: 'turn:relay1.expressturn.com:3478',
+        username: 'efr5yJsjCj7J8kYxZR',
+        credential: 'jP6eE8sFvYdWwA2kFh'
+      }
     ]
   }
 }
