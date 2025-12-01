@@ -336,10 +336,12 @@ app.get('/api/turn/credentials', async (req, res) => {
 app.post('/api/get-turn-credentials', async (req, res) => {
   try {
     const response = await fetch(
-      `https://flinxx.metered.live/api/v1/turn/credential`,
+      "https://flinxx.metered.live/api/v1/turn/credential",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
           secretKey: process.env.METERED_SECRET_KEY
         })
@@ -348,7 +350,7 @@ app.post('/api/get-turn-credentials', async (req, res) => {
 
     const data = await response.json();
     return res.json(data);
-  } catch (error) {
+  } catch (err) {
     return res.status(500).json({ error: "Failed to fetch TURN credentials" });
   }
 });
