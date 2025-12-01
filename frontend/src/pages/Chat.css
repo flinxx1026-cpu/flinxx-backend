@@ -21,6 +21,16 @@
   flex: 1;
 }
 
+/* Remote video element styling */
+video[ref*="remote"],
+.remote-video-wrapper video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background-color: #000000;
+}
+
 /* Ensure parent flex containers don't collapse */
 .chat-screen {
   display: flex;
