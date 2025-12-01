@@ -332,6 +332,38 @@ app.get('/api/turn/credentials', async (req, res) => {
   }
 })
 
+// TURN Server Credentials Route
+app.get("/api/get-turn-credentials", async (req, res) => {
+  try {
+    const response = await fetch(
+      "https://flinxx.metered.live/api/v1/turn/credential",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          secretKey: "wH_lOTZIs_gQm9wcixkCkp78HcVz1eYL2_dT6UOggdg_lVal"
+        }),
+      }
+    );
+
+    const data = await response.json();
+    return res.json({
+      iceServers: [
+        {
+          urls: data.urls,
+          username: data.username,
+          credential: data.password,
+        },
+      ],
+    });
+  } catch (err) {
+    console.error("TURN API ERROR:", err);
+    return res.status(500).json({ error: "Failed to fetch TURN credentials" });
+  }
+});
+
 // ===== USER MANAGEMENT ENDPOINTS =====
 
 // Save/Update user after Firebase login
