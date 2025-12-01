@@ -573,10 +573,10 @@ const Chat = () => {
         <div className="w-full h-full bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-between text-center">
           {/* Top Section - Toggle Buttons */}
           <div className="flex gap-3 justify-center">
-            <button className="bg-yellow-300 hover:bg-yellow-400 text-black font-bold py-2 px-5 rounded-full transition-all text-sm">
+            <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-all text-sm shadow-md hover:shadow-lg">
               SOLO
             </button>
-            <button className="bg-purple-400/50 hover:bg-purple-400/70 text-white font-bold py-2 px-5 rounded-full transition-all border border-purple-300/50 text-sm">
+            <button className="bg-blue-600/30 hover:bg-blue-600/50 text-white font-bold py-2 px-6 rounded-lg transition-all border border-blue-400/50 text-sm">
               DUO
             </button>
           </div>
@@ -602,7 +602,7 @@ const Chat = () => {
           <button
             onClick={startVideoChat}
             disabled={isLoading}
-            className="w-full bg-yellow-300 hover:bg-yellow-400 disabled:bg-gray-400 text-black font-bold py-3 px-6 rounded-2xl transition-all duration-200 transform hover:scale-105 text-sm shadow-lg"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 text-sm shadow-lg hover:shadow-blue-600/50"
           >
             {isLoading ? (
               <>
@@ -663,7 +663,7 @@ const Chat = () => {
           <div className="h-16 px-4 py-3 flex items-center justify-between bg-black/80 backdrop-blur-sm border-b border-white/10 flex-shrink-0">
             {/* Left: Partner Profile */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg flex-shrink-0">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg flex-shrink-0">
                 👤
               </div>
               <div className="min-w-0">
@@ -678,7 +678,7 @@ const Chat = () => {
             
             {/* Right: Action Icons */}
             <div className="flex gap-2 flex-shrink-0">
-              <button className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-yellow-300 text-lg transition-all">
+              <button className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-blue-400 text-lg transition-all">
                 ❤️
               </button>
               <button className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-red-400 text-lg transition-all">
@@ -734,7 +734,7 @@ const Chat = () => {
                     <div
                       className={`max-w-xs px-3 py-2 rounded-2xl text-xs ${
                         msg.sender === 'user'
-                          ? 'bg-yellow-300 text-black'
+                          ? 'bg-blue-600 text-white'
                           : 'bg-purple-500 text-white'
                       }`}
                     >
@@ -764,12 +764,12 @@ const Chat = () => {
                 onKeyPress={e => e.key === 'Enter' && sendMessage()}
                 placeholder="Send Message"
                 disabled={!hasPartner}
-                className="flex-1 px-3 py-2 border border-white/20 rounded-full focus:outline-none focus:border-yellow-300 disabled:bg-gray-500/20 bg-white/10 text-white placeholder-white/50 text-xs font-medium"
+                className="flex-1 px-3 py-2 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 disabled:bg-gray-500/20 bg-white/10 text-white placeholder-white/50 text-xs font-medium"
               />
               <button
                 onClick={sendMessage}
                 disabled={!hasPartner || messageInput.trim() === ''}
-                className="w-8 h-8 bg-yellow-300 hover:bg-yellow-400 disabled:bg-gray-400 text-black font-bold rounded-full transition-all disabled:cursor-not-allowed flex items-center justify-center text-sm shadow-lg flex-shrink-0"
+                className="w-8 h-8 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold rounded-lg transition-all disabled:cursor-not-allowed flex items-center justify-center text-sm shadow-md flex-shrink-0"
               >
                 💰
               </button>

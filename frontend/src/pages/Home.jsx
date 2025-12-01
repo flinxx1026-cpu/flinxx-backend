@@ -27,7 +27,7 @@ const Home = () => {
           <div className="flex items-center gap-4">
             <button 
               onClick={handleStartChat}
-              className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold px-6 py-2 rounded-full transition transform hover:scale-105 shadow-lg"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg transition transform hover:scale-105 shadow-lg hover:shadow-blue-600/50"
             >
               Start Now
             </button>
@@ -52,10 +52,10 @@ const Home = () => {
           <button
             onClick={handleStartChat}
             disabled={isLoading}
-            className={`inline-flex items-center gap-2 px-8 py-4 text-lg font-bold rounded-full transition-all transform hover:scale-105 mb-12 ${
+            className={`inline-flex items-center gap-2 px-8 py-4 text-lg font-bold rounded-lg transition-all transform hover:scale-105 mb-12 ${
               isLoading
                 ? 'bg-gray-400 cursor-not-allowed text-gray-700'
-                : 'bg-yellow-400 hover:bg-yellow-500 text-black shadow-2xl shadow-yellow-400/30'
+                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-2xl shadow-blue-600/30'
             }`}
           >
             {isLoading ? (
@@ -82,7 +82,7 @@ const Home = () => {
           {/* Card 1 - Instant Connection */}
           <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:border-white/40 transition-all">
             <div className="flex items-start gap-6">
-              <div className="w-16 h-16 bg-yellow-400 rounded-2xl flex items-center justify-center text-4xl flex-shrink-0">
+              <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-4xl flex-shrink-0 shadow-lg">
                 ⚡
               </div>
               <div className="text-left">
@@ -129,7 +129,7 @@ const Home = () => {
             <div className="space-y-12">
               {/* Step 1 */}
               <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center text-3xl font-black text-black mb-4">
+                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-3xl font-black text-white mb-4 shadow-lg">
                   1
                 </div>
                 <h3 className="text-white font-bold text-2xl mb-2">Sign Up</h3>
@@ -138,7 +138,7 @@ const Home = () => {
 
               {/* Step 2 */}
               <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center text-3xl font-black text-black mb-4">
+                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-3xl font-black text-white mb-4 shadow-lg">
                   2
                 </div>
                 <h3 className="text-white font-bold text-2xl mb-2">Start Video Chat</h3>
@@ -147,7 +147,7 @@ const Home = () => {
 
               {/* Step 3 */}
               <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center text-3xl font-black text-black mb-4">
+                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-3xl font-black text-white mb-4 shadow-lg">
                   3
                 </div>
                 <h3 className="text-white font-bold text-2xl mb-2">Make Friends</h3>
@@ -166,24 +166,24 @@ const Home = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* One-Click Connect */}
             <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:border-white/40 transition-all">
-              <div className="w-14 h-14 bg-yellow-400 rounded-xl flex items-center justify-center text-3xl mb-6">
+              <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center text-3xl mb-6 shadow-lg">
                 ⚡
               </div>
               <h3 className="text-white font-bold text-2xl mb-4">One-Click Connect</h3>
               <p className="text-white/80 text-base mb-4">Connect with strangers instantly with just one click. No complicated setup needed.</p>
-              <div className="inline-block bg-yellow-400/20 text-yellow-200 px-4 py-1 rounded-full text-sm font-semibold">
+              <div className="inline-block bg-blue-600/20 text-blue-200 px-4 py-1 rounded-full text-sm font-semibold">
                 Free
               </div>
             </div>
 
             {/* Auto-Matching */}
             <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:border-white/40 transition-all">
-              <div className="w-14 h-14 bg-yellow-400 rounded-xl flex items-center justify-center text-3xl mb-6">
+              <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center text-3xl mb-6 shadow-lg">
                 🤖
               </div>
               <h3 className="text-white font-bold text-2xl mb-4">Auto-Matching</h3>
               <p className="text-white/80 text-base mb-4">Our intelligent algorithm matches you with compatible users based on interests and preferences.</p>
-              <div className="inline-block bg-yellow-400/20 text-yellow-200 px-4 py-1 rounded-full text-sm font-semibold">
+              <div className="inline-block bg-blue-600/20 text-blue-200 px-4 py-1 rounded-full text-sm font-semibold">
                 Free
               </div>
             </div>
@@ -215,10 +215,10 @@ const Home = () => {
           <button
             onClick={handleStartChat}
             disabled={isLoading}
-            className={`inline-flex items-center gap-3 px-10 py-4 text-xl font-bold rounded-full transition-all transform hover:scale-105 ${
+            className={`inline-flex items-center gap-3 px-10 py-4 text-xl font-bold rounded-lg transition-all transform hover:scale-105 ${
               isLoading
                 ? 'bg-gray-400 cursor-not-allowed text-gray-700'
-                : 'bg-yellow-400 hover:bg-yellow-500 text-black shadow-2xl shadow-yellow-400/30'
+                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-2xl shadow-blue-600/30'
             }`}
           >
             {isLoading ? (

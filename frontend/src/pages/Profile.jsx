@@ -164,7 +164,7 @@ const Profile = () => {
                 </div>
               ) : (
                 // Show emoji avatar in edit or when no Google picture
-                <div className="w-32 h-32 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center text-7xl shadow-2xl shadow-yellow-400/50 mb-6 border-4 border-white/30">
+                <div className="w-32 h-32 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-7xl shadow-2xl shadow-blue-600/50 mb-6 border-4 border-white/30">
                   {isEditing ? (
                     <div className="grid grid-cols-3 gap-2 p-4">
                       {avatarOptions.map((avatar) => (
@@ -260,7 +260,7 @@ const Profile = () => {
                 {/* Edit Button */}
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 rounded-xl transition-all transform hover:scale-105"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all transform hover:scale-105"
                 >
                   ✏️ Edit Profile
                 </button>
@@ -400,7 +400,7 @@ const Profile = () => {
                   </button>
                   <button
                     onClick={handleSaveProfile}
-                    className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-bold py-3 rounded-xl transition-all transform hover:scale-105"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all transform hover:scale-105"
                   >
                     Save Profile
                   </button>

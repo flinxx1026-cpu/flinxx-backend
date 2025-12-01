@@ -104,7 +104,7 @@ const Matching = () => {
             <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-white/5 backdrop-blur-md rounded-3xl border-2 border-white/30 p-8 flex flex-col justify-between shadow-2xl hover:border-white/50 transition-all duration-300">
               {/* Avatar */}
               <div className="flex justify-center mb-6">
-                <div className="w-24 h-24 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center text-5xl shadow-lg shadow-yellow-400/50 border-4 border-white/40">
+                <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-5xl shadow-lg shadow-blue-600/50 border-4 border-white/40 text-white">
                   {currentUser.avatar}
                 </div>
               </div>
@@ -165,7 +165,7 @@ const Matching = () => {
               {/* Auto-Next Status */}
               {isAutoNext && (
                 <div className="text-center">
-                  <p className="text-yellow-300 text-sm font-semibold animate-pulse">
+                  <p className="text-blue-400 text-sm font-semibold animate-pulse">
                     ⚡ Auto-next in {countdown}s
                   </p>
                 </div>
@@ -186,7 +186,7 @@ const Matching = () => {
             {/* Connect Button */}
             <button
               onClick={handleConnect}
-              className="flex-1 px-6 py-4 bg-yellow-400 hover:bg-yellow-500 text-black rounded-full font-bold shadow-2xl shadow-yellow-400/30 transition-all transform hover:scale-105"
+              className="flex-1 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-2xl shadow-blue-600/30 transition-all transform hover:scale-105"
             >
               💬 Connect
             </button>
@@ -198,7 +198,7 @@ const Matching = () => {
               onClick={() => setIsAutoNext(!isAutoNext)}
               className={`px-6 py-2 rounded-full font-semibold text-sm transition-all ${
                 isAutoNext
-                  ? 'bg-yellow-400/30 text-yellow-200 border border-yellow-400/50'
+                  ? 'bg-blue-600/30 text-blue-200 border border-blue-400/50'
                   : 'bg-white/10 text-white/70 border border-white/20'
               }`}
             >
