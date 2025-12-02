@@ -181,69 +181,50 @@ const Chat = () => {
   }, []);
 
   const getTurnServers = async () => {
-    try {
-      const response = await fetch("/api/turn");
-      const data = await response.json();
+    const res = await fetch("/api/turn");
+    const data = await res.json();
 
-      if (!data || !data.v || !data.v.iceServers) {
-        console.error("Invalid XirSys response:", data);
-        return null;
-      }
-
-      // Extract XirSys values
-      const ice = data.v.iceServers;
-
-      // Convert XirSys format into WebRTC iceServers array
-      const iceServers = [
-        {
-          urls: ice.urls,
-          username: ice.username,
-          credential: ice.credential
-        },
-        { urls: "stun:stun.l.google.com:19302" } // Google fallback
-      ];
-
-      console.log("Using XirSys ICE servers:", iceServers);
-      return iceServers;
-
-    } catch (err) {
-      console.error("Error fetching XirSys TURN:", err);
-      return null;
+    if (!data?.v?.iceServers) {
+        throw new Error("Invalid XirSys TURN response");
     }
+
+    const xirsys = data.v.iceServers;
+
+    // Convert XirSys format → WebRTC format
+    const iceServers = [
+        {
+            urls: xirsys.urls,
+            username: xirsys.username,
+            credential: xirsys.credential
+        },
+        { urls: "stun:stun.l.google.com:19302" } // fallback
+    ];
+
+    return iceServers;
   };
 
   const createPeerConnection = async () => {
-    try {
-      console.log("Creating PeerConnection with XirSys TURN...");
+    const iceServers = await getTurnServers();
 
-      const iceServers = await getTurnServers();
+    peerConnection = new RTCPeerConnection({ iceServers });
 
-      if (!iceServers) {
-        console.error("TURN server missing.");
-        throw new Error("Failed to get TURN servers");
-      }
-
-      const peerConnection = new RTCPeerConnection({ iceServers });
-      console.log("RTCPeerConnection created successfully");
-
-      peerConnection.onicecandidate = event => {
+    peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          socket.emit('ice_candidate', { candidate: event.candidate });
+            socket.emit("ice-candidate", event.candidate);
         }
-      };
+    };
 
-      peerConnection.ontrack = (event) => {
-        const remoteStream = event.streams[0];
+    peerConnection.ontrack = (event) => {
         if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = remoteStream;
-          remoteVideoRef.current.style.display = "block";
-          remoteVideoRef.current.play().catch((err) => {
-            console.error("Error playing remote video:", err);
-          });
+            remoteVideoRef.current.srcObject = event.streams[0];
+            remoteVideoRef.current.style.display = "block";
+            remoteVideoRef.current.play().catch((err) => {
+                console.error("Error playing remote video:", err);
+            });
         }
-      };
+    };
 
-      peerConnection.onconnectionstatechange = () => {
+    peerConnection.onconnectionstatechange = () => {
         if (peerConnection.connectionState === 'connected') {
           setIsConnected(true);
         } else if (peerConnection.connectionState === 'disconnected' || 
@@ -251,13 +232,9 @@ const Chat = () => {
                    peerConnection.connectionState === 'closed') {
           setIsConnected(false);
         }
-      };
+    };
 
-      return peerConnection;
-    } catch (err) {
-      console.error('Error in createPeerConnection:', err);
-      throw err;
-    }
+    return peerConnection;
   };
 
   const startVideoChat = async () => {
