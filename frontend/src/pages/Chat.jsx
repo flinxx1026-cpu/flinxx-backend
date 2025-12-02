@@ -932,8 +932,8 @@ const Chat = () => {
         </div>
 
         {/* Right - Chat panel with proper 3-section layout */}
-        <div className="right-panel flex items-center justify-center min-h-0 flex-1" style={{ minWidth: 0, maxWidth: '50%' }}>
-          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-white/10 min-h-0">
+        <div className="right-panel flex items-center justify-center flex-1" style={{ minWidth: 0, maxWidth: '50%', position: 'relative' }}>
+          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible relative border border-white/10">
             
             {/* SECTION 1: TOP - Header with partner info */}
             <div className="h-16 px-4 py-3 flex items-center justify-between bg-black/80 backdrop-blur-sm border-b border-white/10 flex-shrink-0">
@@ -964,10 +964,10 @@ const Chat = () => {
             </div>
 
             {/* SECTION 2: MIDDLE - Messages area (scrollable) */}
-            <div id="main-container" className="flex-1 overflow-visible px-4 py-4 flex flex-col relative" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative' }}>
+            <div id="main-container" className="overflow-visible px-4 py-4 flex flex-col relative w-full" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative', flex: 1, minHeight: 0 }}>
               
               {/* Remote video wrapper - UNCONDITIONALLY RENDERED */}
-              <div id="remote-video-wrapper" className="absolute w-full h-full top-0 left-0 rounded-2xl" style={{ backgroundColor: 'transparent', position: 'absolute', alignItems: 'center', justifyContent: 'center', zIndex: 9998, overflow: 'visible', display: 'flex' }}>
+              <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, overflow: 'visible', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {/* Partner video - ALWAYS RENDERED IN DOM */}
                 <video
                   id="remote-video"

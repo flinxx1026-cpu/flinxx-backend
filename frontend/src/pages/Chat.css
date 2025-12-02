@@ -96,9 +96,8 @@ video {
   left: 0 !important;
   width: 100% !important;
   height: 100% !important;
+  z-index: 9999 !important;
   overflow: visible !important;
-  z-index: 9998 !important;
-  background-color: transparent !important;
 }
 
 /* Ensure parent flex containers don't collapse */
