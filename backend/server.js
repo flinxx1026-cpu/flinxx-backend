@@ -336,39 +336,67 @@ app.get('/api/turn/credentials', async (req, res) => {
 // TURN Server Credentials Route - Supports both GET and POST
 app.get('/api/get-turn-credentials', async (req, res) => {
   try {
-    const response = await fetch(
-      "https://flinxx.metered.live/api/v1/turn/credential?secretKey=" + process.env.METERED_SECRET_KEY,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json"
-        }
+    if (!process.env.METERED_DOMAIN || !process.env.METERED_SECRET_KEY) {
+      console.error('❌ Missing METERED_DOMAIN or METERED_SECRET_KEY environment variables');
+      return res.status(500).json({ error: 'TURN server not configured' });
+    }
+
+    const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?secretKey=${process.env.METERED_SECRET_KEY}`;
+    console.log('🔄 Fetching TURN credentials from:', process.env.METERED_DOMAIN);
+
+    const response = await fetch(turnUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
       }
-    );
+    });
+
+    if (!response.ok) {
+      console.error(`❌ TURN API error: ${response.status} ${response.statusText}`);
+      const errorData = await response.text();
+      console.error('Error details:', errorData);
+      return res.status(response.status).json({ error: `TURN API error: ${response.statusText}` });
+    }
 
     const data = await response.json();
+    console.log('✅ TURN credentials retrieved successfully');
     return res.json(data);
   } catch (err) {
-    return res.status(500).json({ error: "Failed to fetch TURN credentials" });
+    console.error('❌ Error fetching TURN credentials:', err.message);
+    return res.status(500).json({ error: `Failed to fetch TURN credentials: ${err.message}` });
   }
 });
 
 app.post('/api/get-turn-credentials', async (req, res) => {
   try {
-    const response = await fetch(
-      "https://flinxx.metered.live/api/v1/turn/credential?secretKey=" + process.env.METERED_SECRET_KEY,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json"
-        }
+    if (!process.env.METERED_DOMAIN || !process.env.METERED_SECRET_KEY) {
+      console.error('❌ Missing METERED_DOMAIN or METERED_SECRET_KEY environment variables');
+      return res.status(500).json({ error: 'TURN server not configured' });
+    }
+
+    const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?secretKey=${process.env.METERED_SECRET_KEY}`;
+    console.log('🔄 Fetching TURN credentials from:', process.env.METERED_DOMAIN);
+
+    const response = await fetch(turnUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
       }
-    );
+    });
+
+    if (!response.ok) {
+      console.error(`❌ TURN API error: ${response.status} ${response.statusText}`);
+      const errorData = await response.text();
+      console.error('Error details:', errorData);
+      return res.status(response.status).json({ error: `TURN API error: ${response.statusText}` });
+    }
 
     const data = await response.json();
+    console.log('✅ TURN credentials retrieved successfully');
     return res.json(data);
   } catch (err) {
-    return res.status(500).json({ error: "Failed to fetch TURN credentials" });
+    console.error('❌ Error fetching TURN credentials:', err.message);
+    return res.status(500).json({ error: `Failed to fetch TURN credentials: ${err.message}` });
   }
 });
 
