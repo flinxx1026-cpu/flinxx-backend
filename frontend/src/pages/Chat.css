@@ -1,5 +1,18 @@
 /* Chat page specific styles */
 
+/* Ensure all video elements display as block */
+video {
+  display: block !important;
+}
+
+#main-container {
+  min-height: 400px;
+}
+
+#remote-video-wrapper {
+  min-height: 350px;
+}
+
 .video-container {
   position: relative;
   overflow: hidden;

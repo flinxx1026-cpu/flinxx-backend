@@ -220,15 +220,21 @@ const Chat = () => {
 
       peerConnection.ontrack = (event) => {
         console.log("REMOTE STREAM ARRIVED:", event.streams);
-        console.log("Final remote stream:", event.streams[0]);
+
+        const remoteStream = event.streams[0];
+        console.log("Final remote stream:", remoteStream);
+
         if (remoteVideoRef.current) {
-          console.log('✅ Attaching remote stream to video element');
-          remoteVideoRef.current.srcObject = event.streams[0];
-          remoteVideoRef.current.play().catch(err => {
-            console.error('❌ Error playing remote video:', err);
+          remoteVideoRef.current.srcObject = remoteStream;
+          remoteVideoRef.current.style.display = "block";
+
+          remoteVideoRef.current.play().catch((err) => {
+            console.error("Error playing remote video:", err);
           });
+
+          console.log("Attaching remote stream to video element");
         } else {
-          console.error('❌ remoteVideoRef.current is null');
+          console.error("remoteVideoRef is null");
         }
       };
 
@@ -759,10 +765,10 @@ const Chat = () => {
           </div>
 
           {/* SECTION 2: MIDDLE - Messages area (scrollable) */}
-          <div className="flex-1 overflow-y-auto bg-black px-4 py-4 flex flex-col min-h-0" style={{ minHeight: '400px' }}>
+          <div id="main-container" className="flex-1 overflow-y-auto bg-black px-4 py-4 flex flex-col min-h-0" style={{ minHeight: '400px' }}>
             {/* Partner video or waiting screen - ALWAYS show in messages area */}
             {hasPartner && partnerInfo ? (
-              <div className="relative flex-1 min-h-0 w-full bg-black overflow-hidden rounded-2xl" style={{ minHeight: '350px' }}>
+              <div id="remote-video-wrapper" className="relative flex-1 min-h-0 w-full bg-black overflow-hidden rounded-2xl" style={{ minHeight: '350px' }}>
                 {/* Partner video */}
                 <video
                   ref={remoteVideoRef}
