@@ -219,24 +219,31 @@ const Chat = () => {
       };
 
       peerConnection.ontrack = (event) => {
+        console.log("🎬 ===== ONTRACK FIRED =====");
         console.log("STREAM EVENT:", event);
         console.log("REMOTE STREAM ARRIVED:", event.streams);
+        console.log("Track kind:", event.track.kind);
+        console.log("Track enabled:", event.track.enabled);
 
         const remoteStream = event.streams[0];
         console.log("Final remote stream:", remoteStream);
 
         if (remoteVideoRef.current) {
+          console.log("✅ remoteVideoRef exists, attaching stream");
           remoteVideoRef.current.srcObject = remoteStream;
+          console.log("✅ srcObject set:", remoteVideoRef.current.srcObject);
           remoteVideoRef.current.style.display = "block";
+          console.log("✅ display set to block");
 
           remoteVideoRef.current.play().catch((err) => {
             console.error("Error playing remote video:", err);
           });
 
-          console.log("Attaching remote stream to video element");
+          console.log("✅ Attaching remote stream to video element - COMPLETE");
         } else {
-          console.error("remoteVideoRef is null");
+          console.error("❌ remoteVideoRef is null - CANNOT ATTACH");
         }
+        console.log("🎬 ===== ONTRACK COMPLETE =====");
       };
 
       // Disable unnecessary negotiation events
@@ -371,6 +378,8 @@ const Chat = () => {
             pc.addTrack(track, localStreamRef.current);
           });
           console.log('✅ All tracks added to peer connection');
+          const senders = pc.getSenders();
+          console.log('📤 RTCPeerConnection senders after addTrack:', senders.map(s => ({ kind: s.track?.kind, id: s.track?.id })));
           console.log('🚀 OFFERER: Ready to send offer with', tracks.length, 'tracks');
         } else {
           console.warn('⚠️ No local stream available');
@@ -413,6 +422,8 @@ const Chat = () => {
               pc.addTrack(track, localStreamRef.current);
             });
             console.log('✅ All tracks added to peer connection');
+            const senders = pc.getSenders();
+            console.log('📤 RTCPeerConnection senders after addTrack:', senders.map(s => ({ kind: s.track?.kind, id: s.track?.id })));
             console.log('🚀 ANSWERER: Ready to send answer with', tracks.length, 'tracks');
           } else {
             console.warn('⚠️ No local stream available to add tracks');
