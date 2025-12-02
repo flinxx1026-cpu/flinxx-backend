@@ -187,17 +187,27 @@ const Chat = () => {
       });
       const data = await res.json();
 
+      console.log('🔄 TURN credentials response:', data);
+
+      const iceServers = [
+        {
+          urls: [
+            `stun:${data.apiKey}.metered.live:3478`,
+            `turn:${data.apiKey}.metered.live:3478`
+          ],
+          username: data.username,
+          credential: data.password
+        }
+      ];
+
       const config = {
-        iceServers: data.iceServers,
+        iceServers: iceServers,
         iceCandidatePoolSize: 10,
         sdpSemantics: "unified-plan"
       };
 
       console.log('🔧 RTCPeerConnection config:', config);
       const peerConnection = new RTCPeerConnection(config);
-
-      // Guard against duplicate remote stream attachment
-      let remoteStreamSet = false;
 
       peerConnection.onicecandidate = event => {
         if (event.candidate) {
@@ -208,37 +218,17 @@ const Chat = () => {
         }
       };
 
-      peerConnection.ontrack = event => {
-        console.log('🎥 Received remote track:', event.track.kind, 'Streams:', event.streams.length);
-        console.log('📨 REMOTE STREAM ARRIVED:', event.streams);
-        
-        // Guard: Only attach the FIRST valid remote stream
-        if (remoteStreamSet) {
-          console.log('⏭️ Remote stream already attached, skipping duplicate');
-          return;
-        }
-
-        const inboundStream = event.streams[0];
-        
-        if (!inboundStream) {
-          console.warn('⚠️ Empty stream received, skipping attachment');
-          return;
-        }
-
-        remoteStreamSet = true;
-        console.log('📹 Final valid remote stream:', inboundStream);
-
+      peerConnection.ontrack = (event) => {
+        console.log("REMOTE STREAM ARRIVED:", event.streams);
+        console.log("Final remote stream:", event.streams[0]);
         if (remoteVideoRef.current) {
           console.log('✅ Attaching remote stream to video element');
-          remoteVideoRef.current.srcObject = inboundStream;
-          console.log('✅ srcObject set:', remoteVideoRef.current.srcObject);
-          
-          // Ensure the remote video plays
+          remoteVideoRef.current.srcObject = event.streams[0];
           remoteVideoRef.current.play().catch(err => {
             console.error('❌ Error playing remote video:', err);
           });
         } else {
-          console.error('❌ remoteVideoRef is null');
+          console.error('❌ remoteVideoRef.current is null');
         }
       };
 
