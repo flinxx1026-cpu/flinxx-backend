@@ -964,49 +964,50 @@ const Chat = () => {
             </div>
 
             {/* SECTION 2: MIDDLE - Messages area (scrollable) */}
-            <div id="main-container" className="flex-1 overflow-hidden px-4 py-4 flex flex-col" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative' }}>
-              {/* Partner video or waiting screen - ALWAYS show in messages area */}
-              {hasPartner && partnerInfo ? (
-                <div id="remote-video-wrapper" className="relative flex-1 w-full overflow-visible rounded-2xl" style={{ backgroundColor: 'transparent', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {/* Partner video */}
-                  <video
-                    id="remote-video"
-                    ref={remoteVideoRef}
-                    autoPlay={true}
-                    playsInline={true}
-                    muted={false}
-                    className="w-full h-full object-cover"
-                    style={{
-                      backgroundColor: 'transparent',
-                      display: 'block',
-                      zIndex: 9999,
-                      width: '100%',
-                      height: '100%',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      opacity: 1
-                    }}
-                  />
+            <div id="main-container" className="flex-1 overflow-visible px-4 py-4 flex flex-col" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative' }}>
+              {/* Remote video wrapper - ALWAYS RENDERED */}
+              <div id="remote-video-wrapper" className="absolute w-full h-full top-0 left-0 rounded-2xl" style={{ backgroundColor: 'transparent', position: 'absolute', display: hasPartner ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', zIndex: 9998, overflow: 'visible' }}>
+                {/* Partner video - ALWAYS in DOM */}
+                <video
+                  id="remote-video"
+                  ref={remoteVideoRef}
+                  autoPlay={true}
+                  playsInline={true}
+                  muted={false}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    zIndex: 9999,
+                    backgroundColor: 'transparent',
+                    objectFit: 'cover',
+                    display: 'block',
+                    opacity: 1,
+                    visibility: 'visible'
+                  }}
+                />
 
                 {/* Connection status overlay - Top Right */}
                 {isConnected && (
-                  <div className="absolute top-3 right-3 flex items-center gap-2 bg-green-500 bg-opacity-90 text-white px-2 py-1 rounded-full text-xs font-semibold z-20 shadow-lg">
+                  <div className="absolute top-3 right-3 flex items-center gap-2 bg-green-500 bg-opacity-90 text-white px-2 py-1 rounded-full text-xs font-semibold z-50 shadow-lg">
                     <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
                     {formatTime(connectionTime)}
                   </div>
                 )}
               </div>
-            ) : (
-              /* Waiting for partner - show in message area */
-              <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl min-h-0" style={{ zIndex: 1 }}>
-                <div className="text-center">
-                  <div className="animate-spin mb-4 text-5xl inline-block">⟳</div>
-                  <p className="text-white font-semibold text-base">Looking for a partner...</p>
-                  <p className="text-white/60 text-xs mt-2">This won't take long</p>
+
+              {/* Waiting for partner - show in message area */}
+              {!hasPartner && (
+                <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl min-h-0" style={{ zIndex: 1 }}>
+                  <div className="text-center">
+                    <div className="animate-spin mb-4 text-5xl inline-block">⟳</div>
+                    <p className="text-white font-semibold text-base">Looking for a partner...</p>
+                    <p className="text-white/60 text-xs mt-2">This won't take long</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Chat messages - Display below video when they exist */}
             {messages.length > 0 && hasPartner && (
