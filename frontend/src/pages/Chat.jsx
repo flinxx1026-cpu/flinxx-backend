@@ -210,6 +210,7 @@ const Chat = () => {
 
       peerConnection.ontrack = event => {
         console.log('🎥 Received remote track:', event.track.kind, 'Streams:', event.streams.length);
+        console.log('📨 REMOTE STREAM ARRIVED:', event.streams);
         
         // Guard: Only attach the FIRST valid remote stream
         if (remoteStreamSet) {
@@ -230,11 +231,14 @@ const Chat = () => {
         if (remoteVideoRef.current) {
           console.log('✅ Attaching remote stream to video element');
           remoteVideoRef.current.srcObject = inboundStream;
+          console.log('✅ srcObject set:', remoteVideoRef.current.srcObject);
           
           // Ensure the remote video plays
           remoteVideoRef.current.play().catch(err => {
             console.error('❌ Error playing remote video:', err);
           });
+        } else {
+          console.error('❌ remoteVideoRef is null');
         }
       };
 
@@ -361,11 +365,13 @@ const Chat = () => {
         // Add local stream tracks to peer connection
         if (localStreamRef.current) {
           const tracks = localStreamRef.current.getTracks();
+          console.log('📹 Local Tracks:', tracks);
           console.log(`📹 Adding ${tracks.length} local tracks to peer connection`);
           tracks.forEach(track => {
-            console.log(`  - Adding ${track.kind} track`);
+            console.log(`  - Adding ${track.kind} track:`, track);
             pc.addTrack(track, localStreamRef.current);
           });
+          console.log('✅ All tracks added to peer connection');
         } else {
           console.warn('⚠️ No local stream available');
         }
@@ -399,11 +405,13 @@ const Chat = () => {
           // Add local stream tracks
           if (localStreamRef.current) {
             const tracks = localStreamRef.current.getTracks();
+            console.log('📹 Local Tracks:', tracks);
             console.log(`📹 Adding ${tracks.length} local tracks to peer connection`);
             tracks.forEach(track => {
-              console.log(`  - Adding ${track.kind} track`);
+              console.log(`  - Adding ${track.kind} track:`, track);
               pc.addTrack(track, localStreamRef.current);
             });
+            console.log('✅ All tracks added to peer connection');
           } else {
             console.warn('⚠️ No local stream available to add tracks');
           }
