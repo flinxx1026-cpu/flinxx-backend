@@ -349,7 +349,7 @@ app.get('/api/get-turn-credentials', async (req, res) => {
       return res.status(500).json({ error: 'TURN server not configured' });
     }
 
-    const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?secretKey=${process.env.METERED_SECRET_KEY}`;
+    const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${process.env.METERED_SECRET_KEY}`;
     console.log('🔄 Fetching TURN credentials from:', process.env.METERED_DOMAIN);
 
     const response = await fetch(turnUrl, {
@@ -382,7 +382,7 @@ app.post('/api/get-turn-credentials', async (req, res) => {
       return res.status(500).json({ error: 'TURN server not configured' });
     }
 
-    const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?secretKey=${process.env.METERED_SECRET_KEY}`;
+    const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${process.env.METERED_SECRET_KEY}`;
     console.log('🔄 Fetching TURN credentials from:', process.env.METERED_DOMAIN);
 
     const response = await fetch(turnUrl, {
