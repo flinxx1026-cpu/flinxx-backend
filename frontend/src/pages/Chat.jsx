@@ -191,35 +191,35 @@ const Chat = () => {
       return data;
     } catch (error) {
       console.error("Error fetching TURN credentials:", error);
-      // Return empty object to allow fallback to Google STUN
-      return { username: "", password: "", iceServers: [] };
+      return null;
     }
   };
 
   const createPeerConnection = async () => {
     try {
       const turn = await getTurnCredentials();
-      console.log("TURN credentials received:", turn);
 
-      // Handle different Metered response formats
-      const iceServers = turn.iceServers && Array.isArray(turn.iceServers) 
-        ? turn.iceServers.map(s => ({
-            urls: s.urls || [s.url],
-            username: turn.username,
-            credential: turn.password
-          }))
-        : [
-            {
-              urls: ["stun:stun.l.google.com:19302"],
-              username: turn.username,
-              credential: turn.password
-            }
-          ];
+      // Build iceServers with fallback
+      let iceServers = [];
+      
+      // If we got Metered credentials with iceServers array
+      if (turn && turn.iceServers && Array.isArray(turn.iceServers) && turn.iceServers.length > 0) {
+        iceServers = turn.iceServers;
+      } 
+      // Fallback to Google STUN server
+      else {
+        iceServers = [
+          {
+            urls: ["stun:stun.l.google.com:19302"]
+          }
+        ];
+      }
 
       const config = {
         iceServers: iceServers
       };
 
+      console.log("RTCPeerConnection config:", config);
       const peerConnection = new RTCPeerConnection(config);
 
       peerConnection.onicecandidate = event => {
