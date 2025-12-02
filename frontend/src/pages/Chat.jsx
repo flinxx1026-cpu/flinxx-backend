@@ -251,8 +251,15 @@ const Chat = () => {
         console.log('ℹ️ Negotiation needed event (ignored)');
       };
 
+      peerConnection.onremotetrack = (event) => {
+        console.log('🎬 ===== ONREMOTETRACK FIRED (BACKUP) =====');
+        console.log('Remote track event:', event);
+      };
+
       peerConnection.onconnectionstatechange = () => {
         console.log('🔗 Connection state:', peerConnection.connectionState);
+        console.log('🔗 ICE connection state:', peerConnection.iceConnectionState);
+        console.log('🔗 Signaling state:', peerConnection.signalingState);
         if (peerConnection.connectionState === 'connected') {
           setIsConnected(true);
         } else if (peerConnection.connectionState === 'disconnected' || 
@@ -260,6 +267,10 @@ const Chat = () => {
                    peerConnection.connectionState === 'closed') {
           setIsConnected(false);
         }
+      };
+
+      peerConnection.oniceconnectionstatechange = () => {
+        console.log('🧊 ICE connection state changed:', peerConnection.iceConnectionState);
       };
 
       console.log('✅ Peer connection created with ontrack handler:', peerConnection);
@@ -375,11 +386,18 @@ const Chat = () => {
           console.log(`📹 Adding ${tracks.length} local tracks to peer connection`);
           tracks.forEach(track => {
             console.log(`  - Adding ${track.kind} track:`, track);
-            pc.addTrack(track, localStreamRef.current);
+            const sender = pc.addTrack(track, localStreamRef.current);
+            console.log(`  - addTrack returned sender:`, sender);
           });
           console.log('✅ All tracks added to peer connection');
           const senders = pc.getSenders();
-          console.log('📤 RTCPeerConnection senders after addTrack:', senders.map(s => ({ kind: s.track?.kind, id: s.track?.id })));
+          console.log('📤 OFFERER senders count:', senders.length);
+          console.log('📤 RTCPeerConnection senders after addTrack:', senders.map((s, i) => ({ 
+            index: i,
+            kind: s.track?.kind, 
+            id: s.track?.id,
+            trackExists: !!s.track
+          })));
           console.log('🚀 OFFERER: Ready to send offer with', tracks.length, 'tracks');
         } else {
           console.warn('⚠️ No local stream available');
@@ -419,11 +437,18 @@ const Chat = () => {
             console.log(`📹 Adding ${tracks.length} local tracks to peer connection`);
             tracks.forEach(track => {
               console.log(`  - Adding ${track.kind} track:`, track);
-              pc.addTrack(track, localStreamRef.current);
+              const sender = pc.addTrack(track, localStreamRef.current);
+              console.log(`  - addTrack returned sender:`, sender);
             });
             console.log('✅ All tracks added to peer connection');
             const senders = pc.getSenders();
-            console.log('📤 RTCPeerConnection senders after addTrack:', senders.map(s => ({ kind: s.track?.kind, id: s.track?.id })));
+            console.log('📤 ANSWERER senders count:', senders.length);
+            console.log('📤 RTCPeerConnection senders after addTrack:', senders.map((s, i) => ({ 
+              index: i,
+              kind: s.track?.kind, 
+              id: s.track?.id,
+              trackExists: !!s.track
+            })));
             console.log('🚀 ANSWERER: Ready to send answer with', tracks.length, 'tracks');
           } else {
             console.warn('⚠️ No local stream available to add tracks');
