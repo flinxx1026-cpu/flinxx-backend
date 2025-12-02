@@ -1025,6 +1025,8 @@ const Chat = () => {
                 ))}
               </div>
             )}
+            </div>
+
           </div>
 
           {/* SECTION 3: BOTTOM - Message input box */}
