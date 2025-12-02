@@ -183,12 +183,24 @@ const Chat = () => {
   const createPeerConnection = async () => {
     try {
       console.log('\n\n🎥 ===== PEER CONNECTION CREATION STARTING =====\n');
-      console.log("Calling TURN endpoint...");
+      console.log("🔴 STEP 1: Calling TURN endpoint...");
       
-      const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials", {
-        method: "GET"
+      const turnUrl = "https://flinxx-backend.onrender.com/api/get-turn-credentials";
+      console.log("🔴 STEP 2: TURN URL:", turnUrl);
+      
+      const res = await fetch(turnUrl, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
       });
+      
+      console.log("🔴 STEP 3: Fetch completed, status:", res.status);
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
+      console.log("🔴 STEP 4: Response parsed, data:", data);
 
       console.log('🔄 TURN credentials response (RAW):', data);
       console.log('✅ apiKey:', data.apiKey, '(type:', typeof data.apiKey, ')');
@@ -302,7 +314,9 @@ const Chat = () => {
       console.log('\n🎥 ===== PEER CONNECTION CREATION COMPLETE =====\n');
       return peerConnection;
     } catch (err) {
-      console.error('❌ Error creating peer connection:', err);
+      console.error('🔴 ERROR in createPeerConnection:', err);
+      console.error('🔴 Error message:', err.message);
+      console.error('🔴 Error stack:', err.stack);
       throw err;
     }
   };
