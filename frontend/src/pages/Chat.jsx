@@ -181,22 +181,43 @@ const Chat = () => {
   }, []);
 
   const getTurnCredentials = async () => {
-    const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials");
-    return await res.json();
+    try {
+      const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials");
+      if (!res.ok) {
+        throw new Error(`TURN fetch failed: ${res.status}`);
+      }
+      const data = await res.json();
+      console.log("TURN credentials response:", data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching TURN credentials:", error);
+      // Return empty object to allow fallback to Google STUN
+      return { username: "", password: "", iceServers: [] };
+    }
   };
 
   const createPeerConnection = async () => {
     try {
       const turn = await getTurnCredentials();
+      console.log("TURN credentials received:", turn);
 
-      const config = {
-        iceServers: [
-          {
-            urls: turn.iceServers.map(s => s.url),
+      // Handle different Metered response formats
+      const iceServers = turn.iceServers && Array.isArray(turn.iceServers) 
+        ? turn.iceServers.map(s => ({
+            urls: s.urls || [s.url],
             username: turn.username,
             credential: turn.password
-          }
-        ]
+          }))
+        : [
+            {
+              urls: ["stun:stun.l.google.com:19302"],
+              username: turn.username,
+              credential: turn.password
+            }
+          ];
+
+      const config = {
+        iceServers: iceServers
       };
 
       const peerConnection = new RTCPeerConnection(config);
