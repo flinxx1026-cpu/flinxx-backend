@@ -148,7 +148,8 @@ const allowedOrigins = [
   "http://127.0.0.1:3003",
   "http://127.0.0.1:3004",
   "http://127.0.0.1:3005",
-  "http://127.0.0.1:3006"
+  "http://127.0.0.1:3006",
+  "https://flinxx-backend-frontend.vercel.app"
 ]
 
 const io = new Server(httpServer, {
