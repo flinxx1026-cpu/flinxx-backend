@@ -256,6 +256,7 @@ const Chat = () => {
       };
 
       console.log('✅ Peer connection created with ontrack handler:', peerConnection);
+      console.log('🎯 ontrack handler attached:', peerConnection.ontrack !== null);
       return peerConnection;
     } catch (err) {
       console.error('❌ Error creating peer connection:', err);
@@ -370,6 +371,7 @@ const Chat = () => {
             pc.addTrack(track, localStreamRef.current);
           });
           console.log('✅ All tracks added to peer connection');
+          console.log('🚀 OFFERER: Ready to send offer with', tracks.length, 'tracks');
         } else {
           console.warn('⚠️ No local stream available');
         }
@@ -377,11 +379,12 @@ const Chat = () => {
         // Create and send offer
         console.log('🎬 Creating WebRTC offer');
         const offer = await pc.createOffer();
-        console.log('✅ Offer created');
+        console.log('✅ Offer created:', offer);
         
         await pc.setLocalDescription(offer);
         console.log('✅ Local description set');
         
+        console.log('📤 SENDING OFFER with tracks:', pc.getSenders().map(s => s.track?.kind));
         socket.emit('webrtc_offer', {
           offer: peerConnectionRef.current.localDescription
         });
@@ -410,6 +413,7 @@ const Chat = () => {
               pc.addTrack(track, localStreamRef.current);
             });
             console.log('✅ All tracks added to peer connection');
+            console.log('🚀 ANSWERER: Ready to send answer with', tracks.length, 'tracks');
           } else {
             console.warn('⚠️ No local stream available to add tracks');
           }
@@ -423,12 +427,13 @@ const Chat = () => {
 
         console.log('🎬 Creating answer');
         const answer = await peerConnectionRef.current.createAnswer();
-        console.log('✅ Answer created');
+        console.log('✅ Answer created:', answer);
         
         console.log('🔄 Setting local description (answer)');
         await peerConnectionRef.current.setLocalDescription(answer);
         console.log('✅ Local description set successfully');
 
+        console.log('📤 SENDING ANSWER with tracks:', peerConnectionRef.current.getSenders().map(s => s.track?.kind));
         socket.emit('webrtc_answer', {
           answer: peerConnectionRef.current.localDescription
         });
