@@ -182,6 +182,7 @@ const Chat = () => {
 
   const createPeerConnection = async () => {
     try {
+      console.log('\n\n🎥 ===== PEER CONNECTION CREATION STARTING =====\n');
       const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials", {
         method: "POST"
       });
@@ -219,6 +220,7 @@ const Chat = () => {
       };
 
       peerConnection.ontrack = (event) => {
+        console.log('\n\n🎥 ===== REMOTE TRACK RECEIVED ===== 🎥\n');
         console.log("🎬 ===== ONTRACK FIRED =====");
         console.log("STREAM EVENT:", event);
         console.log("REMOTE STREAM ARRIVED:", event.streams);
@@ -244,6 +246,7 @@ const Chat = () => {
           console.error("❌ remoteVideoRef is null - CANNOT ATTACH");
         }
         console.log("🎬 ===== ONTRACK COMPLETE =====");
+        console.log('\n🎥 ===== REMOTE TRACK ATTACHMENT COMPLETE ===== 🎥\n');
       };
 
       // Disable unnecessary negotiation events
@@ -257,9 +260,11 @@ const Chat = () => {
       };
 
       peerConnection.onconnectionstatechange = () => {
+        console.log('\n\n📡 ======= CONNECTION STATE CHANGED =======');
         console.log('🔗 Connection state:', peerConnection.connectionState);
         console.log('🔗 ICE connection state:', peerConnection.iceConnectionState);
         console.log('🔗 Signaling state:', peerConnection.signalingState);
+        console.log('📡 ======= CONNECTION STATE CHANGED END =======\n\n');
         if (peerConnection.connectionState === 'connected') {
           setIsConnected(true);
         } else if (peerConnection.connectionState === 'disconnected' || 
@@ -275,6 +280,7 @@ const Chat = () => {
 
       console.log('✅ Peer connection created with ontrack handler:', peerConnection);
       console.log('🎯 ontrack handler attached:', peerConnection.ontrack !== null);
+      console.log('\n🎥 ===== PEER CONNECTION CREATION COMPLETE =====\n');
       return peerConnection;
     } catch (err) {
       console.error('❌ Error creating peer connection:', err);
@@ -404,6 +410,7 @@ const Chat = () => {
         }
 
         // Create and send offer
+        console.log('\n\n📋 ===== CREATING AND SENDING OFFER =====');
         console.log('🎬 Creating WebRTC offer');
         const offer = await pc.createOffer();
         console.log('✅ Offer created:', offer);
@@ -416,6 +423,7 @@ const Chat = () => {
           offer: peerConnectionRef.current.localDescription
         });
         console.log('📤 Offer sent to peer');
+        console.log('📋 ===== OFFER SENT COMPLETE =====\n\n');
       } catch (err) {
         console.error('❌ Error in partner_found handler:', err);
       }
@@ -469,11 +477,13 @@ const Chat = () => {
         await peerConnectionRef.current.setLocalDescription(answer);
         console.log('✅ Local description set successfully');
 
+        console.log('\n\n📋 ===== CREATING AND SENDING ANSWER =====');
         console.log('📤 SENDING ANSWER with tracks:', peerConnectionRef.current.getSenders().map(s => s.track?.kind));
         socket.emit('webrtc_answer', {
           answer: peerConnectionRef.current.localDescription
         });
         console.log('📤 Answer sent to peer');
+        console.log('📋 ===== ANSWER SENT COMPLETE =====\n\n');
       } catch (err) {
         console.error('❌ Error handling offer:', err);
       }
