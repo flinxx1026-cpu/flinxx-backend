@@ -103,19 +103,27 @@ async function initializeDatabase() {
 }
 
 // Redis Connection
-const redis = await createClient({
-  url: process.env.REDIS_URL
-})
+let redis
+try {
+  redis = await createClient({
+    url: process.env.REDIS_URL
+  })
 
-redis.on('error', (err) => {
-  console.error('❌ Redis client error:', err)
-})
+  redis.on('error', (err) => {
+    console.error('❌ Redis client error:', err)
+  })
 
-redis.on('connect', () => {
-  console.log('✅ Redis connected')
-})
+  redis.on('connect', () => {
+    console.log('✅ Redis connected')
+  })
 
-await redis.connect()
+  await redis.connect()
+  console.log('✅ Redis initialization complete')
+} catch (error) {
+  console.error('❌ Redis connection failed:', error.message)
+  console.warn('⚠️ Continuing without Redis - some features may be limited')
+  redis = null
+}
 
 // ===== EXPRESS & SOCKET.IO SETUP =====
 
@@ -564,7 +572,13 @@ app.get('/api/user/profile', async (req, res) => {
 })
 
 // Initialize database on startup
-await initializeDatabase()
+try {
+  await initializeDatabase()
+  console.log('✅ Database initialization complete')
+} catch (error) {
+  console.error('❌ Database initialization failed:', error.message)
+  console.warn('⚠️ Continuing with limited database functionality')
+}
 
 // ===== GOOGLE OAUTH ROUTES =====
 
@@ -891,19 +905,39 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
 
 // Start Server
 const PORT = process.env.PORT || 5000
+
+// Add error handler for uncaught errors
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason)
+})
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error)
+  process.exit(1)
+})
+
 httpServer.listen(PORT, () => {
   console.log(`\n🚀 Flinxx Server running on port ${PORT}`)
   console.log(`🔌 Socket.IO server running on ws://localhost:${PORT}`)
   console.log(`✅ CORS enabled for: ${process.env.CLIENT_URL}`)
-  console.log(`\n📊 Database Configuration:`)
-  console.log(`✅ PostgreSQL (Neon) connected`)
-  console.log(`✅ Redis (Upstash) connected`)
+  console.log(`\n📊 Backend Configuration:`)
+  console.log(`✅ Node.js version: ${process.version}`)
+  console.log(`✅ PostgreSQL (Neon) connection pool ready`)
+  console.log(`${redis ? '✅' : '⚠️'} Redis (Upstash) ${redis ? 'connected' : 'unavailable'}`)
+  console.log(`✅ TURN server: ${process.env.METERED_DOMAIN}`)
   console.log(`\n🎯 Features Enabled:`)
-  console.log(`  • User authentication via Firebase`)
-  console.log(`  • Random partner matchmaking (Redis queue)`)
-  console.log(`  • Online presence tracking (Redis)`)
-  console.log(`  • WebRTC signaling`)
+  console.log(`  • WebRTC signaling with TURN`)
+  console.log(`  • Random partner matchmaking`)
+  console.log(`  • Online presence tracking`)
   console.log(`  • Session management`)
   console.log(`  • Real-time notifications`)
-  console.log(`\n✅ WebSocket connections ready\n`)
+  console.log(`\n✅ Backend is live and ready for connections!\n`)
+})
+
+httpServer.on('error', (error) => {
+  console.error('❌ Server error:', error.message)
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use`)
+  }
+  process.exit(1)
 })
