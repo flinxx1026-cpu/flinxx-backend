@@ -264,6 +264,12 @@ const Chat = () => {
       console.log('📋 ===== ANSWERER RECEIVED OFFER =====');
       console.log('📨 ANSWERER: Received WebRTC offer from offerer');
       console.log('📨 ANSWERER: data:', data);
+      console.log('📨 ANSWERER: data.from (offerer socket ID):', data.from);
+      
+      // CRITICAL: Store offerer socket ID for sending answer back
+      partnerSocketIdRef.current = data.from;
+      console.log('🔌 CRITICAL: Stored offerer socket ID:', partnerSocketIdRef.current);
+      
       try {
         // CRITICAL: Create peer connection if it doesn't exist
         if (!peerConnectionRef.current) {
@@ -383,7 +389,13 @@ const Chat = () => {
     socket.on('webrtc_answer', async (data) => {
       console.log('\n\n📋 ===== OFFERER RECEIVED ANSWER =====');
       console.log('📨 OFFERER: Received WebRTC answer from answerer');
+      console.log('📨 OFFERER: data.from (answerer socket ID):', data.from);
       console.log('📨 OFFERER: Answer SDP:', data.answer);
+      
+      // CRITICAL: Store answerer socket ID for sending ice candidates
+      partnerSocketIdRef.current = data.from;
+      console.log('🔌 CRITICAL: Stored answerer socket ID:', partnerSocketIdRef.current);
+      
       try {
         if (!peerConnectionRef.current) {
           console.error('❌ OFFERER: No peer connection available to handle answer');
