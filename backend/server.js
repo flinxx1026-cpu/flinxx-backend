@@ -760,22 +760,34 @@ io.on('connection', (socket) => {
 
   // Handle WebRTC offer
   socket.on('webrtc_offer', (data) => {
+    console.log('\n\n');
+    console.log('📨📨📨 SERVER RECEIVED webrtc_offer 📨📨📨');
+    console.log('📨 Sender socket ID:', socket.id);
+    console.log('📨 Incoming data:', JSON.stringify(data, null, 2));
+    console.log('📨 data.to value:', data.to);
+    console.log('📨 Is data.to empty?', !data.to);
+    console.log('📨 Is data.to undefined?', data.to === undefined);
+    console.log('📨 Is data.to null?', data.to === null);
+    
     const userId = userSockets.get(socket.id)
     const partnerSocketId = data.to
-    console.log('📨 SERVER: Received webrtc_offer from socket:', socket.id)
-    console.log('📨 SERVER: Target partner socket ID:', partnerSocketId)
-    console.log('📨 SERVER: Is target valid?', !!partnerSocketId)
+    
+    console.log('📨 userSockets.get(socket.id):', userId);
+    console.log('📨 partnerSocketId extracted from data.to:', partnerSocketId);
+    console.log('📨 TARGET: Will send to socket:', partnerSocketId);
+    
     if (userId && partnerSocketId) {
-      console.log('✅ SERVER: Sending webrtc_offer from', socket.id, 'to', partnerSocketId)
+      console.log('✅ SERVER: Conditions met - sending webrtc_offer');
+      console.log('✅ SERVER: FROM socket:', socket.id, '→ TO socket:', partnerSocketId);
       io.to(partnerSocketId).emit('webrtc_offer', {
         offer: data.offer,
         from: socket.id
       })
-      console.log('✅ SERVER: webrtc_offer sent successfully')
+      console.log('✅ SERVER: webrtc_offer emitted successfully to:', partnerSocketId)
     } else {
-      console.error('❌ SERVER: Cannot send webrtc_offer - userId or partnerSocketId missing')
-      console.error('   userId:', userId)
-      console.error('   partnerSocketId:', partnerSocketId)
+      console.error('❌ SERVER: Cannot send webrtc_offer - conditions failed');
+      console.error('   userId exists?', !!userId);
+      console.error('   partnerSocketId exists?', !!partnerSocketId);
     }
   })
 

@@ -266,13 +266,18 @@ const Chat = () => {
           id: s.track?.id,
           enabled: s.track?.enabled
         })));
-        console.log('📤 OFFERER: Partner socket ID:', data.socketId);
+        console.log('📤 OFFERER: Partner socket ID from data:', data.socketId);
+        console.log('📤 OFFERER: partnerSocketIdRef.current value:', partnerSocketIdRef.current);
+        console.log('🔌🔌🔌 CRITICAL: About to emit webrtc_offer with to:', data.socketId);
+        console.log('🔌🔌🔌 CRITICAL: Is to value empty/null/undefined?', !data.socketId);
+        
         socket.emit('webrtc_offer', {
           offer: peerConnectionRef.current.localDescription,
           to: data.socketId
         });
-        console.log('📤 OFFERER: Offer sent to answerer at socket:', data.socketId);
-        console.log('📋 ===== OFFERER OFFER SENT =====\n\n');
+        
+        console.log('✅ OFFERER: webrtc_offer emitted successfully');
+        console.log('✅ OFFERER: Sent to socket:', data.socketId);
       } catch (err) {
         console.error('❌ OFFERER: Error in partner_found handler:', err);
         console.error('❌ OFFERER: Stack trace:', err.stack);
@@ -281,10 +286,15 @@ const Chat = () => {
 
     // Receive offer - ANSWERER starts here
     socket.on('webrtc_offer', async (data) => {
-      console.log('\n\n🎉🎉🎉 ANSWERER HANDLER FIRED 🎉🎉🎉');
+      console.log('\n\n');
+      console.log('🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉');
+      console.log('🎉🎉🎉 ANSWERER HANDLER FIRED 🎉🎉🎉');
+      console.log('🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉');
       console.log('📋 ===== ANSWERER RECEIVED OFFER =====');
       console.log('📨 ANSWERER: Received WebRTC offer from offerer');
-      console.log('📨 ANSWERER: data:', data);
+      console.log('📨 ANSWERER: My socket ID:', socket.id);
+      console.log('📨 ANSWERER: Offer from:', data.from);
+      console.log('📨 ANSWERER: Full data:', data);
       console.log('📨 ANSWERER: data.from (offerer socket ID):', data.from);
       
       // CRITICAL: Store offerer socket ID for sending answer back
