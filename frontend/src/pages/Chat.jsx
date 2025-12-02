@@ -183,8 +183,10 @@ const Chat = () => {
   const createPeerConnection = async () => {
     try {
       console.log('\n\n🎥 ===== PEER CONNECTION CREATION STARTING =====\n');
+      console.log("Calling TURN endpoint...");
+      
       const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials", {
-        method: "POST"
+        method: "GET"
       });
       const data = await res.json();
 
