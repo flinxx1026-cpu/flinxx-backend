@@ -188,14 +188,19 @@ const Chat = () => {
       });
       const data = await res.json();
 
-      console.log('🔄 TURN credentials response:', data);
-      console.log('✅ apiKey:', data.apiKey);
-      console.log('✅ username:', data.username);
-      console.log('✅ password:', data.password);
+      console.log('🔄 TURN credentials response (RAW):', data);
+      console.log('✅ apiKey:', data.apiKey, '(type:', typeof data.apiKey, ')');
+      console.log('✅ username:', data.username, '(type:', typeof data.username, ')');
+      console.log('✅ password:', data.password, '(type:', typeof data.password, ')');
+      console.log('✅ iceServers:', data.iceServers, '(length:', data.iceServers?.length, ')');
 
       // Validate TURN credentials exist
       if (!data.apiKey || !data.username || !data.password) {
-        throw new Error(`Missing TURN credentials: apiKey=${!!data.apiKey}, username=${!!data.username}, password=${!!data.password}`);
+        console.error('❌ MISSING CREDENTIALS:');
+        console.error('   - apiKey:', data.apiKey);
+        console.error('   - username:', data.username);
+        console.error('   - password:', data.password);
+        throw new Error(`Missing TURN credentials from backend. Response: ${JSON.stringify(data)}`);
       }
 
       const iceServers = [
