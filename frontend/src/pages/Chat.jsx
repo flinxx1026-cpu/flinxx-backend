@@ -176,9 +176,13 @@ const Chat = () => {
   };
 
   const createPeerConnection = async () => {
+    console.log('🔧 createPeerConnection called');
+    console.log('   Current localStreamRef:', localStreamRef.current);
+    
     const iceServers = await getTurnServers();
 
     peerConnection = new RTCPeerConnection({ iceServers });
+    console.log('✅ RTCPeerConnection created');
 
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
@@ -187,25 +191,35 @@ const Chat = () => {
     };
 
     peerConnection.ontrack = (event) => {
+        console.log('📥 Remote track received:', event.track.kind);
         if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
             remoteVideoRef.current.style.display = "block";
             remoteVideoRef.current.style.width = "100%";
             remoteVideoRef.current.style.height = "100%";
             remoteVideoRef.current.style.objectFit = "cover";
+            console.log('✅ Remote video srcObject set');
         }
     };
 
     peerConnection.onconnectionstatechange = () => {
-        console.log("Connection State:", peerConnection.connectionState);
+        console.log("🔄 Connection State:", peerConnection.connectionState);
         if (peerConnection.connectionState === 'connected') {
           setIsConnected(true);
+          console.log('✅ WebRTC connection established');
         } else if (peerConnection.connectionState === 'disconnected' || 
                    peerConnection.connectionState === 'failed' ||
                    peerConnection.connectionState === 'closed') {
           setIsConnected(false);
+          console.log('❌ WebRTC connection lost:', peerConnection.connectionState);
         }
     };
+
+    // CRITICAL: Verify stream still exists before adding tracks
+    if (!localStreamRef.current) {
+      console.error('❌ CRITICAL ERROR: localStreamRef.current is null/undefined in createPeerConnection!');
+      throw new Error('Local stream lost before createPeerConnection');
+    }
 
     return peerConnection;
   };
@@ -222,18 +236,21 @@ const Chat = () => {
       setIsRequestingCamera(true);
       setIsLoading(true);
 
-      // If we already have a stream from preview, use it
+      // CRITICAL: Never call getUserMedia again - always use preview stream
       if (!localStreamRef.current) {
-        console.log('⚠️ No preview stream available, requesting camera access...');
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: true
-        });
-        localStreamRef.current = stream;
+        console.error('❌ CRITICAL: No preview stream available! This should not happen.');
+        console.error('localStreamRef.current is:', localStreamRef.current);
+        throw new Error('Preview stream not initialized');
       }
 
-      console.log('✅ Using existing stream:', localStreamRef.current);
-      console.log('📹 Stream tracks:', localStreamRef.current.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+      console.log('✅ Using existing preview stream:', localStreamRef.current);
+      console.log('📹 Stream tracks count:', localStreamRef.current.getTracks().length);
+      console.log('📹 Stream tracks:', localStreamRef.current.getTracks().map(t => ({ 
+        kind: t.kind, 
+        id: t.id,
+        enabled: t.enabled,
+        readyState: t.readyState
+      })));
 
       // Set camera started flag
       setCameraStarted(true);
@@ -252,7 +269,7 @@ const Chat = () => {
       });
 
     } catch (error) {
-      console.error('❌ Error accessing camera:', error);
+      console.error('❌ Error in startVideoChat:', error);
       setIsRequestingCamera(false);
       setIsLoading(false);
       
@@ -271,6 +288,12 @@ const Chat = () => {
     // Partner found
     socket.on('partner_found', async (data) => {
       console.log('👥 Partner found:', data);
+      console.log('📊 Stream status before peer connection:', {
+        exists: !!localStreamRef.current,
+        trackCount: localStreamRef.current?.getTracks().length,
+        tracks: localStreamRef.current?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, state: t.readyState }))
+      });
+      
       setHasPartner(true);
       setPartnerInfo(data);
 
@@ -286,16 +309,24 @@ const Chat = () => {
         }
         peerConnectionRef.current = pc;
 
+        console.log('📊 Stream status after peer connection creation:', {
+          exists: !!localStreamRef.current,
+          trackCount: localStreamRef.current?.getTracks().length,
+          tracks: localStreamRef.current?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, state: t.readyState }))
+        });
+
         // Add local stream tracks to peer connection
         if (localStreamRef.current) {
           const tracks = localStreamRef.current.getTracks();
-          console.log('📹 Local Tracks:', tracks);
+          console.log('📹 Local Tracks before addTrack:', tracks.map(t => ({ kind: t.kind, id: t.id })));
           console.log(`📹 Adding ${tracks.length} local tracks to peer connection`);
-          tracks.forEach(track => {
-            console.log(`  - Adding ${track.kind} track:`, track);
+          
+          tracks.forEach((track, index) => {
+            console.log(`  - [${index}] Adding ${track.kind} track (id: ${track.id})`);
             const sender = pc.addTrack(track, localStreamRef.current);
-            console.log(`  - addTrack returned sender:`, sender);
+            console.log(`  - [${index}] addTrack returned:`, sender);
           });
+          
           console.log('✅ All tracks added to peer connection');
           const senders = pc.getSenders();
           console.log('📤 OFFERER senders count:', senders.length);
