@@ -198,16 +198,19 @@ const Chat = () => {
   const createPeerConnection = async () => {
     try {
       const turn = await getTurnCredentials();
+      console.log("Turn response:", turn);
 
       // Build iceServers with fallback
       let iceServers = [];
       
       // If we got Metered credentials with iceServers array
       if (turn && turn.iceServers && Array.isArray(turn.iceServers) && turn.iceServers.length > 0) {
+        console.log("Using Metered iceServers");
         iceServers = turn.iceServers;
       } 
       // Fallback to Google STUN server
       else {
+        console.log("Using fallback Google STUN server");
         iceServers = [
           {
             urls: ["stun:stun.l.google.com:19302"]
@@ -221,6 +224,7 @@ const Chat = () => {
 
       console.log("RTCPeerConnection config:", config);
       const peerConnection = new RTCPeerConnection(config);
+      console.log("RTCPeerConnection created successfully");
 
       peerConnection.onicecandidate = event => {
         if (event.candidate) {
@@ -350,7 +354,13 @@ const Chat = () => {
       // Create peer connection and send offer
       try {
         console.log('🔧 Creating peer connection for offerer');
-        const pc = await createPeerConnection();
+        let pc;
+        try {
+          pc = await createPeerConnection();
+        } catch (pcErr) {
+          console.error('Error creating peer connection:', pcErr);
+          return;
+        }
         peerConnectionRef.current = pc;
 
         // Add local stream tracks to peer connection
@@ -403,7 +413,13 @@ const Chat = () => {
       try {
         if (!peerConnectionRef.current) {
           console.log('📍 Creating new peer connection for answerer');
-          const pc = await createPeerConnection();
+          let pc;
+          try {
+            pc = await createPeerConnection();
+          } catch (pcErr) {
+            console.error('Error creating peer connection for answerer:', pcErr);
+            return;
+          }
           peerConnectionRef.current = pc;
 
           // Add local stream tracks
