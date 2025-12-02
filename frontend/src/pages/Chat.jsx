@@ -181,7 +181,7 @@ const Chat = () => {
   }, []);
 
   const getTurnServers = async () => {
-    const res = await fetch("/api/turn");
+    const res = await fetch("https://flinxx-backend.onrender.com/api/turn");
     const data = await res.json();
 
     if (!data?.v?.iceServers) {
