@@ -200,22 +200,18 @@ const Chat = () => {
       const turn = await getTurnCredentials();
       console.log("Turn response:", turn);
 
-      // Build iceServers with fallback
-      let iceServers = [];
+      // Build iceServers with proper structure
+      let iceServers = [
+        { urls: "stun:stun.l.google.com:19302" }
+      ];
       
       // If we got Metered credentials with iceServers array
       if (turn && turn.iceServers && Array.isArray(turn.iceServers) && turn.iceServers.length > 0) {
         console.log("Using Metered iceServers");
-        iceServers = turn.iceServers;
-      } 
-      // Fallback to Google STUN server
-      else {
-        console.log("Using fallback Google STUN server");
-        iceServers = [
-          {
-            urls: ["stun:stun.l.google.com:19302"]
-          }
-        ];
+        // Add Metered servers to the list
+        iceServers = iceServers.concat(turn.iceServers);
+      } else {
+        console.log("Metered response empty, using only Google STUN");
       }
 
       const config = {
