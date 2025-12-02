@@ -323,6 +323,13 @@ const Chat = () => {
     console.log('🔌 Socket ID:', socket.id);
     console.log('🔌 Socket connected:', socket.connected);
     
+    // Remove old listeners if they exist to prevent duplicates
+    socket.off('partner_found');
+    socket.off('webrtc_offer');
+    socket.off('webrtc_answer');
+    socket.off('ice-candidate');
+    console.log('🔌 Removed old listeners to prevent duplicates');
+    
     // Partner found
     socket.on('partner_found', async (data) => {
       console.log('\n\n📋 ===== OFFERER FOUND PARTNER =====');
@@ -417,10 +424,12 @@ const Chat = () => {
 
     // Receive offer
     socket.on('webrtc_offer', async (data) => {
-      console.log('\n\n📋 ===== ANSWERER RECEIVED OFFER =====');
+      console.log('\n\n🚨🚨🚨 ANSWERER HANDLER FIRED 🚨🚨🚨');
+      console.log('📋 ===== ANSWERER RECEIVED OFFER =====');
       console.log('📨 ANSWERER: Received WebRTC offer from offerer');
+      console.log('📨 ANSWERER: data:', data);
       try {
-        // CRITICAL FIX: Always create/ensure peer connection exists
+        // CRITICAL FIX: Create peer connection if it doesn't exist
         if (!peerConnectionRef.current) {
           console.log('📍 ANSWERER: Creating new peer connection for the first time');
           let pc;
@@ -436,65 +445,69 @@ const Chat = () => {
           console.log('⚠️ ANSWERER: WARNING - peerConnectionRef already exists (should be null for answerer)');
         }
 
-        // CRITICAL FIX: ALWAYS add local tracks BEFORE setting remote description
-        // This MUST happen every time we receive an offer
-        // Do NOT skip this based on any condition
-        console.log('\n🔍 ANSWERER: About to add local tracks to peer connection');
+        // ========================================
+        // CRITICAL FIX #2: ALWAYS add tracks - NOT inside any condition
+        // This code MUST ALWAYS EXECUTE
+        // ========================================
+        console.log('\n🔍 ANSWERER: ALWAYS executing track addition logic');
+        console.log('👤 ANSWERER: Checking localStreamRef.current...');
         console.log('👤 ANSWERER localStreamRef.current:', localStreamRef.current);
         console.log('👤 ANSWERER localStreamRef.current === null?', localStreamRef.current === null);
         console.log('👤 ANSWERER localStreamRef.current === undefined?', localStreamRef.current === undefined);
         
         if (localStreamRef.current) {
-          console.log('\n👤 ANSWERER: localStream exists, proceeding with track addition');
+          console.log('\n✅ ANSWERER: localStream EXISTS - will add tracks');
           console.log('📊 ANSWERER localStream object:', localStreamRef.current);
           const allTracks = localStreamRef.current.getTracks();
-          console.log('👤 ANSWERER: All available tracks array:', allTracks);
-          console.log('👤 ANSWERER: Track count:', allTracks.length);
-          console.log('👤 ANSWERER: Tracks detail:', allTracks.map(t => ({ 
-            kind: t.kind, 
-            id: t.id,
-            enabled: t.enabled,
-            readyState: t.readyState
-          })));
+          console.log('👤 ANSWERER: getAllTracks() returned:', allTracks);
+          console.log('👤 ANSWERER: Track array length:', allTracks.length);
           
-          if (allTracks.length === 0) {
-            console.error('❌ ANSWERER: ERROR - localStream exists but has 0 tracks! This is a problem.');
+          if (allTracks.length > 0) {
+            console.log('👤 ANSWERER: Tracks detail:', allTracks.map(t => ({ 
+              kind: t.kind, 
+              id: t.id,
+              enabled: t.enabled,
+              readyState: t.readyState
+            })));
+          } else {
+            console.warn('⚠️ ANSWERER: WARNING - localStream exists but getTracks() returned empty array!');
           }
           
           console.log(`\n📹 ANSWERER: Attempting to add ${allTracks.length} local tracks to peer connection`);
           let successCount = 0;
+          let failureCount = 0;
+          
           allTracks.forEach((track, idx) => {
             console.log(`  [${idx}] About to add ${track.kind} track (id: ${track.id}, enabled: ${track.enabled})`);
             try {
               const sender = peerConnectionRef.current.addTrack(track, localStreamRef.current);
-              console.log(`  [${idx}] ✅ addTrack SUCCEEDED, sender:`, sender);
+              console.log(`  [${idx}] ✅ addTrack SUCCEEDED`);
+              console.log(`  [${idx}] Sender:`, sender);
               successCount++;
             } catch (addTrackErr) {
-              console.error(`  [${idx}] ❌ addTrack FAILED with error:`, addTrackErr);
-              console.error(`  [${idx}] Error message:`, addTrackErr.message);
+              console.error(`  [${idx}] ❌ addTrack FAILED`);
+              console.error(`  [${idx}] Error:`, addTrackErr.message);
+              failureCount++;
             }
           });
           
-          console.log(`\n✅ ANSWERER: Finished adding tracks (${successCount}/${allTracks.length} succeeded)`);
+          console.log(`\n✅ ANSWERER: Track addition complete (${successCount} succeeded, ${failureCount} failed)`);
           const senders = peerConnectionRef.current.getSenders();
-          console.log('📤 ANSWERER: getSenders() count after addTrack:', senders.length);
-          console.log('📤 ANSWERER: getSenders() details:', senders.map((s, i) => ({ 
+          console.log('📤 ANSWERER: Final senders count:', senders.length);
+          console.log('📤 ANSWERER: Senders:', senders.map((s, i) => ({ 
             index: i,
             kind: s.track?.kind, 
             id: s.track?.id,
             trackExists: !!s.track,
             trackEnabled: s.track?.enabled
           })));
-          console.log('🚀 ANSWERER: Ready to proceed with answer. Will send with', senders.length, 'senders\n');
         } else {
-          console.error('\n❌ ANSWERER: CRITICAL ERROR - localStreamRef.current is NULL or UNDEFINED!');
-          console.error('❌ ANSWERER: Cannot add tracks because localStream does not exist');
-          console.error('❌ ANSWERER: This means the preview stream was never initialized or was lost');
-          throw new Error('ANSWERER: No local stream available to add tracks');
+          console.error('\n❌ ANSWERER: CRITICAL ERROR - localStreamRef.current is NULL!');
+          console.error('❌ ANSWERER: Cannot add tracks - stream does not exist');
+          throw new Error('ANSWERER: No local stream - cannot add tracks');
         }
 
-        console.log('🔄 ANSWERER: Setting remote description (offer from offerer)');
-        console.log('📨 ANSWERER: Offer SDP:', data.offer);
+        console.log('\n🔄 ANSWERER: Setting remote description (offer from offerer)');
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(data.offer)
         );
@@ -502,8 +515,7 @@ const Chat = () => {
 
         console.log('🎬 ANSWERER: Creating answer');
         const answer = await peerConnectionRef.current.createAnswer();
-        console.log('✅ ANSWERER: Answer created:', answer);
-        console.log('📄 ANSWERER: Answer SDP:', answer.sdp.substring(0, 200) + '...');
+        console.log('✅ ANSWERER: Answer created');
         
         console.log('🔄 ANSWERER: Setting local description (answer)');
         await peerConnectionRef.current.setLocalDescription(answer);
@@ -511,7 +523,7 @@ const Chat = () => {
 
         console.log('\n📋 ===== ANSWERER SENDING ANSWER =====');
         const finalSenders = peerConnectionRef.current.getSenders();
-        console.log('📤 ANSWERER: Final senders count before emit:', finalSenders.length);
+        console.log('📤 ANSWERER: Final senders count:', finalSenders.length);
         console.log('📤 ANSWERER: Sending answer with tracks:', finalSenders.map(s => ({
           kind: s.track?.kind,
           id: s.track?.id,
