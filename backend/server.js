@@ -345,13 +345,20 @@ app.get('/api/turn/credentials', async (req, res) => {
 // ===== TURN CREDENTIALS ENDPOINT =====
 app.get("/api/get-turn-credentials", async (req, res) => {
   try {
-    const url = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?secretKey=${process.env.METERED_SECRET_KEY}`;
+    const url = `https://${process.env.METERED_DOMAIN}.metered.live/api/v1/turn/credentials?secretKey=${process.env.METERED_SECRET_KEY}`;
+
+    console.log("Calling TURN:", url);
+
     const response = await fetch(url);
     const data = await response.json();
-    console.log("Metered TURN response:", JSON.stringify(data, null, 2));
-    return res.json(data);
-  } catch (error) {
-    return res.status(500).json({ error: "TURN fetch failed" });
+
+    console.log("Metered TURN response:", data);
+
+    res.json(data);
+
+  } catch (err) {
+    console.error("TURN ERROR:", err);
+    res.status(500).json({ error: "TURN fetch failed" });
   }
 });
 
