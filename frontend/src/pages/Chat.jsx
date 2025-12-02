@@ -745,7 +745,7 @@ const Chat = () => {
           <div id="main-container" className="flex-1 overflow-y-auto bg-black px-4 py-4 flex flex-col min-h-0" style={{ minHeight: '400px' }}>
             {/* Partner video or waiting screen - ALWAYS show in messages area */}
             {hasPartner && partnerInfo ? (
-              <div id="remote-video-wrapper" className="relative flex-1 min-h-0 w-full bg-black overflow-hidden rounded-2xl" style={{ minHeight: '350px' }}>
+              <div id="remote-video-wrapper" className="relative flex-1 min-h-0 w-full overflow-hidden rounded-2xl" style={{ minHeight: '350px', backgroundColor: 'transparent', zIndex: 5 }}>
                 {/* Partner video */}
                 <video
                   id="remoteVideo"
@@ -756,13 +756,14 @@ const Chat = () => {
                   className="w-full h-full object-cover"
                   style={{
                     backgroundColor: '#000000',
-                    display: 'block'
+                    display: 'block',
+                    zIndex: 10
                   }}
                 />
 
                 {/* Connection status overlay - Top Right */}
                 {isConnected && (
-                  <div className="absolute top-3 right-3 flex items-center gap-2 bg-green-500 bg-opacity-90 text-white px-2 py-1 rounded-full text-xs font-semibold z-10 shadow-lg">
+                  <div className="absolute top-3 right-3 flex items-center gap-2 bg-green-500 bg-opacity-90 text-white px-2 py-1 rounded-full text-xs font-semibold z-20 shadow-lg">
                     <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
                     {formatTime(connectionTime)}
                   </div>
@@ -770,7 +771,7 @@ const Chat = () => {
               </div>
             ) : (
               /* Waiting for partner - show in message area */
-              <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl min-h-0">
+              <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl min-h-0" style={{ zIndex: 1 }}>
                 <div className="text-center">
                   <div className="animate-spin mb-4 text-5xl inline-block">⟳</div>
                   <p className="text-white font-semibold text-base">Looking for a partner...</p>

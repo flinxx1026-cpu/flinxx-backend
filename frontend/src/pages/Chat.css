@@ -1,20 +1,26 @@
 /* Chat page specific styles */
 
-/* Ensure all video elements display as block */
+/* Ensure all video elements display as block and are visible */
 video {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
   background: transparent !important;
   display: block !important;
+  z-index: 10 !important;
+  position: relative !important;
+  opacity: 1 !important;
 }
 
 #main-container {
   min-height: 400px;
+  z-index: 1;
 }
 
 #remote-video-wrapper {
   min-height: 350px;
+  z-index: 5;
+  position: relative;
 }
 
 .video-container {
