@@ -182,45 +182,48 @@ const Chat = () => {
 
   const getTurnServers = async () => {
     try {
-      const res = await fetch("/api/turn");
-      if (!res.ok) {
-        throw new Error(`TURN fetch failed: ${res.status}`);
+      const response = await fetch("/api/turn");
+      const data = await response.json();
+
+      if (!data || !data.v || !data.v.iceServers) {
+        console.error("Invalid XirSys response:", data);
+        return null;
       }
-      const data = await res.json();
-      console.log("XirSys TURN response:", data);
-      return data.v.iceServers;
-    } catch (error) {
-      console.error("Error fetching XirSys TURN servers:", error);
+
+      // Extract XirSys values
+      const ice = data.v.iceServers;
+
+      // Convert XirSys format into WebRTC iceServers array
+      const iceServers = [
+        {
+          urls: ice.urls,
+          username: ice.username,
+          credential: ice.credential
+        },
+        { urls: "stun:stun.l.google.com:19302" } // Google fallback
+      ];
+
+      console.log("Using XirSys ICE servers:", iceServers);
+      return iceServers;
+
+    } catch (err) {
+      console.error("Error fetching XirSys TURN:", err);
       return null;
     }
   };
 
   const createPeerConnection = async () => {
     try {
-      // Get TURN credentials from backend
-      const turn = await getTurnServers();
-      console.log("XirSys TURN response:", turn);
+      console.log("Creating PeerConnection with XirSys TURN...");
 
-      // XirSys returns one object inside turn.v.iceServers
-      const ice = turn.v.iceServers;
+      const iceServers = await getTurnServers();
 
-      // Build correct WebRTC configuration
-      const config = {
-        iceServers: [
-          {
-            urls: ice.urls,
-            username: ice.username,
-            credential: ice.credential
-          },
-          {
-            urls: ['stun:stun.l.google.com:19302'] // fallback STUN
-          }
-        ]
-      };
+      if (!iceServers) {
+        console.error("TURN server missing.");
+        throw new Error("Failed to get TURN servers");
+      }
 
-      console.log("RTCPeerConnection config:", config);
-      // Create peer connection with correct TURN config
-      const peerConnection = new RTCPeerConnection(config);
+      const peerConnection = new RTCPeerConnection({ iceServers });
       console.log("RTCPeerConnection created successfully");
 
       peerConnection.onicecandidate = event => {
