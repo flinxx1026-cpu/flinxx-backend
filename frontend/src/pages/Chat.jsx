@@ -501,19 +501,36 @@ const Chat = () => {
 
     // Receive answer
     socket.on('webrtc_answer', async (data) => {
-      console.log('📨 Received WebRTC answer');
+      console.log('\n\n📋 ===== OFFERER RECEIVED ANSWER =====');
+      console.log('📨 OFFERER: Received WebRTC answer from answerer');
+      console.log('📨 OFFERER: Answer SDP:', data.answer);
       try {
         if (!peerConnectionRef.current) {
-          console.error('❌ No peer connection available to handle answer');
+          console.error('❌ OFFERER: No peer connection available to handle answer');
           return;
         }
-        console.log('🔄 Setting remote description (answer)');
+        
+        console.log('\n🔄 OFFERER: Setting remote description (answer from answerer)');
+        console.log('📊 OFFERER: Current connection state before answer:', {
+          connectionState: peerConnectionRef.current.connectionState,
+          iceConnectionState: peerConnectionRef.current.iceConnectionState,
+          signalingState: peerConnectionRef.current.signalingState
+        });
+        
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(data.answer)
         );
-        console.log('✅ Remote description (answer) set successfully');
+        console.log('✅ OFFERER: Remote description (answer) set successfully');
+        
+        console.log('📊 OFFERER: Connection state after answer:', {
+          connectionState: peerConnectionRef.current.connectionState,
+          iceConnectionState: peerConnectionRef.current.iceConnectionState,
+          signalingState: peerConnectionRef.current.signalingState
+        });
+        console.log('📋 ===== OFFERER ANSWER RECEIVED AND SET =====\n\n');
       } catch (err) {
-        console.error('❌ Error handling answer:', err);
+        console.error('❌ OFFERER: Error handling answer:', err);
+        console.error('❌ OFFERER: Stack trace:', err.stack);
       }
     });
 
