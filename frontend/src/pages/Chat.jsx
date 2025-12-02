@@ -968,22 +968,21 @@ const Chat = () => {
               
               {/* Remote video wrapper - UNCONDITIONALLY RENDERED */}
               <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9999, overflow: 'visible', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {/* Partner video - ALWAYS RENDERED IN DOM */}
+                {/* Remote video element - RENDER UNCONDITIONALLY */}
                 <video
                   id="remote-video"
                   ref={remoteVideoRef}
-                  autoPlay={true}
-                  playsInline={true}
-                  muted={false}
+                  autoPlay
+                  playsInline
                   style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    backgroundColor: 'black',
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    width: '100%',
-                    height: '100%',
                     zIndex: 9999,
-                    backgroundColor: 'transparent',
-                    objectFit: 'cover',
                     display: 'block',
                     opacity: 1,
                     visibility: 'visible'
