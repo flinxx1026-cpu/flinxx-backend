@@ -318,6 +318,11 @@ const Chat = () => {
   };
 
   const setupSocketListeners = () => {
+    console.log('\n🔌 ===== SETTING UP SOCKET LISTENERS =====');
+    console.log('🔌 setupSocketListeners() called');
+    console.log('🔌 Socket ID:', socket.id);
+    console.log('🔌 Socket connected:', socket.connected);
+    
     // Partner found
     socket.on('partner_found', async (data) => {
       console.log('\n\n📋 ===== OFFERER FOUND PARTNER =====');
@@ -413,10 +418,11 @@ const Chat = () => {
     // Receive offer
     socket.on('webrtc_offer', async (data) => {
       console.log('\n\n📋 ===== ANSWERER RECEIVED OFFER =====');
-      console.log('📨 Received WebRTC offer from offerer');
+      console.log('📨 ANSWERER: Received WebRTC offer from offerer');
       try {
+        // CRITICAL FIX: Always create/ensure peer connection exists
         if (!peerConnectionRef.current) {
-          console.log('📍 ANSWERER: Creating new peer connection');
+          console.log('📍 ANSWERER: Creating new peer connection for the first time');
           let pc;
           try {
             pc = await createPeerConnection();
@@ -426,49 +432,69 @@ const Chat = () => {
           }
           peerConnectionRef.current = pc;
           console.log('✅ ANSWERER: Peer connection created');
+        } else {
+          console.log('⚠️ ANSWERER: WARNING - peerConnectionRef already exists (should be null for answerer)');
+        }
 
-          // CRITICAL: Add local stream tracks BEFORE setting remote description
-          // This ensures the answer SDP includes media lines for video/audio
-          if (localStreamRef.current) {
-            console.log('\n👤 ANSWERER localStream:', localStreamRef.current);
-            const allTracks = localStreamRef.current.getTracks();
-            console.log('👤 ANSWERER: All available tracks:', allTracks);
-            console.log('👤 ANSWERER tracks detail:', allTracks.map(t => ({ 
-              kind: t.kind, 
-              id: t.id,
-              enabled: t.enabled,
-              readyState: t.readyState
-            })));
-            
-            console.log(`\n📹 ANSWERER: Adding ${allTracks.length} local tracks to peer connection`);
-            allTracks.forEach((track, idx) => {
-              console.log(`  [${idx}] Adding ${track.kind} track (id: ${track.id}, enabled: ${track.enabled})`);
-              try {
-                const sender = pc.addTrack(track, localStreamRef.current);
-                console.log(`  [${idx}] ✅ addTrack succeeded, sender:`, sender);
-              } catch (addTrackErr) {
-                console.error(`  [${idx}] ❌ addTrack failed:`, addTrackErr);
-              }
-            });
-            
-            console.log('✅ ANSWERER: All tracks added to peer connection');
-            const senders = pc.getSenders();
-            console.log('📤 ANSWERER: senders count:', senders.length);
-            console.log('📤 ANSWERER: RTCPeerConnection senders after addTrack:', senders.map((s, i) => ({ 
-              index: i,
-              kind: s.track?.kind, 
-              id: s.track?.id,
-              trackExists: !!s.track,
-              trackEnabled: s.track?.enabled
-            })));
-            console.log('🚀 ANSWERER: Ready to send answer with', allTracks.length, 'tracks\n');
-          } else {
-            console.error('❌ ANSWERER: No local stream available - TRACKS WILL NOT BE SENT!');
-            console.error('❌ ANSWERER: localStreamRef.current is:', localStreamRef.current);
+        // CRITICAL FIX: ALWAYS add local tracks BEFORE setting remote description
+        // This MUST happen every time we receive an offer
+        // Do NOT skip this based on any condition
+        console.log('\n🔍 ANSWERER: About to add local tracks to peer connection');
+        console.log('👤 ANSWERER localStreamRef.current:', localStreamRef.current);
+        console.log('👤 ANSWERER localStreamRef.current === null?', localStreamRef.current === null);
+        console.log('👤 ANSWERER localStreamRef.current === undefined?', localStreamRef.current === undefined);
+        
+        if (localStreamRef.current) {
+          console.log('\n👤 ANSWERER: localStream exists, proceeding with track addition');
+          console.log('📊 ANSWERER localStream object:', localStreamRef.current);
+          const allTracks = localStreamRef.current.getTracks();
+          console.log('👤 ANSWERER: All available tracks array:', allTracks);
+          console.log('👤 ANSWERER: Track count:', allTracks.length);
+          console.log('👤 ANSWERER: Tracks detail:', allTracks.map(t => ({ 
+            kind: t.kind, 
+            id: t.id,
+            enabled: t.enabled,
+            readyState: t.readyState
+          })));
+          
+          if (allTracks.length === 0) {
+            console.error('❌ ANSWERER: ERROR - localStream exists but has 0 tracks! This is a problem.');
           }
+          
+          console.log(`\n📹 ANSWERER: Attempting to add ${allTracks.length} local tracks to peer connection`);
+          let successCount = 0;
+          allTracks.forEach((track, idx) => {
+            console.log(`  [${idx}] About to add ${track.kind} track (id: ${track.id}, enabled: ${track.enabled})`);
+            try {
+              const sender = peerConnectionRef.current.addTrack(track, localStreamRef.current);
+              console.log(`  [${idx}] ✅ addTrack SUCCEEDED, sender:`, sender);
+              successCount++;
+            } catch (addTrackErr) {
+              console.error(`  [${idx}] ❌ addTrack FAILED with error:`, addTrackErr);
+              console.error(`  [${idx}] Error message:`, addTrackErr.message);
+            }
+          });
+          
+          console.log(`\n✅ ANSWERER: Finished adding tracks (${successCount}/${allTracks.length} succeeded)`);
+          const senders = peerConnectionRef.current.getSenders();
+          console.log('📤 ANSWERER: getSenders() count after addTrack:', senders.length);
+          console.log('📤 ANSWERER: getSenders() details:', senders.map((s, i) => ({ 
+            index: i,
+            kind: s.track?.kind, 
+            id: s.track?.id,
+            trackExists: !!s.track,
+            trackEnabled: s.track?.enabled
+          })));
+          console.log('🚀 ANSWERER: Ready to proceed with answer. Will send with', senders.length, 'senders\n');
+        } else {
+          console.error('\n❌ ANSWERER: CRITICAL ERROR - localStreamRef.current is NULL or UNDEFINED!');
+          console.error('❌ ANSWERER: Cannot add tracks because localStream does not exist');
+          console.error('❌ ANSWERER: This means the preview stream was never initialized or was lost');
+          throw new Error('ANSWERER: No local stream available to add tracks');
         }
 
         console.log('🔄 ANSWERER: Setting remote description (offer from offerer)');
+        console.log('📨 ANSWERER: Offer SDP:', data.offer);
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(data.offer)
         );
@@ -477,13 +503,16 @@ const Chat = () => {
         console.log('🎬 ANSWERER: Creating answer');
         const answer = await peerConnectionRef.current.createAnswer();
         console.log('✅ ANSWERER: Answer created:', answer);
+        console.log('📄 ANSWERER: Answer SDP:', answer.sdp.substring(0, 200) + '...');
         
         console.log('🔄 ANSWERER: Setting local description (answer)');
         await peerConnectionRef.current.setLocalDescription(answer);
         console.log('✅ ANSWERER: Local description set successfully');
 
         console.log('\n📋 ===== ANSWERER SENDING ANSWER =====');
-        console.log('📤 ANSWERER: Sending answer with tracks:', peerConnectionRef.current.getSenders().map(s => ({
+        const finalSenders = peerConnectionRef.current.getSenders();
+        console.log('📤 ANSWERER: Final senders count before emit:', finalSenders.length);
+        console.log('📤 ANSWERER: Sending answer with tracks:', finalSenders.map(s => ({
           kind: s.track?.kind,
           id: s.track?.id,
           enabled: s.track?.enabled
@@ -491,10 +520,11 @@ const Chat = () => {
         socket.emit('webrtc_answer', {
           answer: peerConnectionRef.current.localDescription
         });
-        console.log('📤 ANSWERER: Answer sent to offerer');
+        console.log('📤 ANSWERER: Answer emitted to offerer via socket');
         console.log('📋 ===== ANSWERER ANSWER SENT =====\n\n');
       } catch (err) {
-        console.error('❌ ANSWERER: Error handling offer:', err);
+        console.error('\n❌ ANSWERER: ERROR in webrtc_offer handler:', err);
+        console.error('❌ ANSWERER: Error message:', err.message);
         console.error('❌ ANSWERER: Stack trace:', err.stack);
       }
     });
@@ -577,6 +607,10 @@ const Chat = () => {
       console.log('Socket disconnected');
       cleanup();
     });
+    
+    console.log('🔌 ===== ALL SOCKET LISTENERS REGISTERED =====');
+    console.log('🔌 Listeners registered for: partner_found, webrtc_offer, webrtc_answer, ice-candidate, receive_message, partner_disconnected, disconnect');
+    console.log('🔌 Ready to receive WebRTC signaling messages\n\n');
   };
 
   const sendMessage = () => {
