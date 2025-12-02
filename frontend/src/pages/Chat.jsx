@@ -964,10 +964,11 @@ const Chat = () => {
             </div>
 
             {/* SECTION 2: MIDDLE - Messages area (scrollable) */}
-            <div id="main-container" className="flex-1 overflow-visible px-4 py-4 flex flex-col" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative' }}>
-              {/* Remote video wrapper - ALWAYS RENDERED */}
-              <div id="remote-video-wrapper" className="absolute w-full h-full top-0 left-0 rounded-2xl" style={{ backgroundColor: 'transparent', position: 'absolute', display: hasPartner ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', zIndex: 9998, overflow: 'visible' }}>
-                {/* Partner video - ALWAYS in DOM */}
+            <div id="main-container" className="flex-1 overflow-visible px-4 py-4 flex flex-col relative" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative' }}>
+              
+              {/* Remote video wrapper - UNCONDITIONALLY RENDERED */}
+              <div id="remote-video-wrapper" className="absolute w-full h-full top-0 left-0 rounded-2xl" style={{ backgroundColor: 'transparent', position: 'absolute', alignItems: 'center', justifyContent: 'center', zIndex: 9998, overflow: 'visible', display: 'flex' }}>
+                {/* Partner video - ALWAYS RENDERED IN DOM */}
                 <video
                   id="remote-video"
                   ref={remoteVideoRef}
@@ -1000,7 +1001,7 @@ const Chat = () => {
 
               {/* Waiting for partner - show in message area */}
               {!hasPartner && (
-                <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl min-h-0" style={{ zIndex: 1 }}>
+                <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl min-h-0 relative" style={{ zIndex: 1 }}>
                   <div className="text-center">
                     <div className="animate-spin mb-4 text-5xl inline-block">⟳</div>
                     <p className="text-white font-semibold text-base">Looking for a partner...</p>
@@ -1009,27 +1010,27 @@ const Chat = () => {
                 </div>
               )}
 
-            {/* Chat messages - Display below video when they exist */}
-            {messages.length > 0 && hasPartner && (
-              <div className="space-y-2 mt-3">
-                {messages.map(msg => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
+              {/* Chat messages - Display below video when they exist */}
+              {messages.length > 0 && hasPartner && (
+                <div className="space-y-2 mt-3 relative" style={{ zIndex: 10 }}>
+                  {messages.map(msg => (
                     <div
-                      className={`max-w-xs px-3 py-2 rounded-2xl text-xs ${
-                        msg.sender === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-purple-500 text-white'
-                      }`}
+                      key={msg.id}
+                      className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      {msg.text}
+                      <div
+                        className={`max-w-xs px-3 py-2 rounded-2xl text-xs ${
+                          msg.sender === 'user'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-purple-500 text-white'
+                        }`}
+                      >
+                        {msg.text}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>
