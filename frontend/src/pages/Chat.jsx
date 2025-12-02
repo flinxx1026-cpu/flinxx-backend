@@ -230,11 +230,10 @@ const Chat = () => {
           remoteVideoRef.current.style.display = "block";
 
           remoteVideoRef.current.play().catch((err) => {
-            console.error("Remote play error:", err);
+            console.error("Error playing remote video:", err);
           });
 
           console.log("Attaching remote stream to video element");
-          console.log("remoteVideoRef.current.srcObject:", remoteVideoRef.current.srcObject);
         } else {
           console.error("remoteVideoRef is null");
         }
@@ -774,6 +773,7 @@ const Chat = () => {
               <div id="remote-video-wrapper" className="relative flex-1 min-h-0 w-full bg-black overflow-hidden rounded-2xl" style={{ minHeight: '350px' }}>
                 {/* Partner video */}
                 <video
+                  id="remoteVideo"
                   ref={remoteVideoRef}
                   autoPlay={true}
                   playsInline={true}
