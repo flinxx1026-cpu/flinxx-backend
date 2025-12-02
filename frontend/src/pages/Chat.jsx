@@ -180,38 +180,37 @@ const Chat = () => {
     };
   }, []);
 
-  const getTurnCredentials = async () => {
+  const getTurnServers = async () => {
     try {
-      const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials");
+      const res = await fetch("/api/turn");
       if (!res.ok) {
         throw new Error(`TURN fetch failed: ${res.status}`);
       }
       const data = await res.json();
-      console.log("TURN credentials response:", data);
-      return data;
+      console.log("XirSys TURN response:", data);
+      return data.v.iceServers;
     } catch (error) {
-      console.error("Error fetching TURN credentials:", error);
+      console.error("Error fetching XirSys TURN servers:", error);
       return null;
     }
   };
 
   const createPeerConnection = async () => {
     try {
-      const turn = await getTurnCredentials();
-      console.log("Turn response:", turn);
+      const turnServers = await getTurnServers();
+      console.log("XirSys iceServers:", turnServers);
 
-      // Build iceServers with proper structure
+      // Build iceServers with Google STUN fallback
       let iceServers = [
         { urls: "stun:stun.l.google.com:19302" }
       ];
       
-      // If we got Metered credentials with iceServers array
-      if (turn && turn.iceServers && Array.isArray(turn.iceServers) && turn.iceServers.length > 0) {
-        console.log("Using Metered iceServers");
-        // Add Metered servers to the list
-        iceServers = iceServers.concat(turn.iceServers);
+      // If we got XirSys servers
+      if (turnServers && Array.isArray(turnServers) && turnServers.length > 0) {
+        console.log("Using XirSys TURN servers");
+        iceServers = iceServers.concat(turnServers);
       } else {
-        console.log("Metered response empty, using only Google STUN");
+        console.log("No XirSys servers available, using only Google STUN");
       }
 
       const config = {

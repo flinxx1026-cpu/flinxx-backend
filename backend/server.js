@@ -362,6 +362,33 @@ app.get("/api/get-turn-credentials", async (req, res) => {
   }
 });
 
+// ===== XIRSYS TURN ENDPOINT =====
+app.get("/api/turn", async (req, res) => {
+  try {
+    const url = `https://global.xirsys.net/_turn/${process.env.XIRSYS_CHANNEL}`;
+
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Authorization":
+          "Basic " +
+          Buffer.from(
+            process.env.XIRSYS_IDENT + ":" + process.env.XIRSYS_SECRET
+          ).toString("base64"),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ format: "urls" }),
+    });
+
+    const data = await response.json();
+    console.log("XirSys TURN response:", data);
+    return res.json(data);
+  } catch (err) {
+    console.error("XirSys TURN error:", err);
+    res.status(500).json({ error: "XirSys TURN request failed" });
+  }
+});
+
 // ===== USER MANAGEMENT ENDPOINTS =====
 
 // Save/Update user after Firebase login
