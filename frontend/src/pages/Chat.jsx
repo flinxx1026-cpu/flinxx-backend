@@ -24,7 +24,8 @@ const Chat = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext) || {};
 
-  // Use actual user or provide defaults
+  // Peer connection reference
+  let peerConnection = null;
   const currentUser = user || {
     googleId: "guest_" + Math.random().toString(36).substring(2, 9),
     name: "Guest User",
@@ -225,6 +226,7 @@ const Chat = () => {
     };
 
     peerConnection.onconnectionstatechange = () => {
+        console.log("Connection State:", peerConnection.connectionState);
         if (peerConnection.connectionState === 'connected') {
           setIsConnected(true);
         } else if (peerConnection.connectionState === 'disconnected' || 
