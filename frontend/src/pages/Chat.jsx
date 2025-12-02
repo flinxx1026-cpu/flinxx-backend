@@ -673,7 +673,7 @@ const Chat = () => {
 
   // Video Chat Screen Component
   const VideoChatScreen = () => (
-    <div className="flex-1 flex items-center justify-center gap-10 p-8 w-full h-full overflow-hidden bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative min-h-0">
+    <div className="flex-1 flex items-center justify-center gap-4 p-4 w-full h-full overflow-hidden bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative min-h-0" style={{ flexDirection: 'column' }}>
       {/* Close Button - Round X Icon at Top Right */}
       <button
         onClick={() => {
@@ -688,78 +688,85 @@ const Chat = () => {
         ✕
       </button>
 
-      {/* Left - Local camera video */}
-      <div className="video-box flex items-center justify-center min-h-0" style={{ width: '520px', height: '620px' }}>
-        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
-          <video
-            ref={localVideoRef}
-            autoPlay={true}
-            playsInline={true}
-            muted={true}
-            className="w-full h-full object-cover"
-            style={{
-              backgroundColor: '#000000',
-              transform: 'scaleX(-1)',
-              display: 'block'
-            }}
-          />
-          <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl z-10">
-            <p className="font-semibold text-sm">You</p>
+      {/* Main video container - responsive layout */}
+      <div className="flex-1 w-full h-full flex items-center justify-center gap-4 min-h-0 overflow-hidden" style={{ minHeight: 0 }}>
+        
+        {/* Left - Local camera video */}
+        <div className="video-box flex items-center justify-center min-h-0 flex-1" style={{ minWidth: 0, maxWidth: '50%' }}>
+          <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
+            <video
+              ref={localVideoRef}
+              autoPlay={true}
+              playsInline={true}
+              muted={true}
+              className="w-full h-full object-cover"
+              style={{
+                backgroundColor: '#000000',
+                transform: 'scaleX(-1)',
+                display: 'block',
+                width: '100%',
+                height: '100%'
+              }}
+            />
+            <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl z-10">
+              <p className="font-semibold text-sm">You</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Right - Chat panel with proper 3-section layout */}
-      <div className="right-panel flex items-center justify-center min-h-0" style={{ width: '520px', height: '620px' }}>
-        <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-white/10 min-h-0">
-          
-          {/* SECTION 1: TOP - Header with partner info */}
-          <div className="h-16 px-4 py-3 flex items-center justify-between bg-black/80 backdrop-blur-sm border-b border-white/10 flex-shrink-0">
-            {/* Left: Partner Profile */}
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg flex-shrink-0">
-                👤
-              </div>
-              <div className="min-w-0">
-                <p className="text-white font-semibold text-sm leading-tight truncate">
-                  {hasPartner && partnerInfo ? partnerInfo.userName : 'Waiting...'}
-                </p>
-                <p className="text-white/60 text-xs truncate">
-                  {hasPartner && partnerInfo ? partnerInfo.userLocation : 'for a partner'}
-                </p>
-              </div>
-            </div>
+        {/* Right - Chat panel with proper 3-section layout */}
+        <div className="right-panel flex items-center justify-center min-h-0 flex-1" style={{ minWidth: 0, maxWidth: '50%' }}>
+          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-white/10 min-h-0">
             
-            {/* Right: Action Icons */}
-            <div className="flex gap-2 flex-shrink-0">
-              <button className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-blue-400 text-lg transition-all">
-                ❤️
-              </button>
-              <button className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-red-400 text-lg transition-all">
-                🎁
-              </button>
+            {/* SECTION 1: TOP - Header with partner info */}
+            <div className="h-16 px-4 py-3 flex items-center justify-between bg-black/80 backdrop-blur-sm border-b border-white/10 flex-shrink-0">
+              {/* Left: Partner Profile */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg flex-shrink-0">
+                  👤
+                </div>
+                <div className="min-w-0">
+                  <p className="text-white font-semibold text-sm leading-tight truncate">
+                    {hasPartner && partnerInfo ? partnerInfo.userName : 'Waiting...'}
+                  </p>
+                  <p className="text-white/60 text-xs truncate">
+                    {hasPartner && partnerInfo ? partnerInfo.userLocation : 'for a partner'}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Right: Action Icons */}
+              <div className="flex gap-2 flex-shrink-0">
+                <button className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-blue-400 text-lg transition-all">
+                  ❤️
+                </button>
+                <button className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-red-400 text-lg transition-all">
+                  🎁
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* SECTION 2: MIDDLE - Messages area (scrollable) */}
-          <div id="main-container" className="flex-1 overflow-y-auto bg-black px-4 py-4 flex flex-col min-h-0" style={{ minHeight: '400px' }}>
-            {/* Partner video or waiting screen - ALWAYS show in messages area */}
-            {hasPartner && partnerInfo ? (
-              <div id="remote-video-wrapper" className="relative flex-1 min-h-0 w-full overflow-hidden rounded-2xl" style={{ minHeight: '350px', backgroundColor: 'transparent', zIndex: 5 }}>
-                {/* Partner video */}
-                <video
-                  id="remoteVideo"
-                  ref={remoteVideoRef}
-                  autoPlay={true}
-                  playsInline={true}
-                  muted={false}
-                  className="w-full h-full object-cover"
-                  style={{
-                    backgroundColor: '#000000',
-                    display: 'block',
-                    zIndex: 10
-                  }}
-                />
+            {/* SECTION 2: MIDDLE - Messages area (scrollable) */}
+            <div id="main-container" className="flex-1 overflow-y-auto bg-black px-4 py-4 flex flex-col min-h-0" style={{ minHeight: 0 }}>
+              {/* Partner video or waiting screen - ALWAYS show in messages area */}
+              {hasPartner && partnerInfo ? (
+                <div id="remote-video-wrapper" className="relative flex-1 min-h-0 w-full overflow-hidden rounded-2xl" style={{ minHeight: 0, backgroundColor: 'transparent', zIndex: 5 }}>
+                  {/* Partner video */}
+                  <video
+                    id="remoteVideo"
+                    ref={remoteVideoRef}
+                    autoPlay={true}
+                    playsInline={true}
+                    muted={false}
+                    className="w-full h-full object-cover"
+                    style={{
+                      backgroundColor: '#000000',
+                      display: 'block',
+                      zIndex: 10,
+                      width: '100%',
+                      height: '100%'
+                    }}
+                  />
 
                 {/* Connection status overlay - Top Right */}
                 {isConnected && (
