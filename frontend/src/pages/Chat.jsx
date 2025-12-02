@@ -189,6 +189,14 @@ const Chat = () => {
       const data = await res.json();
 
       console.log('🔄 TURN credentials response:', data);
+      console.log('✅ apiKey:', data.apiKey);
+      console.log('✅ username:', data.username);
+      console.log('✅ password:', data.password);
+
+      // Validate TURN credentials exist
+      if (!data.apiKey || !data.username || !data.password) {
+        throw new Error(`Missing TURN credentials: apiKey=${!!data.apiKey}, username=${!!data.username}, password=${!!data.password}`);
+      }
 
       const iceServers = [
         {
@@ -200,6 +208,10 @@ const Chat = () => {
           credential: data.password
         }
       ];
+
+      console.log('📋 Constructed iceServers:', JSON.stringify(iceServers, null, 2));
+      console.log('✅ iceServers[0].username:', iceServers[0].username);
+      console.log('✅ iceServers[0].credential:', iceServers[0].credential);
 
       const config = {
         iceServers: iceServers,
