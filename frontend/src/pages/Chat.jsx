@@ -10,16 +10,6 @@ import MatchHistory from '../components/MatchHistory';
 import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
-// Utility function to safely stop all media tracks
-const stopAllTracks = (stream) => {
-  if (stream) {
-    stream.getTracks().forEach(track => {
-      console.log(`🛑 Stopping ${track.kind} track`);
-      track.stop();
-    });
-  }
-};
-
 const Chat = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext) || {};
@@ -116,17 +106,18 @@ const Chat = () => {
 
   // Auto-start camera preview on page load (lobby screen)
   useEffect(() => {
-    let previewStream = null;
-    
     async function startPreview() {
       try {
         console.log('📹 Starting camera preview...');
-        previewStream = await navigator.mediaDevices.getUserMedia({
+        const previewStream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: false
+          audio: true
         });
         
-        if (localVideoRef.current && !cameraStarted) {
+        // Store the stream for later use in chat
+        localStreamRef.current = previewStream;
+        
+        if (localVideoRef.current) {
           localVideoRef.current.srcObject = previewStream;
           localVideoRef.current.muted = true;
           
@@ -143,40 +134,20 @@ const Chat = () => {
       }
     }
 
-    startPreview();
-    
-    // Cleanup preview stream only if camera hasn't been started for full chat
-    return () => {
-      if (previewStream && !cameraStarted) {
-        console.log('🧹 Cleaning up preview stream');
-        stopAllTracks(previewStream);
-      }
-    };
+    if (!cameraStarted) {
+      startPreview();
+    }
   }, [cameraStarted]);
 
-  // Only cleanup tracks when component unmounts
+  // Only cleanup peer connection when component unmounts
   useEffect(() => {
     return () => {
-      console.log('🧹 Chat component unmounting - cleaning up all streams');
-      
-      // Stop all tracks from main stream
-      if (localStreamRef.current) {
-        stopAllTracks(localStreamRef.current);
-        localStreamRef.current = null;
-      }
+      console.log('🧹 Chat component unmounting - cleaning up peer connection only');
       
       // Close peer connection
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
-      }
-      
-      // Clear video elements
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = null;
-      }
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = null;
       }
     };
   }, []);
@@ -251,40 +222,18 @@ const Chat = () => {
       setIsRequestingCamera(true);
       setIsLoading(true);
 
-      // Request camera and microphone access with simple constraints
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: true
-      });
-
-      console.log('✅ Camera stream received:', stream);
-      console.log('📹 Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
-
-      // Store stream reference
-      localStreamRef.current = stream;
-
-      // Attach stream to video element immediately
-      if (localVideoRef.current) {
-        console.log('📹 Setting srcObject on video element');
-        localVideoRef.current.srcObject = stream;
-        localVideoRef.current.muted = true;
-        localVideoRef.current.style.display = "block";
-        localVideoRef.current.style.width = "100%";
-        localVideoRef.current.style.height = "100%";
-        localVideoRef.current.style.objectFit = "cover";
-        
-        // Small delay to ensure srcObject is processed
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        console.log('📹 Attempting to play video');
-        try {
-          await localVideoRef.current.play();
-          console.log('✅ Video is now playing');
-        } catch (err) {
-          console.error('❌ Play error:', err);
-          // Video may still play, don't fail
-        }
+      // If we already have a stream from preview, use it
+      if (!localStreamRef.current) {
+        console.log('⚠️ No preview stream available, requesting camera access...');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: true
+        });
+        localStreamRef.current = stream;
       }
+
+      console.log('✅ Using existing stream:', localStreamRef.current);
+      console.log('📹 Stream tracks:', localStreamRef.current.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
 
       // Set camera started flag
       setCameraStarted(true);
@@ -551,24 +500,10 @@ const Chat = () => {
   const cleanup = () => {
     console.log('🧹 Cleaning up chat session');
     
-    // Stop all media tracks
-    if (localStreamRef.current) {
-      stopAllTracks(localStreamRef.current);
-      localStreamRef.current = null;
-    }
-
     // Close peer connection
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
-    }
-
-    // Clear video elements
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = null;
-    }
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = null;
     }
 
     // Reset state
