@@ -219,6 +219,7 @@ const Chat = () => {
       };
 
       peerConnection.ontrack = (event) => {
+        console.log("STREAM EVENT:", event);
         console.log("REMOTE STREAM ARRIVED:", event.streams);
 
         const remoteStream = event.streams[0];
@@ -229,10 +230,11 @@ const Chat = () => {
           remoteVideoRef.current.style.display = "block";
 
           remoteVideoRef.current.play().catch((err) => {
-            console.error("Error playing remote video:", err);
+            console.error("Remote play error:", err);
           });
 
           console.log("Attaching remote stream to video element");
+          console.log("remoteVideoRef.current.srcObject:", remoteVideoRef.current.srcObject);
         } else {
           console.error("remoteVideoRef is null");
         }
@@ -254,6 +256,7 @@ const Chat = () => {
         }
       };
 
+      console.log('✅ Peer connection created with ontrack handler:', peerConnection);
       return peerConnection;
     } catch (err) {
       console.error('❌ Error creating peer connection:', err);
