@@ -160,11 +160,13 @@ const Chat = () => {
     socket.off('disconnect');
     console.log('🔌 Removed old listeners (if any existed)');
     
-    // Partner found - OFFERER starts here
+    // Partner found - fires for BOTH offerer AND answerer
     socket.on('partner_found', async (data) => {
-      console.log('\n\n📋 ===== OFFERER FOUND PARTNER =====');
-      console.log('👥 OFFERER: Partner found:', data);
-      console.log('📊 OFFERER Stream status before peer connection:', {
+      console.log('\n\n📋 ===== PARTNER FOUND EVENT RECEIVED =====');
+      console.log('👥 Partner found:', data);
+      console.log('👥 My socket ID:', socket.id);
+      console.log('👥 Partner socket ID:', data.socketId);
+      console.log('📊 Stream status before peer connection:', {
         exists: !!localStreamRef.current,
         trackCount: localStreamRef.current?.getTracks().length,
         tracks: localStreamRef.current?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, state: t.readyState }))
@@ -173,9 +175,28 @@ const Chat = () => {
       // CRITICAL: Store partner socket ID for sending offers/answers
       partnerSocketIdRef.current = data.socketId;
       console.log('🔌 CRITICAL: Stored partner socket ID:', partnerSocketIdRef.current);
+      console.log('🔌 CRITICAL: Verification - partnerSocketIdRef.current is now:', partnerSocketIdRef.current);
       
       setHasPartner(true);
       setPartnerInfo(data);
+
+      // CRITICAL: Determine who should send the offer
+      // The peer with the LOWER socket ID (lexicographically) is the OFFERER
+      const mySocketId = socket.id;
+      const partnerSocketId = data.socketId;
+      const amIOfferer = mySocketId < partnerSocketId;
+      
+      console.log('🔍 SOCKET ID COMPARISON:');
+      console.log('   My socket ID:', mySocketId);
+      console.log('   Partner socket ID:', partnerSocketId);
+      console.log('   Am I offerer? (myID < partnerID):', amIOfferer);
+      
+      if (!amIOfferer) {
+        console.log('📭 I am the ANSWERER - waiting for offer from offerer');
+        return;
+      }
+      
+      console.log('📬 I am the OFFERER - creating peer connection and sending offer');
 
       // Create peer connection and send offer
       try {

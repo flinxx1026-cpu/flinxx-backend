@@ -884,6 +884,10 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   }
 
   // Notify both users
+  console.log('\n🎯 MATCHING COMPLETE - SENDING partner_found TO BOTH PEERS')
+  console.log('📤 Sending partner_found to socketId1:', socketId1)
+  console.log('📤 Sending partner_found to socketId2:', socketId2)
+  
   io.to(socketId1).emit('partner_found', {
     partnerId: userId2,
     sessionId: sessionId,
@@ -892,6 +896,8 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     userAge: userData2?.userAge || 18,
     userLocation: userData2?.userLocation || 'Unknown'
   })
+  console.log('✅ partner_found emitted to socketId1:', socketId1)
+  
   io.to(socketId2).emit('partner_found', {
     partnerId: userId1,
     sessionId: sessionId,
@@ -900,6 +906,7 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     userAge: userData1?.userAge || 18,
     userLocation: userData1?.userLocation || 'Unknown'
   })
+  console.log('✅ partner_found emitted to socketId2:', socketId2)
 
   console.log(`✅ Matched: ${userId1} <-> ${userId2}`)
 }
