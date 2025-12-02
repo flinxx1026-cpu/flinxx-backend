@@ -964,10 +964,10 @@ const Chat = () => {
             </div>
 
             {/* SECTION 2: MIDDLE - Messages area (scrollable) */}
-            <div id="main-container" className="flex-1 overflow-y-auto bg-black px-4 py-4 flex flex-col min-h-0" style={{ minHeight: 0 }}>
+            <div id="main-container" className="flex-1 overflow-hidden px-4 py-4 flex flex-col" style={{ zIndex: 1, backgroundColor: 'transparent' }}>
               {/* Partner video or waiting screen - ALWAYS show in messages area */}
               {hasPartner && partnerInfo ? (
-                <div id="remote-video-wrapper" className="relative flex-1 min-h-0 w-full overflow-hidden rounded-2xl" style={{ minHeight: 0, backgroundColor: 'transparent', zIndex: 5 }}>
+                <div id="remote-video-wrapper" className="relative flex-1 w-full overflow-hidden rounded-2xl" style={{ backgroundColor: 'transparent', zIndex: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                   {/* Partner video */}
                   <video
                     id="remoteVideo"
@@ -977,11 +977,15 @@ const Chat = () => {
                     muted={false}
                     className="w-full h-full object-cover"
                     style={{
-                      backgroundColor: '#000000',
+                      backgroundColor: 'transparent',
                       display: 'block',
                       zIndex: 10,
                       width: '100%',
-                      height: '100%'
+                      height: '100%',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      opacity: 1
                     }}
                   />
 
