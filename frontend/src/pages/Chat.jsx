@@ -1,3 +1,5 @@
+// DEPLOYMENT VERSION: 44ee2ae - Socket ID comparison + offerer/answerer logic
+// Last updated: 2025-12-02 - Force Vercel rebuild
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
