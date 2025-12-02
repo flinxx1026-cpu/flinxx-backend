@@ -343,70 +343,80 @@ app.get('/api/turn/credentials', async (req, res) => {
 
 // TURN Server Credentials Route - GET
 app.get("/api/get-turn-credentials", async (req, res) => {
-  try {
-    const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credential?secretKey=${process.env.METERED_SECRET_KEY}`;
+  console.log("TURN request received");
 
-    console.log('🔄 Fetching TURN credentials from:', turnUrl);
+  try {
+    const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${process.env.METERED_SECRET_KEY}`;
+    console.log("Fetching from:", turnUrl);
+    
     const response = await fetch(turnUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        expiryInSeconds: 14400,
-        label: "flinxx-user"
-      })
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
     });
 
     const data = await response.json();
-    console.log('📨 Metered API Response:', JSON.stringify(data, null, 2));
+    console.log("RAW TURN response:", data);
 
-    // Map Metered response to our format
-    const credentials = {
-      apiKey: data.iceServers?.[0]?.urls?.[0]?.split('.')?.[0]?.split(':')?.[1] || data.apiKey || 'unknown',
-      username: data.username || '',
-      password: data.credential || data.password || '',
-      iceServers: data.iceServers || []
-    };
+    const username = data.username || data.user || null;
+    const password = data.password || data.credential || null;
+    const apiKey = data.apiKey || data.api_key || null;
 
-    console.log('✅ Mapped credentials:', credentials);
-    return res.json(credentials);
+    console.log("Mapped TURN credentials:", { username, password, apiKey });
 
-  } catch (error) {
-    console.error("TURN API Error:", error);
-    return res.status(500).json({ error: "Failed to fetch TURN credentials", details: error.message });
+    console.log("Final TURN payload:", {
+      username,
+      password,
+      apiKey,
+    });
+
+    res.json({
+      username,
+      password,
+      apiKey,
+      iceServers: data.iceServers || [],
+    });
+  } catch (err) {
+    console.error("TURN error:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.post("/api/get-turn-credentials", async (req, res) => {
-  try {
-    const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credential?secretKey=${process.env.METERED_SECRET_KEY}`;
+  console.log("TURN request received");
 
-    console.log('🔄 Fetching TURN credentials from:', turnUrl);
+  try {
+    const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${process.env.METERED_SECRET_KEY}`;
+    console.log("Fetching from:", turnUrl);
+    
     const response = await fetch(turnUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        expiryInSeconds: 14400,
-        label: "flinxx-user"
-      })
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
     });
 
     const data = await response.json();
-    console.log('📨 Metered API Response:', JSON.stringify(data, null, 2));
+    console.log("RAW TURN response:", data);
 
-    // Map Metered response to our format
-    const credentials = {
-      apiKey: data.iceServers?.[0]?.urls?.[0]?.split('.')?.[0]?.split(':')?.[1] || data.apiKey || 'unknown',
-      username: data.username || '',
-      password: data.credential || data.password || '',
-      iceServers: data.iceServers || []
-    };
+    const username = data.username || data.user || null;
+    const password = data.password || data.credential || null;
+    const apiKey = data.apiKey || data.api_key || null;
 
-    console.log('✅ Mapped credentials:', credentials);
-    return res.json(credentials);
+    console.log("Mapped TURN credentials:", { username, password, apiKey });
 
-  } catch (error) {
-    console.error("TURN API Error:", error);
-    return res.status(500).json({ error: "Failed to fetch TURN credentials", details: error.message });
+    console.log("Final TURN payload:", {
+      username,
+      password,
+      apiKey,
+    });
+
+    res.json({
+      username,
+      password,
+      apiKey,
+      iceServers: data.iceServers || [],
+    });
+  } catch (err) {
+    console.error("TURN error:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
