@@ -180,122 +180,45 @@ const Chat = () => {
     };
   }, []);
 
+  const getTurnCredentials = async () => {
+    const res = await fetch("https://flinxx-backend.onrender.com/api/get-turn-credentials");
+    return await res.json();
+  };
+
   const createPeerConnection = async () => {
     try {
-      console.log('\n\n🎥 ===== PEER CONNECTION CREATION STARTING =====\n');
-      console.log("🔴 STEP 1: Calling TURN endpoint...");
-      
-      const turnUrl = "https://flinxx-backend.onrender.com/api/get-turn-credentials";
-      console.log("🔴 STEP 2: TURN URL:", turnUrl);
-      
-      const res = await fetch(turnUrl, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      });
-      
-      console.log("🔴 STEP 3: Fetch completed, status:", res.status);
-      
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      
-      const data = await res.json();
-      console.log("🔴 STEP 4: Response parsed, data:", data);
-
-      console.log('🔄 TURN credentials response (RAW):', data);
-      console.log('✅ apiKey:', data.apiKey, '(type:', typeof data.apiKey, ')');
-      console.log('✅ username:', data.username, '(type:', typeof data.username, ')');
-      console.log('✅ password:', data.password, '(type:', typeof data.password, ')');
-      console.log('✅ iceServers:', data.iceServers, '(length:', data.iceServers?.length, ')');
-
-      // Validate TURN credentials exist
-      if (!data.apiKey || !data.username || !data.password) {
-        console.error('❌ MISSING CREDENTIALS:');
-        console.error('   - apiKey:', data.apiKey);
-        console.error('   - username:', data.username);
-        console.error('   - password:', data.password);
-        throw new Error(`Missing TURN credentials from backend. Response: ${JSON.stringify(data)}`);
-      }
-
-      const iceServers = [
-        {
-          urls: [
-            `stun:${data.apiKey}.metered.live:3478`,
-            `turn:${data.apiKey}.metered.live:3478`
-          ],
-          username: data.username,
-          credential: data.password
-        }
-      ];
-
-      console.log('📋 Constructed iceServers:', JSON.stringify(iceServers, null, 2));
-      console.log('✅ iceServers[0].username:', iceServers[0].username);
-      console.log('✅ iceServers[0].credential:', iceServers[0].credential);
+      const turn = await getTurnCredentials();
 
       const config = {
-        iceServers: iceServers,
-        iceCandidatePoolSize: 10,
-        sdpSemantics: "unified-plan"
+        iceServers: [
+          {
+            urls: turn.iceServers.map(s => s.url),
+            username: turn.username,
+            credential: turn.password
+          }
+        ]
       };
 
-      console.log('🔧 RTCPeerConnection config:', config);
       const peerConnection = new RTCPeerConnection(config);
 
       peerConnection.onicecandidate = event => {
         if (event.candidate) {
-          console.log('📤 Sending ICE candidate');
-          socket.emit('ice_candidate', {
-            candidate: event.candidate
-          });
+          socket.emit('ice_candidate', { candidate: event.candidate });
         }
       };
 
       peerConnection.ontrack = (event) => {
-        console.log('\n\n🎥 ===== REMOTE TRACK RECEIVED ===== 🎥\n');
-        console.log("🎬 ===== ONTRACK FIRED =====");
-        console.log("STREAM EVENT:", event);
-        console.log("REMOTE STREAM ARRIVED:", event.streams);
-        console.log("Track kind:", event.track.kind);
-        console.log("Track enabled:", event.track.enabled);
-
         const remoteStream = event.streams[0];
-        console.log("Final remote stream:", remoteStream);
-
         if (remoteVideoRef.current) {
-          console.log("✅ remoteVideoRef exists, attaching stream");
           remoteVideoRef.current.srcObject = remoteStream;
-          console.log("✅ srcObject set:", remoteVideoRef.current.srcObject);
           remoteVideoRef.current.style.display = "block";
-          console.log("✅ display set to block");
-
           remoteVideoRef.current.play().catch((err) => {
             console.error("Error playing remote video:", err);
           });
-
-          console.log("✅ Attaching remote stream to video element - COMPLETE");
-        } else {
-          console.error("❌ remoteVideoRef is null - CANNOT ATTACH");
         }
-        console.log("🎬 ===== ONTRACK COMPLETE =====");
-        console.log('\n🎥 ===== REMOTE TRACK ATTACHMENT COMPLETE ===== 🎥\n');
-      };
-
-      // Disable unnecessary negotiation events
-      peerConnection.onnegotiationneeded = () => {
-        console.log('ℹ️ Negotiation needed event (ignored)');
-      };
-
-      peerConnection.onremotetrack = (event) => {
-        console.log('🎬 ===== ONREMOTETRACK FIRED (BACKUP) =====');
-        console.log('Remote track event:', event);
       };
 
       peerConnection.onconnectionstatechange = () => {
-        console.log('\n\n📡 ======= CONNECTION STATE CHANGED =======');
-        console.log('🔗 Connection state:', peerConnection.connectionState);
-        console.log('🔗 ICE connection state:', peerConnection.iceConnectionState);
-        console.log('🔗 Signaling state:', peerConnection.signalingState);
-        console.log('📡 ======= CONNECTION STATE CHANGED END =======\n\n');
         if (peerConnection.connectionState === 'connected') {
           setIsConnected(true);
         } else if (peerConnection.connectionState === 'disconnected' || 
@@ -305,18 +228,9 @@ const Chat = () => {
         }
       };
 
-      peerConnection.oniceconnectionstatechange = () => {
-        console.log('🧊 ICE connection state changed:', peerConnection.iceConnectionState);
-      };
-
-      console.log('✅ Peer connection created with ontrack handler:', peerConnection);
-      console.log('🎯 ontrack handler attached:', peerConnection.ontrack !== null);
-      console.log('\n🎥 ===== PEER CONNECTION CREATION COMPLETE =====\n');
       return peerConnection;
     } catch (err) {
-      console.error('🔴 ERROR in createPeerConnection:', err);
-      console.error('🔴 Error message:', err.message);
-      console.error('🔴 Error stack:', err.stack);
+      console.error('Error in createPeerConnection:', err);
       throw err;
     }
   };

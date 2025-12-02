@@ -342,125 +342,15 @@ app.get('/api/turn/credentials', async (req, res) => {
 })
 
 // ===== TURN ENDPOINTS =====
-console.log("🔴 Registering TURN endpoints...");
-
-// TURN Server Credentials Route - GET
-console.log("🔴 TURN endpoint loaded (GET /api/get-turn-credentials)");
+// ===== TURN CREDENTIALS ENDPOINT =====
 app.get("/api/get-turn-credentials", async (req, res) => {
-  console.log("🔴 TURN request received (GET)");
-  console.log("🔴 METERED_DOMAIN:", process.env.METERED_DOMAIN);
-  console.log("🔴 METERED_SECRET_KEY:", process.env.METERED_SECRET_KEY ? "[SET]" : "[NOT SET]");
-
   try {
-    const turnUrl = `https://${process.env.METERED_DOMAIN}.metered.live/api/v1/turn/credentials?secretKey=${process.env.METERED_SECRET_KEY}`;
-    console.log("🔴 TURN URL:", turnUrl);
-    console.log("🔴 Fetching TURN from:", turnUrl);
-    
-    const response = await fetch(turnUrl, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" }
-    });
-
-    console.log("🔴 HTTP Response status:", response.status);
+    const url = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?secretKey=${process.env.METERED_SECRET_KEY}`;
+    const response = await fetch(url);
     const data = await response.json();
-    console.log("🔴 RAW TURN response from Metered:", JSON.stringify(data, null, 2));
-    console.log("🔴 Response keys:", Object.keys(data));
-
-    // Debug each field
-    console.log("🔴 data.username:", data.username, "(type:", typeof data.username, ")");
-    console.log("🔴 data.user:", data.user, "(type:", typeof data.user, ")");
-    console.log("🔴 data.password:", data.password, "(type:", typeof data.password, ")");
-    console.log("🔴 data.credential:", data.credential, "(type:", typeof data.credential, ")");
-    console.log("🔴 data.apiKey:", data.apiKey, "(type:", typeof data.apiKey, ")");
-    console.log("🔴 data.api_key:", data.api_key, "(type:", typeof data.api_key, ")");
-    console.log("🔴 data.iceServers:", data.iceServers, "(length:", data.iceServers?.length, ")");
-
-    const username = data.username || data.user || null;
-    const password = data.password || data.credential || null;
-    const apiKey = data.apiKey || data.api_key || null;
-
-    console.log("🔴 Mapped username:", username);
-    console.log("🔴 Mapped password:", password);
-    console.log("🔴 Mapped apiKey:", apiKey);
-    console.log("🔴 Mapped iceServers:", data.iceServers || []);
-
-    console.log("🔴 Final TURN payload:", {
-      username,
-      password,
-      apiKey,
-      iceServers: data.iceServers || []
-    });
-
-    res.json({
-      username,
-      password,
-      apiKey,
-      iceServers: data.iceServers || [],
-    });
-  } catch (err) {
-    console.error("🔴 TURN error (GET):", err.message);
-    console.error("🔴 TURN error stack:", err.stack);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// TURN Server Credentials Route - POST
-console.log("🔴 TURN endpoint loaded (POST /api/get-turn-credentials)");
-app.post("/api/get-turn-credentials", async (req, res) => {
-  console.log("🔴 TURN request received (POST)");
-  console.log("🔴 METERED_DOMAIN:", process.env.METERED_DOMAIN);
-  console.log("🔴 METERED_SECRET_KEY:", process.env.METERED_SECRET_KEY ? "[SET]" : "[NOT SET]");
-
-  try {
-    const turnUrl = `https://${process.env.METERED_DOMAIN}.metered.live/api/v1/turn/credentials?secretKey=${process.env.METERED_SECRET_KEY}`;
-    console.log("🔴 TURN URL:", turnUrl);
-    console.log("🔴 Fetching TURN from:", turnUrl);
-    
-    const response = await fetch(turnUrl, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" }
-    });
-
-    console.log("🔴 HTTP Response status:", response.status);
-    const data = await response.json();
-    console.log("🔴 RAW TURN response from Metered:", JSON.stringify(data, null, 2));
-    console.log("🔴 Response keys:", Object.keys(data));
-
-    // Debug each field
-    console.log("🔴 data.username:", data.username, "(type:", typeof data.username, ")");
-    console.log("🔴 data.user:", data.user, "(type:", typeof data.user, ")");
-    console.log("🔴 data.password:", data.password, "(type:", typeof data.password, ")");
-    console.log("🔴 data.credential:", data.credential, "(type:", typeof data.credential, ")");
-    console.log("🔴 data.apiKey:", data.apiKey, "(type:", typeof data.apiKey, ")");
-    console.log("🔴 data.api_key:", data.api_key, "(type:", typeof data.api_key, ")");
-    console.log("🔴 data.iceServers:", data.iceServers, "(length:", data.iceServers?.length, ")");
-
-    const username = data.username || data.user || null;
-    const password = data.password || data.credential || null;
-    const apiKey = data.apiKey || data.api_key || null;
-
-    console.log("🔴 Mapped username:", username);
-    console.log("🔴 Mapped password:", password);
-    console.log("🔴 Mapped apiKey:", apiKey);
-    console.log("🔴 Mapped iceServers:", data.iceServers || []);
-
-    console.log("🔴 Final TURN payload:", {
-      username,
-      password,
-      apiKey,
-      iceServers: data.iceServers || []
-    });
-
-    res.json({
-      username,
-      password,
-      apiKey,
-      iceServers: data.iceServers || [],
-    });
-  } catch (err) {
-    console.error("🔴 TURN error (POST):", err.message);
-    console.error("🔴 TURN error stack:", err.stack);
-    res.status(500).json({ error: err.message });
+    return res.json(data);
+  } catch (error) {
+    return res.status(500).json({ error: "TURN fetch failed" });
   }
 });
 
