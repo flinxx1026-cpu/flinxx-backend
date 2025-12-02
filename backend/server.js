@@ -882,7 +882,7 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
 }
 
 // Start Server
-const PORT = parseInt(process.env.PORT || '10000', 10)
+const PORT = process.env.PORT || 10000
 
 // Add error handler for uncaught errors
 process.on('unhandledRejection', (reason, promise) => {
@@ -903,6 +903,7 @@ process.on('SIGTERM', () => {
   })
 })
 
+// Start listening immediately
 httpServer.listen(PORT, () => {
   console.log(`\n🚀 Flinxx Server running on port ${PORT}`)
   console.log(`🔌 Socket.IO server running on ws://localhost:${PORT}`)
