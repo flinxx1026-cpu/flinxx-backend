@@ -197,27 +197,29 @@ const Chat = () => {
 
   const createPeerConnection = async () => {
     try {
-      const turnServers = await getTurnServers();
-      console.log("XirSys iceServers:", turnServers);
+      // Get TURN credentials from backend
+      const turn = await getTurnServers();
+      console.log("XirSys TURN response:", turn);
 
-      // Build iceServers with Google STUN fallback
-      let iceServers = [
-        { urls: "stun:stun.l.google.com:19302" }
-      ];
-      
-      // If we got XirSys servers
-      if (turnServers && Array.isArray(turnServers) && turnServers.length > 0) {
-        console.log("Using XirSys TURN servers");
-        iceServers = iceServers.concat(turnServers);
-      } else {
-        console.log("No XirSys servers available, using only Google STUN");
-      }
+      // XirSys returns one object inside turn.v.iceServers
+      const ice = turn.v.iceServers;
 
+      // Build correct WebRTC configuration
       const config = {
-        iceServers: iceServers
+        iceServers: [
+          {
+            urls: ice.urls,
+            username: ice.username,
+            credential: ice.credential
+          },
+          {
+            urls: ['stun:stun.l.google.com:19302'] // fallback STUN
+          }
+        ]
       };
 
       console.log("RTCPeerConnection config:", config);
+      // Create peer connection with correct TURN config
       const peerConnection = new RTCPeerConnection(config);
       console.log("RTCPeerConnection created successfully");
 
