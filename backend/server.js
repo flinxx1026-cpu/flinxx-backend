@@ -341,7 +341,11 @@ app.get('/api/turn/credentials', async (req, res) => {
   }
 })
 
+// ===== TURN ENDPOINTS =====
+console.log("🔴 Registering TURN endpoints...");
+
 // TURN Server Credentials Route - GET
+console.log("🔴 TURN endpoint loaded (GET /api/get-turn-credentials)");
 app.get("/api/get-turn-credentials", async (req, res) => {
   console.log("🔴 TURN request received (GET)");
 
@@ -397,6 +401,8 @@ app.get("/api/get-turn-credentials", async (req, res) => {
   }
 });
 
+// TURN Server Credentials Route - POST
+console.log("🔴 TURN endpoint loaded (POST /api/get-turn-credentials)");
 app.post("/api/get-turn-credentials", async (req, res) => {
   console.log("🔴 TURN request received (POST)");
 
@@ -971,7 +977,12 @@ process.on('SIGTERM', () => {
 
 // Start listening immediately
 httpServer.listen(PORT, () => {
-  console.log(`\n🚀 Flinxx Server running on port ${PORT}`)
+  console.log(`\n🚀 Flinxx Server running on port ${PORT}`);
+  console.log("🔴 ===== SERVER STARTUP COMPLETE =====");
+  console.log("🔴 Available Endpoints:");
+  console.log("🔴   - GET  /api/get-turn-credentials");
+  console.log("🔴   - POST /api/get-turn-credentials");
+  console.log("🔴 ===== SERVER STARTUP COMPLETE =====\n");
   console.log(`🔌 Socket.IO server running on ws://localhost:${PORT}`)
   console.log(`✅ CORS enabled for: ${process.env.CLIENT_URL}`)
   console.log(`\n📊 Backend Configuration:`)
