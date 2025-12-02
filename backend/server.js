@@ -364,38 +364,34 @@ app.get("/api/get-turn-credentials", async (req, res) => {
 
 // ===== XIRSYS TURN ENDPOINT =====
 app.get("/api/turn", async (req, res) => {
-  const ident = process.env.XIRSYS_IDENT;
-  const secret = process.env.XIRSYS_SECRET;
-  const channel = process.env.XIRSYS_CHANNEL;
+    const ident = process.env.XIRSYS_IDENT;
+    const secret = process.env.XIRSYS_SECRET;
+    const channel = process.env.XIRSYS_CHANNEL;
 
-  const body = {
-    format: "urls"
-  };
+    const body = { format: "urls" };
+    const url = `https://global.xirsys.net/_turn/${channel}`;
 
-  const url = `https://global.xirsys.net/_turn/${channel}`;
+    try {
+        const auth = Buffer.from(`${ident}:${secret}`).toString("base64");
 
-  try {
-    const auth = Buffer.from(`${ident}:${secret}`).toString("base64");
+        const response = await fetch(url, {
+            method: "PUT",
+            body: JSON.stringify(body),
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Basic ${auth}`
+            }
+        });
 
-    const response = await fetch(url, {
-      method: "PUT",
-      body: JSON.stringify(body),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Basic ${auth}`
-      }
-    });
+        const data = await response.json();
+        console.log("XirSys TURN response:", data);
 
-    const data = await response.json();
+        res.json(data);
 
-    console.log("XirSys TURN response:", data);
-
-    res.json(data);
-
-  } catch (err) {
-    console.error("TURN error:", err);
-    res.status(500).json({ error: "Server error" });
-  }
+    } catch (err) {
+        console.error("TURN error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
 });
 
 // ===== USER MANAGEMENT ENDPOINTS =====
