@@ -344,10 +344,17 @@ app.get('/api/turn/credentials', async (req, res) => {
 // TURN Server Credentials Route - GET
 app.get('/api/get-turn-credentials', async (req, res) => {
   try {
+    console.log('🔍 TURN Credentials Request');
+    console.log('📋 METERED_DOMAIN:', process.env.METERED_DOMAIN);
+    console.log('🔑 METERED_SECRET_KEY:', process.env.METERED_SECRET_KEY);
+    
     const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${process.env.METERED_SECRET_KEY}`;
+    console.log('🌐 Full URL:', turnUrl);
 
     const response = await fetch(turnUrl);
+    console.log('📊 Response Status:', response.status);
     const data = await response.json();
+    console.log('✅ TURN data received');
 
     res.json(data);
   } catch (err) {
@@ -358,10 +365,17 @@ app.get('/api/get-turn-credentials', async (req, res) => {
 
 app.post('/api/get-turn-credentials', async (req, res) => {
   try {
+    console.log('🔍 TURN Credentials Request (POST)');
+    console.log('📋 METERED_DOMAIN:', process.env.METERED_DOMAIN);
+    console.log('🔑 METERED_SECRET_KEY:', process.env.METERED_SECRET_KEY);
+    
     const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${process.env.METERED_SECRET_KEY}`;
+    console.log('🌐 Full URL:', turnUrl);
 
     const response = await fetch(turnUrl);
+    console.log('📊 Response Status:', response.status);
     const data = await response.json();
+    console.log('✅ TURN data received');
 
     res.json(data);
   } catch (err) {
