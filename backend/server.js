@@ -341,70 +341,32 @@ app.get('/api/turn/credentials', async (req, res) => {
   }
 })
 
-// TURN Server Credentials Route - Supports both GET and POST
+// TURN Server Credentials Route - GET
 app.get('/api/get-turn-credentials', async (req, res) => {
   try {
-    if (!process.env.METERED_DOMAIN || !process.env.METERED_SECRET_KEY) {
-      console.error('❌ Missing METERED_DOMAIN or METERED_SECRET_KEY environment variables');
-      return res.status(500).json({ error: 'TURN server not configured' });
-    }
-
     const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${process.env.METERED_SECRET_KEY}`;
-    console.log('🔄 Fetching TURN credentials from:', process.env.METERED_DOMAIN);
 
-    const response = await fetch(turnUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      console.error(`❌ TURN API error: ${response.status} ${response.statusText}`);
-      const errorData = await response.text();
-      console.error('Error details:', errorData);
-      return res.status(response.status).json({ error: `TURN API error: ${response.statusText}` });
-    }
-
+    const response = await fetch(turnUrl);
     const data = await response.json();
-    console.log('✅ TURN credentials retrieved successfully');
-    return res.json(data);
+
+    res.json(data);
   } catch (err) {
-    console.error('❌ Error fetching TURN credentials:', err.message);
-    return res.status(500).json({ error: `Failed to fetch TURN credentials: ${err.message}` });
+    console.error("TURN Credentials Error:", err);
+    res.status(500).json({ error: "Failed to load TURN credentials" });
   }
 });
 
 app.post('/api/get-turn-credentials', async (req, res) => {
   try {
-    if (!process.env.METERED_DOMAIN || !process.env.METERED_SECRET_KEY) {
-      console.error('❌ Missing METERED_DOMAIN or METERED_SECRET_KEY environment variables');
-      return res.status(500).json({ error: 'TURN server not configured' });
-    }
-
     const turnUrl = `https://${process.env.METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${process.env.METERED_SECRET_KEY}`;
-    console.log('🔄 Fetching TURN credentials from:', process.env.METERED_DOMAIN);
 
-    const response = await fetch(turnUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      console.error(`❌ TURN API error: ${response.status} ${response.statusText}`);
-      const errorData = await response.text();
-      console.error('Error details:', errorData);
-      return res.status(response.status).json({ error: `TURN API error: ${response.statusText}` });
-    }
-
+    const response = await fetch(turnUrl);
     const data = await response.json();
-    console.log('✅ TURN credentials retrieved successfully');
-    return res.json(data);
+
+    res.json(data);
   } catch (err) {
-    console.error('❌ Error fetching TURN credentials:', err.message);
-    return res.status(500).json({ error: `Failed to fetch TURN credentials: ${err.message}` });
+    console.error("TURN Credentials Error:", err);
+    res.status(500).json({ error: "Failed to load TURN credentials" });
   }
 });
 
