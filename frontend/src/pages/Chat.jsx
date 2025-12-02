@@ -219,9 +219,9 @@ const Chat = () => {
         if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
             remoteVideoRef.current.style.display = "block";
-            remoteVideoRef.current.play().catch((err) => {
-                console.error("Error playing remote video:", err);
-            });
+            remoteVideoRef.current.style.width = "100%";
+            remoteVideoRef.current.style.height = "100%";
+            remoteVideoRef.current.style.objectFit = "cover";
         }
     };
 
@@ -251,15 +251,6 @@ const Chat = () => {
       setIsRequestingCamera(true);
       setIsLoading(true);
 
-      // Stop any existing preview stream first
-      if (localStreamRef.current) {
-        console.log('🛑 Stopping existing stream before requesting new one');
-        stopAllTracks(localStreamRef.current);
-      }
-
-      // Small delay to ensure old stream is released
-      await new Promise(resolve => setTimeout(resolve, 200));
-
       // Request camera and microphone access with simple constraints
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -277,6 +268,10 @@ const Chat = () => {
         console.log('📹 Setting srcObject on video element');
         localVideoRef.current.srcObject = stream;
         localVideoRef.current.muted = true;
+        localVideoRef.current.style.display = "block";
+        localVideoRef.current.style.width = "100%";
+        localVideoRef.current.style.height = "100%";
+        localVideoRef.current.style.objectFit = "cover";
         
         // Small delay to ensure srcObject is processed
         await new Promise(resolve => setTimeout(resolve, 100));

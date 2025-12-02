@@ -2,6 +2,10 @@
 
 /* Ensure all video elements display as block */
 video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  background: transparent !important;
   display: block !important;
 }
 
