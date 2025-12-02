@@ -762,11 +762,20 @@ io.on('connection', (socket) => {
   socket.on('webrtc_offer', (data) => {
     const userId = userSockets.get(socket.id)
     const partnerSocketId = data.to
+    console.log('📨 SERVER: Received webrtc_offer from socket:', socket.id)
+    console.log('📨 SERVER: Target partner socket ID:', partnerSocketId)
+    console.log('📨 SERVER: Is target valid?', !!partnerSocketId)
     if (userId && partnerSocketId) {
+      console.log('✅ SERVER: Sending webrtc_offer from', socket.id, 'to', partnerSocketId)
       io.to(partnerSocketId).emit('webrtc_offer', {
         offer: data.offer,
         from: socket.id
       })
+      console.log('✅ SERVER: webrtc_offer sent successfully')
+    } else {
+      console.error('❌ SERVER: Cannot send webrtc_offer - userId or partnerSocketId missing')
+      console.error('   userId:', userId)
+      console.error('   partnerSocketId:', partnerSocketId)
     }
   })
 
@@ -774,11 +783,17 @@ io.on('connection', (socket) => {
   socket.on('webrtc_answer', (data) => {
     const userId = userSockets.get(socket.id)
     const partnerSocketId = data.to
+    console.log('📨 SERVER: Received webrtc_answer from socket:', socket.id)
+    console.log('📨 SERVER: Target partner socket ID:', partnerSocketId)
     if (userId && partnerSocketId) {
+      console.log('✅ SERVER: Sending webrtc_answer from', socket.id, 'to', partnerSocketId)
       io.to(partnerSocketId).emit('webrtc_answer', {
         answer: data.answer,
         from: socket.id
       })
+      console.log('✅ SERVER: webrtc_answer sent successfully')
+    } else {
+      console.error('❌ SERVER: Cannot send webrtc_answer - userId or partnerSocketId missing')
     }
   })
 
@@ -786,11 +801,16 @@ io.on('connection', (socket) => {
   socket.on('ice_candidate', (data) => {
     const userId = userSockets.get(socket.id)
     const partnerSocketId = data.to
+    console.log('🧊 SERVER: Received ICE candidate from socket:', socket.id)
+    console.log('🧊 SERVER: Target partner socket ID:', partnerSocketId)
     if (userId && partnerSocketId) {
+      console.log('✅ SERVER: Sending ICE candidate from', socket.id, 'to', partnerSocketId)
       io.to(partnerSocketId).emit('ice_candidate', {
         candidate: data.candidate,
         from: socket.id
       })
+    } else {
+      console.error('❌ SERVER: Cannot send ICE candidate - userId or partnerSocketId missing')
     }
   })
 

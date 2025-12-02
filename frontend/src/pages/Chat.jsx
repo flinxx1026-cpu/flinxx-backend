@@ -41,6 +41,7 @@ const Chat = () => {
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
   const peerConnectionRef = useRef(null);
+  const partnerSocketIdRef = useRef(null);  // CRITICAL: Store partner socket ID for sending offers/answers
 
   // Log ref initialization
   useEffect(() => {
@@ -169,6 +170,10 @@ const Chat = () => {
         tracks: localStreamRef.current?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, state: t.readyState }))
       });
       
+      // CRITICAL: Store partner socket ID for sending offers/answers
+      partnerSocketIdRef.current = data.socketId;
+      console.log('🔌 CRITICAL: Stored partner socket ID:', partnerSocketIdRef.current);
+      
       setHasPartner(true);
       setPartnerInfo(data);
 
@@ -240,10 +245,12 @@ const Chat = () => {
           id: s.track?.id,
           enabled: s.track?.enabled
         })));
+        console.log('📤 OFFERER: Partner socket ID:', data.socketId);
         socket.emit('webrtc_offer', {
-          offer: peerConnectionRef.current.localDescription
+          offer: peerConnectionRef.current.localDescription,
+          to: data.socketId
         });
-        console.log('📤 OFFERER: Offer sent to answerer');
+        console.log('📤 OFFERER: Offer sent to answerer at socket:', data.socketId);
         console.log('📋 ===== OFFERER OFFER SENT =====\n\n');
       } catch (err) {
         console.error('❌ OFFERER: Error in partner_found handler:', err);
@@ -357,10 +364,13 @@ const Chat = () => {
           id: s.track?.id,
           enabled: s.track?.enabled
         })));
+        console.log('🔌 CRITICAL: Offerer socket ID from offer:', data.from);
+        console.log('🔌 SERVER sending ANSWER to:', data.from);
         socket.emit('webrtc_answer', {
-          answer: peerConnectionRef.current.localDescription
+          answer: peerConnectionRef.current.localDescription,
+          to: data.from
         });
-        console.log('📤 ANSWERER: Answer emitted to offerer via socket');
+        console.log('📤 ANSWERER: Answer emitted to offerer via socket:', data.from);
         console.log('📋 ===== ANSWERER ANSWER SENT =====\n\n');
       } catch (err) {
         console.error('\n❌ ANSWERER: ERROR in webrtc_offer handler:', err);
@@ -517,7 +527,11 @@ const Chat = () => {
               sdpMLineIndex: event.candidate.sdpMLineIndex,
               sdpMid: event.candidate.sdpMid
             });
-            socket.emit("ice-candidate", event.candidate);
+            console.log('🔌 Sending ICE candidate to partner socket:', partnerSocketIdRef.current);
+            socket.emit("ice-candidate", {
+              candidate: event.candidate,
+              to: partnerSocketIdRef.current
+            });
             console.log('📤 ICE candidate sent to peer');
         } else {
             console.log('🧊 ICE gathering complete (null candidate received)');
