@@ -353,7 +353,7 @@
 /* Flex Plans Wrapper */
 .flex-wrapper {
   width: 100%;
-  max-width: 900px;
+  max-width: 780px;
   margin: 0 auto;
   padding: 20px 10px;
   display: flex;
@@ -365,13 +365,13 @@
   display: grid;
   width: 100%;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 12px;
   justify-items: center;
 }
 
 /* Flex Item Card */
 .flex-card {
-  width: 260px;
+  width: 240px;
   padding: 16px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.05);
@@ -583,7 +583,7 @@
   }
 
   .flex-card {
-    width: 240px;
+    width: 220px;
   }
 
   .premium-box {
