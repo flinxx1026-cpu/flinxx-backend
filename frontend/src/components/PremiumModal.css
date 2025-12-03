@@ -354,21 +354,23 @@
 .flex-items-grid {
   width: 90%;
   max-width: 1100px;
-  margin: auto;
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
   margin-bottom: 20px;
+  justify-items: center;
 }
 
 /* Flex Item Card */
 .flex-item-card {
-  max-width: 280px;
-  padding: 16px;
-  margin: auto;
+  width: 300px;
+  max-width: 300px;
+  padding: 18px;
+  margin: 0;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(251, 191, 36, 0.2);
-  border-radius: 14px;
+  border-radius: 16px;
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
@@ -480,6 +482,12 @@
 }
 
 /* Responsive Design */
+@media (max-width: 900px) {
+  .flex-items-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .premium-box {
     width: 95vw;
@@ -547,7 +555,8 @@
 
   .flex-item-card {
     padding: 16px;
-    max-width: 240px;
+    width: 260px;
+    max-width: 260px;
   }
 
   .flex-emoji {
@@ -570,9 +579,69 @@
   }
 
   .flex-item-btn {
-    padding: 8px 12px;
-    font-size: 11px;
+    height: 36px;
+    font-size: 12px;
     margin-top: 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .flex-items-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .flex-item-card {
+    width: 260px;
+    max-width: 260px;
+    padding: 14px;
+  }
+
+  .premium-box {
+    padding: 20px;
+  }
+
+  .premium-title {
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+
+  .main-tab {
+    padding: 10px 14px;
+    font-size: 11px;
+  }
+
+  .premium-tabs-container {
+    gap: 6px;
+  }
+
+  .premium-tab {
+    min-width: 80px;
+    padding: 8px 10px;
+  }
+
+  .premium-card {
+    max-height: 400px;
+  }
+
+  .card-header h3 {
+    font-size: 16px;
+  }
+
+  .price-amount {
+    font-size: 22px;
+  }
+
+  .flex-item-header h4 {
+    font-size: 11px;
+  }
+
+  .flex-item-price {
+    font-size: 14px;
+  }
+
+  .flex-item-btn {
+    height: 36px;
+    font-size: 11px;
   }
 }
 
@@ -619,6 +688,7 @@
   .flex-item-card {
     padding: 14px;
     max-width: 240px;
+    width: 240px;
   }
 }
 
