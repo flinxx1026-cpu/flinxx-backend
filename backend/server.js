@@ -713,9 +713,9 @@ app.get('/auth/google/callback', async (req, res) => {
     // Redirect to frontend with token and user data
     const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
     const baseUrl = frontendUrl || 'http://localhost:3003'
-    const redirectUrl = `${baseUrl}/auth/callback?token=${sessionToken}&user=${encodeURIComponent(JSON.stringify(userData))}`
+    const redirectUrl = `${baseUrl}/callback?token=${sessionToken}&user=${encodeURIComponent(JSON.stringify(userData))}`
     
-    console.log(`🔗 Redirecting to frontend with token`)
+    console.log(`🔗 Redirecting to frontend callback: ${redirectUrl}`)
     res.redirect(redirectUrl)
   } catch (error) {
     console.error('❌ Error in /auth/google/callback:', error)
