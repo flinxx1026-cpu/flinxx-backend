@@ -25,12 +25,14 @@ const Callback = () => {
         try {
           const user = JSON.parse(userString)
           
-          // Save token to localStorage
+          // Save token to localStorage - use consistent key name 'token'
+          localStorage.setItem('token', token)
           localStorage.setItem('authToken', token)
           localStorage.setItem('user', JSON.stringify(user))
           localStorage.setItem('authProvider', 'google')
           localStorage.setItem('userInfo', JSON.stringify(user))
 
+          console.log('✅ Token saved to localStorage:', token.substring(0, 20) + '...')
           console.log('✅ User data saved:', user)
           console.log('✅ Redirecting to chat...')
 

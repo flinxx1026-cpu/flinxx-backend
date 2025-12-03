@@ -690,7 +690,7 @@ app.get('/auth/google/callback', async (req, res) => {
     const user = result.rows[0]
     console.log(`✅ User saved to database:`, user.email)
     
-    // Create a session token (simple JWT-like token)
+    // Create a JWT-like session token
     const sessionToken = Buffer.from(JSON.stringify({
       userId: user.id,
       email: user.email,
@@ -700,22 +700,63 @@ app.get('/auth/google/callback', async (req, res) => {
       timestamp: Date.now()
     })).toString('base64')
     
-    // Redirect to frontend with user data
-    const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
-    const redirectUrl = `${frontendUrl || 'http://localhost:3003'}/auth/callback?token=${sessionToken}&user=${encodeURIComponent(JSON.stringify({
+    // Store token temporarily in session (optional)
+    // For now, we'll pass it through redirect parameters
+    const userData = {
       id: user.id,
       email: user.email,
       name: user.display_name,
       picture: user.photo_url,
       googleId: userInfo.id
-    }))}`
+    }
     
-    console.log(`🔗 Redirecting to frontend: ${redirectUrl}`)
+    // Redirect to frontend with token and user data
+    const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
+    const baseUrl = frontendUrl || 'http://localhost:3003'
+    const redirectUrl = `${baseUrl}/auth/callback?token=${sessionToken}&user=${encodeURIComponent(JSON.stringify(userData))}`
+    
+    console.log(`🔗 Redirecting to frontend with token`)
     res.redirect(redirectUrl)
   } catch (error) {
     console.error('❌ Error in /auth/google/callback:', error)
     const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
     res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=${encodeURIComponent(error.message)}`)
+  }
+})
+
+// Step 3: Verify token and get user data (called from frontend after redirect)
+app.get('/auth/google/success', (req, res) => {
+  try {
+    const token = req.query.token
+    
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        error: 'No token provided'
+      })
+    }
+    
+    // Decode token
+    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
+    console.log('✅ Token decoded:', decoded.email)
+    
+    res.json({
+      success: true,
+      token: token,
+      user: {
+        id: decoded.userId,
+        email: decoded.email,
+        name: decoded.name,
+        picture: decoded.picture,
+        provider: decoded.provider
+      }
+    })
+  } catch (error) {
+    console.error('❌ Error in /auth/google/success:', error)
+    res.status(400).json({
+      success: false,
+      error: 'Invalid token'
+    })
   }
 })
 
