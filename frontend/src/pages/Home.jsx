@@ -27,7 +27,13 @@ const Home = () => {
           <div className="flex items-center gap-4">
             <button 
               onClick={handleStartChat}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-lg transition transform hover:scale-105 shadow-lg hover:shadow-blue-600/50"
+              className="text-white font-bold px-6 py-2 rounded-lg transition transform hover:scale-105 shadow-lg"
+              style={{
+                background: 'linear-gradient(90deg, #FFB31A, #FF8A00)',
+                boxShadow: '0 0 20px rgba(255, 139, 0, 0.3)'
+              }}
+              onMouseEnter={(e) => e.target.style.background = 'linear-gradient(90deg, #FF9900, #FF6A00)'}
+              onMouseLeave={(e) => e.target.style.background = 'linear-gradient(90deg, #FFB31A, #FF8A00)'}
             >
               Start Now
             </button>
@@ -54,9 +60,15 @@ const Home = () => {
             disabled={isLoading}
             className={`inline-flex items-center gap-2 px-8 py-4 text-lg font-bold rounded-lg transition-all transform hover:scale-105 mb-12 ${
               isLoading
-                ? 'bg-gray-400 cursor-not-allowed text-gray-700'
-                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-2xl shadow-blue-600/30'
+                ? 'cursor-not-allowed text-gray-700'
+                : 'text-white'
             }`}
+            style={isLoading ? { backgroundColor: '#9CA3AF' } : {
+              background: 'linear-gradient(90deg, #FFB31A, #FF8A00)',
+              boxShadow: '0 0 30px rgba(255, 139, 0, 0.4)'
+            }}
+            onMouseEnter={(e) => !isLoading && (e.target.style.background = 'linear-gradient(90deg, #FF9900, #FF6A00)')}
+            onMouseLeave={(e) => !isLoading && (e.target.style.background = 'linear-gradient(90deg, #FFB31A, #FF8A00)')}
           >
             {isLoading ? (
               <>
@@ -217,9 +229,15 @@ const Home = () => {
             disabled={isLoading}
             className={`inline-flex items-center gap-3 px-10 py-4 text-xl font-bold rounded-lg transition-all transform hover:scale-105 ${
               isLoading
-                ? 'bg-gray-400 cursor-not-allowed text-gray-700'
-                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-2xl shadow-blue-600/30'
+                ? 'cursor-not-allowed text-gray-700'
+                : 'text-white'
             }`}
+            style={isLoading ? { backgroundColor: '#9CA3AF' } : {
+              background: 'linear-gradient(90deg, #FFB31A, #FF8A00)',
+              boxShadow: '0 0 30px rgba(255, 139, 0, 0.4)'
+            }}
+            onMouseEnter={(e) => !isLoading && (e.target.style.background = 'linear-gradient(90deg, #FF9900, #FF6A00)')}
+            onMouseLeave={(e) => !isLoading && (e.target.style.background = 'linear-gradient(90deg, #FFB31A, #FF8A00)')}
           >
             {isLoading ? (
               <>
