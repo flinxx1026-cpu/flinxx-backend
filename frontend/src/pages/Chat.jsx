@@ -967,7 +967,7 @@ const Chat = () => {
             <div id="main-container" className="overflow-visible px-4 py-4 flex flex-col relative w-full" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative', flex: 1, minHeight: 0 }}>
               
               {/* Remote video wrapper - ALWAYS on top */}
-              <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 99999, overflow: 'visible', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 99999, overflow: 'visible', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                 {/* Remote video element - RENDER UNCONDITIONALLY */}
                 <video
                   id="remote-video"
@@ -985,7 +985,8 @@ const Chat = () => {
                     zIndex: 9999,
                     display: 'block',
                     opacity: 1,
-                    visibility: 'visible'
+                    visibility: 'visible',
+                    pointerEvents: 'auto'
                   }}
                 />
 
@@ -998,16 +999,16 @@ const Chat = () => {
                 )}
               </div>
 
-              {/* Waiting for partner - show ONLY when no partner */}
-              {!hasPartner ? (
-                <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl min-h-0 relative" style={{ zIndex: 1 }}>
+              {/* Waiting for partner - show ONLY when no partner - BELOW video wrapper */}
+              {!hasPartner && (
+                <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl min-h-0 relative" style={{ zIndex: 1, pointerEvents: 'none' }}>
                   <div className="text-center">
                     <div className="animate-spin mb-4 text-5xl inline-block">⟳</div>
                     <p className="text-white font-semibold text-base">Looking for a partner...</p>
                     <p className="text-white/60 text-xs mt-2">This won't take long</p>
                   </div>
                 </div>
-              ) : null}
+              )}
 
               {/* Chat messages - Display below video when they exist */}
               {messages.length > 0 && hasPartner && (

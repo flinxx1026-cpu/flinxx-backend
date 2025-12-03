@@ -99,6 +99,7 @@ video {
   z-index: 99999 !important;
   overflow: visible !important;
   background-color: transparent !important;
+  pointer-events: none !important;
 }
 
 /* Ensure parent flex containers don't collapse */
