@@ -142,6 +142,57 @@ const Chat = () => {
     }
   }, [cameraStarted]);
 
+  // Debug: Monitor wrapper element when partner connects
+  useEffect(() => {
+    if (hasPartner) {
+      setTimeout(() => {
+        const wrapper = document.getElementById('remote-video-wrapper');
+        const video = document.getElementById('remote-video');
+        if (wrapper && video) {
+          const wrapperRect = wrapper.getBoundingClientRect();
+          const videoRect = video.getBoundingClientRect();
+          const wrapperComputed = window.getComputedStyle(wrapper);
+          const videoComputed = window.getComputedStyle(video);
+          
+          console.log('\n\n🎥 ===== WRAPPER & VIDEO DEBUG (AFTER PARTNER FOUND) =====');
+          console.log('📦 Remote video wrapper dimensions:', {
+            width: wrapperRect.width,
+            height: wrapperRect.height,
+            top: wrapperRect.top,
+            left: wrapperRect.left,
+            display: wrapperComputed.display,
+            position: wrapperComputed.position,
+            zIndex: wrapperComputed.zIndex,
+            overflow: wrapperComputed.overflow,
+            backgroundColor: wrapperComputed.backgroundColor
+          });
+          console.log('🎬 Video element dimensions:', {
+            width: videoRect.width,
+            height: videoRect.height,
+            top: videoRect.top,
+            left: videoRect.left,
+            display: videoComputed.display,
+            position: videoComputed.position,
+            zIndex: videoComputed.zIndex,
+            objectFit: videoComputed.objectFit
+          });
+          console.log('🎬 Video element properties:', {
+            srcObject: !!video.srcObject,
+            srcObjectTracks: video.srcObject?.getTracks().length,
+            readyState: video.readyState,
+            networkState: video.networkState,
+            currentTime: video.currentTime,
+            duration: video.duration,
+            paused: video.paused,
+            volume: video.volume
+          });
+          console.log('📦 Wrapper visible in viewport:', wrapperRect.height > 0 && wrapperRect.width > 0);
+          console.log('🎬 Video visible in viewport:', videoRect.height > 0 && videoRect.width > 0);
+        }
+      }, 500);
+    }
+  }, [hasPartner]);
+
   // ========================================
   // CRITICAL: Setup socket listeners ONCE on component mount
   // This must run only once, NOT every time startVideoChat is called
@@ -601,7 +652,19 @@ const Chat = () => {
         
         if (remoteVideoRef.current) {
             console.log('📺 Setting remote video srcObject');
-            remoteVideoRef.current.srcObject = event.streams[0];
+            const stream = event.streams[0];
+            remoteVideoRef.current.srcObject = stream;
+            
+            // Debug: Check what was set
+            console.log('📺 srcObject set, checking video element:', {
+              srcObject: remoteVideoRef.current.srcObject,
+              srcObjectActive: remoteVideoRef.current.srcObject?.active,
+              srcObjectTracks: remoteVideoRef.current.srcObject?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })),
+              videoReadyState: remoteVideoRef.current.readyState,
+              videoNetworkState: remoteVideoRef.current.networkState,
+              videoCurrentTime: remoteVideoRef.current.currentTime
+            });
+            
             remoteVideoRef.current.style.display = "block";
             remoteVideoRef.current.style.width = "100%";
             remoteVideoRef.current.style.height = "100%";
