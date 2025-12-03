@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import "./PremiumModal.css";
 
 const PremiumModal = ({ isOpen, onClose }) => {
+  const [activeTab, setActiveTab] = useState("lite");
+
   if (!isOpen) return null;
 
   const plans = [
@@ -32,8 +34,7 @@ const PremiumModal = ({ isOpen, onClose }) => {
         "No Ads",
         "2x Profile Boost",
         "Priority Match Queue"
-      ],
-      popular: true
+      ]
     },
     {
       id: "ultra",
@@ -64,10 +65,11 @@ const PremiumModal = ({ isOpen, onClose }) => {
         "Chat Themes",
         "Profile Ring",
         "Global Boost"
-      ],
-      mostPopular: true
+      ]
     }
   ];
+
+  const currentPlan = plans.find(p => p.id === activeTab);
 
   return (
     <div className="premium-overlay" onClick={onClose}>
@@ -79,42 +81,45 @@ const PremiumModal = ({ isOpen, onClose }) => {
         <h2 className="premium-title">Flinxx Premium Plans</h2>
         <p className="premium-subtitle">Choose the perfect plan for you</p>
 
-        {/* Plans Grid */}
-        <div className="premium-plans-grid">
+        {/* Tab Navigation */}
+        <div className="premium-tabs-container">
           {plans.map((plan) => (
-            <div 
-              key={plan.id} 
-              className={`plan ${plan.popular ? "highlight" : ""} ${plan.mostPopular ? "most-popular" : ""}`}
+            <button
+              key={plan.id}
+              className={`premium-tab ${activeTab === plan.id ? "active" : ""}`}
+              onClick={() => setActiveTab(plan.id)}
             >
-              {plan.mostPopular && (
-                <div className="best-value-badge">BEST VALUE</div>
-              )}
-              {plan.popular && (
-                <div className="popular-badge">MOST POPULAR</div>
-              )}
-              
-              <div className="plan-header">
-                <h3>{plan.emoji} {plan.name}</h3>
-              </div>
-              
-              <div className="plan-price">
-                <span className="price">{plan.price}</span>
-                <span className="duration">/ {plan.duration}</span>
-              </div>
-              
-              <ul className="plan-features">
-                {plan.features.map((feature, idx) => (
-                  <li key={idx}>
-                    <span className="check">✓</span>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <button className="subscribe-btn">Subscribe Now</button>
-            </div>
+              <span className="tab-emoji">{plan.emoji}</span>
+              <span className="tab-name">{plan.name}</span>
+              <span className="tab-price">{plan.price} / {plan.duration.split(" ")[0]}d</span>
+            </button>
           ))}
         </div>
+
+        {/* Feature Card - Single Card that updates */}
+        {currentPlan && (
+          <div className="premium-card" key={activeTab}>
+            <div className="card-header">
+              <h3>{currentPlan.emoji} {currentPlan.name}</h3>
+            </div>
+
+            <div className="card-price">
+              <div className="price-amount">{currentPlan.price}</div>
+              <div className="price-duration">/ {currentPlan.duration}</div>
+            </div>
+
+            <ul className="card-features">
+              {currentPlan.features.map((feature, idx) => (
+                <li key={idx}>
+                  <span className="feature-check">✓</span>
+                  <span className="feature-text">{feature}</span>
+                </li>
+              ))}
+            </ul>
+
+            <button className="card-subscribe-btn">Subscribe Now</button>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="premium-footer">
