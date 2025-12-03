@@ -351,32 +351,31 @@
 }
 
 /* Flex Plans Wrapper */
-.flex-plans-wrapper {
+.flex-wrapper {
   width: 100%;
-  max-width: 1100px;
+  max-width: 1050px;
   margin: 0 auto;
   padding: 20px 10px;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: 20px;
+  display: flex;
+  justify-content: center;
 }
 
-/* Flex Items Grid */
-.flex-items-grid {
+/* Flex Plans Container */
+.flex-plans-container {
   display: grid;
+  width: 100%;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  gap: 22px;
   justify-items: center;
 }
 
 /* Flex Item Card */
-.flex-item-card {
+.flex-card {
   width: 300px;
-  max-width: 300px;
   padding: 18px;
-  margin: 0;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(251, 191, 36, 0.2);
-  border-radius: 16px;
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
@@ -385,7 +384,7 @@
   text-align: center;
 }
 
-.flex-item-card:hover {
+.flex-card:hover {
   border-color: rgba(251, 191, 36, 0.5);
   background: rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 24px rgba(251, 191, 36, 0.15);
@@ -487,9 +486,8 @@
   margin-top: 0;
 }
 
-/* Responsive Design */
 @media (max-width: 900px) {
-  .flex-items-grid {
+  .flex-plans-container {
     grid-template-columns: repeat(2, 1fr);
   }
 }
@@ -553,16 +551,14 @@
     font-size: 12px;
   }
 
-  .flex-items-grid {
+  .flex-plans-container {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
-    margin-bottom: 16px;
   }
 
-  .flex-item-card {
+  .flex-card {
     padding: 16px;
     width: 260px;
-    max-width: 260px;
   }
 
   .flex-emoji {
@@ -592,13 +588,12 @@
 }
 
 @media (max-width: 600px) {
-  .flex-items-grid {
+  .flex-plans-container {
     grid-template-columns: repeat(1, 1fr);
   }
 
-  .flex-item-card {
+  .flex-card {
     width: 260px;
-    max-width: 260px;
     padding: 14px;
   }
 
@@ -648,52 +643,5 @@
   .flex-item-btn {
     height: 36px;
     font-size: 11px;
-  }
-}
-
-@media (max-width: 480px) {
-  .premium-box {
-    padding: 20px;
-  }
-
-  .premium-title {
-    font-size: 22px;
-    margin-bottom: 16px;
-  }
-
-  .main-tab {
-    padding: 10px 14px;
-    font-size: 11px;
-  }
-
-  .premium-tabs-container {
-    gap: 6px;
-  }
-
-  .premium-tab {
-    min-width: 80px;
-    padding: 8px 10px;
-  }
-
-  .flex-items-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .premium-card {
-    max-height: 400px;
-  }
-
-  .card-header h3 {
-    font-size: 16px;
-  }
-
-  .price-amount {
-    font-size: 22px;
-  }
-
-  .flex-item-card {
-    padding: 14px;
-    max-width: 240px;
-    width: 240px;
   }
 }
