@@ -353,15 +353,18 @@
 /* Flex Plans Wrapper */
 .flex-wrapper {
   width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px 10px;
   display: flex;
   justify-content: center;
-  padding: 20px 10px;
 }
 
 /* Flex Plans Box */
 .flex-plans-box {
   width: 770px;
-  margin: auto;
+  max-width: 720px;
+  margin: 0 auto;
 }
 
 /* Flex Plans Container */
