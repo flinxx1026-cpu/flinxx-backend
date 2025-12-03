@@ -2,11 +2,12 @@ import React, { useState } from "react";
 import "./PremiumModal.css";
 
 const PremiumModal = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState("lite");
+  const [mainTab, setMainTab] = useState("premium");
+  const [activePremiumTab, setActivePremiumTab] = useState("lite");
 
   if (!isOpen) return null;
 
-  const plans = [
+  const premiumPlans = [
     {
       id: "lite",
       name: "LITE",
@@ -52,24 +53,68 @@ const PremiumModal = ({ isOpen, onClose }) => {
         "Ultra Badge",
         "Double Visibility"
       ]
+    }
+  ];
+
+  const flexItems = [
+    {
+      id: "blue-tick",
+      name: "Blue Tick",
+      emoji: "✓",
+      price: "₹69",
+      features: [
+        "Verification badge",
+        "Trust boost",
+        "Status indicator"
+      ]
     },
     {
-      id: "ultra-plus",
-      name: "ULTRA PLUS",
-      emoji: "👑💎",
-      price: "₹499",
-      duration: "30 Days",
+      id: "chat-themes",
+      name: "Chat Themes",
+      emoji: "🎨",
+      price: "₹49",
       features: [
-        "All Ultra features",
-        "Blue Tick",
-        "Chat Themes",
-        "Profile Ring",
-        "Global Boost"
+        "Unlock themes",
+        "Custom colors",
+        "Personal style"
+      ]
+    },
+    {
+      id: "match-boost",
+      name: "Match Boost",
+      emoji: "⚡",
+      price: "₹39",
+      features: [
+        "30 min visibility boost",
+        "Increased reach",
+        "More matches"
+      ]
+    },
+    {
+      id: "profile-ring",
+      name: "Profile Ring",
+      emoji: "💍",
+      price: "₹79",
+      features: [
+        "Colored profile ring",
+        "Stand out",
+        "Eye-catching design"
+      ]
+    },
+    {
+      id: "profile-highlight",
+      name: "Profile Highlight",
+      emoji: "⭐",
+      price: "₹99",
+      features: [
+        "24h highlight",
+        "Top search visibility",
+        "Premium placement"
       ]
     }
   ];
 
-  const currentPlan = plans.find(p => p.id === activeTab);
+  const currentPremiumPlan = premiumPlans.find(p => p.id === activePremiumTab);
 
   return (
     <div className="premium-overlay" onClick={onClose}>
@@ -78,46 +123,97 @@ const PremiumModal = ({ isOpen, onClose }) => {
         <button className="close-btn" onClick={onClose}>✖</button>
 
         {/* Title */}
-        <h2 className="premium-title">Flinxx Premium Plans</h2>
-        <p className="premium-subtitle">Choose the perfect plan for you</p>
+        <h2 className="premium-title">Flinxx Subscriptions</h2>
 
-        {/* Tab Navigation */}
-        <div className="premium-tabs-container">
-          {plans.map((plan) => (
-            <button
-              key={plan.id}
-              className={`premium-tab ${activeTab === plan.id ? "active" : ""}`}
-              onClick={() => setActiveTab(plan.id)}
-            >
-              <span className="tab-emoji">{plan.emoji}</span>
-              <span className="tab-name">{plan.name}</span>
-              <span className="tab-price">{plan.price} / {plan.duration.split(" ")[0]}d</span>
-            </button>
-          ))}
+        {/* Main Tabs */}
+        <div className="main-tabs-container">
+          <button
+            className={`main-tab ${mainTab === "premium" ? "active" : ""}`}
+            onClick={() => setMainTab("premium")}
+          >
+            Premium Plans
+          </button>
+          <button
+            className={`main-tab ${mainTab === "flex" ? "active" : ""}`}
+            onClick={() => setMainTab("flex")}
+          >
+            Flex Plans
+          </button>
         </div>
 
-        {/* Feature Card - Single Card that updates */}
-        {currentPlan && (
-          <div className="premium-card" key={activeTab}>
-            <div className="card-header">
-              <h3>{currentPlan.emoji} {currentPlan.name}</h3>
-            </div>
-
-            <div className="card-price">
-              <div className="price-amount">{currentPlan.price}</div>
-              <div className="price-duration">/ {currentPlan.duration}</div>
-            </div>
-
-            <ul className="card-features">
-              {currentPlan.features.map((feature, idx) => (
-                <li key={idx}>
-                  <span className="feature-check">✓</span>
-                  <span className="feature-text">{feature}</span>
-                </li>
+        {/* PREMIUM TAB CONTENT */}
+        {mainTab === "premium" && (
+          <div className="tab-content">
+            {/* Premium Plan Tabs */}
+            <div className="premium-tabs-container">
+              {premiumPlans.map((plan) => (
+                <button
+                  key={plan.id}
+                  className={`premium-tab ${activePremiumTab === plan.id ? "active" : ""}`}
+                  onClick={() => setActivePremiumTab(plan.id)}
+                >
+                  <span className="tab-emoji">{plan.emoji}</span>
+                  <span className="tab-name">{plan.name}</span>
+                  <span className="tab-price">{plan.price}</span>
+                </button>
               ))}
-            </ul>
+            </div>
 
-            <button className="card-subscribe-btn">Subscribe Now</button>
+            {/* Premium Feature Card - Single Card that updates */}
+            {currentPremiumPlan && (
+              <div className="premium-card" key={activePremiumTab}>
+                <div className="card-header">
+                  <h3>{currentPremiumPlan.emoji} {currentPremiumPlan.name}</h3>
+                </div>
+
+                <div className="card-price">
+                  <div className="price-amount">{currentPremiumPlan.price}</div>
+                  <div className="price-duration">/ {currentPremiumPlan.duration}</div>
+                </div>
+
+                <ul className="card-features">
+                  {currentPremiumPlan.features.map((feature, idx) => (
+                    <li key={idx}>
+                      <span className="feature-check">✓</span>
+                      <span className="feature-text">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button className="card-subscribe-btn">Subscribe Now</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* FLEX TAB CONTENT */}
+        {mainTab === "flex" && (
+          <div className="tab-content">
+            <p className="flex-subtitle">Choose individual features</p>
+            
+            <div className="flex-items-grid">
+              {flexItems.map((item) => (
+                <div key={item.id} className="flex-item-card">
+                  <div className="flex-item-header">
+                    <span className="flex-emoji">{item.emoji}</span>
+                    <h4>{item.name}</h4>
+                  </div>
+
+                  <div className="flex-item-price">{item.price}</div>
+
+                  <ul className="flex-item-features">
+                    {item.features.map((feature, idx) => (
+                      <li key={idx}>
+                        <span className="flex-check">•</span>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button className="flex-item-btn">Add Now</button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
