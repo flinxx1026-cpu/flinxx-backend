@@ -2,9 +2,72 @@ import React, { useState } from "react";
 import "./PremiumModal.css";
 
 const PremiumModal = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState("plus");
-
   if (!isOpen) return null;
+
+  const plans = [
+    {
+      id: "lite",
+      name: "LITE",
+      emoji: "✨",
+      price: "₹69",
+      duration: "1 Day",
+      features: [
+        "Unlimited Filters",
+        "Gender Filter: 50/day",
+        "10 Match Preferences",
+        "Ads Enabled",
+        "No Boost"
+      ]
+    },
+    {
+      id: "prime",
+      name: "PRIME",
+      emoji: "👑",
+      price: "₹199",
+      duration: "15 Days",
+      features: [
+        "Unlimited Filters",
+        "Gender Filter: 150/day",
+        "Full Match Preferences",
+        "No Ads",
+        "2x Profile Boost",
+        "Priority Match Queue"
+      ],
+      popular: true
+    },
+    {
+      id: "ultra",
+      name: "ULTRA",
+      emoji: "💎",
+      price: "₹399",
+      duration: "30 Days",
+      features: [
+        "Unlimited Filters",
+        "Unlimited Gender Filter",
+        "Full Match Preferences",
+        "No Ads",
+        "5x Profile Boost",
+        "Ultra Priority Queue",
+        "Ultra Badge",
+        "Double Visibility"
+      ]
+    },
+    {
+      id: "ultra-plus",
+      name: "ULTRA PLUS",
+      emoji: "👑💎",
+      price: "₹499",
+      duration: "30 Days",
+      features: [
+        "All Ultra features",
+        "Blue Tick",
+        "Chat Themes",
+        "Profile Ring",
+        "Global Boost"
+      ],
+      mostPopular: true
+    }
+  ];
 
   return (
     <div className="premium-overlay" onClick={onClose}>
@@ -13,84 +76,49 @@ const PremiumModal = ({ isOpen, onClose }) => {
         <button className="close-btn" onClick={onClose}>✖</button>
 
         {/* Title */}
-        <h2 className="premium-title">Flinxx Prime</h2>
+        <h2 className="premium-title">Flinxx Premium Plans</h2>
+        <p className="premium-subtitle">Choose the perfect plan for you</p>
 
-        {/* Tabs */}
-        <div className="premium-tabs">
-          <button 
-            className={`tab-btn ${activeTab === "plus" ? "active" : ""}`}
-            onClick={() => setActiveTab("plus")}
-          >
-            Flinxx Prime
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === "plus+" ? "active" : ""}`}
-            onClick={() => setActiveTab("plus+")}
-          >
-            Flinxx Ultra
-          </button>
-        </div>
-
-        {/* Plans */}
-        <div className="premium-plans">
-          {/* Plus Plan */}
-          <div className={`plan ${activeTab === "plus" ? "highlight" : ""}`}>
-            <div className="plan-header">
-              <h3>👑 Prime</h3>
+        {/* Plans Grid */}
+        <div className="premium-plans-grid">
+          {plans.map((plan) => (
+            <div 
+              key={plan.id} 
+              className={`plan ${plan.popular ? "highlight" : ""} ${plan.mostPopular ? "most-popular" : ""}`}
+            >
+              {plan.mostPopular && (
+                <div className="best-value-badge">BEST VALUE</div>
+              )}
+              {plan.popular && (
+                <div className="popular-badge">MOST POPULAR</div>
+              )}
+              
+              <div className="plan-header">
+                <h3>{plan.emoji} {plan.name}</h3>
+              </div>
+              
+              <div className="plan-price">
+                <span className="price">{plan.price}</span>
+                <span className="duration">/ {plan.duration}</span>
+              </div>
+              
+              <ul className="plan-features">
+                {plan.features.map((feature, idx) => (
+                  <li key={idx}>
+                    <span className="check">✓</span>
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              
+              <button className="subscribe-btn">Subscribe Now</button>
             </div>
-            <ul className="plan-features">
-              <li>
-                <span className="check">✓</span>
-                <span>Unlimited Filters</span>
-              </li>
-              <li>
-                <span className="check">✓</span>
-                <span>Gender Filter: 150/day</span>
-              </li>
-              <li>
-                <span className="check">✓</span>
-                <span>Match Preferences</span>
-              </li>
-              <li>
-                <span className="check">✓</span>
-                <span>No Ads</span>
-              </li>
-            </ul>
-            <div className="plan-price">₹ 299 / 7 Days</div>
-            <button className="subscribe-btn">Subscribe</button>
-          </div>
-
-          {/* Ultra Plan */}
-          <div className={`plan ${activeTab === "plus+" ? "highlight" : ""}`}>
-            <div className="plan-header">
-              <h3>💎 Ultra</h3>
-            </div>
-            <ul className="plan-features">
-              <li>
-                <span className="check">✓</span>
-                <span>Unlimited Filters</span>
-              </li>
-              <li>
-                <span className="check">✓</span>
-                <span>Unlimited Gender Filter</span>
-              </li>
-              <li>
-                <span className="check">✓</span>
-                <span>Match Preferences</span>
-              </li>
-              <li>
-                <span className="check">✓</span>
-                <span>No Ads</span>
-              </li>
-            </ul>
-            <div className="plan-price">₹ 499 / 30 Days</div>
-            <button className="subscribe-btn">Subscribe</button>
-          </div>
+          ))}
         </div>
 
         {/* Footer */}
         <div className="premium-footer">
-          <p>Recurring billing. Cancel anytime.</p>
+          <p>Recurring billing. Cancel anytime. No hidden charges.</p>
         </div>
       </div>
     </div>
