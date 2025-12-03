@@ -1,31 +1,43 @@
 <svg width="280" height="72" viewBox="0 0 280 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Icon with rounded square background and glow -->
+  <!-- Icon Container -->
   <g>
-    <!-- Outer glow effect -->
-    <rect x="8" y="8" width="56" height="56" rx="12" fill="none" stroke="url(#glowGradient)" stroke-width="2" opacity="0.4"/>
+    <!-- Golden glow ring (outer) -->
+    <circle cx="36" cy="36" r="33" fill="none" stroke="#FFD700" stroke-width="2.5" opacity="0.6"/>
+    <circle cx="36" cy="36" r="30" fill="none" stroke="#FFB31A" stroke-width="1.5" opacity="0.4"/>
     
-    <!-- Main rounded square background -->
-    <rect x="12" y="12" width="48" height="48" rx="10" fill="url(#iconGradient)" filter="url(#shadow)"/>
+    <!-- Purple rounded-square background with gradient -->
+    <defs>
+      <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#B555FF;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#8B3DFF;stop-opacity:1" />
+      </linearGradient>
+      <filter id="iconShadow">
+        <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.4"/>
+      </filter>
+    </defs>
     
-    <!-- Camera icon inside -->
-    <g transform="translate(20, 20)">
+    <rect x="10" y="10" width="52" height="52" rx="14" fill="url(#purpleGrad)" filter="url(#iconShadow)"/>
+    
+    <!-- Camera lens icon (centered) -->
+    <g transform="translate(21, 20)">
       <!-- Camera body -->
-      <rect x="4" y="6" width="16" height="14" rx="2" fill="white" stroke="white" stroke-width="0.8"/>
+      <rect x="3" y="8" width="18" height="14" rx="2" fill="none" stroke="white" stroke-width="1.5"/>
       
-      <!-- Camera lens circle -->
-      <circle cx="22" cy="13" r="4" fill="none" stroke="white" stroke-width="1.2"/>
-      <circle cx="22" cy="13" r="2" fill="white" opacity="0.7"/>
+      <!-- Camera lens -->
+      <circle cx="25" cy="15" r="5" fill="none" stroke="white" stroke-width="1.5"/>
+      <circle cx="25" cy="15" r="3" fill="white" opacity="0.6"/>
     </g>
     
-    <!-- Lightning bolt accent (top right) -->
-    <g transform="translate(45, 15)">
-      <!-- Lightning bolt shape -->
-      <path d="M 6 0 L 2 6 L 6 6 L 0 14 L 6 8 L 2 8 Z" fill="#FFD700" opacity="0.9"/>
+    <!-- Lightning bolt (top-right accent) -->
+    <g transform="translate(42, 12)">
+      <path d="M 8 0 L 3 8 L 7 8 L 0 16 L 8 9 L 4 9 Z" fill="#FFD700" opacity="0.95"/>
+      <path d="M 8 0 L 3 8 L 7 8 L 0 16 L 8 9 L 4 9 Z" fill="none" stroke="#FF8A00" stroke-width="0.8" opacity="0.6"/>
     </g>
     
-    <!-- Accent sparkles -->
-    <circle cx="14" cy="14" r="1.2" fill="#FFD700" opacity="0.7"/>
-    <circle cx="54" cy="18" r="1.2" fill="#FFD700" opacity="0.7"/>
+    <!-- Golden accent sparkles -->
+    <circle cx="15" cy="15" r="1.5" fill="#FFD700" opacity="0.8"/>
+    <circle cx="57" cy="20" r="1.5" fill="#FFD700" opacity="0.8"/>
+    <circle cx="18" cy="50" r="1" fill="#FFB31A" opacity="0.6"/>
   </g>
   
   <!-- FLINXX Text -->
@@ -33,30 +45,13 @@
     FLINXX
   </text>
   
-  <!-- Gradients and Filters -->
+  <!-- Gradients -->
   <defs>
-    <!-- Glow effect gradient -->
-    <linearGradient id="glowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#FFB31A;stop-opacity:1" />
-    </linearGradient>
-    
-    <!-- Icon background gradient - purple to magenta -->
-    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#A855F7;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#D946EF;stop-opacity:1" />
-    </linearGradient>
-    
     <!-- Text gradient - yellow to orange -->
     <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
       <stop offset="50%" style="stop-color:#FFB31A;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#FF8A00;stop-opacity:1" />
     </linearGradient>
-    
-    <!-- Drop shadow filter -->
-    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-opacity="0.4" flood-color="#000000"/>
-    </filter>
   </defs>
 </svg>
