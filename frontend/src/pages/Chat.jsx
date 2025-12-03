@@ -277,8 +277,9 @@ const Chat = () => {
           offer: peerConnectionRef.current.localDescription,
           to: data.socketId
         });
-        
         console.log('✅ OFFERER: webrtc_offer emitted successfully');
+        console.log('✅ OFFERER: webrtc_offer sent to socket ID:', data.socketId);
+        console.log('✅ OFFERER: webrtc_offer contains', peerConnectionRef.current.getSenders().length, 'senders');
         console.log('✅ OFFERER: Sent to socket:', data.socketId);
       } catch (err) {
         console.error('❌ OFFERER: Error in partner_found handler:', err);
@@ -288,11 +289,11 @@ const Chat = () => {
 
     // Receive offer - ANSWERER starts here
     socket.on('webrtc_offer', async (data) => {
-      console.log('\n\n');
-      console.log('🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉');
-      console.log('🎉🎉🎉 ANSWERER HANDLER FIRED 🎉🎉🎉');
+      console.log('\n\n🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉');
+      console.log('🎉🎉🎉 ⭐️ ANSWERER HANDLER FIRED ⭐️ 🎉🎉🎉');
       console.log('🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉');
       console.log('📋 ===== ANSWERER RECEIVED OFFER =====');
+      console.log('⭐️ ANSWERER: WEBRTC_OFFER EVENT FIRED - OFFER WAS RECEIVED');
       console.log('📨 ANSWERER: Received WebRTC offer from offerer');
       console.log('📨 ANSWERER: My socket ID:', socket.id);
       console.log('📨 ANSWERER: Offer from:', data.from);
