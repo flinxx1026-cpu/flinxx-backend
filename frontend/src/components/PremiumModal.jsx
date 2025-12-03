@@ -191,28 +191,30 @@ const PremiumModal = ({ isOpen, onClose }) => {
           <div className="tab-content">
             <p className="flex-subtitle">Choose individual features</p>
             
-            <div className="flex-items-grid">
-              {flexItems.map((item) => (
-                <div key={item.id} className="flex-item-card">
-                  <div className="flex-item-header">
-                    <span className="flex-emoji">{item.emoji}</span>
-                    <h4>{item.name}</h4>
+            <div className="flex-plans-wrapper">
+              <div className="flex-items-grid">
+                {flexItems.map((item) => (
+                  <div key={item.id} className="flex-item-card">
+                    <div className="flex-item-header">
+                      <span className="flex-emoji">{item.emoji}</span>
+                      <h4>{item.name}</h4>
+                    </div>
+
+                    <div className="flex-item-price">{item.price}</div>
+
+                    <ul className="flex-item-features">
+                      {item.features.map((feature, idx) => (
+                        <li key={idx}>
+                          <span className="flex-check">•</span>
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <button className="flex-item-btn">Add Now</button>
                   </div>
-
-                  <div className="flex-item-price">{item.price}</div>
-
-                  <ul className="flex-item-features">
-                    {item.features.map((feature, idx) => (
-                      <li key={idx}>
-                        <span className="flex-check">•</span>
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button className="flex-item-btn">Add Now</button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
