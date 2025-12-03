@@ -352,18 +352,23 @@
 
 /* Flex Items Grid */
 .flex-items-grid {
+  width: 90%;
+  max-width: 1100px;
+  margin: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 16px;
   margin-bottom: 20px;
 }
 
 /* Flex Item Card */
 .flex-item-card {
+  max-width: 280px;
+  padding: 16px;
+  margin: auto;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(251, 191, 36, 0.2);
   border-radius: 14px;
-  padding: 18px;
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
@@ -393,7 +398,7 @@
 }
 
 .flex-item-header h4 {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   margin: 0;
   color: white;
@@ -402,8 +407,8 @@
 
 /* Flex Item Price */
 .flex-item-price {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
   color: #fbbf24;
   margin-bottom: 12px;
   padding-bottom: 12px;
@@ -439,13 +444,14 @@
 
 /* Flex Item Button */
 .flex-item-btn {
+  width: 100%;
+  height: 40px;
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   border: none;
   color: #000;
-  padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
   margin-top: 12px;
@@ -541,6 +547,7 @@
 
   .flex-item-card {
     padding: 16px;
+    max-width: 240px;
   }
 
   .flex-emoji {
@@ -610,6 +617,14 @@
   }
 
   .flex-item-card {
+    padding: 14px;
+    max-width: 240px;
+  }
+}
+
+@media (max-width: 600px) {
+  .flex-item-card {
+    max-width: 240px;
     padding: 14px;
   }
 }
