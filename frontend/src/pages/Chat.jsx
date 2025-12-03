@@ -963,36 +963,37 @@ const Chat = () => {
               </div>
             </div>
 
-            {/* SECTION 2: MIDDLE - Messages area (scrollable) */}
-            <div id="main-container" className="overflow-visible px-4 py-4 flex flex-col relative w-full" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative', flex: 1, height: '100%' }}>
+            {/* SECTION 2: MIDDLE - Messages area with remote video */}
+            <div id="main-container" className="overflow-hidden flex flex-col relative w-full" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative', flex: 1, height: '100%', padding: 0 }}>
               
-              {/* Remote video wrapper - ALWAYS on top */}
-              <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 99999, overflow: 'visible', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                {/* Remote video element - RENDER UNCONDITIONALLY */}
-                <video
-                  id="remote-video"
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  muted={false}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    backgroundColor: 'black',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    zIndex: 9999,
-                    display: 'block',
-                    opacity: 1,
-                    visibility: 'visible',
-                    pointerEvents: 'auto'
-                  }}
-                />
+              {/* Remote video wrapper - ABSOLUTE FULL SIZE */}
+              <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: hasPartner ? 99999 : 1, overflow: 'hidden', backgroundColor: hasPartner ? 'black' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                {/* Remote video element */}
+                {hasPartner && (
+                  <video
+                    id="remote-video"
+                    ref={remoteVideoRef}
+                    autoPlay={true}
+                    playsInline={true}
+                    muted={false}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      backgroundColor: 'black',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      zIndex: 9999,
+                      display: 'block',
+                      opacity: 1,
+                      visibility: 'visible'
+                    }}
+                  />
+                )}
 
                 {/* Connection status overlay - Top Right */}
-                {isConnected && (
+                {isConnected && hasPartner && (
                   <div className="absolute top-3 right-3 flex items-center gap-2 bg-green-500 bg-opacity-90 text-white px-2 py-1 rounded-full text-xs font-semibold z-50 shadow-lg">
                     <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
                     {formatTime(connectionTime)}
@@ -1000,9 +1001,9 @@ const Chat = () => {
                 )}
               </div>
 
-              {/* Waiting for partner - show ONLY when no partner - BELOW video wrapper */}
+              {/* Waiting for partner - show ONLY when no partner */}
               {!hasPartner && (
-                <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl min-h-0 relative" style={{ zIndex: 1, pointerEvents: 'none' }}>
+                <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl relative" style={{ zIndex: 1 }}>
                   <div className="text-center">
                     <div className="animate-spin mb-4 text-5xl inline-block">⟳</div>
                     <p className="text-white font-semibold text-base">Looking for a partner...</p>
@@ -1013,7 +1014,7 @@ const Chat = () => {
 
               {/* Chat messages - Display below video when they exist */}
               {messages.length > 0 && hasPartner && (
-                <div className="space-y-2 mt-3 relative" style={{ zIndex: 10 }}>
+                <div className="space-y-2 mt-3 relative px-4" style={{ zIndex: 10 }}>
                   {messages.map(msg => (
                     <div
                       key={msg.id}
