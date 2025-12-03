@@ -17,7 +17,7 @@ function Layout() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/auth/callback" element={<Callback />} />
+            <Route path="/callback" element={<Callback />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/matching" element={<Matching />} />
             <Route path="/profile" element={<Profile />} />
