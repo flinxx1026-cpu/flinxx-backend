@@ -192,9 +192,10 @@ const PremiumModal = ({ isOpen, onClose }) => {
             <p className="flex-subtitle">Choose individual features</p>
             
             <div className="flex-wrapper">
-              <div className="flex-plans-container">
-                {flexItems.map((item) => (
-                  <div key={item.id} className="flex-card">
+              <div className="flex-plans-box">
+                <div className="flex-plans-container">
+                  {flexItems.map((item) => (
+                    <div key={item.id} className="flex-card">
                     <div className="flex-item-header">
                       <span className="flex-emoji">{item.emoji}</span>
                       <h4>{item.name}</h4>
@@ -214,6 +215,7 @@ const PremiumModal = ({ isOpen, onClose }) => {
                     <button className="flex-item-btn">Add Now</button>
                   </div>
                 ))}
+                </div>
               </div>
             </div>
           </div>
