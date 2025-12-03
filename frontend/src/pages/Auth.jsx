@@ -20,25 +20,10 @@ const Auth = () => {
   }, [user, authLoading, navigate])
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true)
-    setAuthMethod('google')
-    setError(null)
-    // ⚠️ DO NOT set authPending here - Firebase popup must complete without interference
-    // Firebase will handle window.closed() check internally
-    
-    try {
-      console.log('📱 Starting Google login popup...')
-      const userInfo = await signInWithGoogle()
-      console.log('✅ Google login successful:', userInfo)
-      
-      // Navigate after successful login
-      navigate('/chat')
-    } catch (error) {
-      console.error('❌ Google login failed:', error)
-      setError('Google login failed. Please try again.')
-      setIsLoading(false)
-      setAuthMethod(null)
-    }
+    // Redirect to backend OAuth instead of Firebase
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+    console.log('🔗 Redirecting to Google OAuth:', `${BACKEND_URL}/auth/google`)
+    window.location.href = `${BACKEND_URL}/auth/google`
   }
 
   const handleFacebookLogin = async () => {

@@ -8,8 +8,8 @@ import { signInWithGoogle, signInWithFacebook, checkRedirectResult } from '../co
 // Custom Google Login Button Component
 const GoogleCustomButton = ({ isSigningIn }) => {
   const handleGoogleClick = () => {
-    // Get backend URL from environment or use production URL
-    const BACKEND_URL = import.meta.env.VITE_API_URL || 'https://flinxx-backend.onrender.com'
+    // Get backend URL from environment or use fallback
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
     console.log('🔗 Redirecting to Google OAuth:', `${BACKEND_URL}/auth/google`)
     window.location.href = `${BACKEND_URL}/auth/google`
   }
