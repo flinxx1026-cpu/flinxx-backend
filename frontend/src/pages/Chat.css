@@ -7,17 +7,11 @@ video {
   object-fit: cover !important;
   background: transparent !important;
   display: block !important;
-  z-index: 10 !important;
-  position: relative !important;
   opacity: 1 !important;
-  min-width: 100px !important;
-  min-height: 100px !important;
 }
 
 #localVideo,
-#remoteVideo {
-  min-width: 200px !important;
-  min-height: 300px !important;
+#remote-video {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
@@ -26,8 +20,7 @@ video {
 .video-wrapper,
 .video-container,
 .video-box,
-.right-panel,
-#remote-video-wrapper {
+.right-panel {
   flex-shrink: 0 !important;
   min-width: 0 !important;
   min-height: 0 !important;
