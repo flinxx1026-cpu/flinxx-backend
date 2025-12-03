@@ -353,7 +353,7 @@
 /* Flex Plans Wrapper */
 .flex-wrapper {
   width: 100%;
-  max-width: 1050px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 20px 10px;
   display: flex;
@@ -365,15 +365,15 @@
   display: grid;
   width: 100%;
   grid-template-columns: repeat(3, 1fr);
-  gap: 22px;
+  gap: 16px;
   justify-items: center;
 }
 
 /* Flex Item Card */
 .flex-card {
-  width: 300px;
-  padding: 18px;
-  border-radius: 16px;
+  width: 260px;
+  padding: 16px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(251, 191, 36, 0.2);
   backdrop-filter: blur(10px);
@@ -551,16 +551,6 @@
     font-size: 12px;
   }
 
-  .flex-plans-container {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-
-  .flex-card {
-    padding: 16px;
-    width: 260px;
-  }
-
   .flex-emoji {
     font-size: 20px;
   }
@@ -593,8 +583,7 @@
   }
 
   .flex-card {
-    width: 260px;
-    padding: 14px;
+    width: 240px;
   }
 
   .premium-box {
