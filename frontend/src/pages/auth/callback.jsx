@@ -6,53 +6,84 @@ const Callback = () => {
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
-    try {
-      const token = searchParams.get('token')
-      const userString = searchParams.get('user')
-      const error = searchParams.get('error')
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    const userString = params.get('user')
+    const error = params.get('error')
 
-      console.log('🔐 Auth Callback - Token:', token)
-      console.log('👤 Auth Callback - User:', userString)
+    console.log('🔐 Auth Callback - Token:', token)
+    console.log('👤 Auth Callback - User:', userString)
 
-      if (error) {
-        console.error('❌ OAuth Error:', error)
-        // Redirect to login with error
-        navigate('/login?error=' + encodeURIComponent(error))
-        return
-      }
-
-      if (token && userString) {
-        try {
-          const user = JSON.parse(userString)
-          
-          // Save token to localStorage - use consistent key name 'token'
-          localStorage.setItem('token', token)
-          localStorage.setItem('authToken', token)
-          localStorage.setItem('user', JSON.stringify(user))
-          localStorage.setItem('authProvider', 'google')
-          localStorage.setItem('userInfo', JSON.stringify(user))
-
-          console.log('✅ Token saved to localStorage:', token.substring(0, 20) + '...')
-          console.log('✅ User data saved:', user)
-          console.log('✅ Redirecting to chat...')
-
-          // Redirect to chat
-          setTimeout(() => {
-            navigate('/chat')
-          }, 500)
-        } catch (parseError) {
-          console.error('❌ Error parsing user data:', parseError)
-          navigate('/login?error=invalid_user_data')
-        }
-      } else {
-        console.error('❌ Missing token or user data')
-        navigate('/login?error=missing_data')
-      }
-    } catch (error) {
-      console.error('❌ Auth callback error:', error)
-      navigate('/login?error=' + encodeURIComponent(error.message))
+    if (error) {
+      console.error('❌ OAuth Error:', error)
+      navigate('/login?error=' + encodeURIComponent(error))
+      return
     }
-  }, [searchParams, navigate])
+
+    if (token) {
+      try {
+        // Save token to localStorage
+        localStorage.setItem('token', token)
+        localStorage.setItem('authToken', token)
+        console.log('✅ Token saved to localStorage')
+
+        // Parse user data if available
+        let userData = null
+        if (userString) {
+          userData = JSON.parse(userString)
+          localStorage.setItem('user', JSON.stringify(userData))
+          localStorage.setItem('userInfo', JSON.stringify(userData))
+          localStorage.setItem('authProvider', 'google')
+          console.log('✅ User data saved:', userData)
+        }
+
+        // Fetch user profile from backend using token
+        console.log('📡 Fetching user profile...')
+        fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/profile`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+          .then(res => {
+            if (!res.ok) {
+              throw new Error(`API error: ${res.status}`)
+            }
+            return res.json()
+          })
+          .then(data => {
+            console.log('✅ Profile fetched successfully:', data)
+            // Update user data with profile info
+            const completeUserData = {
+              ...userData,
+              ...data
+            }
+            localStorage.setItem('user', JSON.stringify(completeUserData))
+            localStorage.setItem('userInfo', JSON.stringify(completeUserData))
+            
+            // Redirect to chat
+            console.log('✅ Redirecting to chat...')
+            setTimeout(() => {
+              navigate('/chat')
+            }, 500)
+          })
+          .catch(err => {
+            console.error('⚠️ Profile fetch failed:', err)
+            // Still redirect even if profile fetch fails (user data from URL params is sufficient)
+            console.log('✅ Redirecting to chat with URL-provided user data...')
+            setTimeout(() => {
+              navigate('/chat')
+            }, 500)
+          })
+      } catch (parseError) {
+        console.error('❌ Error processing callback:', parseError)
+        navigate('/login?error=invalid_data')
+      }
+    } else {
+      console.error('❌ Missing token')
+      navigate('/login?error=missing_token')
+    }
+  }, [navigate])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center px-4">

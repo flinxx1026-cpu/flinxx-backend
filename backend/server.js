@@ -760,6 +760,43 @@ app.get('/auth/google/success', (req, res) => {
   }
 })
 
+// Step 4: Get user profile using token (for frontend)
+app.get('/api/profile', (req, res) => {
+  try {
+    const authHeader = req.headers.authorization
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: 'Missing or invalid authorization header'
+      })
+    }
+    
+    const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+    
+    // Decode token
+    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
+    console.log('✅ Token decoded for profile:', decoded.email)
+    
+    res.json({
+      success: true,
+      user: {
+        id: decoded.userId,
+        email: decoded.email,
+        name: decoded.name,
+        picture: decoded.picture,
+        provider: decoded.provider
+      }
+    })
+  } catch (error) {
+    console.error('❌ Error in /api/profile:', error)
+    res.status(400).json({
+      success: false,
+      error: 'Invalid token'
+    })
+  }
+})
+
 // WebSocket Events
 io.on('connection', (socket) => {
   console.log(`✅ User connected: ${socket.id}`)
