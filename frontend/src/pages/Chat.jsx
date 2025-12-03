@@ -964,7 +964,7 @@ const Chat = () => {
             </div>
 
             {/* SECTION 2: MIDDLE - Messages area (scrollable) */}
-            <div id="main-container" className="overflow-visible px-4 py-4 flex flex-col relative w-full" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative', flex: 1, minHeight: 0 }}>
+            <div id="main-container" className="overflow-visible px-4 py-4 flex flex-col relative w-full" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative', flex: 1 }}>
               
               {/* Remote video wrapper - ALWAYS on top */}
               <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 99999, overflow: 'visible', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
@@ -974,6 +974,7 @@ const Chat = () => {
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
+                  muted={false}
                   style={{
                     width: '100%',
                     height: '100%',
