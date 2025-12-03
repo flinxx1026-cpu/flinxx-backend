@@ -37,6 +37,9 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.1);
   animation: slideUp 0.3s ease-out;
+  height: auto !important;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 @keyframes slideUp {
@@ -348,6 +351,11 @@
   font-size: 14px;
   color: rgba(255, 255, 255, 0.6);
   margin: 0 0 20px 0;
+}
+
+/* Flex Section */
+.flex-section {
+  margin-top: 10px !important;
 }
 
 /* Flex Plans Wrapper */

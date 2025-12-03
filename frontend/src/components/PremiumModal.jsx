@@ -191,7 +191,7 @@ const PremiumModal = ({ isOpen, onClose }) => {
           <div className="tab-content">
             <p className="flex-subtitle">Choose individual features</p>
             
-            <div className="flex-wrapper">
+            <div className="flex-section flex-wrapper">
               <div className="flex-plans-box">
                 <div className="flex-plans-container">
                   {flexItems.map((item) => (
