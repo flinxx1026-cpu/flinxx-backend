@@ -353,7 +353,7 @@
 /* Flex Plans Wrapper */
 .flex-wrapper {
   width: 100%;
-  max-width: 720px;
+  max-width: 700px;
   margin: 0 auto;
   padding: 20px 10px;
   display: flex;
@@ -363,7 +363,7 @@
 /* Flex Plans Box */
 .flex-plans-box {
   width: 770px;
-  max-width: 720px;
+  max-width: 700px;
   margin: 0 auto;
 }
 
@@ -371,14 +371,14 @@
 .flex-plans-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 10px;
   justify-items: center;
 }
 
 /* Flex Item Card */
 .flex-card {
-  width: 230px;
-  padding: 16px;
+  width: 220px;
+  padding: 14px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(251, 191, 36, 0.2);
@@ -589,7 +589,7 @@
   }
 
   .flex-card {
-    width: 210px;
+    width: 200px;
   }
 
   .premium-box {
