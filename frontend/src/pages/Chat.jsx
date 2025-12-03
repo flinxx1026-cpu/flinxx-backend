@@ -906,10 +906,10 @@ const Chat = () => {
       </button>
 
       {/* Main video container - responsive layout */}
-      <div className="flex-1 w-full h-full flex items-center justify-center gap-4 min-h-0 overflow-hidden" style={{ minHeight: 0 }}>
+      <div className="flex-1 w-full h-full flex items-center justify-center gap-4 overflow-hidden" style={{ minHeight: '100%' }}>
         
         {/* Left - Local camera video */}
-        <div className="video-box flex items-center justify-center min-h-0 flex-1" style={{ minWidth: 0, maxWidth: '50%' }}>
+        <div className="video-box flex items-center justify-center flex-1" style={{ minWidth: 0, maxWidth: '50%', height: '100%' }}>
           <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
             <video
               ref={localVideoRef}
@@ -932,7 +932,7 @@ const Chat = () => {
         </div>
 
         {/* Right - Chat panel with proper 3-section layout */}
-        <div className="right-panel flex items-center justify-center flex-1" style={{ minWidth: 0, maxWidth: '50%', position: 'relative' }}>
+        <div className="right-panel flex items-center justify-center flex-1" style={{ minWidth: 0, maxWidth: '50%', position: 'relative', height: '100%' }}>
           <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible relative border border-white/10">
             
             {/* SECTION 1: TOP - Header with partner info */}
@@ -964,7 +964,7 @@ const Chat = () => {
             </div>
 
             {/* SECTION 2: MIDDLE - Messages area (scrollable) */}
-            <div id="main-container" className="overflow-visible px-4 py-4 flex flex-col relative w-full" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative', flex: 1 }}>
+            <div id="main-container" className="overflow-visible px-4 py-4 flex flex-col relative w-full" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative', flex: 1, height: '100%' }}>
               
               {/* Remote video wrapper - ALWAYS on top */}
               <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 99999, overflow: 'visible', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
