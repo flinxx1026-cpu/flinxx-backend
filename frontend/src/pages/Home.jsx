@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import flinxxLogo from '../assets/flinxx-logo.svg'
+import flinxxPremiumLogo from '../assets/flinxx-premium-logo.svg'
 
 const Home = () => {
   const navigate = useNavigate()
@@ -17,11 +17,10 @@ const Home = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600">
       {/* Header Navigation */}
       <div className="relative z-20 w-full bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 shadow-lg">
-        <div className="px-6 py-6 flex justify-between items-center max-w-full">
+        <div className="px-6 py-4 flex justify-between items-center max-w-full">
           <div className="flex items-center gap-3">
-            <img src={flinxxLogo} alt="Flinxx" className="w-10 h-10" />
-            <h2 className="text-2xl font-bold text-white">Flinxx</h2>
-            <span className="text-sm text-white/90 ml-4">🟢 3,247 online</span>
+            <img src={flinxxPremiumLogo} alt="Flinxx" className="h-12" style={{ width: 'auto' }} />
+            <span className="text-sm text-white/90 ml-2">🟢 3,247 online</span>
           </div>
           
           <div className="flex items-center gap-4">
