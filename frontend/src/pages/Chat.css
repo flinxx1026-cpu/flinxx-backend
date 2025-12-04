@@ -1,5 +1,9 @@
 /* Chat page specific styles */
 
+/* CRITICAL: Safeguard custom Tailwind sizes from purging */
+/* Note: These custom sizes must be present in JSX to prevent purging */
+/* max-w-[700px] max-w-[550px] aspect-[4/3] */
+
 /* Ensure all video elements display as block and are visible */
 video {
   width: 100% !important;
