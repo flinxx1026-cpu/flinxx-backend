@@ -828,7 +828,7 @@ const Chat = () => {
 
   // Intro Screen Component
   const IntroScreen = () => (
-    <div className="intro-screen-container flex flex-row w-full max-w-[1500px] mx-auto gap-14 px-10 mt-20 items-start bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
+    <div className="intro-screen-container flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
       {/* Top-Right Icon Navigation Bar */}
       <div className="top-right-icons">
         {/* User Profile Icon - 1 */}
@@ -883,7 +883,7 @@ const Chat = () => {
       </div>
 
       {/* Left - Live camera preview box */}
-      <div className="video-box flex-1 max-w-[650px] aspect-[4/3] bg-gray-400 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: 'auto' }}>
+      <div className="video-box flex-1 max-w-[750px] aspect-[4/3] bg-gray-400 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: 'auto' }}>
         <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
           <video
             ref={localVideoRef}
@@ -905,7 +905,7 @@ const Chat = () => {
       </div>
 
       {/* Right - Welcome panel with purple gradient */}
-      <div className="right-panel flex-1 max-w-[650px] bg-[#8a00ff] rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: 'auto' }}>
+      <div className="right-panel flex-1 max-w-[500px] bg-[#8a00ff] rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: 'auto' }}>
         <div className="w-full h-full bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-between text-center">
           {/* Top Section - Toggle Buttons */}
           <div className="flex gap-3 justify-center">
@@ -955,7 +955,7 @@ const Chat = () => {
 
   // Video Chat Screen Component
   const VideoChatScreen = () => (
-    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-14 px-10 mt-20 items-start bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
+    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
       {/* Close Button - Round X Icon at Top Right */}
       <button
         onClick={() => {
@@ -974,7 +974,7 @@ const Chat = () => {
       <div className="flex flex-col md:flex-row w-full gap-6 items-center justify-center" style={{ minHeight: '400px', height: 'auto' }}>
         
         {/* Left - Local camera video */}
-        <div className="video-box flex-1 max-w-[650px] aspect-[4/3] bg-gray-400 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: 'auto' }}>
+        <div className="video-box flex-1 max-w-[750px] aspect-[4/3] bg-gray-400 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: 'auto' }}>
           <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
             <video
               ref={localVideoRef}
@@ -998,7 +998,7 @@ const Chat = () => {
         </div>
 
         {/* Right - Chat panel with proper 3-section layout */}
-        <div className="right-panel flex-1 max-w-[650px] bg-[#8a00ff] rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: 'auto', position: 'relative' }}>
+        <div className="right-panel flex-1 max-w-[500px] bg-[#8a00ff] rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: 'auto', position: 'relative' }}>
           <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible relative border border-white/10">
             
             {/* SECTION 1: TOP - Header with partner info */}
