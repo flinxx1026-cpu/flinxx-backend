@@ -8,6 +8,8 @@ video {
   background: transparent !important;
   display: block !important;
   opacity: 1 !important;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 #localVideo,
@@ -15,6 +17,8 @@ video {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 .video-wrapper,
@@ -25,7 +29,9 @@ video {
   min-width: 0 !important;
   min-height: 0 !important;
   width: 100% !important;
-  height: 100% !important;
+  height: auto !important;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 #main-container {
@@ -33,6 +39,8 @@ video {
   z-index: 1 !important;
   position: relative !important;
   overflow: visible !important;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 /* Remote video element - FORCE VISIBILITY */
@@ -48,6 +56,8 @@ video {
   z-index: 9999 !important;
   background: transparent !important;
   object-fit: cover !important;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 #remote-video-wrapper {
@@ -63,15 +73,19 @@ video {
   align-items: center !important;
   justify-content: center !important;
   pointer-events: none !important;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 /* Ensure parent flex containers don't collapse */
 .chat-screen {
   display: flex;
   width: 100%;
-  height: 100%;
+  height: auto;
   gap: 1.5rem;
   overflow: hidden;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 .local-video-wrapper {
@@ -81,8 +95,12 @@ video {
   overflow: hidden;
   border-radius: 1.5rem;
   background-color: #000000;
-  min-height: 0;
+  min-height: 400px;
   min-width: 0;
+  width: 100%;
+  height: auto;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 .local-video-wrapper video {
@@ -91,6 +109,8 @@ video {
   object-fit: cover;
   display: block;
   background-color: #000000;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 /* Prevent flex collapse on the parent screens */
@@ -98,18 +118,24 @@ video {
   display: flex;
   flex-direction: row;
   width: 100%;
-  height: 100%;
+  height: auto;
   gap: 2rem;
   padding: 1.5rem;
   overflow: hidden;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 .screen-container > div {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0;
+  min-height: 400px;
   min-width: 0;
+  width: 100%;
+  height: auto;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 /* Top-right Icon Navigation Bar */
@@ -148,6 +174,8 @@ video {
   flex-shrink: 0;
   padding: 0;
   overflow: hidden;
+  transform: none !important;
+  zoom: 1 !important;
 }
 
 .icon-circle:hover {
@@ -241,6 +269,39 @@ video {
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3);
 }
 
+/* ===== RESPONSIVE FLEX LAYOUT ===== */
+
+.intro-screen-container,
+.video-chat-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  gap: 1.5rem;
+  padding: 1rem;
+  min-height: 100vh;
+  height: auto;
+  transform: none !important;
+  zoom: 1 !important;
+}
+
+@media (min-width: 768px) {
+  .intro-screen-container,
+  .video-chat-container {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .video-box,
+  .right-panel {
+    flex: 1;
+    width: 100%;
+    height: auto;
+    min-height: 400px;
+  }
+}
+
 /* ===== MOBILE RESPONSIVE STYLES ===== */
 
 /* Intro Screen Mobile Responsive */
@@ -252,12 +313,14 @@ video {
     padding: 1rem !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    max-width: 100% !important;
   }
 
   /* Video container - full width, responsive height */
   .video-box {
     width: 100% !important;
-    height: 60vh !important;
+    height: auto !important;
+    min-height: 300px !important;
     margin: 0 auto !important;
     border-radius: 1.25rem !important;
   }
@@ -266,6 +329,7 @@ video {
   .right-panel {
     width: 100% !important;
     height: auto !important;
+    min-height: 300px !important;
     margin-top: 1.25rem !important;
   }
 
@@ -302,6 +366,7 @@ video {
   div[style*="width: 520px"] {
     width: 100% !important;
     height: auto !important;
+    min-height: 300px !important;
   }
 
   /* Adjust chat screen for mobile */
@@ -318,8 +383,14 @@ video {
   }
 
   .video-box {
-    height: 50vh !important;
+    height: auto !important;
+    min-height: 250px !important;
     border-radius: 1rem !important;
+  }
+
+  .right-panel {
+    height: auto !important;
+    min-height: 250px !important;
   }
 
   .top-right-icons {

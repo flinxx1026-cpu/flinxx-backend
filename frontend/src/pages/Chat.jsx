@@ -828,7 +828,7 @@ const Chat = () => {
 
   // Intro Screen Component
   const IntroScreen = () => (
-    <div className="intro-screen-container flex-1 flex items-center justify-center gap-10 p-8 w-full h-full overflow-hidden bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative">
+    <div className="intro-screen-container flex flex-col md:flex-row w-full max-w-[1400px] mx-auto gap-6 px-4 py-8 items-center justify-center bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ height: 'auto', minHeight: '100vh' }}>
       {/* Top-Right Icon Navigation Bar */}
       <div className="top-right-icons">
         {/* User Profile Icon - 1 */}
@@ -883,7 +883,7 @@ const Chat = () => {
       </div>
 
       {/* Left - Live camera preview box */}
-      <div className="video-box flex items-center justify-center" style={{ width: '520px', height: '620px' }}>
+      <div className="video-box flex items-center justify-center flex-1 w-full" style={{ minHeight: '400px', height: 'auto' }}>
         <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
           <video
             ref={localVideoRef}
@@ -893,7 +893,8 @@ const Chat = () => {
             className="w-full h-full object-cover"
             style={{
               backgroundColor: '#000000',
-              transform: 'scaleX(-1)',
+              transform: 'none',
+              zoom: 1,
               display: 'block'
             }}
           />
@@ -904,7 +905,7 @@ const Chat = () => {
       </div>
 
       {/* Right - Welcome panel with purple gradient */}
-      <div className="right-panel flex items-center justify-center" style={{ width: '520px', height: '620px' }}>
+      <div className="right-panel flex items-center justify-center flex-1 w-full" style={{ minHeight: '400px', height: 'auto' }}>
         <div className="w-full h-full bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-between text-center">
           {/* Top Section - Toggle Buttons */}
           <div className="flex gap-3 justify-center">
@@ -954,7 +955,7 @@ const Chat = () => {
 
   // Video Chat Screen Component
   const VideoChatScreen = () => (
-    <div className="flex-1 flex items-center justify-center gap-4 p-4 w-full h-full overflow-hidden bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative min-h-0" style={{ flexDirection: 'column' }}>
+    <div className="flex flex-col md:flex-row w-full max-w-[1400px] mx-auto gap-6 px-4 py-4 items-center justify-center bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ height: 'auto', minHeight: '100vh' }}>
       {/* Close Button - Round X Icon at Top Right */}
       <button
         onClick={() => {
@@ -970,10 +971,10 @@ const Chat = () => {
       </button>
 
       {/* Main video container - responsive layout */}
-      <div className="flex-1 w-full h-full flex items-center justify-center gap-4 overflow-hidden" style={{ minHeight: '100%' }}>
+      <div className="flex flex-col md:flex-row w-full gap-6 items-center justify-center" style={{ minHeight: '400px', height: 'auto' }}>
         
         {/* Left - Local camera video */}
-        <div className="video-box flex items-center justify-center flex-1" style={{ minWidth: 0, maxWidth: '50%', height: '100%' }}>
+        <div className="video-box flex items-center justify-center flex-1 w-full" style={{ minHeight: '400px', height: 'auto', transform: 'none', zoom: 1 }}>
           <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
             <video
               ref={localVideoRef}
@@ -983,7 +984,8 @@ const Chat = () => {
               className="w-full h-full object-cover"
               style={{
                 backgroundColor: '#000000',
-                transform: 'scaleX(-1)',
+                transform: 'none',
+                zoom: 1,
                 display: 'block',
                 width: '100%',
                 height: '100%'
@@ -996,7 +998,7 @@ const Chat = () => {
         </div>
 
         {/* Right - Chat panel with proper 3-section layout */}
-        <div className="right-panel flex items-center justify-center flex-1" style={{ minWidth: 0, maxWidth: '50%', position: 'relative', height: '100%' }}>
+        <div className="right-panel flex items-center justify-center flex-1 w-full" style={{ minHeight: '400px', height: 'auto', transform: 'none', zoom: 1, position: 'relative' }}>
           <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible relative border border-white/10">
             
             {/* SECTION 1: TOP - Header with partner info */}
