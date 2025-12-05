@@ -113,27 +113,7 @@ async function initializeDatabase() {
 }
 
 // Redis Connection
-let redis
-try {
-  redis = await createClient({
-    url: process.env.REDIS_URL
-  })
-
-  redis.on('error', (err) => {
-    console.error('❌ Redis client error:', err)
-  })
-
-  redis.on('connect', () => {
-    console.log('✅ Redis connected')
-  })
-
-  await redis.connect()
-  console.log('✅ Redis initialization complete')
-} catch (error) {
-  console.error('❌ Redis connection failed:', error.message)
-  console.warn('⚠️ Continuing without Redis - some features may be limited')
-  redis = null
-}
+let redis = null
 
 // ===== EXPRESS & SOCKET.IO SETUP =====
 
@@ -1211,6 +1191,28 @@ process.on('SIGTERM', () => {
 
 // Start listening immediately
 (async () => {
+  // Initialize Redis connection
+  try {
+    redis = await createClient({
+      url: process.env.REDIS_URL
+    })
+
+    redis.on('error', (err) => {
+      console.error('❌ Redis client error:', err)
+    })
+
+    redis.on('connect', () => {
+      console.log('✅ Redis connected')
+    })
+
+    await redis.connect()
+    console.log('✅ Redis initialization complete')
+  } catch (error) {
+    console.error('❌ Redis connection failed:', error.message)
+    console.warn('⚠️ Continuing without Redis - some features may be limited')
+    redis = null
+  }
+
   // Initialize database on startup
   try {
     await initializeDatabase()
