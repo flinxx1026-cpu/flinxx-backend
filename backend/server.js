@@ -1170,27 +1170,27 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
 // Start Server
 const PORT = process.env.PORT || 10000
 
-// Add error handler for uncaught errors
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason)
-})
-
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error)
-  process.exit(1)
-})
-
-// Set timeout for graceful shutdown on SIGTERM
-process.on('SIGTERM', () => {
-  console.log('⚠️ SIGTERM received, shutting down gracefully...')
-  httpServer.close(() => {
-    console.log('✅ Server closed')
-    process.exit(0)
-  })
-})
-
 // Start listening immediately
 (async () => {
+  // Add error handler for uncaught errors
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason)
+  })
+
+  process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error)
+    process.exit(1)
+  })
+
+  // Set timeout for graceful shutdown on SIGTERM
+  process.on('SIGTERM', () => {
+    console.log('⚠️ SIGTERM received, shutting down gracefully...')
+    httpServer.close(() => {
+      console.log('✅ Server closed')
+      process.exit(0)
+    })
+  })
+
   // Initialize Redis connection
   try {
     redis = await createClient({
