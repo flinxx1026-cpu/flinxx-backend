@@ -50,14 +50,14 @@ async function initializeDatabase() {
         birthday DATE,
         gender VARCHAR(50),
         age INTEGER,
-        is_profile_completed BOOLEAN DEFAULT FALSE,
+        profileCompleted BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
       CREATE INDEX IF NOT EXISTS idx_users_provider ON users(auth_provider, provider_id);
-      CREATE INDEX IF NOT EXISTS idx_users_profile_completed ON users(is_profile_completed);
+      CREATE INDEX IF NOT EXISTS idx_users_profile_completed ON users(profileCompleted);
     `)
 
     // Create premium table
@@ -437,7 +437,7 @@ app.post('/api/users/save', async (req, res) => {
         displayName: user.display_name,
         photoURL: user.photo_url,
         authProvider: user.auth_provider,
-        isProfileCompleted: user.is_profile_completed,
+        isProfileCompleted: user.profileCompleted,
         createdAt: user.created_at,
         updatedAt: user.updated_at
       }
@@ -710,15 +710,6 @@ app.get('/api/user/profile', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch profile', details: error.message })
   }
 })
-
-// Initialize database on startup
-try {
-  await initializeDatabase()
-  console.log('✅ Database initialization complete')
-} catch (error) {
-  console.error('❌ Database initialization failed:', error.message)
-  console.warn('⚠️ Continuing with limited database functionality')
-}
 
 // ===== GOOGLE OAUTH ROUTES =====
 
@@ -1219,28 +1210,39 @@ process.on('SIGTERM', () => {
 })
 
 // Start listening immediately
-httpServer.listen(PORT, () => {
-  console.log(`\n🚀 Flinxx Server running on port ${PORT}`);
-  console.log("🔴 ===== SERVER STARTUP COMPLETE =====");
-  console.log("🔴 Available Endpoints:");
-  console.log("🔴   - GET  /api/get-turn-credentials");
-  console.log("🔴   - POST /api/get-turn-credentials");
-  console.log("🔴 ===== SERVER STARTUP COMPLETE =====\n");
-  console.log(`🔌 Socket.IO server running on ws://localhost:${PORT}`)
-  console.log(`✅ CORS enabled for: ${process.env.CLIENT_URL}`)
-  console.log(`\n📊 Backend Configuration:`)
-  console.log(`✅ Node.js version: ${process.version}`)
-  console.log(`✅ PostgreSQL (Neon) connection pool ready`)
-  console.log(`${redis ? '✅' : '⚠️'} Redis (Upstash) ${redis ? 'connected' : 'unavailable'}`)
-  console.log(`✅ TURN server: ${process.env.METERED_DOMAIN}`)
-  console.log(`\n🎯 Features Enabled:`)
-  console.log(`  • WebRTC signaling with TURN`)
-  console.log(`  • Random partner matchmaking`)
-  console.log(`  • Online presence tracking`)
-  console.log(`  • Session management`)
-  console.log(`  • Real-time notifications`)
-  console.log(`\n✅ Backend is live and ready for connections!\n`)
-})
+(async () => {
+  // Initialize database on startup
+  try {
+    await initializeDatabase()
+    console.log('✅ Database initialization complete')
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error.message)
+    console.warn('⚠️ Continuing with limited database functionality')
+  }
+
+  httpServer.listen(PORT, () => {
+    console.log(`\n🚀 Flinxx Server running on port ${PORT}`);
+    console.log("🔴 ===== SERVER STARTUP COMPLETE =====");
+    console.log("🔴 Available Endpoints:");
+    console.log("🔴   - GET  /api/get-turn-credentials");
+    console.log("🔴   - POST /api/get-turn-credentials");
+    console.log("🔴 ===== SERVER STARTUP COMPLETE =====\n");
+    console.log(`🔌 Socket.IO server running on ws://localhost:${PORT}`)
+    console.log(`✅ CORS enabled for: ${process.env.CLIENT_URL}`)
+    console.log(`\n📊 Backend Configuration:`)
+    console.log(`✅ Node.js version: ${process.version}`)
+    console.log(`✅ PostgreSQL (Neon) connection pool ready`)
+    console.log(`${redis ? '✅' : '⚠️'} Redis (Upstash) ${redis ? 'connected' : 'unavailable'}`)
+    console.log(`✅ TURN server: ${process.env.METERED_DOMAIN}`)
+    console.log(`\n🎯 Features Enabled:`)
+    console.log(`  • WebRTC signaling with TURN`)
+    console.log(`  • Random partner matchmaking`)
+    console.log(`  • Online presence tracking`)
+    console.log(`  • Session management`)
+    console.log(`  • Real-time notifications`)
+    console.log(`\n✅ Backend is live and ready for connections!\n`)
+  })
+})()
 
 httpServer.on('error', (error) => {
   console.error('❌ Server error:', error.message)
