@@ -162,8 +162,6 @@ const io = new Server(httpServer, {
   pingTimeout: 60000
 })
 
-console.log("Socket server running on port 10000")
-
 // Middleware - Enable CORS with credentials support
 app.use(cors({
   origin: function (origin, callback) {
@@ -1222,7 +1220,7 @@ const PORT = process.env.PORT || 10000
   }
 
   httpServer.listen(PORT, () => {
-    console.log(`\n🚀 Flinxx Server running on port ${PORT}`);
+    console.log(`\n🚀 Flinxx Backend running on PORT: ${PORT}`);
     console.log("🔴 ===== SERVER STARTUP COMPLETE =====");
     console.log("🔴 Available Endpoints:");
     console.log("🔴   - GET  /api/get-turn-credentials");
