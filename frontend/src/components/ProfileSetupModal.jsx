@@ -88,6 +88,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
         birthday: data.user.birthday,
         gender: data.user.gender,
         age: data.user.age,
+        profileCompleted: data.user.profileCompleted,
         isProfileCompleted: true
       }
       localStorage.setItem('user', JSON.stringify(updatedUser))

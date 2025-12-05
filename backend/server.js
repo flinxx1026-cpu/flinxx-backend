@@ -477,25 +477,18 @@ app.post('/api/users/complete-profile', async (req, res) => {
       })
     }
 
-    // Update user profile with birthday, gender, age, and mark as profile completed
-    const result = await pool.query(
-      `UPDATE users 
-       SET birthday = $1, 
-           gender = $2, 
-           age = $3, 
-           is_profile_completed = TRUE,
-           google_id = COALESCE($4, google_id),
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $5
-       RETURNING *`,
-      [birthday, gender, age, googleId || null, userId]
-    )
+    // Update user profile with Prisma
+    const user = await prisma.users.update({
+      where: { id: userId },
+      data: {
+        birthday: new Date(birthday),
+        gender: gender,
+        age: age,
+        profileCompleted: true,
+        google_id: googleId || undefined
+      }
+    })
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' })
-    }
-
-    const user = result.rows[0]
     console.log(`✅ Profile completed for user: ${user.email}`)
 
     res.json({
@@ -508,7 +501,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
         birthday: user.birthday,
         gender: user.gender,
         age: user.age,
-        isProfileCompleted: user.is_profile_completed,
+        profileCompleted: user.profileCompleted,
         authProvider: user.auth_provider
       }
     })
@@ -527,16 +520,14 @@ app.get('/api/users/:userId', async (req, res) => {
       return res.status(400).json({ error: 'Missing userId' })
     }
 
-    const result = await pool.query(
-      'SELECT id, email, display_name, photo_url, auth_provider, google_id, birthday, gender, age, is_profile_completed, created_at, updated_at FROM users WHERE id = $1',
-      [userId]
-    )
+    const user = await prisma.users.findUnique({
+      where: { id: userId }
+    })
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' })
     }
 
-    const user = result.rows[0]
     res.json({
       id: user.id,
       email: user.email,
@@ -547,7 +538,7 @@ app.get('/api/users/:userId', async (req, res) => {
       birthday: user.birthday,
       gender: user.gender,
       age: user.age,
-      isProfileCompleted: user.is_profile_completed,
+      profileCompleted: user.profileCompleted,
       createdAt: user.created_at,
       updatedAt: user.updated_at
     })
@@ -566,16 +557,14 @@ app.get('/api/users/email/:email', async (req, res) => {
       return res.status(400).json({ error: 'Missing email' })
     }
 
-    const result = await pool.query(
-      'SELECT id, email, display_name, photo_url, auth_provider, google_id, birthday, gender, age, is_profile_completed, created_at, updated_at FROM users WHERE email = $1',
-      [email]
-    )
+    const user = await prisma.users.findUnique({
+      where: { email: email }
+    })
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' })
     }
 
-    const user = result.rows[0]
     res.json({
       id: user.id,
       email: user.email,
@@ -586,7 +575,7 @@ app.get('/api/users/email/:email', async (req, res) => {
       birthday: user.birthday,
       gender: user.gender,
       age: user.age,
-      isProfileCompleted: user.is_profile_completed,
+      profileCompleted: user.profileCompleted,
       createdAt: user.created_at,
       updatedAt: user.updated_at
     })
