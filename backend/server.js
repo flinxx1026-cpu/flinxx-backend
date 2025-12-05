@@ -43,11 +43,17 @@ async function initializeDatabase() {
         photo_url TEXT,
         auth_provider VARCHAR(50),
         provider_id VARCHAR(255),
+        google_id VARCHAR(255),
+        birthday DATE,
+        gender VARCHAR(50),
+        age INTEGER,
+        is_profile_completed BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_provider ON users(auth_provider, provider_id);
+      CREATE INDEX IF NOT EXISTS idx_users_profile_completed ON users(is_profile_completed);
     `)
 
     // Create premium table
@@ -427,6 +433,7 @@ app.post('/api/users/save', async (req, res) => {
         displayName: user.display_name,
         photoURL: user.photo_url,
         authProvider: user.auth_provider,
+        isProfileCompleted: user.is_profile_completed,
         createdAt: user.created_at,
         updatedAt: user.updated_at
       }
@@ -434,6 +441,76 @@ app.post('/api/users/save', async (req, res) => {
   } catch (error) {
     console.error('❌ Error saving user:', error)
     res.status(500).json({ error: 'Failed to save user', details: error.message })
+  }
+})
+
+// Complete user profile with birthday and gender
+app.post('/api/users/complete-profile', async (req, res) => {
+  try {
+    const { userId, birthday, gender, googleId } = req.body
+
+    if (!userId || !birthday || !gender) {
+      return res.status(400).json({ error: 'Missing required fields: userId, birthday, gender' })
+    }
+
+    console.log(`📝 Completing profile for user: ${userId}`)
+
+    // Calculate age from birthday
+    const birthDate = new Date(birthday)
+    const today = new Date()
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+
+    // Check if user is 18 or older
+    if (age < 18) {
+      console.warn(`⚠️ User ${userId} is under 18 (age: ${age})`)
+      return res.status(400).json({ 
+        error: 'You must be 18+ to use this app',
+        code: 'UNDERAGE_USER'
+      })
+    }
+
+    // Update user profile with birthday, gender, age, and mark as profile completed
+    const result = await pool.query(
+      `UPDATE users 
+       SET birthday = $1, 
+           gender = $2, 
+           age = $3, 
+           is_profile_completed = TRUE,
+           google_id = COALESCE($4, google_id),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5
+       RETURNING *`,
+      [birthday, gender, age, googleId || null, userId]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    const user = result.rows[0]
+    console.log(`✅ Profile completed for user: ${user.email}`)
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.display_name,
+        photoURL: user.photo_url,
+        birthday: user.birthday,
+        gender: user.gender,
+        age: user.age,
+        isProfileCompleted: user.is_profile_completed,
+        authProvider: user.auth_provider
+      }
+    })
+  } catch (error) {
+    console.error('❌ Error completing profile:', error)
+    res.status(500).json({ error: 'Failed to complete profile', details: error.message })
   }
 })
 
@@ -447,7 +524,7 @@ app.get('/api/users/:userId', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, email, display_name, photo_url, auth_provider, created_at, updated_at FROM users WHERE id = $1',
+      'SELECT id, email, display_name, photo_url, auth_provider, google_id, birthday, gender, age, is_profile_completed, created_at, updated_at FROM users WHERE id = $1',
       [userId]
     )
 
@@ -462,6 +539,11 @@ app.get('/api/users/:userId', async (req, res) => {
       displayName: user.display_name,
       photoURL: user.photo_url,
       authProvider: user.auth_provider,
+      googleId: user.google_id,
+      birthday: user.birthday,
+      gender: user.gender,
+      age: user.age,
+      isProfileCompleted: user.is_profile_completed,
       createdAt: user.created_at,
       updatedAt: user.updated_at
     })
@@ -481,7 +563,7 @@ app.get('/api/users/email/:email', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, email, display_name, photo_url, auth_provider, created_at, updated_at FROM users WHERE email = $1',
+      'SELECT id, email, display_name, photo_url, auth_provider, google_id, birthday, gender, age, is_profile_completed, created_at, updated_at FROM users WHERE email = $1',
       [email]
     )
 
@@ -496,6 +578,11 @@ app.get('/api/users/email/:email', async (req, res) => {
       displayName: user.display_name,
       photoURL: user.photo_url,
       authProvider: user.auth_provider,
+      googleId: user.google_id,
+      birthday: user.birthday,
+      gender: user.gender,
+      age: user.age,
+      isProfileCompleted: user.is_profile_completed,
       createdAt: user.created_at,
       updatedAt: user.updated_at
     })
@@ -670,8 +757,8 @@ app.get('/auth/google/callback', async (req, res) => {
     
     // Save user to database
     const result = await pool.query(
-      `INSERT INTO users (id, email, display_name, photo_url, auth_provider, provider_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO users (id, email, display_name, photo_url, auth_provider, provider_id, google_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (email) DO UPDATE SET
          display_name = EXCLUDED.display_name,
          photo_url = EXCLUDED.photo_url,
@@ -683,6 +770,7 @@ app.get('/auth/google/callback', async (req, res) => {
         userInfo.name || 'User',
         userInfo.picture || null,
         'google',
+        userInfo.id,
         userInfo.id
       ]
     )
@@ -707,7 +795,8 @@ app.get('/auth/google/callback', async (req, res) => {
       email: user.email,
       name: user.display_name,
       picture: user.photo_url,
-      googleId: userInfo.id
+      googleId: userInfo.id,
+      isProfileCompleted: user.is_profile_completed
     }
     
     // Redirect to frontend with token and user data

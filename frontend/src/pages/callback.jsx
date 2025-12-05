@@ -1,9 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import ProfileSetupModal from "../components/ProfileSetupModal";
 
 export default function Callback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [userData, setUserData] = useState(null);
 
   useEffect(() => {
     try {
@@ -32,12 +35,18 @@ export default function Callback() {
           localStorage.setItem("userInfo", JSON.stringify(user));
 
           console.log("✅ User data saved:", user);
-          console.log("✅ Redirecting to chat...");
 
-          // Redirect to chat
-          setTimeout(() => {
-            navigate("/chat");
-          }, 500);
+          // Check if profile is completed
+          if (!user.isProfileCompleted) {
+            console.log("ℹ️ Profile not completed, showing setup modal");
+            setUserData(user);
+            setShowProfileSetup(true);
+          } else {
+            console.log("✅ Profile completed, redirecting to chat...");
+            setTimeout(() => {
+              navigate("/chat");
+            }, 500);
+          }
         } catch (parseError) {
           console.error("❌ Error parsing user data:", parseError);
           navigate("/login?error=invalid_user_data");
@@ -51,6 +60,18 @@ export default function Callback() {
       navigate("/login?error=" + encodeURIComponent(error.message));
     }
   }, [searchParams, navigate]);
+
+  const handleProfileComplete = (completedUser) => {
+    console.log("✅ Profile completed, redirecting to chat");
+    setShowProfileSetup(false);
+    setTimeout(() => {
+      navigate("/chat");
+    }, 500);
+  };
+
+  if (showProfileSetup && userData) {
+    return <ProfileSetupModal user={userData} onProfileComplete={handleProfileComplete} isOpen={true} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center px-4">
