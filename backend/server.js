@@ -1177,136 +1177,31 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
 }
 
 // Start Server
-const PORT = process.env.PORT || 10000
+const PORT = process.env.PORT || 10000;
 
-// Start listening immediately
 (async () => {
+  console.log("[STARTUP] STEP 0 - Async function started");
+
   try {
-    console.log('📝 Starting async initialization...')
-    
-    // Register global error handlers
-    process.on('unhandledRejection', (reason, promise) => {
-      console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason)
-    })
-
-  process.on('uncaughtException', (error) => {
-    console.error('❌ Uncaught Exception:', error)
-    process.exit(1)
-  })
-
-  process.on('SIGTERM', () => {
-    console.log('⚠️ SIGTERM received, shutting down gracefully...')
-    httpServer.close(() => {
-      console.log('✅ Server closed')
-      process.exit(0)
-    })
-  })
-
-  // Initialize Redis connection
-  console.log('[STARTUP] STEP 1: Redis initialization START')
-  try {
-    console.log('[STARTUP] STEP 1.1 - Redis client creating')
+    console.log("[STARTUP] STEP 1.1 - Redis client creating");
     redis = await createClient({
       url: process.env.REDIS_URL
     })
-    console.log('[STARTUP] STEP 1.2 - Redis client created, setting up listeners')
+    await redis.connect();
+    console.log("[STARTUP] STEP 1.4 - Redis connected");
 
-    redis.on('error', (err) => {
-      console.error('❌ Redis client error:', err)
-    })
+    console.log("[STARTUP] STEP 2.1 - Database init starting");
+    await initializeDatabase();
+    console.log("[STARTUP] STEP 2.2 - Database init complete");
 
-    redis.on('connect', () => {
-      console.log('✅ Redis connected')
-    })
+    console.log("[STARTUP] STEP 3.1 - Starting server...");
+    httpServer.listen(PORT, () => {
+      console.log("[STARTUP] STEP 3.2 - Server running on PORT:", PORT);
+    });
 
-    console.log('[STARTUP] STEP 1.3 - Connecting to Redis (5s timeout)')
-    
-    // Add timeout to prevent hanging
-    const redisConnectPromise = redis.connect()
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Redis connection timeout after 5 seconds')), 5000)
-    )
-    
-    try {
-      await Promise.race([redisConnectPromise, timeoutPromise])
-      console.log('[STARTUP] STEP 1.4 - Redis connected successfully')
-    } catch (timeoutError) {
-      console.error('❌ Redis connection timed out:', timeoutError.message)
-      throw timeoutError
-    }
-    console.log('✅ Redis initialization complete')
-  } catch (error) {
-    console.error('❌ Redis connection failed:', error.message)
-    console.warn('⚠️ Continuing without Redis - some features may be limited')
-    redis = null
+  } catch (err) {
+    console.error("[STARTUP ERROR]", err);
+    process.exit(1);
   }
-
-  // Initialize database on startup
-  console.log('[STARTUP] STEP 2: Database initialization START')
-  try {
-    console.log('[STARTUP] STEP 2.1 - Database init starting (10s timeout)')
-    
-    // Add timeout to prevent hanging
-    const dbInitPromise = initializeDatabase()
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database initialization timeout after 10 seconds')), 10000)
-    )
-    
-    try {
-      await Promise.race([dbInitPromise, timeoutPromise])
-      console.log('[STARTUP] STEP 2.2 - Database init complete')
-    } catch (timeoutError) {
-      console.error('❌ Database initialization timed out:', timeoutError.message)
-      throw timeoutError
-    }
-    console.log('✅ Database initialization complete')
-  } catch (error) {
-    console.error('❌ Database initialization failed:', error.message)
-    console.warn('⚠️ Continuing with limited database functionality')
-  }
-
-  console.log('[STARTUP] STEP 3: Server startup START')
-  console.log(`[STARTUP] STEP 3.1 - Calling httpServer.listen(${PORT})`)
-  
-  httpServer.listen(PORT, () => {
-    console.log('[STARTUP] STEP 3.2 - Server started on port ' + PORT)
-    console.log("🔴 ===== SERVER STARTUP COMPLETE =====");
-    console.log("🔴 Available Endpoints:");
-    console.log("🔴   - GET  /api/get-turn-credentials");
-    console.log("🔴   - POST /api/get-turn-credentials");
-    console.log("🔴 ===== SERVER STARTUP COMPLETE =====\n");
-    console.log(`🔌 Socket.IO server running on ws://localhost:${PORT}`)
-    console.log(`✅ CORS enabled for: ${process.env.CLIENT_URL}`)
-    console.log(`\n📊 Backend Configuration:`)
-    console.log(`✅ Node.js version: ${process.version}`)
-    console.log(`✅ PostgreSQL (Neon) connection pool ready`)
-    console.log(`${redis ? '✅' : '⚠️'} Redis (Upstash) ${redis ? 'connected' : 'unavailable'}`)
-    console.log(`✅ TURN server: ${process.env.METERED_DOMAIN}`)
-    console.log(`\n🎯 Features Enabled:`)
-    console.log(`  • WebRTC signaling with TURN`)
-    console.log(`  • Random partner matchmaking`)
-    console.log(`  • Online presence tracking`)
-    console.log(`  • Session management`)
-    console.log(`  • Real-time notifications`)
-    console.log(`\n✅ Backend is live and ready for connections!\n`)
-  })
-
-  // Handle server errors
-  httpServer.on('error', (error) => {
-    console.error('❌ Server error:', error.message)
-    if (error.code === 'EADDRINUSE') {
-      console.error(`Port ${PORT} is already in use`)
-    }
-    process.exit(1)
-  })
-
-  console.log('📍 Async initialization complete - server listening')
-  } catch (error) {
-    console.error('❌ CRITICAL ERROR in async startup:', error)
-    console.error('❌ Stack:', error.stack)
-    process.exit(1)
-  }
-})()
-
-console.log('📍 Backend module initialization complete, waiting for async startup...')
+})();
 
