@@ -12,7 +12,9 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
   // Calculate age from birthday
   useEffect(() => {
     if (birthday) {
-      const birthDate = new Date(birthday)
+      // Parse YYYY-MM-DD format
+      const [year, month, day] = birthday.split('-').map(Number)
+      const birthDate = new Date(year, month - 1, day)
       const today = new Date()
       let calculatedAge = today.getFullYear() - birthDate.getFullYear()
       const monthDiff = today.getMonth() - birthDate.getMonth()
@@ -168,7 +170,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
               </label>
               <input
                 type="date"
-                value={birthday ? new Date(birthday).toISOString().split('T')[0] : ''}
+                value={birthday}
                 onChange={(e) => setBirthday(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
