@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import BirthdayPicker from './BirthdayPicker'
 
 const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
   const [birthday, setBirthday] = useState('')
@@ -167,14 +168,10 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Birthday <span className="text-red-500">*</span>
               </label>
-              <input
-                type="date"
-                value={birthday || ''}
-                onChange={(e) => setBirthday(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder=""
-                required
+              <BirthdayPicker
+                value={birthday}
+                onChange={setBirthday}
+                maxDate={new Date()}
               />
               {age !== null && (
                 <p className="text-xs text-gray-600 mt-1">
