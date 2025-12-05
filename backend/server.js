@@ -451,22 +451,57 @@ app.post('/api/users/save', async (req, res) => {
 // Complete user profile with birthday and gender
 app.post('/api/users/complete-profile', async (req, res) => {
   try {
-    const { userId, birthday, gender, googleId } = req.body
+    const { userId, birthday, gender } = req.body
 
-    if (!userId || !birthday || !gender) {
-      return res.status(400).json({ error: 'Missing required fields: userId, birthday, gender' })
+    // Validate required fields
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing required field: userId' })
+    }
+    if (!birthday) {
+      return res.status(400).json({ error: 'Missing required field: birthday' })
+    }
+    if (!gender) {
+      return res.status(400).json({ error: 'Missing required field: gender' })
+    }
+
+    // Validate birthday format (YYYY-MM-DD)
+    if (typeof birthday !== 'string' || birthday.length < 10) {
+      console.error(`❌ Invalid birthday format received: ${birthday} (type: ${typeof birthday})`)
+      return res.status(400).json({ error: 'Invalid birthday format. Expected YYYY-MM-DD' })
     }
 
     console.log(`📝 Completing profile for user: ${userId}`)
+    console.log(`   Birthday: ${birthday}, Gender: ${gender}`)
+
+    // Verify user exists in database
+    const existingUser = await prisma.users.findUnique({
+      where: { id: userId }
+    })
+
+    if (!existingUser) {
+      console.error(`❌ User not found in database: ${userId}`)
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    console.log(`✓ User verified in DB: ${existingUser.email}`)
 
     // Calculate age from birthday
     const birthDate = new Date(birthday)
+    
+    // Validate date is valid
+    if (isNaN(birthDate.getTime())) {
+      console.error(`❌ Invalid date value: ${birthday}`)
+      return res.status(400).json({ error: 'Invalid birthday date' })
+    }
+
     const today = new Date()
     let age = today.getFullYear() - birthDate.getFullYear()
     const monthDiff = today.getMonth() - birthDate.getMonth()
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--
     }
+
+    console.log(`✓ Calculated age: ${age}`)
 
     // Check if user is 18 or older
     if (age < 18) {
@@ -478,18 +513,19 @@ app.post('/api/users/complete-profile', async (req, res) => {
     }
 
     // Update user profile with Prisma
+    console.log(`📝 Updating user with: birthday=${birthday}, gender=${gender}, age=${age}`)
+    
     const user = await prisma.users.update({
       where: { id: userId },
       data: {
-        birthday: new Date(birthday),
+        birthday: birthDate,
         gender: gender,
         age: age,
-        profileCompleted: true,
-        google_id: googleId || undefined
+        profileCompleted: true
       }
     })
 
-    console.log(`✅ Profile completed for user: ${user.email}`)
+    console.log(`✅ Profile completed successfully for user: ${user.email}`)
 
     res.json({
       success: true,
@@ -506,7 +542,12 @@ app.post('/api/users/complete-profile', async (req, res) => {
       }
     })
   } catch (error) {
-    console.error('❌ Error completing profile:', error)
+    console.error('❌ PROFILE UPDATE ERROR:', error)
+    console.error('   Error type:', error.constructor.name)
+    console.error('   Error message:', error.message)
+    if (error.meta) {
+      console.error('   Prisma meta:', error.meta)
+    }
     res.status(500).json({ error: 'Failed to complete profile', details: error.message })
   }
 })

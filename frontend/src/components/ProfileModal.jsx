@@ -257,7 +257,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium }) => {
                   name="birthday"
                   value={profileData.birthday ? profileData.birthday.slice(0, 10) : ''}
                   onChange={handleInputChange}
-                  className="profile-input-small"
+                  className="profile-input-small text-black focus:text-black !text-black [&::-webkit-datetime-edit]:text-black [&::-webkit-datetime-edit-year-field]:text-black [&::-webkit-datetime-edit-month-field]:text-black [&::-webkit-datetime-edit-day-field]:text-black"
                 />
               </div>
             </>
