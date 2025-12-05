@@ -473,8 +473,14 @@ app.post('/api/users/complete-profile', async (req, res) => {
 
     // Validate birthday format (YYYY-MM-DD)
     if (typeof birthday !== 'string' || birthday.length < 10) {
-      console.error(`❌ Invalid birthday format received: ${birthday} (type: ${typeof birthday})`)
+      console.error(`❌ Invalid birthday format received: ${birthday} (type: ${typeof birthday}, length: ${birthday?.length})`)
       return res.status(400).json({ error: 'Invalid birthday format. Expected YYYY-MM-DD' })
+    }
+
+    // Validate birthday is a valid ISO date
+    if (isNaN(Date.parse(birthday))) {
+      console.error(`❌ Birthday is not a valid date: ${birthday}`)
+      return res.status(400).json({ error: 'Invalid birthday date. Must be a valid date' })
     }
 
     console.log(`📝 Completing profile for user: ${userId}`)

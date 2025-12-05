@@ -62,7 +62,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
         },
         body: JSON.stringify({
           userId: userId,
-          birthday,
+          birthday: birthday ? new Date(birthday).toISOString().split('T')[0] : null,
           gender,
           googleId: user.googleId || user.providerData?.[0]?.uid
         })
