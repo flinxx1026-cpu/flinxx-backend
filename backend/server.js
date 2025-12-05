@@ -11,7 +11,18 @@ import { PrismaClient } from '@prisma/client'
 
 dotenv.config()
 
-const prisma = new PrismaClient()
+console.log('📍 Backend initialization starting...')
+console.log('📍 NODE_ENV:', process.env.NODE_ENV || 'not set')
+console.log('📍 PORT will be:', process.env.PORT || 10000)
+
+let prisma
+try {
+  prisma = new PrismaClient()
+  console.log('✅ Prisma Client initialized')
+} catch (error) {
+  console.error('❌ Failed to initialize Prisma:', error.message)
+  prisma = null
+}
 
 // ===== DATABASE CONFIGURATION =====
 
@@ -1170,10 +1181,13 @@ const PORT = process.env.PORT || 10000
 
 // Start listening immediately
 (async () => {
-  // Register global error handlers
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason)
-  })
+  try {
+    console.log('📝 Starting async initialization...')
+    
+    // Register global error handlers
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason)
+    })
 
   process.on('uncaughtException', (error) => {
     console.error('❌ Uncaught Exception:', error)
@@ -1250,5 +1264,14 @@ const PORT = process.env.PORT || 10000
     }
     process.exit(1)
   })
+
+  console.log('📍 Async initialization complete - server listening')
+  } catch (error) {
+    console.error('❌ CRITICAL ERROR in async startup:', error)
+    console.error('❌ Stack:', error.stack)
+    process.exit(1)
+  }
 })()
+
+console.log('📍 Backend module initialization complete, waiting for async startup...')
 
