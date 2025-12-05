@@ -43,7 +43,7 @@ async function initializeDatabase() {
         photo_url TEXT,
         auth_provider VARCHAR(50),
         provider_id VARCHAR(255),
-        google_id VARCHAR(255),
+        google_id VARCHAR(255) UNIQUE,
         birthday DATE,
         gender VARCHAR(50),
         age INTEGER,
@@ -52,6 +52,7 @@ async function initializeDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
       CREATE INDEX IF NOT EXISTS idx_users_provider ON users(auth_provider, provider_id);
       CREATE INDEX IF NOT EXISTS idx_users_profile_completed ON users(is_profile_completed);
     `)
@@ -755,13 +756,17 @@ app.get('/auth/google/callback', async (req, res) => {
     const userInfo = await getGoogleUserInfo(tokens.access_token)
     console.log(`✅ Retrieved user info:`, userInfo.email)
     
-    // Save user to database
+    // Save user to database using google_id as primary key for OAuth
+    // This ensures proper handling of returning users and email changes
     const result = await pool.query(
       `INSERT INTO users (id, email, display_name, photo_url, auth_provider, provider_id, google_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (email) DO UPDATE SET
+       ON CONFLICT (google_id) DO UPDATE SET
+         email = EXCLUDED.email,
          display_name = EXCLUDED.display_name,
          photo_url = EXCLUDED.photo_url,
+         auth_provider = EXCLUDED.auth_provider,
+         provider_id = EXCLUDED.provider_id,
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
       [
