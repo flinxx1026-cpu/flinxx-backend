@@ -1203,10 +1203,13 @@ const PORT = process.env.PORT || 10000
   })
 
   // Initialize Redis connection
+  console.log('🔴 STEP 1: Redis initialization START')
   try {
+    console.log('🔴 STEP 1.1: Creating Redis client...')
     redis = await createClient({
       url: process.env.REDIS_URL
     })
+    console.log('🔴 STEP 1.2: Redis client created, setting up event listeners...')
 
     redis.on('error', (err) => {
       console.error('❌ Redis client error:', err)
@@ -1216,7 +1219,21 @@ const PORT = process.env.PORT || 10000
       console.log('✅ Redis connected')
     })
 
-    await redis.connect()
+    console.log('🔴 STEP 1.3: Connecting to Redis (with 5s timeout)...')
+    
+    // Add timeout to prevent hanging
+    const redisConnectPromise = redis.connect()
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Redis connection timeout after 5 seconds')), 5000)
+    )
+    
+    try {
+      await Promise.race([redisConnectPromise, timeoutPromise])
+      console.log('🔴 STEP 1.4: Redis connected successfully')
+    } catch (timeoutError) {
+      console.error('❌ Redis connection timed out:', timeoutError.message)
+      throw timeoutError
+    }
     console.log('✅ Redis initialization complete')
   } catch (error) {
     console.error('❌ Redis connection failed:', error.message)
@@ -1225,16 +1242,34 @@ const PORT = process.env.PORT || 10000
   }
 
   // Initialize database on startup
+  console.log('🔴 STEP 2: Database initialization START')
   try {
-    await initializeDatabase()
+    console.log('🔴 STEP 2.1: Calling initializeDatabase() (with 10s timeout)...')
+    
+    // Add timeout to prevent hanging
+    const dbInitPromise = initializeDatabase()
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database initialization timeout after 10 seconds')), 10000)
+    )
+    
+    try {
+      await Promise.race([dbInitPromise, timeoutPromise])
+      console.log('🔴 STEP 2.2: initializeDatabase() completed')
+    } catch (timeoutError) {
+      console.error('❌ Database initialization timed out:', timeoutError.message)
+      throw timeoutError
+    }
     console.log('✅ Database initialization complete')
   } catch (error) {
     console.error('❌ Database initialization failed:', error.message)
     console.warn('⚠️ Continuing with limited database functionality')
   }
 
+  console.log('🔴 STEP 3: Server startup START')
+  console.log(`🔴 STEP 3.1: Calling httpServer.listen(${PORT})...`)
+  
   httpServer.listen(PORT, () => {
-    console.log(`\n🚀 Flinxx Backend running on PORT: ${PORT}`);
+    console.log('🔴 STEP 3.2: httpServer.listen() callback FIRED')
     console.log("🔴 ===== SERVER STARTUP COMPLETE =====");
     console.log("🔴 Available Endpoints:");
     console.log("🔴   - GET  /api/get-turn-credentials");
