@@ -230,6 +230,20 @@
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
 }
 
+/* Date input styling */
+input[type="date"].profile-input-small {
+  color: #ffffff;
+}
+
+input[type="date"].profile-input-small::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+input[type="date"].profile-input-small::placeholder {
+  color: #999999;
+}
+
 /* Action Buttons */
 .profile-actions {
   display: flex;
