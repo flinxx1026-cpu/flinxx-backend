@@ -867,9 +867,9 @@ app.get('/auth-success', async (req, res) => {
     const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
     console.log('✅ Token decoded for user:', decoded.email)
     
-    // Fetch full user data from database
+    // Fetch full user data from database using userId string (not parseInt)
     const user = await prisma.users.findUnique({
-      where: { id: parseInt(decoded.userId) }
+      where: { id: decoded.userId }
     })
     
     if (!user) {
