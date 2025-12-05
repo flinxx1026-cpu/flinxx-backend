@@ -1243,12 +1243,14 @@ const PORT = process.env.PORT || 10000
     console.log(`  • Real-time notifications`)
     console.log(`\n✅ Backend is live and ready for connections!\n`)
   })
+
+  // Handle server errors
+  httpServer.on('error', (error) => {
+    console.error('❌ Server error:', error.message)
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use`)
+    }
+    process.exit(1)
+  })
 })()
 
-httpServer.on('error', (error) => {
-  console.error('❌ Server error:', error.message)
-  if (error.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use`)
-  }
-  process.exit(1)
-})
