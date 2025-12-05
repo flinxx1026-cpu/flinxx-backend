@@ -255,7 +255,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium }) => {
                 <input
                   type="date"
                   name="birthday"
-                  value={profileData.birthday}
+                  value={profileData.birthday ? profileData.birthday.slice(0, 10) : ''}
                   onChange={handleInputChange}
                   className="profile-input-small"
                 />
