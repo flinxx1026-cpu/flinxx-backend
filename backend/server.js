@@ -451,16 +451,23 @@ app.post('/api/users/save', async (req, res) => {
 // Complete user profile with birthday and gender
 app.post('/api/users/complete-profile', async (req, res) => {
   try {
+    // Log incoming request
+    console.log('📨 /complete-profile endpoint called')
+    console.log('   Request body:', JSON.stringify(req.body))
+    
     const { userId, birthday, gender } = req.body
 
     // Validate required fields
     if (!userId) {
+      console.warn('❌ Missing userId in request')
       return res.status(400).json({ error: 'Missing required field: userId' })
     }
     if (!birthday) {
+      console.warn('❌ Missing birthday in request')
       return res.status(400).json({ error: 'Missing required field: birthday' })
     }
     if (!gender) {
+      console.warn('❌ Missing gender in request')
       return res.status(400).json({ error: 'Missing required field: gender' })
     }
 
@@ -484,6 +491,14 @@ app.post('/api/users/complete-profile', async (req, res) => {
     }
 
     console.log(`✓ User verified in DB: ${existingUser.email}`)
+    console.log(`   Current user data:`, JSON.stringify({
+      id: existingUser.id,
+      email: existingUser.email,
+      birthday: existingUser.birthday,
+      gender: existingUser.gender,
+      age: existingUser.age,
+      profileCompleted: existingUser.profileCompleted
+    }))
 
     // Calculate age from birthday
     const birthDate = new Date(birthday)
@@ -513,7 +528,12 @@ app.post('/api/users/complete-profile', async (req, res) => {
     }
 
     // Update user profile with Prisma
-    console.log(`📝 Updating user with: birthday=${birthday}, gender=${gender}, age=${age}`)
+    console.log(`📝 Updating user with:`)
+    console.log(`   - birthday: ${birthday} (type: ${typeof birthday})`)
+    console.log(`   - birthDate: ${birthDate.toISOString()}`)
+    console.log(`   - gender: ${gender}`)
+    console.log(`   - age: ${age}`)
+    console.log(`   - profileCompleted: true`)
     
     const user = await prisma.users.update({
       where: { id: userId },
@@ -526,6 +546,14 @@ app.post('/api/users/complete-profile', async (req, res) => {
     })
 
     console.log(`✅ Profile completed successfully for user: ${user.email}`)
+    console.log(`   Updated user data:`, JSON.stringify({
+      id: user.id,
+      email: user.email,
+      birthday: user.birthday,
+      gender: user.gender,
+      age: user.age,
+      profileCompleted: user.profileCompleted
+    }))
 
     res.json({
       success: true,
@@ -542,11 +570,15 @@ app.post('/api/users/complete-profile', async (req, res) => {
       }
     })
   } catch (error) {
-    console.error('❌ PROFILE UPDATE ERROR:', error)
+    console.error('❌ PROFILE UPDATE ERROR:', error.message)
+    console.error('   Full error:', error)
     console.error('   Error type:', error.constructor.name)
-    console.error('   Error message:', error.message)
+    console.error('   Stack:', error.stack)
     if (error.meta) {
       console.error('   Prisma meta:', error.meta)
+    }
+    if (error.code) {
+      console.error('   Error code:', error.code)
     }
     res.status(500).json({ error: 'Failed to complete profile', details: error.message })
   }
