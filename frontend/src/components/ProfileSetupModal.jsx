@@ -9,13 +9,6 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  // Handle birthday input change - always receives YYYY-MM-DD format
-  const handleBirthdayChange = (e) => {
-    const value = e.target.value // Always "YYYY-MM-DD" from date input
-    console.log('Birthday input changed:', value)
-    setBirthday(value) // Store full string
-  }
-
   // Calculate age from birthday
   useEffect(() => {
     if (birthday) {
@@ -71,9 +64,8 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
         },
         body: JSON.stringify({
           userId: userId,
-          birthday: birthday ? new Date(birthday).toISOString().split('T')[0] : null,
-          gender,
-          googleId: user.googleId || user.providerData?.[0]?.uid
+          birthday: birthday || null,
+          gender
         })
       })
 
@@ -178,7 +170,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
               <input
                 type="date"
                 value={birthday || ''}
-                onChange={handleBirthdayChange}
+                onChange={(e) => setBirthday(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 required
