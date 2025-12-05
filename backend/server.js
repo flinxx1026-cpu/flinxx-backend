@@ -7,8 +7,11 @@ import dotenv from 'dotenv'
 import pg from 'pg'
 import { createClient } from 'redis'
 import fetch from 'node-fetch'
+import { PrismaClient } from '@prisma/client'
 
 dotenv.config()
+
+const prisma = new PrismaClient()
 
 // ===== DATABASE CONFIGURATION =====
 
@@ -728,7 +731,6 @@ app.get('/auth/google', (req, res) => {
     res.status(500).json({ error: 'Failed to initiate Google login' })
   }
 })
-
 // Step 2: Handle Google OAuth callback
 app.get('/auth/google/callback', async (req, res) => {
   try {
@@ -756,60 +758,44 @@ app.get('/auth/google/callback', async (req, res) => {
     const userInfo = await getGoogleUserInfo(tokens.access_token)
     console.log(`✅ Retrieved user info:`, userInfo.email)
     
-    // Save user to database using google_id as primary key for OAuth
-    // This ensures proper handling of returning users and email changes
-    const result = await pool.query(
-      `INSERT INTO users (id, email, display_name, photo_url, auth_provider, provider_id, google_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (google_id) DO UPDATE SET
-         email = EXCLUDED.email,
-         display_name = EXCLUDED.display_name,
-         photo_url = EXCLUDED.photo_url,
-         auth_provider = EXCLUDED.auth_provider,
-         provider_id = EXCLUDED.provider_id,
-         updated_at = CURRENT_TIMESTAMP
-       RETURNING *`,
-      [
-        uuidv4(),
-        userInfo.email,
-        userInfo.name || 'User',
-        userInfo.picture || null,
-        'google',
-        userInfo.id,
-        userInfo.id
-      ]
-    )
+    // Save user to database using Prisma upsert with google_id as key
+    const user = await prisma.users.upsert({
+      where: { google_id: userInfo.id },
+      create: {
+        email: userInfo.email,
+        display_name: userInfo.name || 'User',
+        photo_url: userInfo.picture || null,
+        auth_provider: 'google',
+        provider_id: userInfo.id,
+        google_id: userInfo.id,
+        profileCompleted: false
+      },
+      update: {
+        email: userInfo.email,
+        display_name: userInfo.name || 'User',
+        photo_url: userInfo.picture || null,
+        auth_provider: 'google',
+        provider_id: userInfo.id,
+        updated_at: new Date()
+      }
+    })
     
-    const user = result.rows[0]
     console.log(`✅ User saved to database:`, user.email)
     
-    // Create a JWT-like session token
-    const sessionToken = Buffer.from(JSON.stringify({
+    // Create a JWT token with user data
+    const token = Buffer.from(JSON.stringify({
       userId: user.id,
       email: user.email,
-      name: user.display_name,
-      picture: user.photo_url,
-      provider: 'google',
+      googleId: user.google_id,
       timestamp: Date.now()
     })).toString('base64')
     
-    // Store token temporarily in session (optional)
-    // For now, we'll pass it through redirect parameters
-    const userData = {
-      id: user.id,
-      email: user.email,
-      name: user.display_name,
-      picture: user.photo_url,
-      googleId: userInfo.id,
-      isProfileCompleted: user.is_profile_completed
-    }
-    
-    // Redirect to frontend with token and user data
+    // Redirect to frontend with token
     const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
     const baseUrl = frontendUrl || 'http://localhost:3003'
-    const redirectUrl = `${baseUrl}/callback?token=${sessionToken}&user=${encodeURIComponent(JSON.stringify(userData))}`
+    const redirectUrl = `${baseUrl}/auth-success?token=${token}`
     
-    console.log(`🔗 Redirecting to frontend callback: ${redirectUrl}`)
+    console.log(`🔗 Redirecting to frontend: ${redirectUrl}`)
     res.redirect(redirectUrl)
   } catch (error) {
     console.error('❌ Error in /auth/google/callback:', error)
@@ -818,7 +804,57 @@ app.get('/auth/google/callback', async (req, res) => {
   }
 })
 
-// Step 3: Verify token and get user data (called from frontend after redirect)
+// Step 3: Verify token and get user data from database
+app.get('/auth-success', async (req, res) => {
+  try {
+    const token = req.query.token
+    
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        error: 'No token provided'
+      })
+    }
+    
+    // Decode token
+    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
+    console.log('✅ Token decoded for user:', decoded.email)
+    
+    // Fetch full user data from database
+    const user = await prisma.users.findUnique({
+      where: { id: parseInt(decoded.userId) }
+    })
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      })
+    }
+    
+    // Return user data with profileCompleted flag
+    res.json({
+      success: true,
+      token: token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.display_name,
+        picture: user.photo_url,
+        googleId: user.google_id,
+        profileCompleted: user.profileCompleted
+      }
+    })
+  } catch (error) {
+    console.error('❌ Error in /auth-success:', error)
+    res.status(400).json({
+      success: false,
+      error: 'Invalid token'
+    })
+  }
+})
+
+// Legacy endpoint for backward compatibility
 app.get('/auth/google/success', (req, res) => {
   try {
     const token = req.query.token
@@ -840,9 +876,7 @@ app.get('/auth/google/success', (req, res) => {
       user: {
         id: decoded.userId,
         email: decoded.email,
-        name: decoded.name,
-        picture: decoded.picture,
-        provider: decoded.provider
+        googleId: decoded.googleId
       }
     })
   } catch (error) {

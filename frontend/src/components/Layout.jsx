@@ -7,6 +7,7 @@ import Matching from '../pages/Matching'
 import Profile from '../pages/Profile'
 import AuthCallback from '../pages/AuthCallback'
 import Callback from '../pages/callback'
+import AuthSuccess from '../pages/auth-success'
 import ProtectedChatRoute from './ProtectedChatRoute'
 import './Layout.css'
 
@@ -19,6 +20,7 @@ function Layout() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/callback" element={<Callback />} />
+            <Route path="/auth-success" element={<AuthSuccess />} />
             <Route path="/chat" element={<ProtectedChatRoute><Chat /></ProtectedChatRoute>} />
             <Route path="/matching" element={<Matching />} />
             <Route path="/profile" element={<Profile />} />
