@@ -791,8 +791,7 @@ app.get('/auth/google/callback', async (req, res) => {
     })).toString('base64')
     
     // Redirect to frontend with token
-    const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
-    const baseUrl = frontendUrl || 'http://localhost:3003'
+    const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
     const redirectUrl = `${baseUrl}/auth-success?token=${token}`
     
     console.log(`🔗 Redirecting to frontend: ${redirectUrl}`)
