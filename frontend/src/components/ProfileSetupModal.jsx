@@ -162,7 +162,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
               />
             </div>
 
-            {/* Birthday Field */}
+            {/* Birthday Field - Fixed: stores plain YYYY-MM-DD format */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Birthday <span className="text-red-500">*</span>
