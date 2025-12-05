@@ -162,7 +162,7 @@ const io = new Server(httpServer, {
   pingTimeout: 60000
 })
 
-console.log("Socket server running on port 5000")
+console.log("Socket server running on port 10000")
 
 // Middleware - Enable CORS with credentials support
 app.use(cors({
