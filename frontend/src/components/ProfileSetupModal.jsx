@@ -173,6 +173,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
                 onChange={(e) => setBirthday(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder=""
                 required
               />
               {age !== null && (
