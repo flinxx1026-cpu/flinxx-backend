@@ -30,6 +30,16 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
   // Check if save button should be disabled
   const isSaveDisabled = !birthday || !gender || loading
 
+  // Format birthday for display (dd/mm/yyyy)
+  const formatBirthdayDisplay = birthday
+    ? new Date(birthday).toLocaleDateString('en-GB')
+    : ''
+
+  // Format birthday for backend (YYYY-MM-DD)
+  const formattedBirthdayForBackend = birthday
+    ? new Date(birthday).toISOString().split('T')[0]
+    : null
+
   const handleSaveProfile = async (e) => {
     e.preventDefault()
     
@@ -64,7 +74,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
         },
         body: JSON.stringify({
           userId: userId,
-          birthday: birthday || null,
+          birthday: formattedBirthdayForBackend,
           gender
         })
       })
@@ -169,12 +179,17 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
               </label>
               <input
                 type="date"
-                value={birthday || ''}
+                value={birthday ? birthday : ''}
                 onChange={(e) => setBirthday(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 required
               />
+              {formatBirthdayDisplay && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Selected: {formatBirthdayDisplay}
+                </p>
+              )}
               {age !== null && (
                 <p className="text-xs text-gray-600 mt-1">
                   Age: <span className={age < 18 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>{age} years old</span>
