@@ -1,51 +1,75 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { AuthContext } from '../context/AuthContext'
 import ProfileSetupModal from './ProfileSetupModal'
 import { isProfileCompleted } from '../utils/profileUtils'
 
 const ProtectedChatRoute = ({ children }) => {
   const navigate = useNavigate()
+  const authContext = useContext(AuthContext)
+  const authUser = authContext?.user
+  const authLoading = authContext?.isLoading
+  
   const [showProfileSetup, setShowProfileSetup] = useState(false)
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     try {
-      console.log('\n\n[ProtectedChatRoute] Checking profile status...');
+      console.log('\n\n[ProtectedChatRoute] ====== PROTECTED ROUTE CHECK STARTED ======');
+      console.log('[ProtectedChatRoute] AuthContext.isLoading:', authLoading);
+      console.log('[ProtectedChatRoute] AuthContext.user:', authUser ? authUser.email : 'null');
       
-      const savedUser = localStorage.getItem('user')
-      if (!savedUser) {
-        console.log('[ProtectedChatRoute] ❌ No user found in localStorage, redirecting to login')
-        navigate('/login', { replace: true })
-        return
+      // Wait for AuthContext to finish loading
+      if (authLoading) {
+        console.log('[ProtectedChatRoute] ⏳ Waiting for AuthContext to finish loading...');
+        setIsLoading(true);
+        return;
+      }
+      
+      // If AuthContext says no user, redirect to login
+      if (!authUser) {
+        console.log('[ProtectedChatRoute] ❌ No user in AuthContext, redirecting to login');
+        navigate('/login', { replace: true });
+        return;
       }
 
-      const userData = JSON.parse(savedUser)
-      console.log('[ProtectedChatRoute] ✓ User loaded from localStorage:', userData.email);
-      console.log('[ProtectedChatRoute] User data:', {
-        id: userData.id,
-        email: userData.email,
-        profileCompleted: userData.profileCompleted,
-        isProfileCompleted: userData.isProfileCompleted,
-        birthday: userData.birthday,
-        gender: userData.gender
-      });
+      console.log('[ProtectedChatRoute] ✓ User loaded from AuthContext:', authUser.email);
       
-      setUser(userData)
+      // Also check localStorage for profile completion status
+      const savedUser = localStorage.getItem('user')
+      if (!savedUser) {
+        console.log('[ProtectedChatRoute] ⚠️ No user in localStorage (this is ok for first-time OAuth)');
+      } else {
+        const userFromStorage = JSON.parse(savedUser)
+        console.log('[ProtectedChatRoute] User from localStorage:', {
+          id: userFromStorage.id,
+          email: userFromStorage.email,
+          profileCompleted: userFromStorage.profileCompleted,
+          isProfileCompleted: userFromStorage.isProfileCompleted,
+          birthday: userFromStorage.birthday,
+          gender: userFromStorage.gender
+        });
+      }
+      
+      // Use AuthContext user as primary source
+      setUser(authUser)
 
-      // Check if profile is completed (support both field names)
-      const profileCompleted = userData.profileCompleted || userData.isProfileCompleted;
+      // Check if profile is completed - try multiple sources
+      const profileCompletedFromAuth = authUser.profileCompleted === true;
+      const profileCompletedFromStorage = savedUser ? JSON.parse(savedUser).profileCompleted === true : false;
+      const profileCompleted = profileCompletedFromAuth || profileCompletedFromStorage;
       
-      console.log('[ProtectedChatRoute] Profile status check:');
-      console.log('  - profileCompleted field:', userData.profileCompleted);
-      console.log('  - isProfileCompleted field:', userData.isProfileCompleted);
-      console.log('  - Final result (profileCompleted):', profileCompleted);
+      console.log('[ProtectedChatRoute] Profile completion check:');
+      console.log('  - From AuthContext (authUser.profileCompleted):', profileCompletedFromAuth);
+      console.log('  - From localStorage:', profileCompletedFromStorage);
+      console.log('  - Final decision (show chat?):', profileCompleted);
       
       if (!profileCompleted) {
-        console.log('[ProtectedChatRoute] ⚠️ Profile NOT completed - showing ProfileSetupModal');
+        console.log('[ProtectedChatRoute] 🔴 RESULT: Profile NOT completed - SHOWING ProfileSetupModal');
         setShowProfileSetup(true)
       } else {
-        console.log('[ProtectedChatRoute] ✅ Profile IS completed - showing chat page');
+        console.log('[ProtectedChatRoute] 🟢 RESULT: Profile IS completed - showing Chat page');
       }
     } catch (error) {
       console.error('[ProtectedChatRoute] ❌ Error checking profile:', error)
@@ -53,7 +77,7 @@ const ProtectedChatRoute = ({ children }) => {
     } finally {
       setIsLoading(false)
     }
-  }, [navigate])
+  }, [navigate, authUser, authLoading])
 
   const handleProfileComplete = (completedUser) => {
     console.log('Profile completed:', completedUser)

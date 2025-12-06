@@ -161,6 +161,14 @@ const handleLoginSuccess = async (user, provider) => {
     const dbResponse = await response.json()
     console.log('✅ User saved to Neon PostgreSQL:', dbResponse.user)
     
+    // CRITICAL: Update userInfo with profile completion status from database
+    if (dbResponse.user) {
+      userInfo.profileCompleted = dbResponse.user.profileCompleted
+      userInfo.isProfileCompleted = dbResponse.user.profileCompleted
+      userInfo.id = dbResponse.user.id
+      console.log('[FIREBASE] 🎯 Updated userInfo with profileCompleted:', dbResponse.user.profileCompleted)
+    }
+    
     // Store the database user ID
     localStorage.setItem('dbUserId', dbResponse.user.id)
   } catch (dbError) {
@@ -184,16 +192,21 @@ const handleLoginSuccess = async (user, provider) => {
   
   // Store in localStorage in the same format as Google login
   localStorage.setItem('user', JSON.stringify({
+    id: userInfo.id,
+    uid: userInfo.uid,
     name: user.displayName,
     email: user.email,
     picture: user.photoURL,
     googleId: provider === 'google' ? user.providerData[0]?.uid : null,
     facebookId: provider === 'facebook' ? facebookId : null,
+    profileCompleted: userInfo.profileCompleted || false,
+    isProfileCompleted: userInfo.profileCompleted || false,
+    authProvider: provider
   }))
   localStorage.setItem('authProvider', provider)
   localStorage.setItem('userInfo', JSON.stringify(userInfo))
   
-  console.log('✅ User data stored in localStorage')
+  console.log('✅ User data stored in localStorage with profileCompleted:', userInfo.profileCompleted || false)
   
   return userInfo
 }

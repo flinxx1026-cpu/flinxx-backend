@@ -88,6 +88,8 @@ const Login = () => {
       const API_URL = import.meta.env.VITE_API_URL || 'https://flinxx-backend.onrender.com'
       console.log(`🔗 Saving user to backend at: ${API_URL}`)
       
+      let userDataToStore = googleUser;
+      
       try {
         const saveResponse = await fetch(`${API_URL}/api/users/save`, {
           method: 'POST',
@@ -111,16 +113,33 @@ const Login = () => {
 
         const dbResponse = await saveResponse.json()
         console.log('✅ User saved to backend:', dbResponse.user)
+        
+        // CRITICAL: Merge database response with googleUser to get profileCompleted status
+        if (dbResponse.user) {
+          userDataToStore = {
+            ...googleUser,
+            ...dbResponse.user,
+            // Ensure both field names are present for compatibility
+            profileCompleted: dbResponse.user.profileCompleted,
+            isProfileCompleted: dbResponse.user.profileCompleted
+          }
+          console.log('[LOGIN] 🎯 Merged user data with profile status:', {
+            profileCompleted: userDataToStore.profileCompleted,
+            isProfileCompleted: userDataToStore.isProfileCompleted
+          })
+        }
       } catch (dbError) {
         console.error('⚠️ Error saving user to backend:', dbError)
         // Continue anyway - data is in localStorage
+        console.log('[LOGIN] ⚠️ Using Google JWT data only (profile status unavailable)')
       }
       
       // Save user profile to localStorage
-      localStorage.setItem('user', JSON.stringify(googleUser))
+      console.log('[LOGIN] Storing user to localStorage:', userDataToStore)
+      localStorage.setItem('user', JSON.stringify(userDataToStore))
       localStorage.setItem('authProvider', 'google')
-      localStorage.setItem('userInfo', JSON.stringify(googleUser))
-      console.log('✅ User data stored in localStorage')
+      localStorage.setItem('userInfo', JSON.stringify(userDataToStore))
+      console.log('✅ User data stored in localStorage with profileCompleted status')
       
       // Redirect to chat after a brief delay
       setTimeout(() => {

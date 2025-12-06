@@ -426,7 +426,12 @@ app.post('/api/users/save', async (req, res) => {
         displayName: user.display_name,
         photoURL: user.photo_url,
         authProvider: user.auth_provider,
+        googleId: user.google_id,
+        profileCompleted: user.profileCompleted,
         isProfileCompleted: user.profileCompleted,
+        birthday: user.birthday,
+        gender: user.gender,
+        age: user.age,
         createdAt: user.created_at,
         updatedAt: user.updated_at
       }
