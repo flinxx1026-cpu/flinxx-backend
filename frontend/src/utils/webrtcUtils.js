@@ -7,20 +7,19 @@ export const logError = (error, context) => {
 export const getIceServers = () => {
   return {
     iceServers: [
-      // Google STUN servers
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' },
-      // Fallback STUN servers
-      { urls: 'stun:stun.stunprotocols.org:3478' },
-      { urls: 'stun:stun.ekiga.net:3478' },
-      // TURN server for relaying through firewalls/NAT
+      // XirSys STUN server
       {
-        urls: 'turn:relay1.expressturn.com:3478',
-        username: 'efr5yJsjCj7J8kYxZR',
-        credential: 'jP6eE8sFvYdWwA2kFh'
+        urls: ["stun:global.xirsys.net"],
+      },
+      // XirSys TURN server for relaying through firewalls/NAT
+      {
+        urls: [
+          "turn:global.xirsys.net:3478?transport=udp",
+          "turn:global.xirsys.net:3478?transport=tcp",
+          "turns:global.xirsys.net:5349?transport=tcp"
+        ],
+        username: "nkhlydv",
+        credential: "a8e244b8-cf5b-11f0-8771-0242ac140002"
       }
     ]
   }

@@ -798,26 +798,28 @@ const Chat = () => {
   }, []);
 
   const getTurnServers = async () => {
-    const res = await fetch("https://flinxx-backend.onrender.com/api/turn");
-    const data = await res.json();
+    try {
+      // Try to fetch TURN servers from backend (XirSys API)
+      const res = await fetch("https://flinxx-backend.onrender.com/api/turn");
+      const data = await res.json();
 
-    if (!data?.v?.iceServers) {
+      if (data?.v?.iceServers) {
+        console.log('✅ TURN servers fetched from backend API');
+        
+        // Convert XirSys format → WebRTC format
+        const iceServers = data.v.iceServers;
+        return iceServers;
+      } else {
+        console.warn('⚠️ Invalid XirSys TURN response from backend, using fallback');
         throw new Error("Invalid XirSys TURN response");
+      }
+    } catch (error) {
+      console.error('❌ Error fetching TURN servers from backend:', error.message);
+      console.log('🔄 Using fallback TURN configuration from getIceServers()');
+      
+      // Fallback to static configuration
+      return getIceServers().iceServers;
     }
-
-    const xirsys = data.v.iceServers;
-
-    // Convert XirSys format → WebRTC format
-    const iceServers = [
-        {
-            urls: xirsys.urls,
-            username: xirsys.username,
-            credential: xirsys.credential
-        },
-        { urls: "stun:stun.l.google.com:19302" } // fallback
-    ];
-
-    return iceServers;
   };
 
   const createPeerConnection = async () => {
