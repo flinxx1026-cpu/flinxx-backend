@@ -5,7 +5,7 @@ import { auth } from '../config/firebase';
 import { AuthContext } from '../context/AuthContext';
 import './ProfileModal.css';
 
-const ProfileModal = ({ isOpen, onClose, onOpenPremium }) => {
+const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext) || {};
   const [isEditing, setIsEditing] = useState(false);
@@ -175,6 +175,23 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium }) => {
       localStorage.setItem('userProfile', JSON.stringify(profileData));
       setIsEditing(false);
       alert('Profile updated successfully!');
+      
+      // 🎥 CRITICAL: Re-initialize camera after profile save
+      console.log('🎥 [ProfileModal] Attempting to reinitialize camera after profile save');
+      if (typeof onReinitializeCamera === 'function') {
+        try {
+          const success = await onReinitializeCamera();
+          if (success) {
+            console.log('🎥 [ProfileModal] ✅ Camera reinitialized successfully');
+          } else {
+            console.warn('🎥 [ProfileModal] ⚠️ Camera reinitialization returned false');
+          }
+        } catch (err) {
+          console.error('🎥 [ProfileModal] ❌ Error calling reinitializeCamera:', err);
+        }
+      } else {
+        console.warn('🎥 [ProfileModal] ⚠️ onReinitializeCamera callback not provided');
+      }
     } catch (err) {
       console.error('Error saving profile:', err);
       alert('Failed to save profile');

@@ -16,6 +16,9 @@ const Chat = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext) || {};
 
+  // Create a ref to expose camera functions to child components
+  const cameraFunctionsRef = useRef(null);
+
   // Peer connection reference
   let peerConnection = null;
   const currentUser = user || {
@@ -49,6 +52,64 @@ const Chat = () => {
   useEffect(() => {
     console.log('📌 Refs initialized - localVideoRef:', localVideoRef.current);
   }, []);
+
+  // Expose camera re-initialization function that can be called from ProfileModal
+  const reinitializeCamera = React.useCallback(async () => {
+    console.log('🎥 [REINIT] Camera re-initialization requested');
+    try {
+      // Check if we already have a stream
+      if (localStreamRef.current) {
+        console.log('🎥 [REINIT] Stream already exists, reattaching to video element');
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStreamRef.current;
+          localVideoRef.current.muted = true;
+          
+          try {
+            await localVideoRef.current.play();
+            console.log('🎥 [REINIT] ✅ Camera preview reattached and playing');
+            return true;
+          } catch (err) {
+            console.error('🎥 [REINIT] ❌ Error playing video:', err);
+            return false;
+          }
+        }
+      } else {
+        console.log('🎥 [REINIT] No existing stream, requesting new preview stream');
+        const previewStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: true
+        });
+        
+        localStreamRef.current = previewStream;
+        console.log('🎥 [REINIT] ✅ New camera stream obtained');
+        
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = previewStream;
+          localVideoRef.current.muted = true;
+          
+          try {
+            await localVideoRef.current.play();
+            console.log('🎥 [REINIT] ✅ New camera preview playing successfully');
+            setCameraStarted(true);
+            return true;
+          } catch (err) {
+            console.error('🎥 [REINIT] ❌ Error playing new video:', err);
+            return false;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('🎥 [REINIT] ❌ Error reinitializing camera:', err);
+      return false;
+    }
+  }, []);
+
+  // Assign reinitializeCamera to ref so it can be accessed from ProfileModal
+  useEffect(() => {
+    cameraFunctionsRef.current = {
+      reinitializeCamera
+    };
+  }, [reinitializeCamera]);
 
   // UI state
   const [cameraStarted, setCameraStarted] = useState(false);
@@ -119,6 +180,7 @@ const Chat = () => {
         
         // Store the stream for later use in chat
         localStreamRef.current = previewStream;
+        console.log('[Camera] ✅ Camera stream obtained');
         
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = previewStream;
@@ -128,6 +190,7 @@ const Chat = () => {
           try {
             await localVideoRef.current.play();
             console.log('✅ Camera preview playing successfully');
+            setCameraStarted(true);
           } catch (err) {
             console.error('❌ Preview play error:', err);
           }
@@ -137,10 +200,10 @@ const Chat = () => {
       }
     }
 
-    if (!cameraStarted) {
-      startPreview();
-    }
-  }, [cameraStarted]);
+    // Always attempt to start camera on mount (fresh start)
+    console.log('[Camera] Attempting to initialize camera on component mount');
+    startPreview();
+  }, []);
 
   // Debug: Monitor wrapper element when partner connects
   useEffect(() => {
@@ -1153,6 +1216,7 @@ const Chat = () => {
         isOpen={isProfileOpen} 
         onClose={() => setIsProfileOpen(false)}
         onOpenPremium={() => setIsPremiumOpen(true)}
+        onReinitializeCamera={cameraFunctionsRef.current?.reinitializeCamera}
       />
 
       {/* Match History Modal */}
