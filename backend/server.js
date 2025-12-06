@@ -936,7 +936,7 @@ app.get('/auth/google/success', (req, res) => {
 })
 
 // Step 4: Get user profile using token (for frontend)
-app.get('/api/profile', (req, res) => {
+app.get('/api/profile', async (req, res) => {
   try {
     const authHeader = req.headers.authorization
     
@@ -953,21 +953,41 @@ app.get('/api/profile', (req, res) => {
     const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
     console.log('✅ Token decoded for profile:', decoded.email)
     
+    // Fetch full user data from database
+    const user = await prisma.users.findUnique({
+      where: { id: decoded.userId }
+    })
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found in database'
+      })
+    }
+    
+    // Return complete user profile
     res.json({
       success: true,
       user: {
-        id: decoded.userId,
-        email: decoded.email,
-        name: decoded.name,
-        picture: decoded.picture,
-        provider: decoded.provider
+        id: user.id,
+        email: user.email,
+        name: user.display_name,
+        picture: user.photo_url,
+        gender: user.gender,
+        birthday: user.birthday,
+        profileCompleted: user.profileCompleted,
+        authProvider: user.auth_provider,
+        googleId: user.google_id,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at
       }
     })
   } catch (error) {
     console.error('❌ Error in /api/profile:', error)
     res.status(400).json({
       success: false,
-      error: 'Invalid token'
+      error: 'Invalid token',
+      details: error.message
     })
   }
 })
