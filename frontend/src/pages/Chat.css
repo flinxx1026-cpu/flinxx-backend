@@ -6,14 +6,14 @@
 
 /* Ensure all video elements display as block and are visible */
 video {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  background: transparent !important;
-  display: block !important;
-  opacity: 1 !important;
-  transform: none !important;
-  zoom: 1 !important;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: transparent;
+  display: block;
+  opacity: 1;
+  transform: none;
+  zoom: 1;
 }
 
 #localVideo,
@@ -32,10 +32,20 @@ video {
   flex-shrink: 0 !important;
   min-width: 0 !important;
   min-height: 0 !important;
-  width: 100% !important;
-  height: auto !important;
   transform: none !important;
   zoom: 1 !important;
+}
+
+/* Video wrapper - fixed dimensions for proper display */
+.video-wrapper {
+  width: 580px;
+  height: 430px;
+  background: #000;
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 #main-container {
@@ -45,6 +55,15 @@ video {
   overflow: visible !important;
   transform: none !important;
   zoom: 1 !important;
+}
+
+/* Right panel - fixed dimensions and styling */
+.right-panel {
+  width: 420px;
+  min-height: 480px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  padding: 20px;
 }
 
 /* Remote video element - FORCE VISIBILITY */
@@ -79,6 +98,16 @@ video {
   pointer-events: none !important;
   transform: none !important;
   zoom: 1 !important;
+}
+
+/* Main chat layout - centers video and chat side-by-side */
+.main-chat-layout {
+  display: flex;
+  gap: 40px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding-top: 40px;
 }
 
 /* Ensure parent flex containers don't collapse */
