@@ -35,24 +35,24 @@ export const logIceServers = () => {
 }
 
 export const getIceServers = () => {
-  return {
-    iceServers: [
-      // XirSys STUN server
-      {
-        urls: ["stun:global.xirsys.net"],
-      },
-      // XirSys TURN server for relaying through firewalls/NAT
-      {
-        urls: [
-          "turn:global.xirsys.net:3478?transport=udp",
-          "turn:global.xirsys.net:3478?transport=tcp",
-          "turns:global.xirsys.net:5349?transport=tcp"
-        ],
-        username: "nkhlydv",
-        credential: "a8e244b8-cf5b-11f0-8771-0242ac140002"
-      }
-    ]
-  }
+  // CRITICAL: Return array directly, not wrapped in object
+  // RTCPeerConnection expects: { iceServers: [...] } where ... is an array
+  return [
+    // XirSys STUN server
+    {
+      urls: ["stun:global.xirsys.net"],
+    },
+    // XirSys TURN server for relaying through firewalls/NAT
+    {
+      urls: [
+        "turn:global.xirsys.net:3478?transport=udp",
+        "turn:global.xirsys.net:3478?transport=tcp",
+        "turns:global.xirsys.net:5349?transport=tcp"
+      ],
+      username: "nkhlydv",
+      credential: "a8e244b8-cf5b-11f0-8771-0242ac140002"
+    }
+  ]
 }
 
 export const getMediaConstraints = () => {

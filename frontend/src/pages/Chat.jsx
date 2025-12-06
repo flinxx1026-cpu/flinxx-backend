@@ -817,8 +817,8 @@ const Chat = () => {
       console.error('❌ Error fetching TURN servers from backend:', error.message);
       console.log('🔄 Using fallback TURN configuration from getIceServers()');
       
-      // Fallback to static configuration
-      return getIceServers().iceServers;
+      // Fallback to static configuration - returns array directly
+      return getIceServers();
     }
   };
 
