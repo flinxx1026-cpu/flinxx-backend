@@ -149,7 +149,7 @@ const Chat = () => {
       console.error('🎥 ===== CAMERA RE-INITIALIZATION FAILED =====\n\n');
       return false;
     }
-  }, [cameraStarted]);
+  }, []); // Empty dependency array - function doesn't depend on state
 
   // Assign reinitializeCamera to ref so it can be accessed from ProfileModal
   useEffect(() => {
