@@ -29,10 +29,18 @@ export const AuthProvider = ({ children }) => {
         if (storedToken && storedUser) {
           try {
             const user = JSON.parse(storedUser)
-            console.log('[AuthContext] ✅ Restoring Google OAuth user from localStorage:', user.email)
+            console.log('[AuthContext] 🔍 Attempting to restore Google OAuth user from localStorage:', user.email)
+            console.log('[AuthContext] Stored user data:', {
+              id: user.id,
+              email: user.email,
+              profileCompleted: user.profileCompleted,
+              isProfileCompleted: user.isProfileCompleted
+            })
             
             // Optionally validate token with backend
             const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+            console.log('[AuthContext] Validating token with backend at:', BACKEND_URL)
+            
             const response = await fetch(`${BACKEND_URL}/api/profile`, {
               method: 'GET',
               headers: {
@@ -41,10 +49,19 @@ export const AuthProvider = ({ children }) => {
               }
             })
             
+            console.log('[AuthContext] Token validation response status:', response.status)
+            
             if (response.ok) {
               const data = await response.json()
+              console.log('[AuthContext] Token validation response:', data)
+              
               if (data.success && data.user) {
-                console.log('[AuthContext] ✅ Token validated, user restored')
+                console.log('[AuthContext] ✅ Token validated, user restored from backend')
+                console.log('[AuthContext] Backend user data:', {
+                  id: data.user.id,
+                  email: data.user.email,
+                  profileCompleted: data.user.profileCompleted
+                })
                 setUser(data.user)
                 setIsAuthenticated(true)
                 setIsLoading(false)
@@ -52,6 +69,8 @@ export const AuthProvider = ({ children }) => {
               }
             } else {
               console.warn('[AuthContext] ⚠️ Token validation failed:', response.status)
+              const errorText = await response.text()
+              console.warn('[AuthContext] Error response:', errorText)
             }
           } catch (err) {
             console.error('[AuthContext] ❌ Error validating token:', err)
@@ -63,6 +82,12 @@ export const AuthProvider = ({ children }) => {
           try {
             const user = JSON.parse(storedUser)
             console.log('[AuthContext] ✅ User loaded from localStorage (no token validation):', user.email)
+            console.log('[AuthContext] User data from localStorage:', {
+              id: user.id,
+              email: user.email,
+              profileCompleted: user.profileCompleted,
+              isProfileCompleted: user.isProfileCompleted
+            })
             setUser(user)
             setIsAuthenticated(true)
             setIsLoading(false)
@@ -80,23 +105,52 @@ export const AuthProvider = ({ children }) => {
           if (firebaseUser) {
             // User is logged in via Firebase (Google or Facebook)
             const authProvider = firebaseUser.providerData[0]?.providerId || 'unknown'
+            
+            // CRITICAL: Get the full user profile from our database
+            try {
+              const idToken = await firebaseUser.getIdToken()
+              localStorage.setItem('idToken', idToken)
+              console.log('🔐 Firebase ID token stored for Socket.IO')
+              
+              // Fetch full profile from backend
+              const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+              const profileResponse = await fetch(`${BACKEND_URL}/api/profile`, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${idToken}`,
+                  'Content-Type': 'application/json'
+                }
+              })
+              
+              if (profileResponse.ok) {
+                const profileData = await profileResponse.json()
+                if (profileData.success && profileData.user) {
+                  console.log('[AuthContext] ✅ Fetched full user profile from database:', {
+                    email: profileData.user.email,
+                    profileCompleted: profileData.user.profileCompleted
+                  })
+                  setUser(profileData.user)
+                  setIsAuthenticated(true)
+                  setIsLoading(false)
+                  return
+                }
+              }
+            } catch (error) {
+              console.warn('[AuthContext] ⚠️ Failed to fetch profile from database:', error)
+              // Fall back to minimal user info
+            }
+            
+            // Fallback: Create minimal userInfo if profile fetch failed
             const userInfo = {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
-              authProvider: authProvider
+              authProvider: authProvider,
+              profileCompleted: false  // Default to false if not found
             }
             
-            // Get Firebase ID token for Socket.IO authentication
-            try {
-              const idToken = await firebaseUser.getIdToken()
-              localStorage.setItem('idToken', idToken)
-              console.log('🔐 Firebase ID token stored for Socket.IO')
-            } catch (error) {
-              console.error('❌ Failed to get Firebase ID token:', error)
-            }
-            
+            console.log('[AuthContext] Using fallback userInfo (database fetch failed):', userInfo.email)
             setUser(userInfo)
             setIsAuthenticated(true)
             localStorage.setItem('userInfo', JSON.stringify(userInfo))
