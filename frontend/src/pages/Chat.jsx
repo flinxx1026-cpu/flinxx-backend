@@ -1262,7 +1262,7 @@ const Chat = () => {
 
   // Waiting Screen Component - Shows when matching is in progress
   const WaitingScreen = () => (
-    <div className="intro-screen-container flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
+    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
       {/* Top-Right Icon Navigation Bar */}
       <div className="top-right-icons">
         {/* User Profile Icon - 1 */}
@@ -1317,30 +1317,28 @@ const Chat = () => {
       </div>
 
       {/* Left - Live camera preview box */}
-      <div className="video-box flex-1 max-w-[750px] aspect-[4/3] bg-gray-400 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: 'auto' }}>
-        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
-          <video
-            ref={localVideoRef}
-            autoPlay={true}
-            playsInline={true}
-            muted={true}
-            className="w-full h-full object-cover"
-            style={{
-              backgroundColor: '#000000',
-              transform: 'none',
-              zoom: 1,
-              display: 'block'
-            }}
-          />
-          <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl z-10">
-            <p className="font-semibold text-sm">You</p>
-          </div>
+      <div className="video-wrapper">
+        <video
+          ref={localVideoRef}
+          autoPlay={true}
+          playsInline={true}
+          muted={true}
+          className="w-full h-full object-cover"
+          style={{
+            backgroundColor: '#000000',
+            transform: 'none',
+            zoom: 1,
+            display: 'block'
+          }}
+        />
+        <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl z-10">
+          <p className="font-semibold text-sm">You</p>
         </div>
       </div>
 
-      {/* Right - Waiting panel */}
-      <div className="right-panel flex-1 max-w-[500px] bg-[#8a00ff] rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: 'auto' }}>
-        <div className="w-full h-full bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-center text-center gap-8">
+      {/* Right - Black Waiting Panel with exact specs */}
+      <div className="right-panel bg-black/60 backdrop-blur-sm" style={{ position: 'relative' }}>
+        <div className="flex flex-col items-center justify-center text-center gap-8 py-20">
           {/* Animated Waiting Icon */}
           <div className="animate-pulse text-6xl">
             🔍
@@ -1366,7 +1364,7 @@ const Chat = () => {
               setIsMatchingStarted(false);
               setIsLoading(false);
             }}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 text-sm shadow-lg hover:shadow-red-600/50"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 text-sm shadow-lg hover:shadow-red-600 mt-4"
           >
             Cancel Search
           </button>
