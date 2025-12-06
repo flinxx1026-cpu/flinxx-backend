@@ -191,7 +191,11 @@ const handleLoginSuccess = async (user, provider) => {
   }
   
   // Store in localStorage in the same format as Google login
-  localStorage.setItem('user', JSON.stringify({
+  console.log('\n🟠 [firebase] handleLoginSuccess storing to localStorage');
+  console.log('🟠 [firebase]   - userInfo.profileCompleted =', userInfo.profileCompleted);
+  console.log('🟠 [firebase]   - userInfo.isProfileCompleted =', userInfo.isProfileCompleted);
+  
+  const userToStore = {
     id: userInfo.id,
     uid: userInfo.uid,
     name: user.displayName,
@@ -202,11 +206,17 @@ const handleLoginSuccess = async (user, provider) => {
     profileCompleted: userInfo.profileCompleted || false,
     isProfileCompleted: userInfo.profileCompleted || false,
     authProvider: provider
-  }))
+  };
+  
+  console.log('🟠 [firebase] userToStore object:', userToStore);
+  localStorage.setItem('user', JSON.stringify(userToStore))
   localStorage.setItem('authProvider', provider)
   localStorage.setItem('userInfo', JSON.stringify(userInfo))
   
-  console.log('✅ User data stored in localStorage with profileCompleted:', userInfo.profileCompleted || false)
+  console.log('🟠 [firebase] ✅ Stored to localStorage, verifying...');
+  const verifyStored = JSON.parse(localStorage.getItem('user'));
+  console.log('🟠 [firebase]   - Verified profileCompleted:', verifyStored.profileCompleted);
+  console.log('🟠 [firebase] ✅ User data stored in localStorage with profileCompleted:', userInfo.profileCompleted || false)
   
   return userInfo
 }
