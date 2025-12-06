@@ -921,7 +921,7 @@ const Chat = () => {
   const startVideoChat = async () => {
     // First click: Initialize camera only (no matching yet)
     if (!cameraStarted) {
-      console.log('🎬 [START] User clicked "Start Video Chat" - initializing camera only');
+      console.log('🎬 [START] User clicked "Allow Camera & Continue" - requesting camera permission');
       
       // Prevent multiple simultaneous requests
       if (isRequestingCamera) {
@@ -933,29 +933,39 @@ const Chat = () => {
         setIsRequestingCamera(true);
         setIsLoading(true);
 
-        // CRITICAL: Never call getUserMedia again - always use preview stream
-        if (!localStreamRef.current) {
-          console.error('❌ CRITICAL: No preview stream available! This should not happen.');
-          console.error('localStreamRef.current is:', localStreamRef.current);
-          throw new Error('Preview stream not initialized');
+        console.log('📹 [INIT] Requesting camera permission from browser...');
+        
+        // First time: Request camera permission and get stream
+        const previewStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: true
+        });
+        
+        // Store the stream for later use
+        localStreamRef.current = previewStream;
+        console.log('[Camera] ✅ Camera stream obtained');
+        console.log('[Camera] Stream tracks:', previewStream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
+        
+        // Attach stream to video element
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = previewStream;
+          localVideoRef.current.muted = true;
+          
+          try {
+            await localVideoRef.current.play();
+            console.log('✅ Camera preview playing successfully');
+          } catch (err) {
+            console.error('❌ Play error:', err);
+          }
         }
 
-        console.log('✅ Using existing preview stream:', localStreamRef.current);
-        console.log('📹 Stream tracks count:', localStreamRef.current.getTracks().length);
-        console.log('📹 Stream tracks:', localStreamRef.current.getTracks().map(t => ({ 
-          kind: t.kind, 
-          id: t.id,
-          enabled: t.enabled,
-          readyState: t.readyState
-        })));
-
-        // Set camera started flag - this transitions from IntroScreen to VideoChatScreen (but NOT matching yet)
-        console.log('🎬 [START] Setting cameraStarted = true (will show home screen with camera preview)');
+        // Set camera started flag - shows preview on home screen
+        console.log('🎬 [START] Setting cameraStarted = true (camera preview now showing)');
         setCameraStarted(true);
         setIsRequestingCamera(false);
         setIsLoading(false);
 
-        console.log('🎬 [START] Camera initialized - user is still on home screen, matching NOT started yet');
+        console.log('🎬 [START] ✅ Camera initialized - user is still on home screen, matching NOT started yet');
       } catch (error) {
         console.error('❌ Error initializing camera:', error);
         setIsRequestingCamera(false);
@@ -971,15 +981,16 @@ const Chat = () => {
         }
       }
     } 
-    // Second click: Start matching (camera already initialized)
+    // Second click: Start matching ONLY (do NOT touch camera)
     else if (cameraStarted && !isMatchingStarted) {
       console.log('🎬 [MATCHING] User clicked "Start Video Chat" again - starting matching');
+      console.log('🎬 [MATCHING] ⚠️ NOT reinitializing camera - stream already active');
       console.log('🎬 [MATCHING] Emitting find_partner event to server');
       
       setIsMatchingStarted(true);
       setIsLoading(true);
 
-      // Emit find_partner to start matching
+      // Emit find_partner to start matching - ONLY THIS, NO CAMERA CODE
       socket.emit('find_partner', {
         userId: currentUser.googleId || currentUser.id,
         userName: currentUser.name || 'Anonymous',
@@ -987,7 +998,7 @@ const Chat = () => {
         userLocation: currentUser.location || 'Unknown'
       });
 
-      console.log('🎬 [MATCHING] find_partner event emitted - now waiting for a partner');
+      console.log('🎬 [MATCHING] ✅ find_partner event emitted - now waiting for a partner');
     }
   };
 
