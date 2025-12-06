@@ -1,7 +1,7 @@
 // DEPLOYMENT VERSION: 44ee2ae - Socket ID comparison + offerer/answerer logic
 // Last updated: 2025-12-02 - Force Vercel rebuild
 import React, { useState, useRef, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import socket from '../services/socketService';
 import { getIceServers, getMediaConstraints, formatTime } from '../utils/webrtcUtils';
@@ -14,7 +14,17 @@ import './Chat.css';
 
 const Chat = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useContext(AuthContext) || {};
+
+  // Check if we should start on home/intro screen (after profile completion)
+  const params = new URLSearchParams(location.search);
+  const viewParam = params.get('view');
+  const shouldStartAsIntro = viewParam === 'home';
+
+  console.log('[Chat] Location search params:', location.search);
+  console.log('[Chat] view parameter:', viewParam);
+  console.log('[Chat] shouldStartAsIntro:', shouldStartAsIntro);
 
   // Create a ref to expose camera functions to child components
   const cameraFunctionsRef = useRef(null);
@@ -267,8 +277,15 @@ const Chat = () => {
 
   // Auto-start camera preview on page load (lobby screen)
   // CRITICAL: Delayed initialization - only start after a short delay to ensure DOM is ready
-  // This prevents camera permission popup from appearing before ProfileSetupModal is rendered
+  // IMPORTANT: Skip if coming from profile completion (view=home) - camera starts when user clicks "Start Video Chat"
   useEffect(() => {
+    // Skip camera initialization if user just completed profile
+    if (shouldStartAsIntro) {
+      console.log('[Camera] ⏭️ Skipping auto camera init - user just completed profile (view=home)');
+      console.log('[Camera] Camera will start when user clicks "Start Video Chat" button');
+      return;
+    }
+
     async function startPreview() {
       try {
         console.log('📹 Starting camera preview...');
@@ -326,7 +343,7 @@ const Chat = () => {
       console.log('[Camera] Chat component unmounting, clearing camera init timer');
       clearTimeout(timer);
     };
-  }, []);
+  }, [shouldStartAsIntro]);
 
   // Debug: Monitor wrapper element when partner connects
   useEffect(() => {

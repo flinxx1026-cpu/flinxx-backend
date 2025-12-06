@@ -100,9 +100,9 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
         onProfileComplete(updatedUser)
       }
 
-      // Redirect to chat
+      // Redirect to chat home screen (not directly to video chat)
       setTimeout(() => {
-        navigate('/chat')
+        navigate('/chat?view=home')
       }, 500)
     } catch (err) {
       console.error('❌ Error saving profile:', err)
