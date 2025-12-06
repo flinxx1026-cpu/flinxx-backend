@@ -170,6 +170,7 @@ const Chat = () => {
 
   // UI state
   const [cameraStarted, setCameraStarted] = useState(false);
+  const [isMatchingStarted, setIsMatchingStarted] = useState(false);  // NEW: Separate state for matching
   const [hasPartner, setHasPartner] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [partnerInfo, setPartnerInfo] = useState(null);
@@ -196,6 +197,14 @@ const Chat = () => {
 
     return () => clearInterval(timer);
   }, [isConnected]);
+
+  // When a partner is found, transition from home screen to video chat screen
+  useEffect(() => {
+    if (hasPartner && cameraStarted) {
+      console.log('🎬 [PARTNER FOUND] Transitioning to video chat screen');
+      // VideoChatScreen will now render because hasPartner is true
+    }
+  }, [hasPartner, cameraStarted]);
 
   // CRITICAL: Monitor video element mounting and auto-attach stream when element is ready
   useEffect(() => {
@@ -910,40 +919,65 @@ const Chat = () => {
   };
 
   const startVideoChat = async () => {
-    // Prevent multiple simultaneous requests
-    if (isRequestingCamera || cameraStarted) {
-      console.warn('⚠️ Camera request already in progress or camera already started');
-      return;
-    }
-
-    try {
-      console.log('🎬 Starting video chat...');
-      setIsRequestingCamera(true);
-      setIsLoading(true);
-
-      // CRITICAL: Never call getUserMedia again - always use preview stream
-      if (!localStreamRef.current) {
-        console.error('❌ CRITICAL: No preview stream available! This should not happen.');
-        console.error('localStreamRef.current is:', localStreamRef.current);
-        throw new Error('Preview stream not initialized');
+    // First click: Initialize camera only (no matching yet)
+    if (!cameraStarted) {
+      console.log('🎬 [START] User clicked "Start Video Chat" - initializing camera only');
+      
+      // Prevent multiple simultaneous requests
+      if (isRequestingCamera) {
+        console.warn('⚠️ Camera request already in progress');
+        return;
       }
 
-      console.log('✅ Using existing preview stream:', localStreamRef.current);
-      console.log('📹 Stream tracks count:', localStreamRef.current.getTracks().length);
-      console.log('📹 Stream tracks:', localStreamRef.current.getTracks().map(t => ({ 
-        kind: t.kind, 
-        id: t.id,
-        enabled: t.enabled,
-        readyState: t.readyState
-      })));
+      try {
+        setIsRequestingCamera(true);
+        setIsLoading(true);
 
-      // Set camera started flag
-      setCameraStarted(true);
-      setIsRequestingCamera(false);
-      setIsLoading(false);
+        // CRITICAL: Never call getUserMedia again - always use preview stream
+        if (!localStreamRef.current) {
+          console.error('❌ CRITICAL: No preview stream available! This should not happen.');
+          console.error('localStreamRef.current is:', localStreamRef.current);
+          throw new Error('Preview stream not initialized');
+        }
 
-      // REMOVED: setupSocketListeners() now runs once on component mount via useEffect
-      // Socket listeners are already registered from the useEffect
+        console.log('✅ Using existing preview stream:', localStreamRef.current);
+        console.log('📹 Stream tracks count:', localStreamRef.current.getTracks().length);
+        console.log('📹 Stream tracks:', localStreamRef.current.getTracks().map(t => ({ 
+          kind: t.kind, 
+          id: t.id,
+          enabled: t.enabled,
+          readyState: t.readyState
+        })));
+
+        // Set camera started flag - this transitions from IntroScreen to VideoChatScreen (but NOT matching yet)
+        console.log('🎬 [START] Setting cameraStarted = true (will show home screen with camera preview)');
+        setCameraStarted(true);
+        setIsRequestingCamera(false);
+        setIsLoading(false);
+
+        console.log('🎬 [START] Camera initialized - user is still on home screen, matching NOT started yet');
+      } catch (error) {
+        console.error('❌ Error initializing camera:', error);
+        setIsRequestingCamera(false);
+        setIsLoading(false);
+        
+        // Handle specific error types
+        if (error.name === 'NotAllowedError') {
+          console.warn('⚠️ Camera permission denied by user');
+        } else if (error.name === 'NotFoundError') {
+          console.warn('⚠️ No camera device found');
+        } else if (error.name === 'NotReadableError') {
+          console.warn('⚠️ Camera device is already in use by another application');
+        }
+      }
+    } 
+    // Second click: Start matching (camera already initialized)
+    else if (cameraStarted && !isMatchingStarted) {
+      console.log('🎬 [MATCHING] User clicked "Start Video Chat" again - starting matching');
+      console.log('🎬 [MATCHING] Emitting find_partner event to server');
+      
+      setIsMatchingStarted(true);
+      setIsLoading(true);
 
       // Emit find_partner to start matching
       socket.emit('find_partner', {
@@ -953,19 +987,7 @@ const Chat = () => {
         userLocation: currentUser.location || 'Unknown'
       });
 
-    } catch (error) {
-      console.error('❌ Error in startVideoChat:', error);
-      setIsRequestingCamera(false);
-      setIsLoading(false);
-      
-      // Handle specific error types
-      if (error.name === 'NotAllowedError') {
-        console.warn('⚠️ Camera permission denied by user');
-      } else if (error.name === 'NotFoundError') {
-        console.warn('⚠️ No camera device found');
-      } else if (error.name === 'NotReadableError') {
-        console.warn('⚠️ Camera device is already in use by another application');
-      }
+      console.log('🎬 [MATCHING] find_partner event emitted - now waiting for a partner');
     }
   };
 
@@ -1145,10 +1167,10 @@ const Chat = () => {
           >
             {isLoading ? (
               <>
-                <span className="animate-spin inline-block mr-2">⟳</span> Requesting Access...
+                <span className="animate-spin inline-block mr-2">⟳</span> {cameraStarted ? 'Starting Match...' : 'Requesting Access...'}
               </>
             ) : (
-              'Start Video Chat'
+              cameraStarted ? 'Start Video Chat' : 'Allow Camera & Continue'
             )}
           </button>
         </div>
@@ -1343,7 +1365,8 @@ const Chat = () => {
   return (
     <div className="flex flex-col h-screen w-screen bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 overflow-hidden min-h-0">
       {/* Main content */}
-      {!cameraStarted ? <IntroScreen /> : <VideoChatScreen />}
+      {/* Show VideoChatScreen only when partner is found */}
+      {hasPartner ? <VideoChatScreen /> : <IntroScreen />}
       
       {/* Premium Modal */}
       <PremiumModal 
