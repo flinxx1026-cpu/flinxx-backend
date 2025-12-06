@@ -20,10 +20,15 @@ const ProtectedChatRoute = ({ children }) => {
       const userData = JSON.parse(savedUser)
       setUser(userData)
 
-      // Check if profile is completed
-      if (!userData.isProfileCompleted) {
-        console.log('Profile not completed, showing setup modal')
+      // Check if profile is completed (support both field names)
+      const profileCompleted = userData.profileCompleted || userData.isProfileCompleted;
+      if (!profileCompleted) {
+        console.log('[ProtectedChatRoute] Profile not completed, showing setup modal')
+        console.log('[ProtectedChatRoute] profileCompleted:', userData.profileCompleted)
+        console.log('[ProtectedChatRoute] isProfileCompleted:', userData.isProfileCompleted)
         setShowProfileSetup(true)
+      } else {
+        console.log('[ProtectedChatRoute] ✓ Profile is already completed, showing chat')
       }
     } catch (error) {
       console.error('Error checking profile:', error)

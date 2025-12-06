@@ -232,19 +232,25 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
       // Update local storage as backup
       localStorage.setItem('userProfile', JSON.stringify(profilePayload));
       setIsEditing(false);
+      
+      // 🎥 CRITICAL: Close modal first, then reinitialize camera
+      console.log('[PROFILE SAVE] Profile saved successfully');
+      console.log('[PROFILE SAVE] Closing ProfileModal...');
+      onClose(); // IMPORTANT: Close the modal immediately
+      
+      // Alert after closing
       alert('Profile updated successfully!');
       
-      // 🎥 CRITICAL: Re-initialize camera AFTER ProfileModal closes
-      // Use setTimeout to ensure video element is fully mounted on DOM before attaching stream
-      console.log('🎥 [ProfileModal] Scheduling camera re-init with 300ms delay to allow ProfileModal close animation');
+      // Then schedule camera re-init with delay to allow modal to fully unmount
+      console.log('🎥 [ProfileModal] Scheduling camera re-init with 500ms delay to allow modal unmount');
       if (typeof onReinitializeCamera === 'function') {
         setTimeout(() => {
-          console.log('🎥 [ProfileModal] Executing delayed camera re-initialization');
+          console.log('\n🎥 [ProfileModal] 500ms delay complete, reinitializing camera now');
           console.log('🎥 [ProfileModal] Calling onReinitializeCamera()');
           onReinitializeCamera()
             .then((success) => {
               if (success) {
-                console.log('🎥 [ProfileModal] ✅ Camera reinitialized successfully after delay');
+                console.log('🎥 [ProfileModal] ✅ Camera reinitialized successfully after profile save');
               } else {
                 console.warn('🎥 [ProfileModal] ⚠️ Camera reinitialization returned false');
               }
@@ -252,7 +258,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
             .catch((err) => {
               console.error('🎥 [ProfileModal] ❌ Error calling reinitializeCamera:', err);
             });
-        }, 300);
+        }, 500);
       } else {
         console.warn('🎥 [ProfileModal] ⚠️ onReinitializeCamera callback not provided');
       }

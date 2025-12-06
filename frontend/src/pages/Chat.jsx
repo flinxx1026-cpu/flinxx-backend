@@ -55,54 +55,101 @@ const Chat = () => {
 
   // Expose camera re-initialization function that can be called from ProfileModal
   const reinitializeCamera = React.useCallback(async () => {
+    console.log('\n\n🎥 ===== CAMERA RE-INITIALIZATION STARTED =====');
     console.log('🎥 [REINIT] Camera re-initialization requested');
+    console.log('🎥 [REINIT] Current state:');
+    console.log('  - localStreamRef.current exists:', !!localStreamRef.current);
+    console.log('  - localVideoRef.current exists:', !!localVideoRef.current);
+    console.log('  - cameraStarted:', cameraStarted);
+    
     try {
+      // CRITICAL: Ensure video element is in document
+      if (!localVideoRef.current) {
+        console.error('🎥 [REINIT] ❌ CRITICAL: localVideoRef.current is null/undefined - video element not in DOM');
+        return false;
+      }
+      
+      // Check if video element is actually mounted
+      if (!localVideoRef.current.parentElement) {
+        console.error('🎥 [REINIT] ❌ CRITICAL: Video element is not attached to DOM');
+        return false;
+      }
+      
+      console.log('🎥 [REINIT] ✓ Video element exists in DOM');
+      
       // Check if we already have a stream
       if (localStreamRef.current) {
-        console.log('🎥 [REINIT] Stream already exists, reattaching to video element');
-        if (localVideoRef.current) {
+        console.log('🎥 [REINIT] Stream exists, checking if tracks are active...');
+        const tracks = localStreamRef.current.getTracks();
+        console.log('🎥 [REINIT] Stream has', tracks.length, 'tracks');
+        tracks.forEach((track, i) => {
+          console.log(`  Track ${i}:`, { kind: track.kind, enabled: track.enabled, readyState: track.readyState });
+        });
+        
+        if (tracks.length === 0) {
+          console.warn('🎥 [REINIT] ⚠️ Stream exists but has no active tracks - will request new stream');
+          localStreamRef.current = null;
+        } else {
+          console.log('🎥 [REINIT] ✓ Stream has active tracks, reattaching to video element');
           localVideoRef.current.srcObject = localStreamRef.current;
           localVideoRef.current.muted = true;
           
+          console.log('🎥 [REINIT] srcObject set, waiting for play()...');
+          
           try {
-            await localVideoRef.current.play();
+            const playPromise = localVideoRef.current.play();
+            if (playPromise !== undefined) {
+              await playPromise;
+            }
             console.log('🎥 [REINIT] ✅ Camera preview reattached and playing');
+            console.log('🎥 ===== CAMERA RE-INITIALIZATION SUCCESSFUL =====\n\n');
             return true;
           } catch (err) {
             console.error('🎥 [REINIT] ❌ Error playing video:', err);
-            return false;
-          }
-        }
-      } else {
-        console.log('🎥 [REINIT] No existing stream, requesting new preview stream');
-        const previewStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: true
-        });
-        
-        localStreamRef.current = previewStream;
-        console.log('🎥 [REINIT] ✅ New camera stream obtained');
-        
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = previewStream;
-          localVideoRef.current.muted = true;
-          
-          try {
-            await localVideoRef.current.play();
-            console.log('🎥 [REINIT] ✅ New camera preview playing successfully');
-            setCameraStarted(true);
-            return true;
-          } catch (err) {
-            console.error('🎥 [REINIT] ❌ Error playing new video:', err);
+            console.error('🎥 [REINIT] Error name:', err.name);
+            console.error('🎥 [REINIT] Error message:', err.message);
             return false;
           }
         }
       }
+      
+      // Request new stream if none exists
+      console.log('🎥 [REINIT] No existing stream or tracks inactive, requesting new preview stream');
+      const previewStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: true
+      });
+      
+      localStreamRef.current = previewStream;
+      console.log('🎥 [REINIT] ✅ New camera stream obtained:', previewStream);
+      console.log('🎥 [REINIT] New stream tracks:', previewStream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
+      
+      localVideoRef.current.srcObject = previewStream;
+      localVideoRef.current.muted = true;
+      
+      console.log('🎥 [REINIT] srcObject set to new stream, calling play()...');
+      
+      try {
+        const playPromise = localVideoRef.current.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+        }
+        console.log('🎥 [REINIT] ✅ New camera preview playing successfully');
+        setCameraStarted(true);
+        console.log('🎥 ===== CAMERA RE-INITIALIZATION SUCCESSFUL =====\n\n');
+        return true;
+      } catch (err) {
+        console.error('🎥 [REINIT] ❌ Error playing new video:', err);
+        return false;
+      }
     } catch (err) {
       console.error('🎥 [REINIT] ❌ Error reinitializing camera:', err);
+      console.error('🎥 [REINIT] Error name:', err.name);
+      console.error('🎥 [REINIT] Error message:', err.message);
+      console.error('🎥 ===== CAMERA RE-INITIALIZATION FAILED =====\n\n');
       return false;
     }
-  }, []);
+  }, [cameraStarted]);
 
   // Assign reinitializeCamera to ref so it can be accessed from ProfileModal
   useEffect(() => {
