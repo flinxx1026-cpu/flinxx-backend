@@ -1260,6 +1260,121 @@ const Chat = () => {
     </div>
   );
 
+  // Waiting Screen Component - Shows when matching is in progress
+  const WaitingScreen = () => (
+    <div className="intro-screen-container flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
+      {/* Top-Right Icon Navigation Bar */}
+      <div className="top-right-icons">
+        {/* User Profile Icon - 1 */}
+        <div 
+          className="icon-circle" 
+          title="Profile"
+          onClick={() => setIsProfileOpen(true)}
+          style={{ cursor: 'pointer' }}
+        >
+          {currentUser?.picture ? (
+            <img src={currentUser.picture} alt="Profile" />
+          ) : (
+            '👤'
+          )}
+        </div>
+
+        {/* Search Icon - 2 */}
+        <div 
+          className="icon-circle" 
+          title="Search"
+          onClick={() => console.log('Search clicked')}
+        >
+          🔍
+        </div>
+
+        {/* Messages Icon - 3 */}
+        <div 
+          className="icon-circle" 
+          title="Messages"
+          onClick={() => console.log('Messages clicked')}
+        >
+          💬
+        </div>
+
+        {/* Flinx Premium Icon - 4 */}
+        <div 
+          className="icon-circle" 
+          title="Flinx Premium"
+          onClick={() => setIsPremiumOpen(true)}
+        >
+          👑
+        </div>
+
+        {/* Match History Icon - 5 */}
+        <div 
+          className="icon-circle" 
+          title="Match History"
+          onClick={() => setIsMatchHistoryOpen(true)}
+        >
+          ⏱️
+        </div>
+      </div>
+
+      {/* Left - Live camera preview box */}
+      <div className="video-box flex-1 max-w-[750px] aspect-[4/3] bg-gray-400 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: 'auto' }}>
+        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
+          <video
+            ref={localVideoRef}
+            autoPlay={true}
+            playsInline={true}
+            muted={true}
+            className="w-full h-full object-cover"
+            style={{
+              backgroundColor: '#000000',
+              transform: 'none',
+              zoom: 1,
+              display: 'block'
+            }}
+          />
+          <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl z-10">
+            <p className="font-semibold text-sm">You</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right - Waiting panel */}
+      <div className="right-panel flex-1 max-w-[500px] bg-[#8a00ff] rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: 'auto' }}>
+        <div className="w-full h-full bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-center text-center gap-8">
+          {/* Animated Waiting Icon */}
+          <div className="animate-pulse text-6xl">
+            🔍
+          </div>
+
+          {/* Waiting Text */}
+          <div className="flex flex-col items-center gap-2">
+            <h2 className="text-2xl font-bold text-white">Looking for a partner...</h2>
+            <p className="text-white/80 text-sm">Matching you with someone nearby</p>
+          </div>
+
+          {/* Animated dots */}
+          <div className="flex gap-2">
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+          </div>
+
+          {/* Cancel Button */}
+          <button
+            onClick={() => {
+              console.log('🔙 Cancel matching');
+              setIsMatchingStarted(false);
+              setIsLoading(false);
+            }}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 text-sm shadow-lg hover:shadow-red-600/50"
+          >
+            Cancel Search
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // Video Chat Screen Component
   const VideoChatScreen = () => (
     <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
@@ -1446,9 +1561,17 @@ const Chat = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 overflow-hidden min-h-0">
-      {/* Main content */}
-      {/* Show VideoChatScreen only when partner is found */}
-      {hasPartner ? <VideoChatScreen /> : <IntroScreen />}
+      {/* Main content - Show correct screen based on state */}
+      {hasPartner ? (
+        // Partner found: Show video chat
+        <VideoChatScreen />
+      ) : isMatchingStarted ? (
+        // Matching in progress: Show waiting screen
+        <WaitingScreen />
+      ) : (
+        // Initial state: Show intro screen
+        <IntroScreen />
+      )}
       
       {/* Premium Modal */}
       <PremiumModal 
