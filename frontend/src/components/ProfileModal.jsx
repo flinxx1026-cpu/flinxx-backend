@@ -89,8 +89,11 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium }) => {
     }
   };
 
-  const loadUserProfile = () => {
-    if (user) {
+  const loadUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      // First set data from context
       setProfileData(prev => ({
         ...prev,
         name: user.name || 'User',
@@ -98,6 +101,44 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium }) => {
         picture: user.picture || '',
         googleId: user.googleId || ''
       }));
+
+      // Then fetch fresh data from backend
+      const token = localStorage.getItem('token');
+      if (token) {
+        console.log('[ProfileModal] Fetching fresh user profile from backend');
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        
+        const response = await fetch(`${BACKEND_URL}/api/profile`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[ProfileModal] ✅ Fetched profile data from backend:', data.user?.email);
+          
+          if (data.success && data.user) {
+            setProfileData(prev => ({
+              ...prev,
+              name: data.user.name || 'User',
+              email: data.user.email || '',
+              picture: data.user.picture || '',
+              googleId: data.user.googleId || '',
+              gender: data.user.gender || 'Not set',
+              birthday: data.user.birthday || 'Not set'
+            }));
+          }
+        } else {
+          console.warn('[ProfileModal] ⚠️ Failed to fetch profile from backend:', response.status);
+        }
+      } else {
+        console.log('[ProfileModal] ⚠️ No token found in localStorage');
+      }
+    } catch (err) {
+      console.error('[ProfileModal] ❌ Error loading user profile:', err);
     }
   };
 
