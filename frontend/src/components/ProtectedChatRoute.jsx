@@ -161,7 +161,7 @@ const ProtectedChatRoute = ({ children }) => {
       {showProfileSetup && user && (
         <ProfileSetupModal user={user} onProfileComplete={handleProfileComplete} isOpen={true} />
       )}
-      {children}
+      {!showProfileSetup && children}
     </>
   )
 }

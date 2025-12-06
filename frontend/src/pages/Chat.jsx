@@ -266,10 +266,22 @@ const Chat = () => {
   }, [cameraStarted]);
 
   // Auto-start camera preview on page load (lobby screen)
+  // CRITICAL: Delayed initialization - only start after a short delay to ensure DOM is ready
+  // This prevents camera permission popup from appearing before ProfileSetupModal is rendered
   useEffect(() => {
     async function startPreview() {
       try {
         console.log('📹 Starting camera preview...');
+        console.log('📹 [INIT] Chat component mounted, attempting to initialize camera');
+        
+        // Verify video element exists in DOM
+        if (!localVideoRef.current) {
+          console.error('📹 [INIT] ❌ Video element not in DOM yet, cannot initialize camera');
+          return;
+        }
+        
+        console.log('📹 [INIT] ✓ Video element found in DOM, requesting camera permissions');
+        
         const previewStream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 } },
           audio: true
@@ -278,6 +290,7 @@ const Chat = () => {
         // Store the stream for later use in chat
         localStreamRef.current = previewStream;
         console.log('[Camera] ✅ Camera stream obtained');
+        console.log('[Camera] Stream tracks:', previewStream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
         
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = previewStream;
@@ -294,12 +307,25 @@ const Chat = () => {
         }
       } catch (err) {
         console.log('📷 Camera preview error (this is OK, user may deny permission):', err.message);
+        console.log('📷 Error name:', err.name);
+        console.log('📷 Error code:', err.code);
       }
     }
 
-    // Always attempt to start camera on mount (fresh start)
-    console.log('[Camera] Attempting to initialize camera on component mount');
-    startPreview();
+    // CRITICAL FIX: Delay camera initialization slightly to ensure:
+    // 1. Video element is mounted in DOM
+    // 2. ProfileSetupModal has already been checked/dismissed
+    // 3. Permission popup appears in correct context
+    console.log('[Camera] Chat component useEffect triggered, scheduling camera init with delay');
+    const timer = setTimeout(() => {
+      console.log('[Camera] Delay complete, now calling startPreview()');
+      startPreview();
+    }, 100);
+
+    return () => {
+      console.log('[Camera] Chat component unmounting, clearing camera init timer');
+      clearTimeout(timer);
+    };
   }, []);
 
   // Debug: Monitor wrapper element when partner connects
