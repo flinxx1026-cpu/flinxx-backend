@@ -167,12 +167,70 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
   const handleSaveProfile = async () => {
     setLoading(true);
     try {
-      // Save to Firebase Firestore
-      // This would require getFirestore and setDoc
-      console.log('Saving profile:', profileData);
+      console.log('[PROFILE SAVE] Starting profile save process');
+      console.log('[PROFILE SAVE] Profile data:', profileData);
       
-      // Update local storage for now
-      localStorage.setItem('userProfile', JSON.stringify(profileData));
+      // Get user ID from context or localStorage
+      const userId = user?.googleId || localStorage.getItem('userId');
+      console.log('[PROFILE SAVE] User ID:', userId);
+      
+      if (!userId) {
+        console.error('[PROFILE SAVE] Error: No user ID found');
+        alert('Error: User ID not found. Please login again.');
+        setLoading(false);
+        return;
+      }
+
+      // Prepare data for API call
+      const profilePayload = {
+        userId: userId,
+        birthday: profileData.birthday || new Date().toISOString().split('T')[0],
+        gender: profileData.gender || 'Not set'
+      };
+
+      console.log('[PROFILE SAVE] Request body:', JSON.stringify(profilePayload));
+      console.log('[PROFILE SAVE] Required fields check:');
+      console.log('  - userId:', !!profilePayload.userId);
+      console.log('  - birthday:', !!profilePayload.birthday);
+      console.log('  - gender:', !!profilePayload.gender);
+
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      console.log('[PROFILE SAVE] Token present:', !!token);
+
+      if (!token) {
+        console.warn('[PROFILE SAVE] Warning: No auth token found');
+      }
+
+      // Call backend API to save profile
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      console.log('[PROFILE SAVE] Backend URL:', BACKEND_URL);
+      console.log('[PROFILE SAVE] Making API call to /api/users/complete-profile');
+
+      const response = await fetch(`${BACKEND_URL}/api/users/complete-profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify(profilePayload)
+      });
+
+      console.log('[PROFILE SAVE] Response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[PROFILE SAVE] Error response:', errorData);
+        alert(`Failed to save profile: ${errorData.error || 'Unknown error'}`);
+        setLoading(false);
+        return;
+      }
+
+      const result = await response.json();
+      console.log('[PROFILE SAVE] ✅ Profile saved successfully:', result);
+
+      // Update local storage as backup
+      localStorage.setItem('userProfile', JSON.stringify(profilePayload));
       setIsEditing(false);
       alert('Profile updated successfully!');
       
@@ -193,8 +251,10 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
         console.warn('🎥 [ProfileModal] ⚠️ onReinitializeCamera callback not provided');
       }
     } catch (err) {
-      console.error('Error saving profile:', err);
-      alert('Failed to save profile');
+      console.error('[PROFILE SAVE] Error:', err);
+      console.error('[PROFILE SAVE] Error message:', err.message);
+      console.error('[PROFILE SAVE] Error stack:', err.stack);
+      alert('Failed to save profile: ' + err.message);
     } finally {
       setLoading(false);
     }

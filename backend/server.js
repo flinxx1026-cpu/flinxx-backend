@@ -441,66 +441,81 @@ app.post('/api/users/save', async (req, res) => {
 app.post('/api/users/complete-profile', async (req, res) => {
   try {
     // Log incoming request
-    console.log('📨 /complete-profile endpoint called')
-    console.log('   Request body:', JSON.stringify(req.body))
+    console.log('\n\n📨 ===== COMPLETE-PROFILE ENDPOINT CALLED =====');
+    console.log('[PROFILE SAVE] Request method:', req.method);
+    console.log('[PROFILE SAVE] Request URL:', req.url);
+    console.log('[PROFILE SAVE] Content-Type header:', req.headers['content-type']);
+    console.log('[PROFILE SAVE] Request headers:', req.headers);
+    console.log('[PROFILE SAVE] Request body:', JSON.stringify(req.body, null, 2));
+    console.log('[PROFILE SAVE] Request body type:', typeof req.body);
+    console.log('[PROFILE SAVE] Request body keys:', req.body ? Object.keys(req.body) : 'no body');
     
     const { userId, birthday, gender } = req.body
 
+    console.log('[PROFILE SAVE] Extracted fields:');
+    console.log('  - userId:', userId, '(type: ' + typeof userId + ')');
+    console.log('  - birthday:', birthday, '(type: ' + typeof birthday + ')');
+    console.log('  - gender:', gender, '(type: ' + typeof gender + ')');
+
     // Validate required fields
     if (!userId) {
-      console.warn('❌ Missing userId in request')
+      console.error('[PROFILE SAVE] ❌ VALIDATION ERROR: Missing userId');
+      console.error('[PROFILE SAVE] Request body was:', req.body);
       return res.status(400).json({ error: 'Missing required field: userId' })
     }
     if (!birthday) {
-      console.warn('❌ Missing birthday in request')
+      console.error('[PROFILE SAVE] ❌ VALIDATION ERROR: Missing birthday');
       return res.status(400).json({ error: 'Missing required field: birthday' })
     }
     if (!gender) {
-      console.warn('❌ Missing gender in request')
+      console.error('[PROFILE SAVE] ❌ VALIDATION ERROR: Missing gender');
       return res.status(400).json({ error: 'Missing required field: gender' })
     }
 
     // Validate birthday format (YYYY-MM-DD)
     if (typeof birthday !== 'string' || birthday.length < 10) {
-      console.error(`❌ Invalid birthday format received: ${birthday} (type: ${typeof birthday}, length: ${birthday?.length})`)
+      console.error(`[PROFILE SAVE] ❌ VALIDATION ERROR: Invalid birthday format received: ${birthday} (type: ${typeof birthday}, length: ${birthday?.length})`);
       return res.status(400).json({ error: 'Invalid birthday format. Expected YYYY-MM-DD' })
     }
 
     // Validate birthday is a valid ISO date
     if (isNaN(Date.parse(birthday))) {
-      console.error(`❌ Birthday is not a valid date: ${birthday}`)
+      console.error(`[PROFILE SAVE] ❌ VALIDATION ERROR: Birthday is not a valid date: ${birthday}`);
       return res.status(400).json({ error: 'Invalid birthday date. Must be a valid date' })
     }
 
-    console.log(`📝 Completing profile for user: ${userId}`)
-    console.log(`   Birthday: ${birthday}, Gender: ${gender}`)
+    console.log(`[PROFILE SAVE] ✓ All validations passed`);
+    console.log(`[PROFILE SAVE] Completing profile for user: ${userId}`);
+    console.log(`[PROFILE SAVE] Birthday: ${birthday}, Gender: ${gender}`);
 
     // Verify user exists in database
+    console.log('[PROFILE SAVE] Checking if user exists in database...');
     const existingUser = await prisma.users.findUnique({
       where: { id: userId }
     })
 
     if (!existingUser) {
-      console.error(`❌ User not found in database: ${userId}`)
+      console.error(`[PROFILE SAVE] ❌ DATABASE ERROR: User not found in database: ${userId}`);
       return res.status(404).json({ error: 'User not found' })
     }
 
-    console.log(`✓ User verified in DB: ${existingUser.email}`)
-    console.log(`   Current user data:`, JSON.stringify({
+    console.log(`[PROFILE SAVE] ✓ User verified in DB: ${existingUser.email}`);
+    console.log(`[PROFILE SAVE] Current user data:`, JSON.stringify({
       id: existingUser.id,
       email: existingUser.email,
       birthday: existingUser.birthday,
       gender: existingUser.gender,
       age: existingUser.age,
       profileCompleted: existingUser.profileCompleted
-    }))
+    }, null, 2));
 
     // Calculate age from birthday
+    console.log('[PROFILE SAVE] Calculating age from birthday:', birthday);
     const birthDate = new Date(birthday)
     
     // Validate date is valid
     if (isNaN(birthDate.getTime())) {
-      console.error(`❌ Invalid date value: ${birthday}`)
+      console.error(`[PROFILE SAVE] ❌ VALIDATION ERROR: Invalid date value: ${birthday}`);
       return res.status(400).json({ error: 'Invalid birthday date' })
     }
 
@@ -511,11 +526,11 @@ app.post('/api/users/complete-profile', async (req, res) => {
       age--
     }
 
-    console.log(`✓ Calculated age: ${age}`)
+    console.log(`[PROFILE SAVE] ✓ Calculated age: ${age}`);
 
     // Check if user is 18 or older
     if (age < 18) {
-      console.warn(`⚠️ User ${userId} is under 18 (age: ${age})`)
+      console.warn(`[PROFILE SAVE] ⚠️ AGE VALIDATION FAILED: User ${userId} is under 18 (age: ${age})`);
       return res.status(400).json({ 
         error: 'You must be 18+ to use this app',
         code: 'UNDERAGE_USER'
@@ -523,12 +538,13 @@ app.post('/api/users/complete-profile', async (req, res) => {
     }
 
     // Update user profile with Prisma
-    console.log(`📝 Updating user with:`)
-    console.log(`   - birthday: ${birthday} (type: ${typeof birthday})`)
-    console.log(`   - birthDate: ${birthDate.toISOString()}`)
-    console.log(`   - gender: ${gender}`)
-    console.log(`   - age: ${age}`)
-    console.log(`   - profileCompleted: true`)
+    console.log(`[PROFILE SAVE] ✓ Validation passed, updating user profile`);
+    console.log(`[PROFILE SAVE] Updating user with:`);
+    console.log(`  - birthday: ${birthday} (type: ${typeof birthday})`);
+    console.log(`  - birthDate: ${birthDate.toISOString()}`);
+    console.log(`  - gender: ${gender}`);
+    console.log(`  - age: ${age}`);
+    console.log(`  - profileCompleted: true`);
     
     const user = await prisma.users.update({
       where: { id: userId },
@@ -540,15 +556,16 @@ app.post('/api/users/complete-profile', async (req, res) => {
       }
     })
 
-    console.log(`✅ Profile completed successfully for user: ${user.email}`)
-    console.log(`   Updated user data:`, JSON.stringify({
+    console.log(`[PROFILE SAVE] ✅ PROFILE UPDATED SUCCESSFULLY`);
+    console.log(`[PROFILE SAVE] User email: ${user.email}`);
+    console.log(`[PROFILE SAVE] Updated user data:`, JSON.stringify({
       id: user.id,
       email: user.email,
       birthday: user.birthday,
       gender: user.gender,
       age: user.age,
       profileCompleted: user.profileCompleted
-    }))
+    }, null, 2));
 
     res.json({
       success: true,
@@ -565,16 +582,17 @@ app.post('/api/users/complete-profile', async (req, res) => {
       }
     })
   } catch (error) {
-    console.error('❌ PROFILE UPDATE ERROR:', error.message)
-    console.error('   Full error:', error)
-    console.error('   Error type:', error.constructor.name)
-    console.error('   Stack:', error.stack)
+    console.error('[PROFILE SAVE] ❌ ===== PROFILE UPDATE ERROR =====');
+    console.error('[PROFILE SAVE] Error message:', error.message);
+    console.error('[PROFILE SAVE] Error type:', error.constructor.name);
+    console.error('[PROFILE SAVE] Error stack:', error.stack);
     if (error.meta) {
-      console.error('   Prisma meta:', error.meta)
+      console.error('[PROFILE SAVE] Prisma meta:', error.meta);
     }
     if (error.code) {
-      console.error('   Error code:', error.code)
+      console.error('[PROFILE SAVE] Error code:', error.code);
     }
+    console.error('[PROFILE SAVE] Full error:', error);
     res.status(500).json({ error: 'Failed to complete profile', details: error.message })
   }
 })
