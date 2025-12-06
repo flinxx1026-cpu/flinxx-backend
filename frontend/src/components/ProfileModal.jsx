@@ -234,19 +234,25 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
       setIsEditing(false);
       alert('Profile updated successfully!');
       
-      // 🎥 CRITICAL: Re-initialize camera after profile save
-      console.log('🎥 [ProfileModal] Attempting to reinitialize camera after profile save');
+      // 🎥 CRITICAL: Re-initialize camera AFTER ProfileModal closes
+      // Use setTimeout to ensure video element is fully mounted on DOM before attaching stream
+      console.log('🎥 [ProfileModal] Scheduling camera re-init with 300ms delay to allow ProfileModal close animation');
       if (typeof onReinitializeCamera === 'function') {
-        try {
-          const success = await onReinitializeCamera();
-          if (success) {
-            console.log('🎥 [ProfileModal] ✅ Camera reinitialized successfully');
-          } else {
-            console.warn('🎥 [ProfileModal] ⚠️ Camera reinitialization returned false');
-          }
-        } catch (err) {
-          console.error('🎥 [ProfileModal] ❌ Error calling reinitializeCamera:', err);
-        }
+        setTimeout(() => {
+          console.log('🎥 [ProfileModal] Executing delayed camera re-initialization');
+          console.log('🎥 [ProfileModal] Calling onReinitializeCamera()');
+          onReinitializeCamera()
+            .then((success) => {
+              if (success) {
+                console.log('🎥 [ProfileModal] ✅ Camera reinitialized successfully after delay');
+              } else {
+                console.warn('🎥 [ProfileModal] ⚠️ Camera reinitialization returned false');
+              }
+            })
+            .catch((err) => {
+              console.error('🎥 [ProfileModal] ❌ Error calling reinitializeCamera:', err);
+            });
+        }, 300);
       } else {
         console.warn('🎥 [ProfileModal] ⚠️ onReinitializeCamera callback not provided');
       }

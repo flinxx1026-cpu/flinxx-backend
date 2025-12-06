@@ -140,11 +140,61 @@ const Chat = () => {
     return () => clearInterval(timer);
   }, [isConnected]);
 
-  // Ensure video stream is attached when camera starts
+  // CRITICAL: Monitor video element mounting and auto-attach stream when element is ready
+  useEffect(() => {
+    console.log('🎥 [VIDEO MOUNT DETECTOR] Checking video element mount status');
+    console.log('   localVideoRef.current exists:', !!localVideoRef.current);
+    console.log('   localStreamRef.current exists:', !!localStreamRef.current);
+    console.log('   cameraStarted:', cameraStarted);
+    
+    if (localVideoRef.current && localStreamRef.current && cameraStarted) {
+      console.log('🎥 [VIDEO MOUNT DETECTOR] ✅ Video element is mounted on DOM');
+      console.log('🎥 [VIDEO MOUNT DETECTOR] Attaching stream to video element:', localStreamRef.current);
+      console.log('🎥 [VIDEO MOUNT DETECTOR] Video element dimensions:', {
+        width: localVideoRef.current.clientWidth,
+        height: localVideoRef.current.clientHeight,
+        offsetWidth: localVideoRef.current.offsetWidth,
+        offsetHeight: localVideoRef.current.offsetHeight,
+        displayStyle: localVideoRef.current.style.display,
+        computedDisplay: window.getComputedStyle(localVideoRef.current).display
+      });
+      
+      // Attach stream to video element
+      localVideoRef.current.srcObject = localStreamRef.current;
+      localVideoRef.current.muted = true;
+      
+      console.log('🎥 [VIDEO MOUNT DETECTOR] Stream attached, srcObject set');
+      console.log('🎥 [VIDEO MOUNT DETECTOR] Attempting to play video...');
+      
+      // Attempt to play video with proper error handling
+      setTimeout(async () => {
+        if (localVideoRef.current && localVideoRef.current.srcObject) {
+          try {
+            console.log('🎥 [VIDEO MOUNT DETECTOR] Calling video.play()');
+            await localVideoRef.current.play();
+            console.log('🎥 [VIDEO MOUNT DETECTOR] ✅ Video playing successfully');
+            console.log('🎥 [VIDEO MOUNT DETECTOR] Video readyState:', localVideoRef.current.readyState);
+            console.log('🎥 [VIDEO MOUNT DETECTOR] Video paused:', localVideoRef.current.paused);
+          } catch (err) {
+            console.error('🎥 [VIDEO MOUNT DETECTOR] ❌ Play error:', err);
+            console.error('🎥 [VIDEO MOUNT DETECTOR] Error name:', err.name);
+            console.error('🎥 [VIDEO MOUNT DETECTOR] Error message:', err.message);
+          }
+        }
+      }, 100);
+    } else {
+      console.warn('🎥 [VIDEO MOUNT DETECTOR] ⚠️ Cannot attach stream - missing:');
+      if (!localVideoRef.current) console.warn('   - localVideoRef.current (DOM element)');
+      if (!localStreamRef.current) console.warn('   - localStreamRef.current (media stream)');
+      if (!cameraStarted) console.warn('   - cameraStarted flag is false');
+    }
+  }, [localVideoRef, localStreamRef, cameraStarted]);
+
+  // Ensure video stream is attached when camera starts (original effect)
   useEffect(() => {
     if (cameraStarted && localStreamRef.current && localVideoRef.current) {
-      console.log('Attaching stream to video element:', localStreamRef.current);
-      console.log('Video element dimensions:', {
+      console.log('🎥 [CAMERA START] Attaching stream to video element:', localStreamRef.current);
+      console.log('🎥 [CAMERA START] Video element dimensions:', {
         width: localVideoRef.current.clientWidth,
         height: localVideoRef.current.clientHeight,
         offsetWidth: localVideoRef.current.offsetWidth,
