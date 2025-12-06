@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ProfileSetupModal from './ProfileSetupModal'
+import { isProfileCompleted } from '../utils/profileUtils'
 
 const ProtectedChatRoute = ({ children }) => {
   const navigate = useNavigate()
@@ -10,28 +11,44 @@ const ProtectedChatRoute = ({ children }) => {
 
   useEffect(() => {
     try {
+      console.log('\n\n[ProtectedChatRoute] Checking profile status...');
+      
       const savedUser = localStorage.getItem('user')
       if (!savedUser) {
-        console.log('No user found, redirecting to login')
+        console.log('[ProtectedChatRoute] ❌ No user found in localStorage, redirecting to login')
         navigate('/login', { replace: true })
         return
       }
 
       const userData = JSON.parse(savedUser)
+      console.log('[ProtectedChatRoute] ✓ User loaded from localStorage:', userData.email);
+      console.log('[ProtectedChatRoute] User data:', {
+        id: userData.id,
+        email: userData.email,
+        profileCompleted: userData.profileCompleted,
+        isProfileCompleted: userData.isProfileCompleted,
+        birthday: userData.birthday,
+        gender: userData.gender
+      });
+      
       setUser(userData)
 
       // Check if profile is completed (support both field names)
       const profileCompleted = userData.profileCompleted || userData.isProfileCompleted;
+      
+      console.log('[ProtectedChatRoute] Profile status check:');
+      console.log('  - profileCompleted field:', userData.profileCompleted);
+      console.log('  - isProfileCompleted field:', userData.isProfileCompleted);
+      console.log('  - Final result (profileCompleted):', profileCompleted);
+      
       if (!profileCompleted) {
-        console.log('[ProtectedChatRoute] Profile not completed, showing setup modal')
-        console.log('[ProtectedChatRoute] profileCompleted:', userData.profileCompleted)
-        console.log('[ProtectedChatRoute] isProfileCompleted:', userData.isProfileCompleted)
+        console.log('[ProtectedChatRoute] ⚠️ Profile NOT completed - showing ProfileSetupModal');
         setShowProfileSetup(true)
       } else {
-        console.log('[ProtectedChatRoute] ✓ Profile is already completed, showing chat')
+        console.log('[ProtectedChatRoute] ✅ Profile IS completed - showing chat page');
       }
     } catch (error) {
-      console.error('Error checking profile:', error)
+      console.error('[ProtectedChatRoute] ❌ Error checking profile:', error)
       navigate('/login', { replace: true })
     } finally {
       setIsLoading(false)

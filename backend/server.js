@@ -597,6 +597,77 @@ app.post('/api/users/complete-profile', async (req, res) => {
   }
 })
 
+// Reset profile status (for development/debugging)
+app.post('/api/users/reset-profile', async (req, res) => {
+  try {
+    console.log('\n\n📋 ===== RESET PROFILE ENDPOINT CALLED =====');
+    console.log('[RESET PROFILE] Request received');
+    console.log('[RESET PROFILE] Request body:', JSON.stringify(req.body, null, 2));
+    
+    const { userId } = req.body;
+    
+    console.log('[RESET PROFILE] Extracted userId:', userId);
+    
+    if (!userId) {
+      console.error('[RESET PROFILE] ❌ VALIDATION ERROR: Missing userId');
+      return res.status(400).json({ error: 'Missing required field: userId' });
+    }
+    
+    // Find user
+    console.log('[RESET PROFILE] Finding user with id:', userId);
+    const user = await prisma.users.findUnique({
+      where: { id: userId }
+    });
+    
+    if (!user) {
+      console.error('[RESET PROFILE] ❌ User not found:', userId);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log('[RESET PROFILE] ✓ User found:', user.email);
+    console.log('[RESET PROFILE] Current profileCompleted status:', user.profileCompleted);
+    
+    // Reset profileCompleted to false
+    console.log('[RESET PROFILE] Resetting profileCompleted to false...');
+    const updatedUser = await prisma.users.update({
+      where: { id: userId },
+      data: {
+        profileCompleted: false,
+        birthday: null,
+        gender: null,
+        age: null
+      }
+    });
+    
+    console.log('[RESET PROFILE] ✅ Profile reset successfully');
+    console.log('[RESET PROFILE] Updated user data:', {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      profileCompleted: updatedUser.profileCompleted,
+      birthday: updatedUser.birthday,
+      gender: updatedUser.gender,
+      age: updatedUser.age
+    });
+    
+    res.json({
+      success: true,
+      message: 'Profile reset successfully',
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        profileCompleted: updatedUser.profileCompleted,
+        birthday: updatedUser.birthday,
+        gender: updatedUser.gender,
+        age: updatedUser.age
+      }
+    });
+  } catch (error) {
+    console.error('[RESET PROFILE] ❌ ERROR:', error.message);
+    console.error('[RESET PROFILE] Stack:', error.stack);
+    res.status(500).json({ error: 'Failed to reset profile', details: error.message });
+  }
+});
+
 // Get user by ID
 app.get('/api/users/:userId', async (req, res) => {
   try {
