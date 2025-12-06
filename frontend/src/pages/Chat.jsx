@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import socket from '../services/socketService';
-import { getIceServers, getMediaConstraints, formatTime } from '../utils/webrtcUtils';
+import { getIceServers, getMediaConstraints, formatTime, logIceServers } from '../utils/webrtcUtils';
 import PremiumModal from '../components/PremiumModal';
 import GenderFilterModal from '../components/GenderFilterModal';
 import ProfileModal from '../components/ProfileModal';
@@ -826,6 +826,9 @@ const Chat = () => {
     console.log('🔧 createPeerConnection called');
     console.log('   Current localStreamRef:', localStreamRef.current);
     
+    // Log ICE server configuration for diagnostics
+    logIceServers();
+    
     const iceServers = await getTurnServers();
 
     peerConnection = new RTCPeerConnection({ iceServers });
@@ -835,9 +838,26 @@ const Chat = () => {
         if (event.candidate) {
             console.log('🧊 ICE candidate generated:', {
               candidate: event.candidate.candidate,
+              protocol: event.candidate.protocol,
+              port: event.candidate.port,
+              address: event.candidate.address,
+              type: event.candidate.type,
+              priority: event.candidate.priority,
               sdpMLineIndex: event.candidate.sdpMLineIndex,
               sdpMid: event.candidate.sdpMid
             });
+            
+            // Detect TURN candidate success/failure
+            if (event.candidate.type === 'relay') {
+              console.log('🔄 RELAY (TURN) candidate generated - TURN server is reachable');
+              console.log('   Protocol:', event.candidate.protocol, 'Port:', event.candidate.port);
+            } else if (event.candidate.type === 'srflx') {
+              console.log('📍 SRFLX (server reflexive) candidate - STUN working');
+              console.log('   Found public address via STUN');
+            } else if (event.candidate.type === 'host') {
+              console.log('🏠 HOST candidate - direct LAN connection possible');
+            }
+            
             console.log('🔌 Sending ICE candidate to partner socket:', partnerSocketIdRef.current);
             socket.emit("ice-candidate", {
               candidate: event.candidate,
@@ -846,7 +866,56 @@ const Chat = () => {
             console.log('📤 ICE candidate sent to peer');
         } else {
             console.log('🧊 ICE gathering complete (null candidate received)');
+            console.log('📊 ICE gathering summary:');
+            console.log('   Connection State:', peerConnection.connectionState);
+            console.log('   ICE Connection State:', peerConnection.iceConnectionState);
+            console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
         }
+    };
+
+    peerConnection.oniceconnectionstatechange = () => {
+        const state = peerConnection.iceConnectionState;
+        console.log('\n🧊 ===== ICE CONNECTION STATE CHANGED =====');
+        console.log('🧊 New ICE Connection State:', state);
+        
+        switch(state) {
+          case 'new':
+            console.log('🧊 State: NEW - Gathering ICE candidates');
+            break;
+          case 'checking':
+            console.log('🧊 State: CHECKING - Testing ICE candidate pairs');
+            console.log('🧊 Connection in progress - waiting for connectivity');
+            break;
+          case 'connected':
+            console.log('✅ State: CONNECTED - Found working ICE candidate pair');
+            console.log('🧊 Peer-to-peer communication established');
+            break;
+          case 'completed':
+            console.log('✅ State: COMPLETED - ICE checks completed, ready for media');
+            console.log('🧊 All connectivity checks passed');
+            break;
+          case 'failed':
+            console.error('❌ State: FAILED - All ICE candidate pairs failed');
+            console.error('❌ Could not establish peer-to-peer connection');
+            console.error('❌ TURN server may be unreachable or blocked by ISP');
+            console.error('🔍 Troubleshooting:');
+            console.error('   - Check console for TURN error details');
+            console.error('   - TURN error 701 = Network/ISP blocking ports 3478, 5349');
+            console.error('   - Solutions: Try VPN, different WiFi, or mobile hotspot');
+            break;
+          case 'disconnected':
+            console.warn('⚠️ State: DISCONNECTED - Lost connection to peer');
+            console.warn('⚠️ Will attempt to reconnect');
+            break;
+          case 'closed':
+            console.log('🛑 State: CLOSED - Connection closed');
+            break;
+        }
+        
+        console.log('📊 Full connection states:');
+        console.log('   Signaling State:', peerConnection.signalingState);
+        console.log('   Connection State:', peerConnection.connectionState);
+        console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
     };
 
     peerConnection.ontrack = (event) => {
