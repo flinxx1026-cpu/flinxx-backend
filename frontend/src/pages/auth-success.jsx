@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
 import ProfileSetupModal from "../components/ProfileSetupModal";
 
 export default function AuthSuccess() {
   const navigate = useNavigate();
+  const { setAuthToken } = useContext(AuthContext) || {};
   const [searchParams] = useSearchParams();
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [userData, setUserData] = useState(null);
@@ -37,12 +39,19 @@ export default function AuthSuccess() {
         if (data.success && data.user) {
           const user = data.user;
           
-          // Save token and user data to localStorage
-          localStorage.setItem("token", token);
-          localStorage.setItem("authToken", token);
-          localStorage.setItem("user", JSON.stringify(user));
-          localStorage.setItem("authProvider", "google");
-          localStorage.setItem("userInfo", JSON.stringify(user));
+          // Use the AuthContext setAuthToken to store token and user persistently
+          if (setAuthToken) {
+            console.log('[AuthSuccess] Storing token and user via AuthContext');
+            setAuthToken(token, user);
+          } else {
+            // Fallback: save directly to localStorage
+            console.log('[AuthSuccess] AuthContext not available, saving to localStorage directly');
+            localStorage.setItem("token", token);
+            localStorage.setItem("authToken", token);
+            localStorage.setItem("user", JSON.stringify(user));
+            localStorage.setItem("authProvider", "google");
+            localStorage.setItem("userInfo", JSON.stringify(user));
+          }
 
           console.log("✅ User data saved to localStorage");
 
@@ -69,7 +78,7 @@ export default function AuthSuccess() {
     };
 
     handleAuthSuccess();
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, setAuthToken]);
 
   const handleProfileComplete = (completedUser) => {
     console.log("✅ Profile completed, redirecting to chat");
