@@ -938,9 +938,12 @@ app.get('/auth/google/success', (req, res) => {
 // Step 4: Get user profile using token (for frontend)
 app.get('/api/profile', async (req, res) => {
   try {
+    console.log('[PROFILE API] Request received')
     const authHeader = req.headers.authorization
+    console.log('[PROFILE API] Auth header:', authHeader ? 'Present' : 'Missing')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('[PROFILE API] ❌ Missing or invalid Bearer token')
       return res.status(401).json({
         success: false,
         error: 'Missing or invalid authorization header'
@@ -948,23 +951,28 @@ app.get('/api/profile', async (req, res) => {
     }
     
     const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+    console.log('[PROFILE API] Token received, decoding...')
     
     // Decode token
     const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
-    console.log('✅ Token decoded for profile:', decoded.email)
+    console.log('[PROFILE API] ✅ Token decoded for user:', decoded.email, 'userId:', decoded.userId)
     
     // Fetch full user data from database
+    console.log('[PROFILE API] Fetching user from database with id:', decoded.userId)
     const user = await prisma.users.findUnique({
       where: { id: decoded.userId }
     })
+    console.log('[PROFILE API] User fetch result:', user ? 'Found' : 'Not found')
     
     if (!user) {
+      console.log('[PROFILE API] ❌ User not found in database:', decoded.userId)
       return res.status(404).json({
         success: false,
         error: 'User not found in database'
       })
     }
     
+    console.log('[PROFILE API] ✅ User found, returning profile')
     // Return complete user profile
     res.json({
       success: true,
@@ -983,7 +991,8 @@ app.get('/api/profile', async (req, res) => {
       }
     })
   } catch (error) {
-    console.error('❌ Error in /api/profile:', error)
+    console.error('[PROFILE API] ❌ Error in /api/profile:', error.message)
+    console.error('[PROFILE API] Stack:', error.stack)
     res.status(400).json({
       success: false,
       error: 'Invalid token',
