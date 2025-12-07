@@ -1381,73 +1381,6 @@ const Chat = () => {
   // Video Chat Screen Component
   const VideoChatScreen = () => (
     <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
-      {/* Top-Right Icon Navigation Bar - FIXED POSITION FLOATING */}
-      <div className="flex items-center gap-4 z-50" style={{ position: 'fixed', top: '12px', right: '24px' }}>
-        {/* User Profile Icon */}
-        <div 
-          className="icon-circle" 
-          title="Profile"
-          onClick={() => setIsProfileOpen(true)}
-          style={{ cursor: 'pointer' }}
-        >
-          {currentUser?.picture ? (
-            <img src={currentUser.picture} alt="Profile" />
-          ) : (
-            '👤'
-          )}
-        </div>
-
-        {/* Search Icon */}
-        <div 
-          className="icon-circle" 
-          title="Search"
-          onClick={() => console.log('Search clicked')}
-        >
-          🔍
-        </div>
-
-        {/* Messages Icon */}
-        <div 
-          className="icon-circle" 
-          title="Messages"
-          onClick={() => console.log('Messages clicked')}
-        >
-          💬
-        </div>
-
-        {/* Flinx Premium Icon */}
-        <div 
-          className="icon-circle" 
-          title="Flinx Premium"
-          onClick={() => setIsPremiumOpen(true)}
-        >
-          👑
-        </div>
-
-        {/* Match History Icon */}
-        <div 
-          className="icon-circle" 
-          title="Match History"
-          onClick={() => setIsMatchHistoryOpen(true)}
-        >
-          ⏱️
-        </div>
-      </div>
-
-      {/* Close Button - Round X Icon at Top Right */}
-      <button
-        onClick={() => {
-          cleanup();
-          setCameraStarted(false);
-          navigate('/chat');
-        }}
-        className="font-bold rounded-full transition-all duration-200 z-20 shadow-lg flex items-center justify-center"
-        style={{ position: 'fixed', top: '68px', right: '24px', width: '45px', height: '45px', fontSize: '24px', backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
-        title="End Chat"
-      >
-        ✕
-      </button>
-
       {/* Main video container - responsive layout */}
       <div className="flex flex-col md:flex-row w-full gap-10 items-stretch justify-center" style={{ minHeight: '100vh', paddingTop: '80px', paddingBottom: '40px', overflow: 'visible' }}>
         
@@ -1633,6 +1566,78 @@ const Chat = () => {
       ) : (
         // Initial state: Show intro screen
         <IntroScreen />
+      )}
+
+      {/* FLOATING ICON BAR - Fixed to viewport, only show during video chat */}
+      {hasPartner && (
+        <>
+          {/* Top-Right Icon Navigation Bar - FIXED POSITION FLOATING */}
+          <div className="flex items-center gap-4" style={{ position: 'fixed', top: '12px', right: '24px', zIndex: 50 }}>
+            {/* User Profile Icon */}
+            <div 
+              className="icon-circle" 
+              title="Profile"
+              onClick={() => setIsProfileOpen(true)}
+              style={{ cursor: 'pointer' }}
+            >
+              {currentUser?.picture ? (
+                <img src={currentUser.picture} alt="Profile" />
+              ) : (
+                '👤'
+              )}
+            </div>
+
+            {/* Search Icon */}
+            <div 
+              className="icon-circle" 
+              title="Search"
+              onClick={() => console.log('Search clicked')}
+            >
+              🔍
+            </div>
+
+            {/* Messages Icon */}
+            <div 
+              className="icon-circle" 
+              title="Messages"
+              onClick={() => console.log('Messages clicked')}
+            >
+              💬
+            </div>
+
+            {/* Flinx Premium Icon */}
+            <div 
+              className="icon-circle" 
+              title="Flinx Premium"
+              onClick={() => setIsPremiumOpen(true)}
+            >
+              👑
+            </div>
+
+            {/* Match History Icon */}
+            <div 
+              className="icon-circle" 
+              title="Match History"
+              onClick={() => setIsMatchHistoryOpen(true)}
+            >
+              ⏱️
+            </div>
+          </div>
+
+          {/* Close Button - Round X Icon at Top Right */}
+          <button
+            onClick={() => {
+              cleanup();
+              setCameraStarted(false);
+              navigate('/chat');
+            }}
+            className="font-bold rounded-full transition-all duration-200 shadow-lg flex items-center justify-center"
+            style={{ position: 'fixed', top: '68px', right: '24px', width: '45px', height: '45px', fontSize: '24px', backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f', zIndex: 49 }}
+            title="End Chat"
+          >
+            ✕
+          </button>
+        </>
       )}
       
       {/* Premium Modal */}
