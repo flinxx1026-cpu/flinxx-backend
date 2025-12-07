@@ -1397,7 +1397,7 @@ const Chat = () => {
       <div className="flex flex-col md:flex-row w-full gap-10 items-stretch justify-center" style={{ minHeight: '100vh', paddingTop: '80px', paddingBottom: '40px' }}>
         
         {/* Left - Local camera video */}
-        <div className="video-box flex-1 max-w-[580px] rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
+        <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
           <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
             <video
               ref={localVideoRef}
@@ -1421,7 +1421,7 @@ const Chat = () => {
         </div>
 
         {/* Right - Chat panel with proper 3-section layout */}
-        <div className="right-panel flex-1 max-w-[480px] rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', position: 'relative', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0 }}>
+        <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', position: 'relative', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0 }}>
           <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-hidden relative" style={{ backgroundColor: '#131313' }}>
             
             {/* SECTION 1: TOP - Header with partner info */}
