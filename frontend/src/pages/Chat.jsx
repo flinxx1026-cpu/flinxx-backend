@@ -1381,7 +1381,7 @@ const Chat = () => {
 
   // Video Chat Screen Component
   const VideoChatScreen = () => (
-    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       {/* Main video container - responsive layout */}
       <div className="flex flex-col md:flex-row w-full gap-10 items-stretch justify-center" style={{ minHeight: '100vh', paddingTop: '80px', paddingBottom: '40px', overflow: 'visible' }}>
         
@@ -1556,7 +1556,7 @@ const Chat = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible', position: 'relative' }}>
+    <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       {/* Main content - Show correct screen based on state */}
       {hasPartner ? (
         // Partner found: Show video chat
@@ -1573,7 +1573,7 @@ const Chat = () => {
       {hasPartner && ReactDOM.createPortal(
         <>
           {/* Top-Right Icon Navigation Bar - FIXED POSITION FLOATING */}
-          <div className="flex items-center gap-4" style={{ position: 'fixed', top: '12px', right: '24px', zIndex: 50 }}>
+          <div className="flex items-center gap-4" style={{ position: 'fixed', top: '12px', right: '24px', zIndex: 999999 }}>
             {/* User Profile Icon */}
             <div 
               className="icon-circle" 
@@ -1633,7 +1633,7 @@ const Chat = () => {
               navigate('/chat');
             }}
             className="font-bold rounded-full transition-all duration-200 shadow-lg flex items-center justify-center"
-            style={{ position: 'fixed', top: '68px', right: '24px', width: '45px', height: '45px', fontSize: '24px', backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f', zIndex: 49 }}
+            style={{ position: 'fixed', top: '68px', right: '24px', width: '45px', height: '45px', fontSize: '24px', backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f', zIndex: 999998 }}
             title="End Chat"
           >
             ✕
