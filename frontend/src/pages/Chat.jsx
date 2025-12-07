@@ -1135,7 +1135,7 @@ const Chat = () => {
 
   // Intro Screen Component
   const IntroScreen = () => (
-    <div className="intro-screen-container flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
+    <div className="intro-screen-container flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f' }}>
       {/* Top-Right Icon Navigation Bar */}
       <div className="top-right-icons">
         {/* User Profile Icon - 1 */}
@@ -1190,8 +1190,8 @@ const Chat = () => {
       </div>
 
       {/* Left - Live camera preview box */}
-      <div className="video-box flex-1 max-w-[750px] aspect-[4/3] bg-gray-400 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: 'auto' }}>
-        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
+      <div className="video-box flex-1 max-w-[750px] aspect-[4/3] rounded-3xl shadow-xl flex items-center justify-center" style={{ height: 'auto', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
+        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
           <video
             ref={localVideoRef}
             autoPlay={true}
@@ -1205,8 +1205,8 @@ const Chat = () => {
               display: 'block'
             }}
           />
-          <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl z-10">
-            <p className="font-semibold text-sm">You</p>
+          <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-10" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
+            <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>You</p>
           </div>
         </div>
       </div>
