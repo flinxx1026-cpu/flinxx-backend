@@ -1427,7 +1427,7 @@ const Chat = () => {
           <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-hidden relative" style={{ backgroundColor: '#131313' }}>
             
             {/* SECTION 1: TOP - Header with partner info */}
-            <div className="h-16 px-4 py-3 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ backgroundColor: 'rgba(19, 19, 19, 0.8)', borderBottom: '1px solid #d9b85f', minHeight: '64px' }}>
+            <div className="px-4 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ height: '56px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: 'rgba(19, 19, 19, 0.8)', borderBottom: '1px solid #d9b85f' }}>
               {/* Left: Partner Profile */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg flex-shrink-0">
@@ -1533,7 +1533,7 @@ const Chat = () => {
           </div>
 
           {/* SECTION 3: BOTTOM - Message input box */}
-          <div className="h-16 px-4 py-3 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ backgroundColor: 'rgba(19, 19, 19, 0.8)', borderTop: '1px solid #d9b85f', minHeight: '64px' }}>
+          <div className="px-4 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ height: '56px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: 'rgba(19, 19, 19, 0.8)', borderTop: '1px solid #d9b85f' }}>
             {/* Left: Username avatar */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white text-xs font-bold">
