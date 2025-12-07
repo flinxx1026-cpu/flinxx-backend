@@ -1380,9 +1380,9 @@ const Chat = () => {
 
   // Video Chat Screen Component
   const VideoChatScreen = () => (
-    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f' }}>
-      {/* Top-Right Icon Navigation Bar - OUTSIDE AND ABOVE panels */}
-      <div className="absolute right-6 flex items-center gap-4 z-50" style={{ top: '-12px' }}>
+    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+      {/* Top-Right Icon Navigation Bar - FIXED POSITION FLOATING */}
+      <div className="flex items-center gap-4 z-50" style={{ position: 'fixed', top: '12px', right: '24px' }}>
         {/* User Profile Icon */}
         <div 
           className="icon-circle" 
@@ -1441,15 +1441,15 @@ const Chat = () => {
           setCameraStarted(false);
           navigate('/chat');
         }}
-        className="absolute right-6 font-bold rounded-full transition-all duration-200 z-20 shadow-lg flex items-center justify-center"
-        style={{ top: '44px', width: '45px', height: '45px', fontSize: '24px', backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
+        className="font-bold rounded-full transition-all duration-200 z-20 shadow-lg flex items-center justify-center"
+        style={{ position: 'fixed', top: '68px', right: '24px', width: '45px', height: '45px', fontSize: '24px', backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
         title="End Chat"
       >
         ✕
       </button>
 
       {/* Main video container - responsive layout */}
-      <div className="flex flex-col md:flex-row w-full gap-10 items-stretch justify-center" style={{ minHeight: '100vh', paddingTop: '80px', paddingBottom: '40px' }}>
+      <div className="flex flex-col md:flex-row w-full gap-10 items-stretch justify-center" style={{ minHeight: '100vh', paddingTop: '80px', paddingBottom: '40px', overflow: 'visible' }}>
         
         {/* Left - Local camera video */}
         <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
@@ -1476,8 +1476,8 @@ const Chat = () => {
         </div>
 
         {/* Right - Chat panel with proper 3-section layout */}
-        <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', position: 'relative', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0 }}>
-          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible relative" style={{ backgroundColor: '#131313' }}>
+        <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', position: 'relative', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0, overflow: 'visible' }}>
+          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible relative" style={{ backgroundColor: '#131313', overflow: 'visible' }}>
             
             {/* SECTION 1: TOP - Header with partner info */}
             <div className="px-4 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ height: '56px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: 'rgba(19, 19, 19, 0.8)', borderBottom: '1px solid #d9b85f' }}>
@@ -1508,7 +1508,7 @@ const Chat = () => {
             </div>
 
             {/* SECTION 2: MIDDLE - Messages area with remote video */}
-            <div id="main-container" className="overflow-hidden flex flex-col relative w-full flex-1" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative', padding: 0 }}>
+            <div id="main-container" className="overflow-visible flex flex-col relative w-full flex-1" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative', padding: 0, overflow: 'visible' }}>
               
               {/* Remote video wrapper - ABSOLUTE FULL SIZE */}
               <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: hasPartner ? 99999 : 1, overflow: 'hidden', backgroundColor: hasPartner ? 'black' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
