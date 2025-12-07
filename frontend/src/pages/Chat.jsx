@@ -1380,7 +1380,7 @@ const Chat = () => {
 
   // Video Chat Screen Component
   const VideoChatScreen = () => (
-    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f' }}>
+    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f' }}>
       {/* Top-Right Icon Navigation Bar - OUTSIDE AND ABOVE panels */}
       <div className="absolute top-6 right-6 flex items-center gap-4 z-50">
         {/* User Profile Icon */}
@@ -1477,7 +1477,7 @@ const Chat = () => {
 
         {/* Right - Chat panel with proper 3-section layout */}
         <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', position: 'relative', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0 }}>
-          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-hidden relative" style={{ backgroundColor: '#131313' }}>
+          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible relative" style={{ backgroundColor: '#131313' }}>
             
             {/* SECTION 1: TOP - Header with partner info */}
             <div className="px-4 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ height: '56px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: 'rgba(19, 19, 19, 0.8)', borderBottom: '1px solid #d9b85f' }}>
