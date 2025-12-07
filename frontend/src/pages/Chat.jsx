@@ -1,4 +1,4 @@
-// DEPLOYMENT VERSION: 44ee2ae - Socket ID comparison + offerer/answerer logic
+// DEPLOYMENT VERSION: fd2deed - Dark theme with golden accents (#0f0f0f bg, #d9b85f borders/text) - 2025-12-07
 // Last updated: 2025-12-02 - Force Vercel rebuild
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
