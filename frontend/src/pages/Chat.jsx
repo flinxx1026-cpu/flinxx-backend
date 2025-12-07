@@ -1,6 +1,7 @@
 // DEPLOYMENT VERSION: fd2deed - Dark theme with golden accents (#0f0f0f bg, #d9b85f borders/text) - 2025-12-07
 // Last updated: 2025-12-02 - Force Vercel rebuild
 import React, { useState, useRef, useEffect, useContext } from 'react';
+import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import socket from '../services/socketService';
@@ -1555,7 +1556,7 @@ const Chat = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden min-h-0" style={{ backgroundColor: '#0f0f0f' }}>
+    <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible', position: 'relative' }}>
       {/* Main content - Show correct screen based on state */}
       {hasPartner ? (
         // Partner found: Show video chat
@@ -1568,8 +1569,8 @@ const Chat = () => {
         <IntroScreen />
       )}
 
-      {/* FLOATING ICON BAR - Fixed to viewport, only show during video chat */}
-      {hasPartner && (
+      {/* FLOATING ICON BAR - Using React Portal to render outside main DOM tree */}
+      {hasPartner && ReactDOM.createPortal(
         <>
           {/* Top-Right Icon Navigation Bar - FIXED POSITION FLOATING */}
           <div className="flex items-center gap-4" style={{ position: 'fixed', top: '12px', right: '24px', zIndex: 50 }}>
@@ -1637,7 +1638,8 @@ const Chat = () => {
           >
             ✕
           </button>
-        </>
+        </>,
+        document.body
       )}
       
       {/* Premium Modal */}
