@@ -1381,6 +1381,59 @@ const Chat = () => {
   // Video Chat Screen Component
   const VideoChatScreen = () => (
     <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f' }}>
+      {/* Top-Right Icon Navigation Bar - OUTSIDE AND ABOVE panels */}
+      <div className="absolute top-6 right-6 flex items-center gap-4 z-50">
+        {/* User Profile Icon */}
+        <div 
+          className="icon-circle" 
+          title="Profile"
+          onClick={() => setIsProfileOpen(true)}
+          style={{ cursor: 'pointer' }}
+        >
+          {currentUser?.picture ? (
+            <img src={currentUser.picture} alt="Profile" />
+          ) : (
+            '👤'
+          )}
+        </div>
+
+        {/* Search Icon */}
+        <div 
+          className="icon-circle" 
+          title="Search"
+          onClick={() => console.log('Search clicked')}
+        >
+          🔍
+        </div>
+
+        {/* Messages Icon */}
+        <div 
+          className="icon-circle" 
+          title="Messages"
+          onClick={() => console.log('Messages clicked')}
+        >
+          💬
+        </div>
+
+        {/* Flinx Premium Icon */}
+        <div 
+          className="icon-circle" 
+          title="Flinx Premium"
+          onClick={() => setIsPremiumOpen(true)}
+        >
+          👑
+        </div>
+
+        {/* Match History Icon */}
+        <div 
+          className="icon-circle" 
+          title="Match History"
+          onClick={() => setIsMatchHistoryOpen(true)}
+        >
+          ⏱️
+        </div>
+      </div>
+
       {/* Close Button - Round X Icon at Top Right */}
       <button
         onClick={() => {
@@ -1388,7 +1441,7 @@ const Chat = () => {
           setCameraStarted(false);
           navigate('/chat');
         }}
-        className="absolute top-5 right-5 font-bold rounded-full transition-all duration-200 z-20 shadow-lg flex items-center justify-center"
+        className="absolute top-20 right-6 font-bold rounded-full transition-all duration-200 z-20 shadow-lg flex items-center justify-center"
         style={{ width: '45px', height: '45px', fontSize: '24px', backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
         title="End Chat"
       >
