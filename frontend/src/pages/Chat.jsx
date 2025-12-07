@@ -1382,7 +1382,7 @@ const Chat = () => {
   const VideoChatScreen = () => (
     <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f' }}>
       {/* Top-Right Icon Navigation Bar - OUTSIDE AND ABOVE panels */}
-      <div className="absolute top-6 right-6 flex items-center gap-4 z-50">
+      <div className="absolute top-2 right-6 flex items-center gap-4 z-50">
         {/* User Profile Icon */}
         <div 
           className="icon-circle" 
@@ -1441,7 +1441,7 @@ const Chat = () => {
           setCameraStarted(false);
           navigate('/chat');
         }}
-        className="absolute top-20 right-6 font-bold rounded-full transition-all duration-200 z-20 shadow-lg flex items-center justify-center"
+        className="absolute top-16 right-6 font-bold rounded-full transition-all duration-200 z-20 shadow-lg flex items-center justify-center"
         style={{ width: '45px', height: '45px', fontSize: '24px', backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
         title="End Chat"
       >
