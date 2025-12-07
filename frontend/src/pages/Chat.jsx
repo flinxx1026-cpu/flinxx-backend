@@ -1190,7 +1190,7 @@ const Chat = () => {
       </div>
 
       {/* Left - Live camera preview box */}
-      <div className="video-box flex-1 max-w-[750px] aspect-[4/3] rounded-3xl shadow-xl flex items-center justify-center" style={{ height: 'auto', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
+      <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
         <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
           <video
             ref={localVideoRef}
@@ -1212,7 +1212,7 @@ const Chat = () => {
       </div>
 
       {/* Right - Welcome panel with dark theme */}
-      <div className="right-panel flex-1 max-w-[500px] rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: 'auto', backgroundColor: '#131313', border: '1px solid #d9b85f' }}>
+      <div className="right-panel flex-1 rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: '520px', backgroundColor: '#131313', border: '1px solid #d9b85f' }}>
         <div className="w-full h-full rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-between text-center">
           {/* Top Section - Toggle Buttons */}
           <div className="flex gap-3 justify-center">
@@ -1319,27 +1319,29 @@ const Chat = () => {
       </div>
 
       {/* Left - Live camera preview box */}
-      <div className="video-wrapper">
-        <video
-          ref={localVideoRef}
-          autoPlay={true}
-          playsInline={true}
-          muted={true}
-          className="w-full h-full object-cover"
-          style={{
-            backgroundColor: '#000000',
-            transform: 'none',
-            zoom: 1,
-            display: 'block'
-          }}
-        />
-        <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-10" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
-          <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>You</p>
+      <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
+        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
+          <video
+            ref={localVideoRef}
+            autoPlay={true}
+            playsInline={true}
+            muted={true}
+            className="w-full h-full object-cover"
+            style={{
+              backgroundColor: '#000000',
+              transform: 'none',
+              zoom: 1,
+              display: 'block'
+            }}
+          />
+          <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-10" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
+            <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>You</p>
+          </div>
         </div>
       </div>
 
       {/* Right - Dark Waiting Panel with golden accents */}
-      <div className="right-panel" style={{ position: 'relative', backgroundColor: '#131313', border: '1px solid #d9b85f' }}>
+      <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', position: 'relative', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0 }}>
         <div className="flex flex-col items-center justify-center text-center gap-8 py-20">
           {/* Animated Waiting Icon */}
           <div className="animate-pulse text-6xl">
