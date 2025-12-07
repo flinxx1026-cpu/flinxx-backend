@@ -1211,15 +1211,15 @@ const Chat = () => {
         </div>
       </div>
 
-      {/* Right - Welcome panel with purple gradient */}
-      <div className="right-panel flex-1 max-w-[500px] bg-[#8a00ff] rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: 'auto' }}>
-        <div className="w-full h-full bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-between text-center">
+      {/* Right - Welcome panel with dark theme */}
+      <div className="right-panel flex-1 max-w-[500px] rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: 'auto', backgroundColor: '#131313', border: '1px solid #d9b85f' }}>
+        <div className="w-full h-full rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-between text-center">
           {/* Top Section - Toggle Buttons */}
           <div className="flex gap-3 justify-center">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-all text-sm shadow-md hover:shadow-lg">
+            <button className="text-white font-bold py-2 px-6 rounded-lg transition-all text-sm shadow-md hover:shadow-lg" style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}>
               SOLO
             </button>
-            <button className="bg-blue-600/30 hover:bg-blue-600/50 text-white font-bold py-2 px-6 rounded-lg transition-all border border-blue-400/50 text-sm">
+            <button className="text-white font-bold py-2 px-6 rounded-lg transition-all text-sm" style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}>
               DUO
             </button>
           </div>
@@ -1228,16 +1228,17 @@ const Chat = () => {
           <div className="flex flex-col items-center gap-4">
             <img src={logo} alt="Flinxx" className="w-16 h-16" />
             <div>
-              <h1 className="text-3xl font-black text-white mb-2">Flinxx</h1>
-              <p className="text-white/90 text-sm">Make new friends face-to-face</p>
+              <h1 className="text-3xl font-black mb-2" style={{ color: '#d9b85f' }}>Flinxx</h1>
+              <p className="text-sm" style={{ color: '#d9b85f' }}>Make new friends face-to-face</p>
             </div>
 
             {/* Preference Badge */}
             <button 
               onClick={() => setIsGenderFilterOpen(true)}
-              className="bg-purple-400/40 border border-purple-300/60 rounded-full px-4 py-1 hover:bg-purple-400/60 transition-all cursor-pointer text-xs"
+              className="rounded-full px-4 py-1 transition-all cursor-pointer text-xs"
+              style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
             >
-              <span className="text-white font-semibold">👥 {selectedGender === 'girls' ? 'Girls Only' : selectedGender === 'guys' ? 'Guys Only' : 'Both'}</span>
+              <span className="font-semibold">👥 {selectedGender === 'girls' ? 'Girls Only' : selectedGender === 'guys' ? 'Guys Only' : 'Both'}</span>
             </button>
           </div>
 
@@ -1245,7 +1246,8 @@ const Chat = () => {
           <button
             onClick={startVideoChat}
             disabled={isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 text-sm shadow-lg hover:shadow-blue-600/50"
+            className="w-full font-bold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 text-sm shadow-lg"
+            style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
           >
             {isLoading ? (
               <>
@@ -1262,7 +1264,7 @@ const Chat = () => {
 
   // Waiting Screen Component - Shows when matching is in progress
   const WaitingScreen = () => (
-    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
+    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f' }}>
       {/* Top-Right Icon Navigation Bar */}
       <div className="top-right-icons">
         {/* User Profile Icon - 1 */}
@@ -1331,13 +1333,13 @@ const Chat = () => {
             display: 'block'
           }}
         />
-        <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl z-10">
-          <p className="font-semibold text-sm">You</p>
+        <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-10" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
+          <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>You</p>
         </div>
       </div>
 
-      {/* Right - Black Waiting Panel with exact specs */}
-      <div className="right-panel bg-black/60 backdrop-blur-sm" style={{ position: 'relative' }}>
+      {/* Right - Dark Waiting Panel with golden accents */}
+      <div className="right-panel" style={{ position: 'relative', backgroundColor: '#131313', border: '1px solid #d9b85f' }}>
         <div className="flex flex-col items-center justify-center text-center gap-8 py-20">
           {/* Animated Waiting Icon */}
           <div className="animate-pulse text-6xl">
@@ -1346,15 +1348,15 @@ const Chat = () => {
 
           {/* Waiting Text */}
           <div className="flex flex-col items-center gap-2">
-            <h2 className="text-2xl font-bold text-white">Looking for a partner...</h2>
-            <p className="text-white/80 text-sm">Matching you with someone nearby</p>
+            <h2 className="text-2xl font-bold" style={{ color: '#d9b85f' }}>Looking for a partner...</h2>
+            <p className="text-sm" style={{ color: '#d9b85f' }}>Matching you with someone nearby</p>
           </div>
 
           {/* Animated dots */}
           <div className="flex gap-2">
-            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+            <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: '#d9b85f', animationDelay: '0s' }}></div>
+            <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: '#d9b85f', animationDelay: '0.2s' }}></div>
+            <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: '#d9b85f', animationDelay: '0.4s' }}></div>
           </div>
 
           {/* Cancel Button */}
@@ -1364,7 +1366,8 @@ const Chat = () => {
               setIsMatchingStarted(false);
               setIsLoading(false);
             }}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 text-sm shadow-lg hover:shadow-red-600 mt-4"
+            className="w-full font-bold py-3 px-6 rounded-xl transition-all duration-200 text-sm shadow-lg mt-4"
+            style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
           >
             Cancel Search
           </button>
@@ -1375,7 +1378,7 @@ const Chat = () => {
 
   // Video Chat Screen Component
   const VideoChatScreen = () => (
-    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto' }}>
+    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f' }}>
       {/* Close Button - Round X Icon at Top Right */}
       <button
         onClick={() => {
@@ -1383,8 +1386,8 @@ const Chat = () => {
           setCameraStarted(false);
           navigate('/chat');
         }}
-        className="absolute top-5 right-5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-full transition-all duration-200 z-20 shadow-lg flex items-center justify-center"
-        style={{ width: '45px', height: '45px', fontSize: '24px' }}
+        className="absolute top-5 right-5 font-bold rounded-full transition-all duration-200 z-20 shadow-lg flex items-center justify-center"
+        style={{ width: '45px', height: '45px', fontSize: '24px', backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
         title="End Chat"
       >
         ✕
@@ -1394,8 +1397,8 @@ const Chat = () => {
       <div className="flex flex-col md:flex-row w-full gap-6 items-center justify-center" style={{ minHeight: '400px', height: 'auto' }}>
         
         {/* Left - Local camera video */}
-        <div className="video-box flex-1 max-w-[750px] aspect-[4/3] bg-gray-400 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: 'auto' }}>
-          <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative border border-white/10">
+        <div className="video-box flex-1 max-w-[750px] aspect-[4/3] rounded-3xl shadow-xl flex items-center justify-center" style={{ height: 'auto', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
+          <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
             <video
               ref={localVideoRef}
               autoPlay={true}
@@ -1411,28 +1414,28 @@ const Chat = () => {
                 height: '100%'
               }}
             />
-            <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-4 py-2 rounded-xl z-10">
-              <p className="font-semibold text-sm">You</p>
+            <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-10" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
+              <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>You</p>
             </div>
           </div>
         </div>
 
         {/* Right - Chat panel with proper 3-section layout */}
-        <div className="right-panel flex-1 max-w-[500px] bg-[#8a00ff] rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: 'auto', position: 'relative' }}>
-          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible relative border border-white/10">
+        <div className="right-panel flex-1 max-w-[500px] rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: 'auto', position: 'relative', backgroundColor: '#131313', border: '1px solid #d9b85f' }}>
+          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible relative" style={{ backgroundColor: '#131313' }}>
             
             {/* SECTION 1: TOP - Header with partner info */}
-            <div className="h-16 px-4 py-3 flex items-center justify-between bg-black/80 backdrop-blur-sm border-b border-white/10 flex-shrink-0">
+            <div className="h-16 px-4 py-3 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ backgroundColor: 'rgba(19, 19, 19, 0.8)', borderBottom: '1px solid #d9b85f' }}>
               {/* Left: Partner Profile */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg flex-shrink-0">
                   👤
                 </div>
                 <div className="min-w-0">
-                  <p className="text-white font-semibold text-sm leading-tight truncate">
+                  <p className="font-semibold text-sm leading-tight truncate" style={{ color: '#d9b85f' }}>
                     {hasPartner && partnerInfo ? partnerInfo.userName : 'Waiting...'}
                   </p>
-                  <p className="text-white/60 text-xs truncate">
+                  <p className="text-xs truncate" style={{ color: '#d9b85f' }}>
                     {hasPartner && partnerInfo ? partnerInfo.userLocation : 'for a partner'}
                   </p>
                 </div>
@@ -1440,10 +1443,10 @@ const Chat = () => {
               
               {/* Right: Action Icons */}
               <div className="flex gap-2 flex-shrink-0">
-                <button className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-blue-400 text-lg transition-all">
+                <button className="w-8 h-8 rounded-full flex items-center justify-center text-lg transition-all" style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}>
                   ❤️
                 </button>
-                <button className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-red-400 text-lg transition-all">
+                <button className="w-8 h-8 rounded-full flex items-center justify-center text-lg transition-all" style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}>
                   🎁
                 </button>
               </div>
@@ -1480,8 +1483,8 @@ const Chat = () => {
 
                 {/* Connection status overlay - Top Right */}
                 {isConnected && hasPartner && (
-                  <div className="absolute top-3 right-3 flex items-center gap-2 bg-green-500 bg-opacity-90 text-white px-2 py-1 rounded-full text-xs font-semibold z-50 shadow-lg">
-                    <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                  <div className="absolute top-3 right-3 flex items-center gap-2 text-xs font-semibold z-50 shadow-lg px-2 py-1 rounded-full" style={{ backgroundColor: 'rgba(217, 184, 95, 0.9)', color: '#0f0f0f' }}>
+                    <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#0f0f0f' }}></span>
                     {formatTime(connectionTime)}
                   </div>
                 )}
@@ -1492,8 +1495,8 @@ const Chat = () => {
                 <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl relative" style={{ zIndex: 1 }}>
                   <div className="text-center">
                     <div className="animate-spin mb-4 text-5xl inline-block">⟳</div>
-                    <p className="text-white font-semibold text-base">Looking for a partner...</p>
-                    <p className="text-white/60 text-xs mt-2">This won't take long</p>
+                    <p className="font-semibold text-base" style={{ color: '#d9b85f' }}>Looking for a partner...</p>
+                    <p className="text-xs mt-2" style={{ color: '#d9b85f' }}>This won't take long</p>
                   </div>
                 </div>
               )}
@@ -1509,9 +1512,13 @@ const Chat = () => {
                       <div
                         className={`max-w-xs px-3 py-2 rounded-2xl text-xs ${
                           msg.sender === 'user'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-purple-500 text-white'
+                            ? 'text-white'
+                            : 'text-white'
                         }`}
+                        style={{
+                          backgroundColor: msg.sender === 'user' ? '#d9b85f' : 'rgba(217, 184, 95, 0.6)',
+                          color: msg.sender === 'user' ? '#0f0f0f' : '#d9b85f'
+                        }}
                       >
                         {msg.text}
                       </div>
@@ -1524,7 +1531,7 @@ const Chat = () => {
           </div>
 
           {/* SECTION 3: BOTTOM - Message input box */}
-          <div className="h-16 px-4 py-3 flex items-center justify-between bg-black/80 backdrop-blur-sm border-t border-white/10 flex-shrink-0">
+          <div className="h-16 px-4 py-3 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ backgroundColor: 'rgba(19, 19, 19, 0.8)', borderTop: '1px solid #d9b85f' }}>
             {/* Left: Username avatar */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white text-xs font-bold">
@@ -1541,12 +1548,14 @@ const Chat = () => {
                 onKeyPress={e => e.key === 'Enter' && sendMessage()}
                 placeholder="Send Message"
                 disabled={!hasPartner}
-                className="flex-1 px-3 py-2 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 disabled:bg-gray-500/20 bg-white/10 text-white placeholder-white/50 text-xs font-medium"
+                className="flex-1 px-3 py-2 rounded-lg focus:outline-none disabled:bg-gray-500/20 text-xs font-medium"
+                style={{ backgroundColor: 'rgba(217, 184, 95, 0.1)', borderColor: '#d9b85f', border: '1px solid #d9b85f', color: '#d9b85f' }}
               />
               <button
                 onClick={sendMessage}
                 disabled={!hasPartner || messageInput.trim() === ''}
-                className="w-8 h-8 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold rounded-lg transition-all disabled:cursor-not-allowed flex items-center justify-center text-sm shadow-md flex-shrink-0"
+                className="w-8 h-8 font-bold rounded-lg transition-all disabled:cursor-not-allowed flex items-center justify-center text-sm shadow-md flex-shrink-0"
+                style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
               >
                 💰
               </button>
@@ -1558,7 +1567,7 @@ const Chat = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 overflow-hidden min-h-0">
+    <div className="flex flex-col h-screen w-screen overflow-hidden min-h-0" style={{ backgroundColor: '#0f0f0f' }}>
       {/* Main content - Show correct screen based on state */}
       {hasPartner ? (
         // Partner found: Show video chat
