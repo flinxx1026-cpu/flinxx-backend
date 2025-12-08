@@ -61,7 +61,38 @@ const Chat = () => {
 
   // Log ref initialization
   useEffect(() => {
-    console.log('📌 Refs initialized - localVideoRef:', localVideoRef.current);
+    console.log('📌 Refs initialized:');
+    console.log('   localVideoRef.current exists:', !!localVideoRef.current);
+    console.log('   localVideoRef.current in DOM:', localVideoRef.current?.parentElement ? 'YES' : 'NO');
+    console.log('   remoteVideoRef.current exists:', !!remoteVideoRef.current);
+    console.log('   localStreamRef.current exists:', !!localStreamRef.current);
+  }, []);
+
+  // CRITICAL DEBUG: Monitor video ref status
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      if (localVideoRef.current && remoteVideoRef.current) {
+        console.log('🎬 VIDEO REF STATUS CHECK:');
+        console.log('   Local video ref:', {
+          exists: !!localVideoRef.current,
+          inDOM: !!localVideoRef.current.parentElement,
+          hasStream: !!localVideoRef.current.srcObject,
+          paused: localVideoRef.current.paused,
+          playing: !localVideoRef.current.paused,
+          readyState: localVideoRef.current.readyState
+        });
+        console.log('   Remote video ref:', {
+          exists: !!remoteVideoRef.current,
+          inDOM: !!remoteVideoRef.current.parentElement,
+          hasStream: !!remoteVideoRef.current.srcObject,
+          paused: remoteVideoRef.current.paused,
+          playing: !remoteVideoRef.current.paused,
+          readyState: remoteVideoRef.current.readyState
+        });
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(checkInterval);
   }, []);
 
   // Expose camera re-initialization function that can be called from ProfileModal
@@ -227,9 +258,28 @@ const Chat = () => {
       });
       
       // Attach stream to video element
+      console.log('🎥 [VIDEO MOUNT DETECTOR] About to attach stream to localVideoRef');
+      console.log('   localVideoRef:', {
+        exists: !!localVideoRef.current,
+        inDOM: !!localVideoRef.current.parentElement,
+        element: localVideoRef.current?.tagName,
+        id: localVideoRef.current?.id
+      });
+      console.log('   localStreamRef:', {
+        exists: !!localStreamRef.current,
+        trackCount: localStreamRef.current?.getTracks().length,
+        active: localStreamRef.current?.active
+      });
+
       localVideoRef.current.srcObject = localStreamRef.current;
       localVideoRef.current.muted = true;
       
+      console.log('🎥 [VIDEO MOUNT DETECTOR] ✅ Stream attached to localVideoRef');
+      console.log('🎥 [VIDEO MOUNT DETECTOR] Verifying attachment:', {
+        srcObject: !!localVideoRef.current.srcObject,
+        srcObjectActive: localVideoRef.current.srcObject?.active,
+        trackCount: localVideoRef.current.srcObject?.getTracks().length
+      });
       console.log('🎥 [VIDEO MOUNT DETECTOR] Stream attached, srcObject set');
       console.log('🎥 [VIDEO MOUNT DETECTOR] Attempting to play video...');
       
@@ -431,7 +481,34 @@ const Chat = () => {
       console.log('\n\n📋 ===== PARTNER FOUND EVENT RECEIVED =====');
       console.log('👥 Partner found:', data);
       console.log('👥 My socket ID:', socket.id);
+      console.log('👥 My user ID:', currentUser.googleId || currentUser.id);
       console.log('👥 Partner socket ID:', data.socketId);
+      console.log('👥 Partner user ID:', data.partnerId);
+      console.log('👥 Partner name:', data.userName);
+      
+      // CRITICAL: PREVENT SELF-MATCHING
+      const myUserId = currentUser.googleId || currentUser.id;
+      const partnerUserId = data.partnerId;
+      
+      if (myUserId === partnerUserId) {
+        console.error('❌ CRITICAL ERROR: Self-match detected!');
+        console.error('   My user ID:', myUserId);
+        console.error('   Partner user ID:', partnerUserId);
+        console.error('   These should be DIFFERENT!');
+        
+        // Reject this match and look for another partner
+        setIsLoading(true);
+        socket.emit('skip_user');
+        socket.emit('find_partner', {
+          userId: currentUser.googleId || currentUser.id,
+          userName: currentUser.name || 'Anonymous',
+          userAge: currentUser.age || 18,
+          userLocation: currentUser.location || 'Unknown'
+        });
+        return;
+      }
+      
+      console.log('✅ Self-match check PASSED - partner is different user');
       console.log('📊 Stream status before peer connection:', {
         exists: !!localStreamRef.current,
         trackCount: localStreamRef.current?.getTracks().length,

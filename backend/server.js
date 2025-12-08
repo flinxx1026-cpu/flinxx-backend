@@ -1120,11 +1120,18 @@ io.on('connection', (socket) => {
     // Set user as online in Redis
     await setUserOnline(userId, socket.id)
 
-    // Check if there's someone in the queue
-    const waitingUser = await getNextFromQueue()
+    // Check if there's someone in the queue, skip if it's the same user
+    let waitingUser = await getNextFromQueue()
+    
+    // CRITICAL: Loop until we find a DIFFERENT user
+    while (waitingUser && waitingUser.userId === userId) {
+      console.log(`[find_partner] ⚠️ Skipping self-match: ${waitingUser.userId} === ${userId}`)
+      waitingUser = await getNextFromQueue() // Try next user
+    }
     
     if (waitingUser) {
       console.log(`[find_partner] Found waiting partner: ${waitingUser.userId}`)
+      console.log(`[find_partner] ✅ Verified: Current user ${userId} !== Partner ${waitingUser.userId}`)
       matchUsers(socket.id, userId, waitingUser.socketId, waitingUser.userId, userData, waitingUser)
     } else {
       // Add to waiting queue
