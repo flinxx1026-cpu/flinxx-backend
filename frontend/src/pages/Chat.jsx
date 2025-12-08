@@ -1136,7 +1136,7 @@ const Chat = () => {
 
   // Intro Screen Component
   const IntroScreen = () => (
-    <div className="intro-screen-container flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f' }}>
+    <div className="intro-screen-container flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       {/* Top-Right Icon Navigation Bar */}
       <div className="top-right-icons">
         {/* User Profile Icon - 1 */}
@@ -1265,7 +1265,7 @@ const Chat = () => {
 
   // Waiting Screen Component - Shows when matching is in progress
   const WaitingScreen = () => (
-    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start relative overflow-hidden" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f' }}>
+    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       {/* Top-Right Icon Navigation Bar */}
       <div className="top-right-icons">
         {/* User Profile Icon - 1 */}
@@ -1342,7 +1342,7 @@ const Chat = () => {
       </div>
 
       {/* Right - Dark Waiting Panel with golden accents */}
-      <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', position: 'relative', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0 }}>
+      <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0, overflow: 'visible' }}>
         <div className="flex flex-col items-center justify-center text-center gap-8 py-20">
           {/* Animated Waiting Icon */}
           <div className="animate-pulse text-6xl">
@@ -1410,8 +1410,8 @@ const Chat = () => {
         </div>
 
         {/* Right - Chat panel with proper 3-section layout */}
-        <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', position: 'relative', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0, overflow: 'visible' }}>
-          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible relative" style={{ backgroundColor: '#131313', overflow: 'visible' }}>
+        <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0, overflow: 'visible' }}>
+          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible" style={{ backgroundColor: '#131313', overflow: 'visible' }}>
             
             {/* SECTION 1: TOP - Header with partner info */}
             <div className="px-4 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ height: '56px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: 'rgba(19, 19, 19, 0.8)', borderBottom: '1px solid #d9b85f' }}>
@@ -1442,10 +1442,10 @@ const Chat = () => {
             </div>
 
             {/* SECTION 2: MIDDLE - Messages area with remote video */}
-            <div id="main-container" className="overflow-visible flex flex-col relative w-full flex-1" style={{ zIndex: 1, backgroundColor: 'transparent', position: 'relative', padding: 0, overflow: 'visible' }}>
+            <div id="main-container" className="overflow-visible flex flex-col w-full flex-1" style={{ zIndex: 1, backgroundColor: 'transparent', padding: 0, overflow: 'visible' }}>
               
               {/* Remote video wrapper - ABSOLUTE FULL SIZE */}
-              <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: hasPartner ? 99999 : 1, overflow: 'hidden', backgroundColor: hasPartner ? 'black' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: hasPartner ? 99999 : 1, overflow: 'visible', backgroundColor: hasPartner ? 'black' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                 {/* Remote video element */}
                 {hasPartner && (
                   <video
@@ -1481,7 +1481,7 @@ const Chat = () => {
 
               {/* Waiting for partner - show ONLY when no partner */}
               {!hasPartner && (
-                <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl relative" style={{ zIndex: 1 }}>
+                <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl" style={{ zIndex: 1 }}>
                   <div className="text-center">
                     <div className="animate-spin mb-4 text-5xl inline-block">⟳</div>
                     <p className="font-semibold text-base" style={{ color: '#d9b85f' }}>Looking for a partner...</p>
@@ -1492,7 +1492,7 @@ const Chat = () => {
 
               {/* Chat messages - Display below video when they exist */}
               {messages.length > 0 && hasPartner && (
-                <div className="space-y-2 mt-3 relative px-4" style={{ zIndex: 10 }}>
+                <div className="space-y-2 mt-3 px-4" style={{ zIndex: 10 }}>
                   {messages.map(msg => (
                     <div
                       key={msg.id}
