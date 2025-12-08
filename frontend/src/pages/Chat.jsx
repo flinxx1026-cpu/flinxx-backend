@@ -42,13 +42,17 @@ const Chat = () => {
   // CRITICAL: Store user ID in a ref so it never changes across renders
   // This ensures socket listeners always use the SAME user ID
   const userIdRef = useRef(null);
-  if (!userIdRef.current) {
-    userIdRef.current = currentUser.googleId || currentUser.id;
-    console.log('🔐 USER ID INITIALIZED (ONE TIME):', userIdRef.current);
-  }
-
-  // Also stabilize the currentUser object to prevent re-renders
   const currentUserRef = useRef(currentUser);
+
+  // Initialize user ID ref ONCE on component mount
+  useEffect(() => {
+    if (!userIdRef.current) {
+      userIdRef.current = currentUser.googleId || currentUser.id;
+      console.log('🔐 USER ID INITIALIZED (ONE TIME):', userIdRef.current);
+    }
+  }, []);
+
+  // Update currentUser ref when user changes
   useEffect(() => {
     currentUserRef.current = currentUser;
     console.log('🔐 Current user updated:', currentUser.googleId || currentUser.id, currentUser.name);
