@@ -44,7 +44,7 @@ const Chat = () => {
   // CRITICAL: Store user ID in a ref so it never changes across renders
   // This ensures socket listeners always use the SAME user ID
   const userIdRef = useRef(null);
-  const currentUserRef = useRef(currentUser);
+  const currentUserRef = useRef(null);  // Initialize as null, set in useEffect
 
   // Initialize user ID ref ONCE on component mount
   useEffect(() => {
@@ -52,12 +52,9 @@ const Chat = () => {
       userIdRef.current = currentUser.googleId || currentUser.id;
       console.log('🔐 USER ID INITIALIZED (ONE TIME):', userIdRef.current);
     }
-  }, []);
-
-  // Update currentUser ref when user changes
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-    console.log('🔐 Current user updated:', currentUser.googleId || currentUser.id, currentUser.name);
+    if (!currentUserRef.current) {
+      currentUserRef.current = currentUser;
+    }
   }, [currentUser]);
 
   // Monitor guest session timeout
