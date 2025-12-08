@@ -39,6 +39,21 @@ const Chat = () => {
     picture: null
   };
 
+  // CRITICAL: Store user ID in a ref so it never changes across renders
+  // This ensures socket listeners always use the SAME user ID
+  const userIdRef = useRef(null);
+  if (!userIdRef.current) {
+    userIdRef.current = currentUser.googleId || currentUser.id;
+    console.log('🔐 USER ID INITIALIZED (ONE TIME):', userIdRef.current);
+  }
+
+  // Also stabilize the currentUser object to prevent re-renders
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+    console.log('🔐 Current user updated:', currentUser.googleId || currentUser.id, currentUser.name);
+  }, [currentUser]);
+
   // Monitor guest session timeout
   const guestSessionTimerRef = useRef(null);
   const [showGuestTimeoutModal, setShowGuestTimeoutModal] = useState(false);
@@ -535,6 +550,7 @@ const Chat = () => {
     console.log('🔌 Setting up socket listeners - runs ONCE on component load');
     console.log('🔌 Socket ID:', socket.id);
     console.log('🔌 Socket connected:', socket.connected);
+    console.log('🔌 🔐 Using userIdRef.current for ALL ID comparisons:', userIdRef.current);
     
     // Clean up old listeners to prevent duplicates
     socket.off('partner_found');
@@ -552,6 +568,7 @@ const Chat = () => {
       console.log('👥 RAW DATA from server:', JSON.stringify(data, null, 2));
       console.log('👥 My socket ID:', socket.id);
       console.log('👥 currentUser object:', JSON.stringify(currentUser, null, 2));
+      console.log('👥 userIdRef.current (SHOULD USE THIS):', userIdRef.current);
       console.log('👥 currentUser.googleId:', currentUser?.googleId);
       console.log('👥 currentUser.id:', currentUser?.id);
       console.log('👥 data.socketId:', data.socketId);
@@ -560,7 +577,7 @@ const Chat = () => {
       
       // CRITICAL: PREVENT SELF-MATCHING
       console.log('\n👥 SELF-MATCH CHECK - START');
-      const myUserId = currentUser.googleId || currentUser.id;
+      const myUserId = userIdRef.current;  // USE REF FOR CONSISTENT ID
       const partnerUserId = data.partnerId;
       
       console.log('👥 COMPARISON VALUES:');
@@ -584,7 +601,7 @@ const Chat = () => {
         });
         console.error('   Emitting find_partner...');
         socket.emit('find_partner', {
-          userId: currentUser.googleId || currentUser.id,
+          userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
           userName: currentUser.name || 'Anonymous',
           userAge: currentUser.age || 18,
           userLocation: currentUser.location || 'Unknown'
@@ -1266,7 +1283,7 @@ const Chat = () => {
 
       // Emit find_partner to start matching - ONLY THIS, NO CAMERA CODE
       socket.emit('find_partner', {
-        userId: currentUser.googleId || currentUser.id,
+        userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
         userName: currentUser.name || 'Anonymous',
         userAge: currentUser.age || 18,
         userLocation: currentUser.location || 'Unknown'
@@ -1314,7 +1331,7 @@ const Chat = () => {
 
     // Look for new partner
     socket.emit('find_partner', {
-      userId: currentUser.googleId || currentUser.id,
+      userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
       userName: currentUser.name || 'Anonymous',
       userAge: currentUser.age || 18,
       userLocation: currentUser.location || 'Unknown'
