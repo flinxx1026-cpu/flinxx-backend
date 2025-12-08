@@ -20,20 +20,28 @@ const Chat = () => {
   const location = useLocation();
   const { user } = useContext(AuthContext) || {};
 
-  // Check if we should start on home/intro screen (after profile completion)
-  const params = new URLSearchParams(location.search);
-  const viewParam = params.get('view');
-  const shouldStartAsIntro = viewParam === 'home';
+  // CRITICAL: All computed values MUST be in state, never in component body
+  // This prevents temporal deadzone errors with minified variables
+  const [viewParam, setViewParam] = useState(null);
+  const [shouldStartAsIntro, setShouldStartAsIntro] = useState(false);
 
-  console.log('[Chat] Location search params:', location.search);
-  console.log('[Chat] view parameter:', viewParam);
-  console.log('[Chat] shouldStartAsIntro:', shouldStartAsIntro);
+  // Initialize view params from location ONLY in useEffect
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const view = params.get('view');
+    setViewParam(view);
+    setShouldStartAsIntro(view === 'home');
+
+    console.log('[Chat] Location search params:', location.search);
+    console.log('[Chat] view parameter:', view);
+    console.log('[Chat] shouldStartAsIntro:', view === 'home');
+  }, [location.search]);
 
   // Create a ref to expose camera functions to child components
   const cameraFunctionsRef = useRef(null);
 
-  // Peer connection reference
-  let peerConnection = null;
+  // Peer connection reference - keep as ref for internal use only
+  const peerConnectionRef = useRef(null);
   
   // CRITICAL: Store current user in a ref - initialize in useEffect only
   const currentUserRef = useRef(null);
@@ -78,7 +86,6 @@ const Chat = () => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
-  const peerConnectionRef = useRef(null);
   const partnerSocketIdRef = useRef(null);  // CRITICAL: Store partner socket ID for sending offers/answers
 
   // Log ref initialization
