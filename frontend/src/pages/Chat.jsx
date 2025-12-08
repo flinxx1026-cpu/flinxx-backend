@@ -180,6 +180,17 @@ const Chat = () => {
     }
   }, [hasPartner]);
 
+  // Track hasPartner state changes
+  useEffect(() => {
+    console.log('🔄 hasPartner state changed:', hasPartner);
+    if (hasPartner) {
+      console.log('   ✅ Partner connected!');
+      console.log('   Force attach effect should have run above');
+    } else {
+      console.log('   ❌ Partner disconnected');
+    }
+  }, [hasPartner]);
+
   // Expose camera re-initialization function that can be called from ProfileModal
   const reinitializeCamera = React.useCallback(async () => {
     console.log('\n\n🎥 ===== CAMERA RE-INITIALIZATION STARTED =====');
@@ -619,8 +630,11 @@ const Chat = () => {
       console.log('🔌 CRITICAL: Stored partner socket ID:', partnerSocketIdRef.current);
       console.log('🔌 CRITICAL: Verification - partnerSocketIdRef.current is now:', partnerSocketIdRef.current);
       
+      console.log('🎬 ABOUT TO CALL setHasPartner(true)');
       setHasPartner(true);
+      console.log('🎬 ✅ setHasPartner(true) CALLED - force attach effect should trigger');
       setPartnerInfo(data);
+      console.log('🎬 ✅ setPartnerInfo CALLED');
 
       // CRITICAL: Determine who should send the offer
       // The peer with the LOWER socket ID (lexicographically) is the OFFERER
