@@ -570,6 +570,224 @@ const Chat = () => {
   }, [hasPartner]);
 
   // ========================================
+  // CRITICAL: Define createPeerConnection BEFORE socket listeners
+  // This function is called inside socket event handlers
+  // Must be declared before the socket listener setup to avoid TDZ error
+  // When minified, this function gets named 'g', and if not declared before
+  // the socket listeners that reference it, we get:
+  // "Cannot access 'g' before initialization"
+  // ========================================
+  const createPeerConnection = async () => {
+    console.log('🔧 createPeerConnection called');
+    console.log('   Current localStreamRef:', localStreamRef.current);
+    
+    // Log ICE server configuration for diagnostics
+    logIceServers();
+    
+    const iceServers = await getTurnServers();
+
+    peerConnection = new RTCPeerConnection({ iceServers });
+    console.log('✅ RTCPeerConnection created');
+
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            console.log('🧊 ICE candidate generated:', {
+              candidate: event.candidate.candidate,
+              protocol: event.candidate.protocol,
+              port: event.candidate.port,
+              address: event.candidate.address,
+              type: event.candidate.type,
+              priority: event.candidate.priority,
+              sdpMLineIndex: event.candidate.sdpMLineIndex,
+              sdpMId: event.candidate.sdpMid
+            });
+            
+            // Detect TURN candidate success/failure
+            if (event.candidate.type === 'relay') {
+              console.log('🔄 RELAY (TURN) candidate generated - TURN server is reachable');
+              console.log('   Protocol:', event.candidate.protocol, 'Port:', event.candidate.port);
+            } else if (event.candidate.type === 'srflx') {
+              console.log('📍 SRFLX (server reflexive) candidate - STUN working');
+              console.log('   Found public address via STUN');
+            } else if (event.candidate.type === 'host') {
+              console.log('🏠 HOST candidate - direct LAN connection possible');
+            }
+            
+            console.log('🔌 Sending ICE candidate to partner socket:', partnerSocketIdRef.current);
+            socket.emit("ice-candidate", {
+              candidate: event.candidate,
+              to: partnerSocketIdRef.current
+            });
+            console.log('📤 ICE candidate sent to peer');
+        } else {
+            console.log('🧊 ICE gathering complete (null candidate received)');
+            console.log('📊 ICE gathering summary:');
+            console.log('   Connection State:', peerConnection.connectionState);
+            console.log('   ICE Connection State:', peerConnection.iceConnectionState);
+            console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
+        }
+    };
+
+    peerConnection.oniceconnectionstatechange = () => {
+        const state = peerConnection.iceConnectionState;
+        console.log('\n🧊 ===== ICE CONNECTION STATE CHANGED =====');
+        console.log('🧊 New ICE Connection State:', state);
+        
+        switch(state) {
+          case 'new':
+            console.log('🧊 State: NEW - Gathering ICE candidates');
+            break;
+          case 'checking':
+            console.log('🧊 State: CHECKING - Testing ICE candidate pairs');
+            console.log('🧊 Connection in progress - waiting for connectivity');
+            break;
+          case 'connected':
+            console.log('✅ State: CONNECTED - Found working ICE candidate pair');
+            console.log('🧊 Peer-to-peer communication established');
+            break;
+          case 'completed':
+            console.log('✅ State: COMPLETED - ICE checks completed, ready for media');
+            console.log('🧊 All connectivity checks passed');
+            break;
+          case 'failed':
+            console.error('❌ State: FAILED - All ICE candidate pairs failed');
+            console.error('❌ Could not establish peer-to-peer connection');
+            console.error('❌ TURN server may be unreachable or blocked by ISP');
+            console.error('🔍 Troubleshooting:');
+            console.error('   - Check console for TURN error details');
+            console.error('   - TURN error 701 = Network/ISP blocking ports 3478, 5349');
+            console.error('   - Solutions: Try VPN, different WiFi, or mobile hotspot');
+            break;
+          case 'disconnected':
+            console.warn('⚠️ State: DISCONNECTED - Lost connection to peer');
+            console.warn('⚠️ Will attempt to reconnect');
+            break;
+          case 'closed':
+            console.log('🛑 State: CLOSED - Connection closed');
+            break;
+        }
+        
+        console.log('📊 Full connection states:');
+        console.log('   Signaling State:', peerConnection.signalingState);
+        console.log('   Connection State:', peerConnection.connectionState);
+        console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
+    };
+
+    peerConnection.ontrack = (event) => {
+        console.log('\n\n📥 ===== REMOTE TRACK RECEIVED =====');
+        console.log('📥 TIMESTAMP:', new Date().toISOString());
+        console.log('📥 Remote track received:', {
+          kind: event.track.kind,
+          id: event.track.id,
+          enabled: event.track.enabled,
+          readyState: event.track.readyState,
+          muted: event.track.muted
+        });
+        console.log('📥 Event streams:', event.streams.map(s => ({
+          id: s.id,
+          active: s.active,
+          trackCount: s.getTracks().length,
+          tracks: s.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled, muted: t.muted }))
+        })));
+        
+        // CRITICAL: Verify we're attaching to REMOTE video ref, not local
+        console.log('\n📺 ===== CRITICAL VIDEO REF CHECK =====');
+        console.log('📺 localVideoRef.current:', {
+          exists: !!localVideoRef.current,
+          element: localVideoRef.current?.tagName,
+          id: localVideoRef.current?.id,
+          srcObject: !!localVideoRef.current?.srcObject,
+          object: localVideoRef.current
+        });
+        console.log('📺 remoteVideoRef.current:', {
+          exists: !!remoteVideoRef.current,
+          element: remoteVideoRef.current?.tagName,
+          id: remoteVideoRef.current?.id,
+          srcObject: !!remoteVideoRef.current?.srcObject,
+          object: remoteVideoRef.current
+        });
+        console.log('📺 SAME REF?:', localVideoRef.current === remoteVideoRef.current);
+        
+        if (!remoteVideoRef.current) {
+            console.error('❌ CRITICAL ERROR: remoteVideoRef.current is NULL!');
+            console.error('   Cannot attach remote track - video element not available');
+            return;
+        }
+        
+        if (localVideoRef.current === remoteVideoRef.current) {
+            console.error('❌❌❌ CRITICAL ERROR: localVideoRef and remoteVideoRef are the SAME OBJECT!');
+            console.error('   This will OVERWRITE local video with remote track!');
+            console.error('   Check JSX ref assignments - they should be different video elements');
+            console.error('   localVideoRef should be in RIGHT panel');
+            console.error('   remoteVideoRef should be in LEFT panel');
+            return;
+        }
+        
+        console.log('✅ CRITICAL CHECK PASSED - refs are DIFFERENT and valid');
+        console.log('📺 Proceeding to attach remote stream...');
+        
+        if (!event.streams || !event.streams[0]) {
+            console.error('❌ No streams available in event');
+            return;
+        }
+        
+        console.log('📺 STEP 1: Setting srcObject...');
+        const stream = event.streams[0];
+        remoteVideoRef.current.srcObject = stream;
+        console.log('📺 STEP 2: ✅ srcObject assigned');
+        
+        // Debug: Check what was set
+        console.log('📺 STEP 3: Verifying attachment:', {
+          srcObjectExists: !!remoteVideoRef.current.srcObject,
+          srcObjectSame: remoteVideoRef.current.srcObject === stream,
+          srcObjectActive: remoteVideoRef.current.srcObject?.active,
+          srcObjectTracks: remoteVideoRef.current.srcObject?.getTracks().length,
+          trackDetails: remoteVideoRef.current.srcObject?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, muted: t.muted })),
+          videoReadyState: remoteVideoRef.current.readyState,
+          videoNetworkState: remoteVideoRef.current.networkState,
+          videoPaused: remoteVideoRef.current.paused
+        });
+        
+        remoteVideoRef.current.style.display = "block";
+        remoteVideoRef.current.style.width = "100%";
+        remoteVideoRef.current.style.height = "100%";
+        remoteVideoRef.current.style.objectFit = "cover";
+        console.log('📺 STEP 4: ✅ CSS styles applied');
+        console.log('✅ Remote video srcObject set successfully');
+        console.log('📥 ===== REMOTE TRACK SETUP COMPLETE =====\n\n');
+    };
+
+    peerConnection.onconnectionstatechange = () => {
+        console.log("🔄 Connection State Changed:", peerConnection.connectionState);
+        console.log("   ICE Connection State:", peerConnection.iceConnectionState);
+        console.log("   ICE Gathering State:", peerConnection.iceGatheringState);
+        console.log("   Signaling State:", peerConnection.signalingState);
+        
+        if (peerConnection.connectionState === 'connected') {
+          setIsConnected(true);
+          console.log('✅ WebRTC connection ESTABLISHED');
+        } else if (peerConnection.connectionState === 'disconnected') {
+          setIsConnected(false);
+          console.log('⚠️ WebRTC connection DISCONNECTED');
+        } else if (peerConnection.connectionState === 'failed') {
+          setIsConnected(false);
+          console.log('❌ WebRTC connection FAILED');
+        } else if (peerConnection.connectionState === 'closed') {
+          setIsConnected(false);
+          console.log('❌ WebRTC connection CLOSED');
+        }
+    };
+
+    // CRITICAL: Verify stream still exists before adding tracks
+    if (!localStreamRef.current) {
+      console.error('❌ CRITICAL ERROR: localStreamRef.current is null/undefined in createPeerConnection!');
+      throw new Error('Local stream lost before createPeerConnection');
+    }
+
+    return peerConnection;
+  };
+
+  // ========================================
   // CRITICAL: Setup socket listeners ONCE on component mount
   // This must run only once, NOT every time startVideoChat is called
   // ========================================
@@ -1028,216 +1246,6 @@ const Chat = () => {
       // Fallback to static configuration - returns array directly
       return getIceServers();
     }
-  };
-
-  const createPeerConnection = async () => {
-    console.log('🔧 createPeerConnection called');
-    console.log('   Current localStreamRef:', localStreamRef.current);
-    
-    // Log ICE server configuration for diagnostics
-    logIceServers();
-    
-    const iceServers = await getTurnServers();
-
-    peerConnection = new RTCPeerConnection({ iceServers });
-    console.log('✅ RTCPeerConnection created');
-
-    peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            console.log('🧊 ICE candidate generated:', {
-              candidate: event.candidate.candidate,
-              protocol: event.candidate.protocol,
-              port: event.candidate.port,
-              address: event.candidate.address,
-              type: event.candidate.type,
-              priority: event.candidate.priority,
-              sdpMLineIndex: event.candidate.sdpMLineIndex,
-              sdpMid: event.candidate.sdpMid
-            });
-            
-            // Detect TURN candidate success/failure
-            if (event.candidate.type === 'relay') {
-              console.log('🔄 RELAY (TURN) candidate generated - TURN server is reachable');
-              console.log('   Protocol:', event.candidate.protocol, 'Port:', event.candidate.port);
-            } else if (event.candidate.type === 'srflx') {
-              console.log('📍 SRFLX (server reflexive) candidate - STUN working');
-              console.log('   Found public address via STUN');
-            } else if (event.candidate.type === 'host') {
-              console.log('🏠 HOST candidate - direct LAN connection possible');
-            }
-            
-            console.log('🔌 Sending ICE candidate to partner socket:', partnerSocketIdRef.current);
-            socket.emit("ice-candidate", {
-              candidate: event.candidate,
-              to: partnerSocketIdRef.current
-            });
-            console.log('📤 ICE candidate sent to peer');
-        } else {
-            console.log('🧊 ICE gathering complete (null candidate received)');
-            console.log('📊 ICE gathering summary:');
-            console.log('   Connection State:', peerConnection.connectionState);
-            console.log('   ICE Connection State:', peerConnection.iceConnectionState);
-            console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
-        }
-    };
-
-    peerConnection.oniceconnectionstatechange = () => {
-        const state = peerConnection.iceConnectionState;
-        console.log('\n🧊 ===== ICE CONNECTION STATE CHANGED =====');
-        console.log('🧊 New ICE Connection State:', state);
-        
-        switch(state) {
-          case 'new':
-            console.log('🧊 State: NEW - Gathering ICE candidates');
-            break;
-          case 'checking':
-            console.log('🧊 State: CHECKING - Testing ICE candidate pairs');
-            console.log('🧊 Connection in progress - waiting for connectivity');
-            break;
-          case 'connected':
-            console.log('✅ State: CONNECTED - Found working ICE candidate pair');
-            console.log('🧊 Peer-to-peer communication established');
-            break;
-          case 'completed':
-            console.log('✅ State: COMPLETED - ICE checks completed, ready for media');
-            console.log('🧊 All connectivity checks passed');
-            break;
-          case 'failed':
-            console.error('❌ State: FAILED - All ICE candidate pairs failed');
-            console.error('❌ Could not establish peer-to-peer connection');
-            console.error('❌ TURN server may be unreachable or blocked by ISP');
-            console.error('🔍 Troubleshooting:');
-            console.error('   - Check console for TURN error details');
-            console.error('   - TURN error 701 = Network/ISP blocking ports 3478, 5349');
-            console.error('   - Solutions: Try VPN, different WiFi, or mobile hotspot');
-            break;
-          case 'disconnected':
-            console.warn('⚠️ State: DISCONNECTED - Lost connection to peer');
-            console.warn('⚠️ Will attempt to reconnect');
-            break;
-          case 'closed':
-            console.log('🛑 State: CLOSED - Connection closed');
-            break;
-        }
-        
-        console.log('📊 Full connection states:');
-        console.log('   Signaling State:', peerConnection.signalingState);
-        console.log('   Connection State:', peerConnection.connectionState);
-        console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
-    };
-
-    peerConnection.ontrack = (event) => {
-        console.log('\n\n📥 ===== REMOTE TRACK RECEIVED =====');
-        console.log('📥 TIMESTAMP:', new Date().toISOString());
-        console.log('📥 Remote track received:', {
-          kind: event.track.kind,
-          id: event.track.id,
-          enabled: event.track.enabled,
-          readyState: event.track.readyState,
-          muted: event.track.muted
-        });
-        console.log('📥 Event streams:', event.streams.map(s => ({
-          id: s.id,
-          active: s.active,
-          trackCount: s.getTracks().length,
-          tracks: s.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled, muted: t.muted }))
-        })));
-        
-        // CRITICAL: Verify we're attaching to REMOTE video ref, not local
-        console.log('\n📺 ===== CRITICAL VIDEO REF CHECK =====');
-        console.log('📺 localVideoRef.current:', {
-          exists: !!localVideoRef.current,
-          element: localVideoRef.current?.tagName,
-          id: localVideoRef.current?.id,
-          srcObject: !!localVideoRef.current?.srcObject,
-          object: localVideoRef.current
-        });
-        console.log('📺 remoteVideoRef.current:', {
-          exists: !!remoteVideoRef.current,
-          element: remoteVideoRef.current?.tagName,
-          id: remoteVideoRef.current?.id,
-          srcObject: !!remoteVideoRef.current?.srcObject,
-          object: remoteVideoRef.current
-        });
-        console.log('📺 SAME REF?:', localVideoRef.current === remoteVideoRef.current);
-        
-        if (!remoteVideoRef.current) {
-            console.error('❌ CRITICAL ERROR: remoteVideoRef.current is NULL!');
-            console.error('   Cannot attach remote track - video element not available');
-            return;
-        }
-        
-        if (localVideoRef.current === remoteVideoRef.current) {
-            console.error('❌❌❌ CRITICAL ERROR: localVideoRef and remoteVideoRef are the SAME OBJECT!');
-            console.error('   This will OVERWRITE local video with remote track!');
-            console.error('   Check JSX ref assignments - they should be different video elements');
-            console.error('   localVideoRef should be in RIGHT panel');
-            console.error('   remoteVideoRef should be in LEFT panel');
-            return;
-        }
-        
-        console.log('✅ CRITICAL CHECK PASSED - refs are DIFFERENT and valid');
-        console.log('📺 Proceeding to attach remote stream...');
-        
-        if (!event.streams || !event.streams[0]) {
-            console.error('❌ No streams available in event');
-            return;
-        }
-        
-        console.log('📺 STEP 1: Setting srcObject...');
-        const stream = event.streams[0];
-        remoteVideoRef.current.srcObject = stream;
-        console.log('📺 STEP 2: ✅ srcObject assigned');
-        
-        // Debug: Check what was set
-        console.log('📺 STEP 3: Verifying attachment:', {
-          srcObjectExists: !!remoteVideoRef.current.srcObject,
-          srcObjectSame: remoteVideoRef.current.srcObject === stream,
-          srcObjectActive: remoteVideoRef.current.srcObject?.active,
-          srcObjectTracks: remoteVideoRef.current.srcObject?.getTracks().length,
-          trackDetails: remoteVideoRef.current.srcObject?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, muted: t.muted })),
-          videoReadyState: remoteVideoRef.current.readyState,
-          videoNetworkState: remoteVideoRef.current.networkState,
-          videoPaused: remoteVideoRef.current.paused
-        });
-        
-        remoteVideoRef.current.style.display = "block";
-        remoteVideoRef.current.style.width = "100%";
-        remoteVideoRef.current.style.height = "100%";
-        remoteVideoRef.current.style.objectFit = "cover";
-        console.log('📺 STEP 4: ✅ CSS styles applied');
-        console.log('✅ Remote video srcObject set successfully');
-        console.log('📥 ===== REMOTE TRACK SETUP COMPLETE =====\n\n');
-    };
-
-    peerConnection.onconnectionstatechange = () => {
-        console.log("🔄 Connection State Changed:", peerConnection.connectionState);
-        console.log("   ICE Connection State:", peerConnection.iceConnectionState);
-        console.log("   ICE Gathering State:", peerConnection.iceGatheringState);
-        console.log("   Signaling State:", peerConnection.signalingState);
-        
-        if (peerConnection.connectionState === 'connected') {
-          setIsConnected(true);
-          console.log('✅ WebRTC connection ESTABLISHED');
-        } else if (peerConnection.connectionState === 'disconnected') {
-          setIsConnected(false);
-          console.log('⚠️ WebRTC connection DISCONNECTED');
-        } else if (peerConnection.connectionState === 'failed') {
-          setIsConnected(false);
-          console.log('❌ WebRTC connection FAILED');
-        } else if (peerConnection.connectionState === 'closed') {
-          setIsConnected(false);
-          console.log('❌ WebRTC connection CLOSED');
-        }
-    };
-
-    // CRITICAL: Verify stream still exists before adding tracks
-    if (!localStreamRef.current) {
-      console.error('❌ CRITICAL ERROR: localStreamRef.current is null/undefined in createPeerConnection!');
-      throw new Error('Local stream lost before createPeerConnection');
-    }
-
-    return peerConnection;
   };
 
   const startVideoChat = async () => {
