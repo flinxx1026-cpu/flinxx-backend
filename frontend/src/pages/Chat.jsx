@@ -125,6 +125,26 @@ const Chat = () => {
     return () => clearInterval(checkInterval);
   }, []);
 
+  // UI state - MUST BE DECLARED FIRST, BEFORE ANY useEffect THAT USES THEM
+  const [cameraStarted, setCameraStarted] = useState(false);
+  const [isMatchingStarted, setIsMatchingStarted] = useState(false);
+  const [hasPartner, setHasPartner] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [partnerInfo, setPartnerInfo] = useState(null);
+  const [connectionTime, setConnectionTime] = useState(0);
+  const [isPremiumOpen, setIsPremiumOpen] = useState(false);
+  const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
+  const [selectedGender, setSelectedGender] = useState('both');
+  const [isRequestingCamera, setIsRequestingCamera] = useState(false);
+
+  // Chat state
+  const [messages, setMessages] = useState([]);
+  const [messageInput, setMessageInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // NOW safe to use state in useEffect hooks (state is declared above)
   // CRITICAL: Force attach local stream to video element when partner connects
   useEffect(() => {
     console.log('\n\n🎥 ===== FORCE ATTACH EFFECT TRIGGERED =====');
@@ -205,25 +225,6 @@ const Chat = () => {
       console.log('   ❌ Partner disconnected');
     }
   }, [hasPartner]);
-
-  // UI state - MUST BE DECLARED BEFORE FUNCTIONS THAT USE THEM
-  const [cameraStarted, setCameraStarted] = useState(false);
-  const [isMatchingStarted, setIsMatchingStarted] = useState(false);
-  const [hasPartner, setHasPartner] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [partnerInfo, setPartnerInfo] = useState(null);
-  const [connectionTime, setConnectionTime] = useState(0);
-  const [isPremiumOpen, setIsPremiumOpen] = useState(false);
-  const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
-  const [selectedGender, setSelectedGender] = useState('both');
-  const [isRequestingCamera, setIsRequestingCamera] = useState(false);
-
-  // Chat state
-  const [messages, setMessages] = useState([]);
-  const [messageInput, setMessageInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
   // CRITICAL: Define functions AFTER state declarations to avoid TDZ
   // Expose camera re-initialization function that can be called from ProfileModal
