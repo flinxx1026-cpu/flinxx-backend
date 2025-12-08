@@ -1381,33 +1381,9 @@ const Chat = () => {
 
   // Video Chat Screen Component
   const VideoChatScreen = () => (
-    <div className="video-chat-container flex flex-col md:flex-row-reverse w-full h-full gap-6 items-start overflow-visible" style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', overflow: 'visible', flexDirection: 'row-reverse' }}>
+    <div className="video-chat-container flex flex-col md:flex-row w-full h-full gap-6 items-start overflow-visible" style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
         
-        {/* Left - Local camera video */}
-        <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
-          <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
-            <video
-              ref={localVideoRef}
-              autoPlay={true}
-              playsInline={true}
-              muted={true}
-              className="w-full h-full object-cover"
-              style={{
-                backgroundColor: '#000000',
-                transform: 'none',
-                zoom: 1,
-                display: 'block',
-                width: '100%',
-                height: '100%'
-              }}
-            />
-            <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-10" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
-              <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>You</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Right - Chat panel with proper 3-section layout */}
+        {/* LEFT - Chat panel with proper 3-section layout */}
         <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0, overflow: 'visible' }}>
           <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible" style={{ backgroundColor: '#131313', overflow: 'visible' }}>
             
@@ -1546,6 +1522,30 @@ const Chat = () => {
               >
                 💰
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT - Local camera video */}
+        <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
+          <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
+            <video
+              ref={localVideoRef}
+              autoPlay={true}
+              playsInline={true}
+              muted={true}
+              className="w-full h-full object-cover"
+              style={{
+                backgroundColor: '#000000',
+                transform: 'none',
+                zoom: 1,
+                display: 'block',
+                width: '100%',
+                height: '100%'
+              }}
+            />
+            <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-10" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
+              <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>You</p>
             </div>
           </div>
         </div>
