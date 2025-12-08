@@ -2,6 +2,9 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist2",
   "framework": "vite",
+  "env": {
+    "VERCEL_FORCE_REBUILD": "2025-12-08-tdz-fix-final"
+  },
   "headers": [
     {
       "source": "/(.*)",

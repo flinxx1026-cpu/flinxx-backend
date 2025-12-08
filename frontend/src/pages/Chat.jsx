@@ -1,6 +1,6 @@
-// DEPLOYMENT VERSION: 909c247 - Login crash fixed (useRef init in useEffect) - 2025-12-08
-// Last updated: 2025-12-08 - Force Vercel rebuild with login crash fix
-// deploy-buster-003
+// DEPLOYMENT VERSION: 591835d - TDZ FIX: Move functions after state - 2025-12-08
+// Last updated: 2025-12-08 - Temporal deadzone fix complete
+// BUILD TIMESTAMP: 2025-12-08T12:30:00Z - FORCE FRESH VERCEL DEPLOY
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
