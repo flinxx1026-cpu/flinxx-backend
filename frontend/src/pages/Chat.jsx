@@ -1230,7 +1230,7 @@ const Chat = () => {
             <img src={logo} alt="Flinxx" className="w-16 h-16" />
             <div>
               <h1 className="text-3xl font-black mb-2" style={{ color: '#d9b85f' }}>Flinxx</h1>
-              <p className="text-sm" style={{ color: '#d9b85f' }}>Make new friends face-to-face</p>
+              <p className="text-sm" style={{ color: '#d9b85f' }}>Meet new people in real time.</p>
             </div>
 
             {/* Preference Badge */}
