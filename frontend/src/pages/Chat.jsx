@@ -1,5 +1,6 @@
 // DEPLOYMENT VERSION: 909c247 - Login crash fixed (useRef init in useEffect) - 2025-12-08
 // Last updated: 2025-12-08 - Force Vercel rebuild with login crash fix
+// deploy-buster-003
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
