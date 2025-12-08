@@ -97,31 +97,71 @@ const Chat = () => {
 
   // CRITICAL: Force attach local stream to video element when partner connects
   useEffect(() => {
+    console.log('\n\n🎥 ===== FORCE ATTACH EFFECT TRIGGERED =====');
+    console.log('🎥 hasPartner:', hasPartner);
+    console.log('🎥 localVideoRef.current:', localVideoRef.current?.tagName, localVideoRef.current ? '✅ EXISTS' : '❌ NULL');
+    console.log('🎥 localStreamRef.current:', localStreamRef.current ? '✅ EXISTS' : '❌ NULL');
+    
     if (hasPartner && localVideoRef.current && localStreamRef.current) {
-      console.log('\n\n🎥 ===== FORCE ATTACH LOCAL STREAM ON PARTNER FOUND =====');
-      console.log('🎥 Attaching local stream to video element');
-      console.log('🎥 Video ref exists:', !!localVideoRef.current);
-      console.log('🎥 Stream exists:', !!localStreamRef.current);
-      console.log('🎥 Stream tracks:', localStreamRef.current.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+      console.log('\n🎥 ===== FORCE ATTACH LOCAL STREAM ON PARTNER FOUND =====');
+      console.log('🎥 ALL CONDITIONS MET - Attaching local stream to video element');
+      console.log('🎥 localVideoRef.current:', {
+        element: localVideoRef.current.tagName,
+        id: localVideoRef.current.id,
+        muted: localVideoRef.current.muted,
+        currentSrcObject: !!localVideoRef.current.srcObject,
+        paused: localVideoRef.current.paused
+      });
+      console.log('🎥 localStreamRef.current:', {
+        active: localStreamRef.current.active,
+        tracks: localStreamRef.current.getTracks().length,
+        trackDetails: localStreamRef.current.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState, id: t.id }))
+      });
       
       // Force attachment
+      console.log('🎥 STEP 1: Setting srcObject...');
       localVideoRef.current.srcObject = localStreamRef.current;
       localVideoRef.current.muted = true;
       
-      console.log('🎥 ✅ Local stream attached');
-      console.log('🎥 Attempting to play video...');
+      console.log('🎥 STEP 2: ✅ Local stream attached to video element');
+      console.log('🎥 STEP 2 VERIFICATION:', {
+        srcObjectSet: !!localVideoRef.current.srcObject,
+        srcObjectActive: localVideoRef.current.srcObject?.active,
+        tracksAttached: localVideoRef.current.srcObject?.getTracks().length
+      });
+      console.log('🎥 STEP 3: Attempting to play video...');
       
       // Force play
       setTimeout(async () => {
+        console.log('🎥 STEP 3: Play timeout fired');
         if (localVideoRef.current && localVideoRef.current.srcObject) {
           try {
-            await localVideoRef.current.play();
-            console.log('🎥 ✅ Local video playing');
+            console.log('🎥 STEP 3a: Calling video.play()...');
+            const playPromise = localVideoRef.current.play();
+            await playPromise;
+            console.log('🎥 ✅ STEP 3b: Local video playing successfully');
+            console.log('🎥 Video element state after play:', {
+              paused: localVideoRef.current.paused,
+              readyState: localVideoRef.current.readyState,
+              networkState: localVideoRef.current.networkState,
+              currentTime: localVideoRef.current.currentTime,
+              duration: localVideoRef.current.duration
+            });
           } catch (err) {
-            console.error('🎥 ❌ Play error:', err.message);
+            console.error('🎥 ❌ STEP 3c: Play error:', err.message);
+            console.error('🎥 Error details:', { name: err.name, code: err.code });
           }
+        } else {
+          console.error('🎥 ❌ STEP 3: srcObject not available for play');
+          console.error('   localVideoRef.current:', !!localVideoRef.current);
+          console.error('   localVideoRef.current.srcObject:', !!localVideoRef.current?.srcObject);
         }
       }, 50);
+    } else {
+      console.log('🎥 ⚠️ CONDITIONS NOT MET for force attach:');
+      console.log('   hasPartner:', hasPartner);
+      console.log('   localVideoRef.current exists:', !!localVideoRef.current);
+      console.log('   localStreamRef.current exists:', !!localStreamRef.current);
     }
   }, [hasPartner]);
 
@@ -509,45 +549,53 @@ const Chat = () => {
     // Partner found - fires for BOTH offerer AND answerer
     socket.on('partner_found', async (data) => {
       console.log('\n\n📋 ===== PARTNER FOUND EVENT RECEIVED =====');
-      console.log('👥 Partner found:', data);
+      console.log('👥 RAW DATA from server:', JSON.stringify(data, null, 2));
       console.log('👥 My socket ID:', socket.id);
-      console.log('👥 My user ID:', currentUser.googleId || currentUser.id);
-      console.log('👥 Partner socket ID:', data.socketId);
-      console.log('👥 Partner user ID:', data.partnerId);
-      console.log('👥 Partner name:', data.userName);
+      console.log('👥 currentUser object:', JSON.stringify(currentUser, null, 2));
+      console.log('👥 currentUser.googleId:', currentUser?.googleId);
+      console.log('👥 currentUser.id:', currentUser?.id);
+      console.log('👥 data.socketId:', data.socketId);
+      console.log('👥 data.partnerId:', data.partnerId);
+      console.log('👥 data.userName:', data.userName);
       
       // CRITICAL: PREVENT SELF-MATCHING
+      console.log('\n👥 SELF-MATCH CHECK - START');
       const myUserId = currentUser.googleId || currentUser.id;
       const partnerUserId = data.partnerId;
       
+      console.log('👥 COMPARISON VALUES:');
+      console.log('   myUserId type:', typeof myUserId, 'value:', myUserId);
+      console.log('   partnerUserId type:', typeof partnerUserId, 'value:', partnerUserId);
+      console.log('   Are they EQUAL?', myUserId === partnerUserId);
+      console.log('   String comparison:', String(myUserId) === String(partnerUserId));
+      
       if (myUserId === partnerUserId) {
-        console.error('❌ CRITICAL ERROR: Self-match detected!');
-        console.error('   My user ID:', myUserId);
-        console.error('   Partner user ID:', partnerUserId);
+        console.error('\n❌❌❌ CRITICAL ERROR: SELF-MATCH DETECTED! ❌❌❌');
+        console.error('   My user ID:', myUserId, 'type:', typeof myUserId);
+        console.error('   Partner user ID:', partnerUserId, 'type:', typeof partnerUserId);
+        console.error('   Match IDs:', myUserId === partnerUserId);
         console.error('   These should be DIFFERENT!');
         
         // Reject this match and look for another partner
         setIsLoading(true);
-        // CRITICAL: Pass the partner socket ID so backend knows who to skip
+        console.error('   Emitting skip_user...');
         socket.emit('skip_user', {
           partnerSocketId: data.socketId
         });
-        // Immediately look for another partner
+        console.error('   Emitting find_partner...');
         socket.emit('find_partner', {
           userId: currentUser.googleId || currentUser.id,
           userName: currentUser.name || 'Anonymous',
           userAge: currentUser.age || 18,
           userLocation: currentUser.location || 'Unknown'
         });
+        console.error('   Returning - match REJECTED');
         return;
       }
       
-      console.log('✅ Self-match check PASSED - partner is different user');
-      console.log('📊 Stream status before peer connection:', {
-        exists: !!localStreamRef.current,
-        trackCount: localStreamRef.current?.getTracks().length,
-        tracks: localStreamRef.current?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, state: t.readyState }))
-      });
+      console.log('✅ SELF-MATCH CHECK PASSED - partner is different user');
+      console.log('   Accepting match and proceeding with WebRTC setup');
+      console.log('👥 SELF-MATCH CHECK - END\n');
       
       // CRITICAL: Store partner socket ID for sending offers/answers
       partnerSocketIdRef.current = data.socketId;
@@ -1032,55 +1080,84 @@ const Chat = () => {
 
     peerConnection.ontrack = (event) => {
         console.log('\n\n📥 ===== REMOTE TRACK RECEIVED =====');
+        console.log('📥 TIMESTAMP:', new Date().toISOString());
         console.log('📥 Remote track received:', {
           kind: event.track.kind,
           id: event.track.id,
           enabled: event.track.enabled,
-          readyState: event.track.readyState
+          readyState: event.track.readyState,
+          muted: event.track.muted
         });
         console.log('📥 Event streams:', event.streams.map(s => ({
           id: s.id,
           active: s.active,
           trackCount: s.getTracks().length,
-          tracks: s.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled }))
+          tracks: s.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled, muted: t.muted }))
         })));
         
         // CRITICAL: Verify we're attaching to REMOTE video ref, not local
-        console.log('📺 CRITICAL CHECK: Video element bindings');
-        console.log('   localVideoRef.current exists:', !!localVideoRef.current);
-        console.log('   remoteVideoRef.current exists:', !!remoteVideoRef.current);
-        console.log('   localVideoRef.current === remoteVideoRef.current:', localVideoRef.current === remoteVideoRef.current);
+        console.log('\n📺 ===== CRITICAL VIDEO REF CHECK =====');
+        console.log('📺 localVideoRef.current:', {
+          exists: !!localVideoRef.current,
+          element: localVideoRef.current?.tagName,
+          id: localVideoRef.current?.id,
+          srcObject: !!localVideoRef.current?.srcObject,
+          object: localVideoRef.current
+        });
+        console.log('📺 remoteVideoRef.current:', {
+          exists: !!remoteVideoRef.current,
+          element: remoteVideoRef.current?.tagName,
+          id: remoteVideoRef.current?.id,
+          srcObject: !!remoteVideoRef.current?.srcObject,
+          object: remoteVideoRef.current
+        });
+        console.log('📺 SAME REF?:', localVideoRef.current === remoteVideoRef.current);
         
         if (!remoteVideoRef.current) {
-            console.error('❌ CRITICAL: remoteVideoRef.current is NULL - cannot attach remote track!');
+            console.error('❌ CRITICAL ERROR: remoteVideoRef.current is NULL!');
+            console.error('   Cannot attach remote track - video element not available');
             return;
         }
         
         if (localVideoRef.current === remoteVideoRef.current) {
-            console.error('❌ CRITICAL: localVideoRef and remoteVideoRef are the SAME! This will overwrite local video!');
-            console.error('   This is a DOM binding error - check JSX ref assignments');
+            console.error('❌❌❌ CRITICAL ERROR: localVideoRef and remoteVideoRef are the SAME OBJECT!');
+            console.error('   This will OVERWRITE local video with remote track!');
+            console.error('   Check JSX ref assignments - they should be different video elements');
+            console.error('   localVideoRef should be in RIGHT panel');
+            console.error('   remoteVideoRef should be in LEFT panel');
             return;
         }
         
-        console.log('✅ CRITICAL CHECK PASSED - refs are different and valid');
-        console.log('📺 Setting remote video srcObject');
+        console.log('✅ CRITICAL CHECK PASSED - refs are DIFFERENT and valid');
+        console.log('📺 Proceeding to attach remote stream...');
+        
+        if (!event.streams || !event.streams[0]) {
+            console.error('❌ No streams available in event');
+            return;
+        }
+        
+        console.log('📺 STEP 1: Setting srcObject...');
         const stream = event.streams[0];
         remoteVideoRef.current.srcObject = stream;
+        console.log('📺 STEP 2: ✅ srcObject assigned');
         
         // Debug: Check what was set
-        console.log('📺 srcObject set, checking video element:', {
-          srcObject: !!remoteVideoRef.current.srcObject,
+        console.log('📺 STEP 3: Verifying attachment:', {
+          srcObjectExists: !!remoteVideoRef.current.srcObject,
+          srcObjectSame: remoteVideoRef.current.srcObject === stream,
           srcObjectActive: remoteVideoRef.current.srcObject?.active,
-          srcObjectTracks: remoteVideoRef.current.srcObject?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })),
+          srcObjectTracks: remoteVideoRef.current.srcObject?.getTracks().length,
+          trackDetails: remoteVideoRef.current.srcObject?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, muted: t.muted })),
           videoReadyState: remoteVideoRef.current.readyState,
           videoNetworkState: remoteVideoRef.current.networkState,
-          videoCurrentTime: remoteVideoRef.current.currentTime
+          videoPaused: remoteVideoRef.current.paused
         });
         
         remoteVideoRef.current.style.display = "block";
         remoteVideoRef.current.style.width = "100%";
         remoteVideoRef.current.style.height = "100%";
         remoteVideoRef.current.style.objectFit = "cover";
+        console.log('📺 STEP 4: ✅ CSS styles applied');
         console.log('✅ Remote video srcObject set successfully');
         console.log('📥 ===== REMOTE TRACK SETUP COMPLETE =====\n\n');
     };
