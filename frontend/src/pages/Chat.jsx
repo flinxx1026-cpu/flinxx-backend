@@ -1381,7 +1381,7 @@ const Chat = () => {
 
   // Video Chat Screen Component
   const VideoChatScreen = () => (
-    <div className="flex flex-col md:flex-row-reverse w-full h-full gap-6 items-start overflow-visible" style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+    <div className="video-chat-container flex flex-col md:flex-row-reverse w-full h-full gap-6 items-start overflow-visible" style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', overflow: 'visible', flexDirection: 'row-reverse' }}>
         
         {/* Left - Local camera video */}
         <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>

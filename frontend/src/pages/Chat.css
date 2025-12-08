@@ -70,7 +70,6 @@ video {
 
 /* Right panel - fixed dimensions and styling */
 .right-panel {
-  width: 380px;
   min-height: 480px;
   background: #131313;
   border: 1px solid #d9b85f;
@@ -329,16 +328,20 @@ video {
 }
 
 @media (min-width: 768px) {
-  .intro-screen-container,
-  .video-chat-container {
+  .intro-screen-container {
     flex-direction: row;
+    align-items: stretch;
+  }
+
+  .video-chat-container {
+    flex-direction: row-reverse;
     align-items: stretch;
   }
 
   .video-box,
   .right-panel {
     flex: 1;
-    width: 100%;
+    width: auto;
     height: auto;
     min-height: 400px;
   }
