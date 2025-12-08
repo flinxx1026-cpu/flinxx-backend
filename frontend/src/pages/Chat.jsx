@@ -205,6 +205,26 @@ const Chat = () => {
     }
   }, [hasPartner]);
 
+  // UI state - MUST BE DECLARED BEFORE FUNCTIONS THAT USE THEM
+  const [cameraStarted, setCameraStarted] = useState(false);
+  const [isMatchingStarted, setIsMatchingStarted] = useState(false);
+  const [hasPartner, setHasPartner] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [partnerInfo, setPartnerInfo] = useState(null);
+  const [connectionTime, setConnectionTime] = useState(0);
+  const [isPremiumOpen, setIsPremiumOpen] = useState(false);
+  const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
+  const [selectedGender, setSelectedGender] = useState('both');
+  const [isRequestingCamera, setIsRequestingCamera] = useState(false);
+
+  // Chat state
+  const [messages, setMessages] = useState([]);
+  const [messageInput, setMessageInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // CRITICAL: Define functions AFTER state declarations to avoid TDZ
   // Expose camera re-initialization function that can be called from ProfileModal
   const reinitializeCamera = React.useCallback(async () => {
     console.log('\n\n🎥 ===== CAMERA RE-INITIALIZATION STARTED =====');
@@ -301,7 +321,7 @@ const Chat = () => {
       console.error('🎥 ===== CAMERA RE-INITIALIZATION FAILED =====\n\n');
       return false;
     }
-  }, []); // Empty dependency array - function doesn't depend on state
+  }, [cameraStarted]); // Now depends on cameraStarted which is declared above
 
   // Assign reinitializeCamera to ref so it can be accessed from ProfileModal
   useEffect(() => {
@@ -309,25 +329,6 @@ const Chat = () => {
       reinitializeCamera
     };
   }, [reinitializeCamera]);
-
-  // UI state
-  const [cameraStarted, setCameraStarted] = useState(false);
-  const [isMatchingStarted, setIsMatchingStarted] = useState(false);  // NEW: Separate state for matching
-  const [hasPartner, setHasPartner] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [partnerInfo, setPartnerInfo] = useState(null);
-  const [connectionTime, setConnectionTime] = useState(0);
-  const [isPremiumOpen, setIsPremiumOpen] = useState(false);
-  const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
-  const [selectedGender, setSelectedGender] = useState('both');
-  const [isRequestingCamera, setIsRequestingCamera] = useState(false);
-
-  // Chat state
-  const [messages, setMessages] = useState([]);
-  const [messageInput, setMessageInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
   // Timer effect for connection time
   useEffect(() => {
