@@ -15,6 +15,7 @@ import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
 const Chat = () => {
+  console.log('🎯 CHAT COMPONENT LOADED - BUILD: v4161cc4-final (with deploy-buster-003)');
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useContext(AuthContext) || {};
