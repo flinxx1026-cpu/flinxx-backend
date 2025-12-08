@@ -334,7 +334,7 @@ video {
   }
 
   .video-chat-container {
-    flex-direction: row-reverse;
+    flex-direction: row;
     align-items: stretch;
   }
 
