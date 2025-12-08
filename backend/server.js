@@ -1212,7 +1212,7 @@ io.on('connection', (socket) => {
   // Handle skip user
   socket.on('skip_user', async (data) => {
     const userId = userSockets.get(socket.id)
-    const partnerSocketId = data.partnerSocketId
+    const partnerSocketId = data?.partnerSocketId
     
     if (userId && partnerSocketId) {
       console.log(`[skip_user] ${userId} skipping ${partnerSocketId}`)
@@ -1220,13 +1220,21 @@ io.on('connection', (socket) => {
       // Notify partner
       io.to(partnerSocketId).emit('user_skipped')
       
-      // Try to find new partner
-      const waitingUser = await getNextFromQueue()
+      // Try to find new partner - LOOP UNTIL DIFFERENT USER
+      let waitingUser = await getNextFromQueue()
+      while (waitingUser && waitingUser.userId === userId) {
+        console.log(`[skip_user] ⚠️ Skipping self-match: ${waitingUser.userId} === ${userId}`)
+        waitingUser = await getNextFromQueue()
+      }
+      
       if (waitingUser) {
+        console.log(`[skip_user] ✅ Found different partner: ${waitingUser.userId}`)
         matchUsers(socket.id, userId, waitingUser.socketId, waitingUser.userId, {}, waitingUser)
       } else {
         socket.emit('waiting', { message: 'Waiting for a new partner...' })
       }
+    } else {
+      console.log(`[skip_user] ⚠️ Invalid skip_user request - userId: ${userId}, partnerSocketId: ${partnerSocketId}`)
     }
   })
 

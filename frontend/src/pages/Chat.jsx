@@ -95,6 +95,36 @@ const Chat = () => {
     return () => clearInterval(checkInterval);
   }, []);
 
+  // CRITICAL: Force attach local stream to video element when partner connects
+  useEffect(() => {
+    if (hasPartner && localVideoRef.current && localStreamRef.current) {
+      console.log('\n\n🎥 ===== FORCE ATTACH LOCAL STREAM ON PARTNER FOUND =====');
+      console.log('🎥 Attaching local stream to video element');
+      console.log('🎥 Video ref exists:', !!localVideoRef.current);
+      console.log('🎥 Stream exists:', !!localStreamRef.current);
+      console.log('🎥 Stream tracks:', localStreamRef.current.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+      
+      // Force attachment
+      localVideoRef.current.srcObject = localStreamRef.current;
+      localVideoRef.current.muted = true;
+      
+      console.log('🎥 ✅ Local stream attached');
+      console.log('🎥 Attempting to play video...');
+      
+      // Force play
+      setTimeout(async () => {
+        if (localVideoRef.current && localVideoRef.current.srcObject) {
+          try {
+            await localVideoRef.current.play();
+            console.log('🎥 ✅ Local video playing');
+          } catch (err) {
+            console.error('🎥 ❌ Play error:', err.message);
+          }
+        }
+      }, 50);
+    }
+  }, [hasPartner]);
+
   // Expose camera re-initialization function that can be called from ProfileModal
   const reinitializeCamera = React.useCallback(async () => {
     console.log('\n\n🎥 ===== CAMERA RE-INITIALIZATION STARTED =====');
@@ -498,7 +528,11 @@ const Chat = () => {
         
         // Reject this match and look for another partner
         setIsLoading(true);
-        socket.emit('skip_user');
+        // CRITICAL: Pass the partner socket ID so backend knows who to skip
+        socket.emit('skip_user', {
+          partnerSocketId: data.socketId
+        });
+        // Immediately look for another partner
         socket.emit('find_partner', {
           userId: currentUser.googleId || currentUser.id,
           userName: currentUser.name || 'Anonymous',
@@ -1011,30 +1045,44 @@ const Chat = () => {
           tracks: s.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled }))
         })));
         
-        if (remoteVideoRef.current) {
-            console.log('📺 Setting remote video srcObject');
-            const stream = event.streams[0];
-            remoteVideoRef.current.srcObject = stream;
-            
-            // Debug: Check what was set
-            console.log('📺 srcObject set, checking video element:', {
-              srcObject: remoteVideoRef.current.srcObject,
-              srcObjectActive: remoteVideoRef.current.srcObject?.active,
-              srcObjectTracks: remoteVideoRef.current.srcObject?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })),
-              videoReadyState: remoteVideoRef.current.readyState,
-              videoNetworkState: remoteVideoRef.current.networkState,
-              videoCurrentTime: remoteVideoRef.current.currentTime
-            });
-            
-            remoteVideoRef.current.style.display = "block";
-            remoteVideoRef.current.style.width = "100%";
-            remoteVideoRef.current.style.height = "100%";
-            remoteVideoRef.current.style.objectFit = "cover";
-            console.log('✅ Remote video srcObject set successfully');
-            console.log('📥 ===== REMOTE TRACK SETUP COMPLETE =====\n\n');
-        } else {
-            console.error('❌ remoteVideoRef.current is not available!');
+        // CRITICAL: Verify we're attaching to REMOTE video ref, not local
+        console.log('📺 CRITICAL CHECK: Video element bindings');
+        console.log('   localVideoRef.current exists:', !!localVideoRef.current);
+        console.log('   remoteVideoRef.current exists:', !!remoteVideoRef.current);
+        console.log('   localVideoRef.current === remoteVideoRef.current:', localVideoRef.current === remoteVideoRef.current);
+        
+        if (!remoteVideoRef.current) {
+            console.error('❌ CRITICAL: remoteVideoRef.current is NULL - cannot attach remote track!');
+            return;
         }
+        
+        if (localVideoRef.current === remoteVideoRef.current) {
+            console.error('❌ CRITICAL: localVideoRef and remoteVideoRef are the SAME! This will overwrite local video!');
+            console.error('   This is a DOM binding error - check JSX ref assignments');
+            return;
+        }
+        
+        console.log('✅ CRITICAL CHECK PASSED - refs are different and valid');
+        console.log('📺 Setting remote video srcObject');
+        const stream = event.streams[0];
+        remoteVideoRef.current.srcObject = stream;
+        
+        // Debug: Check what was set
+        console.log('📺 srcObject set, checking video element:', {
+          srcObject: !!remoteVideoRef.current.srcObject,
+          srcObjectActive: remoteVideoRef.current.srcObject?.active,
+          srcObjectTracks: remoteVideoRef.current.srcObject?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })),
+          videoReadyState: remoteVideoRef.current.readyState,
+          videoNetworkState: remoteVideoRef.current.networkState,
+          videoCurrentTime: remoteVideoRef.current.currentTime
+        });
+        
+        remoteVideoRef.current.style.display = "block";
+        remoteVideoRef.current.style.width = "100%";
+        remoteVideoRef.current.style.height = "100%";
+        remoteVideoRef.current.style.objectFit = "cover";
+        console.log('✅ Remote video srcObject set successfully');
+        console.log('📥 ===== REMOTE TRACK SETUP COMPLETE =====\n\n');
     };
 
     peerConnection.onconnectionstatechange = () => {
@@ -1169,7 +1217,9 @@ const Chat = () => {
   };
 
   const skipUser = () => {
-    socket.emit('skip_user');
+    socket.emit('skip_user', {
+      partnerSocketId: partnerSocketIdRef.current
+    });
     endChat();
   };
 
