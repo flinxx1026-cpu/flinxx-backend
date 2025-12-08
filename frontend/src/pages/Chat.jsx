@@ -1,7 +1,7 @@
-// DEPLOYMENT VERSION: 57de2b9 - TDZ FIX: Move functions after state - 2025-12-08
+// DEPLOYMENT VERSION: d172a01 - TDZ FIX: Move functions after state - 2025-12-08
 // Last updated: 2025-12-08 - Temporal deadzone fix complete
-// BUILD TIMESTAMP: 2025-12-08T14:45:30Z - FORCE CLEAN BUILD #2
-console.log('🎯 CHAT BUILD: 2025-12-08T14:45:30Z - Fresh bundle with TDZ fix');
+// BUILD TIMESTAMP: 2025-12-08T16:00:00Z - FORCE CLEAN BUILD #3 FINAL
+console.log('🎯 CHAT BUILD: 2025-12-08T16:00:00Z - Fresh clean bundle - TDZ error FIXED');
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
