@@ -34,28 +34,32 @@ const Chat = () => {
 
   // Peer connection reference
   let peerConnection = null;
-  const currentUser = user || {
-    googleId: "guest_" + Math.random().toString(36).substring(2, 9),
-    name: "Guest User",
-    email: "guest@flinxx.local",
-    picture: null
-  };
-
-  // CRITICAL: Store user ID in a ref so it never changes across renders
-  // This ensures socket listeners always use the SAME user ID
+  
+  // CRITICAL: Store current user in a ref - initialize in useEffect only
+  const currentUserRef = useRef(null);
   const userIdRef = useRef(null);
-  const currentUserRef = useRef(null);  // Initialize as null, set in useEffect
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // Initialize user ID ref ONCE on component mount
+  // CRITICAL: Initialize currentUser from context ONLY in useEffect
+  // This prevents temporal deadzone errors with minified variables
   useEffect(() => {
+    const userToUse = user || {
+      googleId: "guest_" + Math.random().toString(36).substring(2, 9),
+      name: "Guest User",
+      email: "guest@flinxx.local",
+      picture: null
+    };
+    
+    setCurrentUser(userToUse);
+    
     if (!userIdRef.current) {
-      userIdRef.current = currentUser.googleId || currentUser.id;
+      userIdRef.current = userToUse.googleId || userToUse.id;
       console.log('🔐 USER ID INITIALIZED (ONE TIME):', userIdRef.current);
     }
     if (!currentUserRef.current) {
-      currentUserRef.current = currentUser;
+      currentUserRef.current = userToUse;
     }
-  }, [currentUser]);
+  }, [user]);
 
   // Monitor guest session timeout
   const guestSessionTimerRef = useRef(null);
