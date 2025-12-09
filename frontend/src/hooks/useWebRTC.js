@@ -145,6 +145,13 @@ export const useWebRTC = (socketId, onRemoteStream) => {
   useEffect(() => {
     const handleIceCandidate = async ({ candidate, from }) => {
       try {
+        // ✅ FILTER: Mobile Chrome sends incomplete ICE candidates with null sdpMid and sdpMLineIndex
+        // These must be ignored to avoid errors
+        if (!candidate || (candidate.sdpMid == null && candidate.sdpMLineIndex == null)) {
+          console.warn('⚠️ Ignoring invalid ICE candidate (empty sdpMid and sdpMLineIndex)');
+          return;
+        }
+        
         if (!peerConnectionRef.current) {
           console.warn('⚠️ Received ICE candidate but no peer connection');
           return;

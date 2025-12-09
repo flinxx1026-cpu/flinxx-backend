@@ -1169,11 +1169,19 @@ const Chat = () => {
         sdpMLineIndex: data.sdpMLineIndex,
         sdpMid: data.sdpMid
       });
+      
+      // ✅ FILTER: Mobile Chrome sends incomplete ICE candidates with null sdpMid and sdpMLineIndex
+      // These must be ignored to avoid errors
+      if (!data.candidate || (data.candidate.sdpMid == null && data.candidate.sdpMLineIndex == null)) {
+        console.warn('⚠️ Ignoring invalid ICE candidate (empty sdpMid and sdpMLineIndex)');
+        return;
+      }
+      
       try {
         if (peerConnectionRef.current) {
           console.log('🧊 Adding ICE candidate to peer connection');
           await peerConnectionRef.current.addIceCandidate(
-            new RTCIceCandidate(data)
+            new RTCIceCandidate(data.candidate)
           );
           console.log('✅ ICE candidate added successfully\n');
         } else {
