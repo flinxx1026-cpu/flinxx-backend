@@ -343,22 +343,60 @@ app.get('/api/turn/credentials', async (req, res) => {
 
 // ===== TURN ENDPOINTS =====
 // ===== TURN CREDENTIALS ENDPOINT =====
-app.get("/api/get-turn-credentials", async (req, res) => {
+app.post("/api/get-turn-credentials", async (req, res) => {
   try {
-    const url = `https://${process.env.METERED_DOMAIN}.metered.live/api/v1/turn/credentials?secretKey=${process.env.METERED_SECRET_KEY}`;
+    const getTurnServers = async () => {
+      try {
+        const ident = process.env.XIRSYS_IDENT;
+        const secret = process.env.XIRSYS_SECRET;
+        const channel = process.env.XIRSYS_CHANNEL || "MyFirstApp";
 
-    console.log("Calling TURN:", url);
+        if (!ident || !secret) {
+          console.error("❌ Missing XIRSYS_IDENT or XIRSYS_SECRET environment variables");
+          return null;
+        }
 
-    const response = await fetch(url);
-    const data = await response.json();
+        const auth = Buffer.from(`${ident}:${secret}`).toString("base64");
 
-    console.log("Metered TURN response:", data);
+        const res = await fetch(
+          `https://global.xirsys.net/_turn/${channel}`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Basic ${auth}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ format: "urls" }),
+          }
+        );
 
-    res.json(data);
+        const data = await res.json();
+        console.log("✅ Xirsys TURN response:", data);
+
+        if (Array.isArray(data.v.iceServers)) {
+          return data.v.iceServers;
+        } else {
+          console.error("❌ Invalid Xirsys response format");
+          return null;
+        }
+      } catch (err) {
+        console.error("❌ TURN fetch failed:", err);
+        return null;
+      }
+    };
+
+    const iceServers = await getTurnServers();
+    
+    if (!iceServers) {
+      console.warn("⚠️ Failed to fetch TURN servers, returning error");
+      return res.status(500).json({ error: "TURN fetch failed", iceServers: [] });
+    }
+
+    res.json({ iceServers });
 
   } catch (err) {
     console.error("TURN ERROR:", err);
-    res.status(500).json({ error: "TURN fetch failed" });
+    res.status(500).json({ error: "TURN fetch failed", iceServers: [] });
   }
 });
 
