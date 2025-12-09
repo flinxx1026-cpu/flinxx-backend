@@ -1651,7 +1651,22 @@ const Chat = () => {
   );
 
   // Video Chat Screen Component
-  const VideoChatScreen = () => (
+  const VideoChatScreen = () => {
+    // CRITICAL DEBUG: Log partnerInfo to diagnose display issue
+    console.log('🎬 VideoChatScreen rendering - partnerInfo:', {
+      exists: !!partnerInfo,
+      userName: partnerInfo?.userName,
+      userLocation: partnerInfo?.userLocation,
+      picture: !!partnerInfo?.picture,
+      fullObject: partnerInfo
+    });
+    console.log('🎬 currentUser for comparison:', {
+      name: currentUser?.name,
+      location: currentUser?.location,
+      picture: !!currentUser?.picture
+    });
+    
+    return (
     <div className="video-chat-container flex flex-col md:flex-row w-full h-full gap-6 items-start overflow-visible" style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
         
         {/* LEFT - Chat panel with proper 3-section layout */}
@@ -1825,7 +1840,8 @@ const Chat = () => {
           </div>
         </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
