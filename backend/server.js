@@ -196,6 +196,7 @@ app.use(express.json())
 // In-memory maps kept for socket connections during session
 const userSockets = new Map() // socketId -> userId mapping
 const activeSessions = new Map() // sessionId -> session details
+const partnerSockets = new Map() // socketId -> partnerSocketId mapping (for WebRTC pairs)
 
 // ===== HELPER FUNCTIONS =====
 
@@ -1199,6 +1200,11 @@ io.on('connection', (socket) => {
     console.log('📨 TARGET: Will send to socket:', partnerSocketId);
     
     if (userId && partnerSocketId) {
+      // ✅ CRITICAL: Track the partnership for disconnect handling
+      partnerSockets.set(socket.id, partnerSocketId)
+      partnerSockets.set(partnerSocketId, socket.id)
+      console.log('✅ Partner relationship tracked:', socket.id, '↔', partnerSocketId)
+      
       console.log('✅ SERVER: Conditions met - sending webrtc_offer');
       console.log('✅ SERVER: FROM socket:', socket.id, '→ TO socket:', partnerSocketId);
       io.to(partnerSocketId).emit('webrtc_offer', {
@@ -1279,9 +1285,10 @@ io.on('connection', (socket) => {
 
   // Handle disconnect
   socket.on('disconnect', async () => {
-    console.log(`User disconnected: ${socket.id}`)
+    console.log(`\n\n❌ USER DISCONNECTED: ${socket.id}`)
     
     const userId = userSockets.get(socket.id)
+    const partnerSocketId = partnerSockets.get(socket.id)
     
     if (userId) {
       // Mark user as offline in Redis
@@ -1289,7 +1296,27 @@ io.on('connection', (socket) => {
       
       // Remove from socket mapping
       userSockets.delete(socket.id)
+      console.log(`✅ Removed userId mapping for socket: ${socket.id}`)
     }
+    
+    // ✅ CRITICAL: Notify partner about disconnection
+    if (partnerSocketId) {
+      console.log(`🔔 NOTIFYING PARTNER: ${partnerSocketId} that user ${socket.id} disconnected`)
+      
+      // Send disconnect event to partner
+      io.to(partnerSocketId).emit('partner_disconnected', {
+        reason: 'Partner closed browser/tab',
+        disconnectedSocketId: socket.id
+      })
+      
+      // Clean up partner's mapping
+      partnerSockets.delete(partnerSocketId)
+      console.log(`✅ Cleaned up partner socket mapping for: ${partnerSocketId}`)
+    }
+    
+    // Clean up this socket's partner mapping
+    partnerSockets.delete(socket.id)
+    console.log(`✅ Disconnection cleanup complete for socket: ${socket.id}`)
   })
 })
 

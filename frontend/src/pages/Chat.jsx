@@ -1298,7 +1298,26 @@ const Chat = () => {
 
     // Partner disconnected
     socket.on('partner_disconnected', () => {
-      console.log('Partner disconnected');
+      console.log('\n\n🔴🔴🔴 ===== PARTNER DISCONNECTED =====');
+      console.log('🔴 Partner has closed the browser/tab');
+      console.log('🔴 Cleaning up WebRTC connection...');
+      
+      // Close peer connection
+      if (peerConnectionRef.current) {
+        console.log('🔴 Closing peer connection');
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      
+      // Reset video refs
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null;
+      }
+      
+      console.log('🔴 Calling endChat() to reset UI');
       endChat();
     });
 
