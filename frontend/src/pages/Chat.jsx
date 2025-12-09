@@ -12,6 +12,7 @@ import PremiumModal from '../components/PremiumModal';
 import GenderFilterModal from '../components/GenderFilterModal';
 import ProfileModal from '../components/ProfileModal';
 import MatchHistory from '../components/MatchHistory';
+import TopActions from '../components/TopActions';
 import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
@@ -1408,59 +1409,6 @@ const Chat = () => {
   // Intro Screen Component
   const IntroScreen = () => (
     <div className="intro-screen-container flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
-      {/* Top-Right Icon Navigation Bar */}
-      <div className="top-right-icons">
-        {/* User Profile Icon - 1 */}
-        <div 
-          className="icon-circle" 
-          title="Profile"
-          onClick={() => setIsProfileOpen(true)}
-          style={{ cursor: 'pointer' }}
-        >
-          {currentUser?.picture ? (
-            <img src={currentUser.picture} alt="Profile" />
-          ) : (
-            '👤'
-          )}
-        </div>
-
-        {/* Search Icon - 2 */}
-        <div 
-          className="icon-circle" 
-          title="Search"
-          onClick={() => console.log('Search clicked')}
-        >
-          🔍
-        </div>
-
-        {/* Messages Icon - 3 */}
-        <div 
-          className="icon-circle" 
-          title="Messages"
-          onClick={() => console.log('Messages clicked')}
-        >
-          💬
-        </div>
-
-        {/* Flinx Premium Icon - 4 */}
-        <div 
-          className="icon-circle" 
-          title="Flinx Premium"
-          onClick={() => setIsPremiumOpen(true)}
-        >
-          👑
-        </div>
-
-        {/* Match History Icon - 5 */}
-        <div 
-          className="icon-circle" 
-          title="Match History"
-          onClick={() => setIsMatchHistoryOpen(true)}
-        >
-          ⏱️
-        </div>
-      </div>
-
       {/* Left - Live camera preview box */}
       <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
         <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
@@ -1537,59 +1485,6 @@ const Chat = () => {
   // Waiting Screen Component - Shows when matching is in progress
   const WaitingScreen = () => (
     <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
-      {/* Top-Right Icon Navigation Bar */}
-      <div className="top-right-icons">
-        {/* User Profile Icon - 1 */}
-        <div 
-          className="icon-circle" 
-          title="Profile"
-          onClick={() => setIsProfileOpen(true)}
-          style={{ cursor: 'pointer' }}
-        >
-          {currentUser?.picture ? (
-            <img src={currentUser.picture} alt="Profile" />
-          ) : (
-            '👤'
-          )}
-        </div>
-
-        {/* Search Icon - 2 */}
-        <div 
-          className="icon-circle" 
-          title="Search"
-          onClick={() => console.log('Search clicked')}
-        >
-          🔍
-        </div>
-
-        {/* Messages Icon - 3 */}
-        <div 
-          className="icon-circle" 
-          title="Messages"
-          onClick={() => console.log('Messages clicked')}
-        >
-          💬
-        </div>
-
-        {/* Flinx Premium Icon - 4 */}
-        <div 
-          className="icon-circle" 
-          title="Flinx Premium"
-          onClick={() => setIsPremiumOpen(true)}
-        >
-          👑
-        </div>
-
-        {/* Match History Icon - 5 */}
-        <div 
-          className="icon-circle" 
-          title="Match History"
-          onClick={() => setIsMatchHistoryOpen(true)}
-        >
-          ⏱️
-        </div>
-      </div>
-
       {/* Left - Live camera preview box */}
       <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
         <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
@@ -1857,61 +1752,16 @@ const Chat = () => {
         <IntroScreen />
       )}
 
-      {/* FLOATING ICON BAR - Using React Portal to render outside main DOM tree */}
+      {/* FLOATING ICON BAR - Using React Portal for video chat screen */}
       {hasPartner && ReactDOM.createPortal(
         <>
-          {/* Top-Right Icon Navigation Bar - FIXED POSITION FLOATING */}
-          <div className="flex items-center gap-4" style={{ position: 'fixed', top: '12px', right: '24px', zIndex: 999999 }}>
-            {/* User Profile Icon */}
-            <div 
-              className="icon-circle" 
-              title="Profile"
-              onClick={() => setIsProfileOpen(true)}
-              style={{ cursor: 'pointer' }}
-            >
-              {currentUser?.picture ? (
-                <img src={currentUser.picture} alt="Profile" />
-              ) : (
-                '👤'
-              )}
-            </div>
-
-            {/* Search Icon */}
-            <div 
-              className="icon-circle" 
-              title="Search"
-              onClick={() => console.log('Search clicked')}
-            >
-              🔍
-            </div>
-
-            {/* Messages Icon */}
-            <div 
-              className="icon-circle" 
-              title="Messages"
-              onClick={() => console.log('Messages clicked')}
-            >
-              💬
-            </div>
-
-            {/* Flinx Premium Icon */}
-            <div 
-              className="icon-circle" 
-              title="Flinx Premium"
-              onClick={() => setIsPremiumOpen(true)}
-            >
-              👑
-            </div>
-
-            {/* Match History Icon */}
-            <div 
-              className="icon-circle" 
-              title="Match History"
-              onClick={() => setIsMatchHistoryOpen(true)}
-            >
-              ⏱️
-            </div>
-          </div>
+          <TopActions
+            currentUser={currentUser}
+            onProfileClick={() => setIsProfileOpen(true)}
+            onPremiumClick={() => setIsPremiumOpen(true)}
+            onMatchHistoryClick={() => setIsMatchHistoryOpen(true)}
+            isFixedPosition={true}
+          />
 
           {/* Close Button - Round X Icon at Top Right */}
           <button
