@@ -55,23 +55,78 @@ export const useWebRTC = (socketId, onRemoteStream) => {
     // ✅ SEND ICE CANDIDATE THROUGH SOCKET
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
-        console.log('🧊 ICE Candidate generated:', event.candidate.candidate);
+        const candidate = event.candidate;
+        console.log('🧊 ICE Candidate generated:', {
+          candidate: candidate.candidate,
+          type: candidate.type,
+          protocol: candidate.protocol,
+          port: candidate.port
+        });
+        
+        if (candidate.type === 'relay') {
+          console.log('🔄 RELAY (TURN) candidate - TURN server reachable, Protocol:', candidate.protocol, 'Port:', candidate.port);
+        }
+        
         socket.emit("ice_candidate", {
           to: socketId,
-          candidate: event.candidate
+          candidate: candidate
         });
+      } else {
+        console.log('🧊 ICE gathering complete');
+      }
+    }
+
+    // ✅ MONITOR ICE CONNECTION STATE
+    peerConnection.oniceconnectionstatechange = () => {
+      const state = peerConnection.iceConnectionState;
+      console.log('🧊 ICE Connection State:', state);
+      
+      if (state === 'failed') {
+        console.error('❌ ICE failed, attempting restart');
+        try {
+          peerConnection.restartIce();
+          console.log('✅ ICE restart requested');
+        } catch (err) {
+          console.error('❌ ICE restart failed:', err);
+        }
+      } else if (state === 'disconnected') {
+        console.warn('⚠️ ICE disconnected, attempting restart');
+        try {
+          peerConnection.restartIce();
+          console.log('✅ ICE restart requested');
+        } catch (err) {
+          console.error('❌ ICE restart failed:', err);
+        }
+      } else if (state === 'connected' || state === 'completed') {
+        console.log('✅ ICE Connection established');
       }
     }
 
     peerConnection.ontrack = (event) => {
-      console.log('Remote stream received:', event.streams[0])
-      onRemoteStream(event.streams[0])
+      console.log('\n📥 ===== REMOTE TRACK RECEIVED =====' );
+      console.log('📥 Track:', event.track.kind, 'ID:', event.track.id);
+      console.log('📥 Streams count:', event.streams.length);
+      
+      if (!event.streams || event.streams.length === 0) {
+        console.error('❌ No streams in ontrack');
+        return;
+      }
+      
+      const stream = event.streams[0];
+      console.log('✅ Remote stream ready, calling callback');
+      onRemoteStream(stream);
+      console.log('✅ onRemoteStream callback invoked');
     }
 
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStreamRef.current)
-      })
+      const tracks = localStreamRef.current.getTracks();
+      console.log('🎤 Adding', tracks.length, 'local tracks');
+      tracks.forEach(track => {
+        peerConnection.addTrack(track, localStreamRef.current);
+        console.log('✅ Added', track.kind, 'track');
+      });
+    } else {
+      console.warn('⚠️ Local stream not ready');
     }
 
     return peerConnection

@@ -621,31 +621,32 @@ const Chat = () => {
 
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
+            const candidate = event.candidate;
             console.log('🧊 ICE candidate generated:', {
-              candidate: event.candidate.candidate,
-              protocol: event.candidate.protocol,
-              port: event.candidate.port,
-              address: event.candidate.address,
-              type: event.candidate.type,
-              priority: event.candidate.priority,
-              sdpMLineIndex: event.candidate.sdpMLineIndex,
-              sdpMId: event.candidate.sdpMid
+              candidate: candidate.candidate,
+              protocol: candidate.protocol,
+              port: candidate.port,
+              address: candidate.address,
+              type: candidate.type,
+              priority: candidate.priority,
+              sdpMLineIndex: candidate.sdpMLineIndex,
+              sdpMId: candidate.sdpMid
             });
             
             // Detect TURN candidate success/failure
-            if (event.candidate.type === 'relay') {
+            if (candidate.type === 'relay') {
               console.log('🔄 RELAY (TURN) candidate generated - TURN server is reachable');
-              console.log('   Protocol:', event.candidate.protocol, 'Port:', event.candidate.port);
-            } else if (event.candidate.type === 'srflx') {
+              console.log('   Protocol:', candidate.protocol, 'Port:', candidate.port);
+            } else if (candidate.type === 'srflx') {
               console.log('📍 SRFLX (server reflexive) candidate - STUN working');
               console.log('   Found public address via STUN');
-            } else if (event.candidate.type === 'host') {
+            } else if (candidate.type === 'host') {
               console.log('🏠 HOST candidate - direct LAN connection possible');
             }
             
             console.log('🔌 Sending ICE candidate to partner socket:', partnerSocketIdRef.current);
             socket.emit("ice_candidate", {
-              candidate: event.candidate,
+              candidate: candidate,
               to: partnerSocketIdRef.current
             });
             console.log('📤 ICE candidate sent to peer');
@@ -715,6 +716,35 @@ const Chat = () => {
         console.log('   Signaling State:', peerConnection.signalingState);
         console.log('   Connection State:', peerConnection.connectionState);
         console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
+    };
+
+    // ✅ MONITOR OVERALL CONNECTION STATE
+    peerConnection.onconnectionstatechange = () => {
+        const state = peerConnection.connectionState;
+        console.log('\n🔌 ===== CONNECTION STATE CHANGED =====');
+        console.log('🔌 New Connection State:', state);
+        
+        switch(state) {
+          case 'new':
+            console.log('🔌 State: NEW - peer connection created');
+            break;
+          case 'connecting':
+            console.log('🔌 State: CONNECTING - establishing connection');
+            break;
+          case 'connected':
+            console.log('✅ State: CONNECTED - peer connection established');
+            console.log('🎉 Ready for media transmission');
+            break;
+          case 'disconnected':
+            console.warn('⚠️ State: DISCONNECTED - lost peer connection');
+            break;
+          case 'failed':
+            console.error('❌ State: FAILED - peer connection failed');
+            break;
+          case 'closed':
+            console.log('🛑 State: CLOSED - peer connection closed');
+            break;
+        }
     };
 
     peerConnection.ontrack = (event) => {
