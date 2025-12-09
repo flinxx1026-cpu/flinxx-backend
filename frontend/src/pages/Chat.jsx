@@ -1494,15 +1494,6 @@ const Chat = () => {
   // Waiting Screen Component - Shows when matching is in progress
   const WaitingScreen = () => (
     <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
-      {/* Top Icons Bar */}
-      <TopActions
-        currentUser={currentUser}
-        onProfileClick={() => setIsProfileOpen(true)}
-        onPremiumClick={() => setIsPremiumOpen(true)}
-        onMatchHistoryClick={() => setIsMatchHistoryOpen(true)}
-        isFixedPosition={true}
-      />
-
       {/* Left - Live camera preview box */}
       <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
         <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
@@ -1770,34 +1761,6 @@ const Chat = () => {
         <IntroScreen />
       )}
 
-      {/* FLOATING ICON BAR - Using React Portal for video chat screen */}
-      {hasPartner && ReactDOM.createPortal(
-        <>
-          <TopActions
-            currentUser={currentUser}
-            onProfileClick={() => setIsProfileOpen(true)}
-            onPremiumClick={() => setIsPremiumOpen(true)}
-            onMatchHistoryClick={() => setIsMatchHistoryOpen(true)}
-            isFixedPosition={true}
-          />
-
-          {/* Close Button - Round X Icon at Top Right */}
-          <button
-            onClick={() => {
-              cleanup();
-              setCameraStarted(false);
-              navigate('/chat');
-            }}
-            className="font-bold rounded-full transition-all duration-200 shadow-lg flex items-center justify-center"
-            style={{ position: 'fixed', top: '68px', right: '24px', width: '45px', height: '45px', fontSize: '24px', backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f', zIndex: 999998 }}
-            title="End Chat"
-          >
-            ✕
-          </button>
-        </>,
-        document.body
-      )}
-      
       {/* Premium Modal */}
       <PremiumModal 
         isOpen={isPremiumOpen} 
