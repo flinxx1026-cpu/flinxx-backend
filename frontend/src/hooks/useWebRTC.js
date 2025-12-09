@@ -39,7 +39,7 @@ export const useWebRTC = (socketId, onRemoteStream) => {
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
         console.log('🧊 ICE Candidate generated:', event.candidate.candidate);
-        socket.emit("ice-candidate", {
+        socket.emit("ice_candidate", {
           to: socketId,
           candidate: event.candidate
         });
@@ -159,8 +159,8 @@ export const useWebRTC = (socketId, onRemoteStream) => {
       }
     }
 
-    socket.on("ice-candidate", handleIceCandidate);
-    return () => socket.off("ice-candidate", handleIceCandidate);
+    socket.on("ice_candidate", handleIceCandidate);
+    return () => socket.off("ice_candidate", handleIceCandidate);
   }, [socketId])
 
   return {

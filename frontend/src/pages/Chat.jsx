@@ -588,7 +588,8 @@ const Chat = () => {
     
     const iceServers = await getTurnServers();
 
-    peerConnection = new RTCPeerConnection({ iceServers });
+    const peerConnection = new RTCPeerConnection({ iceServers });
+    peerConnectionRef.current = peerConnection;  // ✅ Store immediately for use in event handlers
     console.log('✅ RTCPeerConnection created');
 
     peerConnection.onicecandidate = (event) => {
@@ -616,7 +617,7 @@ const Chat = () => {
             }
             
             console.log('🔌 Sending ICE candidate to partner socket:', partnerSocketIdRef.current);
-            socket.emit("ice-candidate", {
+            socket.emit("ice_candidate", {
               candidate: event.candidate,
               to: partnerSocketIdRef.current
             });
@@ -1162,7 +1163,7 @@ const Chat = () => {
     });
 
     // ICE candidate
-    socket.on('ice-candidate', async (data) => {
+    socket.on('ice_candidate', async (data) => {
       console.log('\n🧊 ICE candidate received from peer:', {
         candidate: data.candidate,
         sdpMLineIndex: data.sdpMLineIndex,
@@ -1206,7 +1207,7 @@ const Chat = () => {
     });
     
     console.log('🔌 ===== ALL SOCKET LISTENERS REGISTERED =====');
-    console.log('🔌 Listeners registered for: partner_found, webrtc_offer, webrtc_answer, ice-candidate, receive_message, partner_disconnected, disconnect');
+    console.log('🔌 Listeners registered for: partner_found, webrtc_offer, webrtc_answer, ice_candidate, receive_message, partner_disconnected, disconnect');
     console.log('🔌 Ready to receive WebRTC signaling messages\n\n');
     
     // Cleanup function to remove listeners on unmount
@@ -1215,7 +1216,7 @@ const Chat = () => {
       socket.off('partner_found');
       socket.off('webrtc_offer');
       socket.off('webrtc_answer');
-      socket.off('ice-candidate');
+      socket.off('ice_candidate');
       socket.off('receive_message');
       socket.off('partner_disconnected');
       socket.off('disconnect');
