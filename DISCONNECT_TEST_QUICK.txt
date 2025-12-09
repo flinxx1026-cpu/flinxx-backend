@@ -1,0 +1,147 @@
+# QUICK TEST GUIDE - Disconnect Signaling
+
+## 🚀 Deploy Status
+
+✅ **Commit 222cb1b deployed to both Render (backend) and Vercel (frontend)**
+
+---
+
+## 🧪 Test Scenario
+
+### Setup
+- Device A: Laptop (Chrome/Firefox)
+- Device B: Phone (Mobile browser)
+- Both on same network (or internet)
+
+### Test Steps
+
+1. **Open DevTools on BOTH devices** (F12 or right-click → Inspect)
+2. **Go to:** https://flinxx-backend-frontend.vercel.app/
+3. **Device A:** Click "Start Video Chat"
+4. **Device B:** Click "Start Video Chat" when prompted
+5. **Wait 15 seconds:** Should see remote video on both
+6. **Device A:** Close the browser tab completely (Cmd+W or Ctrl+W)
+
+### Expected Results
+
+#### Device B Console Should Show:
+```
+🔴🔴🔴 ===== PARTNER DISCONNECTED =====
+🔴 Partner has closed the browser/tab
+🔴 Cleaning up WebRTC connection...
+🔴 Closing peer connection
+🔴 Calling endChat() to reset UI
+```
+
+#### Device B UI Should:
+- ✅ Remote video panel disappears
+- ✅ Reset to initial state
+- ✅ Video stopped (no visual artifacts)
+- ✅ Show message: "No active chat" or similar
+
+#### Device B Can:
+- ✅ Click "Start Video Chat" again
+- ✅ Find a new partner
+- ✅ Have a new conversation
+
+---
+
+## 🔍 What to Check
+
+### ✅ Success Indicators:
+- Console shows `🔴 PARTNER DISCONNECTED` immediately
+- Remote video disappears instantly (not after timeout)
+- No "ghost" video state
+- No errors in console
+- Can restart video chat
+
+### ❌ Failure Indicators:
+- No disconnect message in console
+- Remote video stays visible (ghost state)
+- `remoteVideoRef.current` still has stream
+- Error messages in console
+- Can't restart video chat
+
+---
+
+## 📊 Backend Verification
+
+Check Render logs for:
+```
+❌ USER DISCONNECTED: <socket-id>
+🔔 NOTIFYING PARTNER: <partner-socket-id> that user <socket-id> disconnected
+✅ Cleaned up partner socket mapping
+```
+
+---
+
+## 📱 Both Directions Test
+
+Test both scenarios:
+
+1. **Device A closes first** (Laptop closes)
+   - Device B should show disconnect message
+   - Device B can restart
+
+2. **Device B closes first** (Phone closes)
+   - Device A should show disconnect message
+   - Device A can restart
+
+Both should work identically.
+
+---
+
+## 🎯 Pass/Fail Criteria
+
+| Criterion | Pass | Fail |
+|-----------|------|------|
+| Disconnect notification appears | Yes | No |
+| Appears immediately (< 1 second) | Yes | Delayed |
+| Remote video disappears | Yes | No |
+| No ghost state | Yes | Video visible after close |
+| UI resets | Yes | Still in call state |
+| Can restart | Yes | Error on restart |
+| Works both directions | Yes | Only one way works |
+
+**Test Pass = All 7 criteria are YES**
+
+---
+
+## 🆘 If Test Fails
+
+1. **Clear browser cache** (Ctrl+Shift+Delete)
+2. **Hard reload** (Ctrl+Shift+R or Cmd+Shift+R)
+3. **Check Render deployment** - logs should show partner_disconnected being sent
+4. **Check console errors** - any WebSocket errors?
+5. **Try incognito window** - cache issue?
+
+---
+
+## 📝 Test Report Format
+
+If test fails, provide:
+```
+Device A: [Laptop/Phone]
+Device B: [Laptop/Phone]
+
+1. Connection successful? [Yes/No]
+2. Remote video appeared? [Yes/No]
+3. Disconnected device: [A/B]
+4. Disconnect message seen? [Yes/No]
+5. Message appeared at: [<time>/Not seen]
+6. Remote video disappeared? [Yes/No]
+7. UI reset? [Yes/No]
+8. Can restart? [Yes/No]
+
+Console errors (if any):
+[paste errors here]
+
+Server logs (if any):
+[paste relevant logs]
+```
+
+---
+
+**Status:** Ready to test
+**Expected Result:** Partner disconnect notification works instantly
+**Fallback:** If fails, check logs and report scenario details
