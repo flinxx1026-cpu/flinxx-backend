@@ -103,6 +103,9 @@ export const useWebRTC = (socketId, onRemoteStream) => {
     }
 
     peerConnection.ontrack = (event) => {
+      console.log('\n🔴🔴🔴 ===== CRITICAL: ONTRACK HANDLER FIRING! =====');
+      console.log('🔴 ONTRACK CALLED AT:', new Date().toISOString());
+      console.log('🔴 This is the REMOTE TRACK RECEIVER - the most important handler!');
       console.log('\n📥 ===== REMOTE TRACK RECEIVED =====' );
       console.log('📥 Track:', event.track.kind, 'ID:', event.track.id);
       console.log('📥 Streams count:', event.streams.length);
@@ -142,7 +145,17 @@ export const useWebRTC = (socketId, onRemoteStream) => {
       const pc = peerConnectionRef.current;
       console.log('📤 Creating WebRTC offer...');
       
-      const offer = await pc.createOffer();
+      // ✅ CRITICAL: Add offerToReceiveVideo and offerToReceiveAudio to force SDP direction
+      // This tells the remote peer that we can receive video/audio
+      // Without this, some browsers send recvonly instead of sendrecv
+      const offer = await pc.createOffer({
+        offerToReceiveVideo: true,
+        offerToReceiveAudio: true
+      });
+      console.log('✅ Offer created with receive constraints');
+      console.log('📋 OFFER SDP CHECK - Looking for a=sendrecv:');
+      const offerSdpLines = offer.sdp.split('\n').filter(line => line.includes('sendrecv') || line.includes('recvonly') || line.includes('sendonly'));
+      offerSdpLines.forEach(line => console.log('   ', line));
       await pc.setLocalDescription(offer);
       
       console.log('📤 Sending offer to peer:', socketId);
@@ -170,7 +183,17 @@ export const useWebRTC = (socketId, onRemoteStream) => {
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         
         console.log('📝 Creating WebRTC answer...');
-        const answer = await pc.createAnswer();
+        // ✅ CRITICAL: Answer also needs offerToReceiveVideo constraints!
+        // The answerer MUST confirm they can receive media too
+        const answer = await pc.createAnswer({
+          offerToReceiveVideo: true,
+          offerToReceiveAudio: true
+        });
+        console.log('✅ Answer created with receive constraints');
+        console.log('📋 ANSWER SDP CHECK - Looking for a=sendrecv:');
+        const answerSdpLines = answer.sdp.split('\n').filter(line => line.includes('sendrecv') || line.includes('recvonly') || line.includes('sendonly'));
+        answerSdpLines.forEach(line => console.log('   ', line));
+        
         await pc.setLocalDescription(answer);
         
         console.log('📤 Sending answer to peer:', from);

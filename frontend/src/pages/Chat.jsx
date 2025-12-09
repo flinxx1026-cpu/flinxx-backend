@@ -748,7 +748,10 @@ const Chat = () => {
     };
 
     peerConnection.ontrack = (event) => {
-        console.log('\n\n📥 ===== REMOTE TRACK RECEIVED =====');
+        console.log('\n\n🔴🔴🔴 ===== CRITICAL: ONTRACK HANDLER FIRING! =====');
+        console.log('🔴 ONTRACK CALLED AT:', new Date().toISOString());
+        console.log('🔴 This is the REMOTE TRACK RECEIVER - the most important handler!');
+        console.log('\n📥 ===== REMOTE TRACK RECEIVED =====');
         console.log('📥 TIMESTAMP:', new Date().toISOString());
         console.log('📥 Remote track received:', {
           kind: event.track.kind,
@@ -1028,9 +1031,20 @@ const Chat = () => {
 
         // Create and send offer
         console.log('\n📋 ===== OFFERER CREATING AND SENDING OFFER =====');
-        console.log('🎬 OFFERER: Creating WebRTC offer');
-        const offer = await pc.createOffer();
-        console.log('✅ OFFERER: Offer created:', offer);
+        console.log('🎬 OFFERER: Creating WebRTC offer with offerToReceiveVideo/Audio');
+        
+        // ✅ CRITICAL: Add offerToReceiveVideo and offerToReceiveAudio to force SDP direction
+        // This tells the remote peer that we can receive video/audio
+        // Without this, some browsers send recvonly instead of sendrecv
+        const offer = await pc.createOffer({
+          offerToReceiveVideo: true,
+          offerToReceiveAudio: true
+        });
+        console.log('✅ OFFERER: Offer created with receive constraints:', offer);
+        console.log('📋 OFFERER SDP CHECK - Looking for a=sendrecv:');
+        const offerSdpLines = offer.sdp.split('\n').filter(line => line.includes('sendrecv') || line.includes('recvonly') || line.includes('sendonly'));
+        console.log('   Media direction lines:');
+        offerSdpLines.forEach(line => console.log('   ', line));
         
         console.log('🔄 OFFERER: Setting local description (offer)');
         await pc.setLocalDescription(offer);
@@ -1162,8 +1176,17 @@ const Chat = () => {
         console.log('✅ ANSWERER: Remote description set successfully');
 
         console.log('🎬 ANSWERER: Creating answer');
-        const answer = await peerConnectionRef.current.createAnswer();
-        console.log('✅ ANSWERER: Answer created');
+        // ✅ CRITICAL: Answer also needs offerToReceiveVideo constraints!
+        // The answerer MUST confirm they can receive media too
+        const answer = await peerConnectionRef.current.createAnswer({
+          offerToReceiveVideo: true,
+          offerToReceiveAudio: true
+        });
+        console.log('✅ ANSWERER: Answer created with receive constraints');
+        console.log('📋 ANSWERER SDP CHECK - Looking for a=sendrecv:');
+        const sdpLines = answer.sdp.split('\n').filter(line => line.includes('sendrecv') || line.includes('recvonly') || line.includes('sendonly'));
+        console.log('   Media direction lines:');
+        sdpLines.forEach(line => console.log('   ', line));
         
         console.log('🔄 ANSWERER: Setting local description (answer)');
         await peerConnectionRef.current.setLocalDescription(answer);

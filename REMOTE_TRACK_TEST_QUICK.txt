@@ -1,0 +1,195 @@
+✅ FRONTEND REMOTE TRACK FIX - TESTING GUIDE
+
+═══════════════════════════════════════════════════════════════════════════════
+
+WHAT WAS FIXED
+───────────────────────────────────────────────────────────────────────────────
+
+Frontend now has ENHANCED LOGGING for remote track issues:
+
+1. useWebRTC.js:
+   • onicecandidate: Detects RELAY (TURN) candidates with logging
+   • NEW oniceconnectionstatechange: Monitors ICE state (new→checking→connected)
+   • ontrack: Validates streams before attaching
+   • Local tracks: Logs each track being added
+
+2. Chat.jsx:
+   • onicecandidate: Detailed candidate information
+   • NEW onconnectionstatechange: Overall connection state monitoring
+   • Better error messages at each step
+
+═══════════════════════════════════════════════════════════════════════════════
+
+HOW TO TEST
+───────────────────────────────────────────────────────────────────────────────
+
+STEP 1: Open Production URL
+────────────────────────────
+🌐 https://flinxx-backend-frontend.vercel.app/
+
+STEP 2: Open DevTools Console
+──────────────────────────────
+Press: F12 → Console Tab
+
+STEP 3: Click "Start Video Chat"
+─────────────────────────────────
+Watch the console for these KEY LOGS (in order):
+
+Phase 1 - Connection Setup:
+  ✅ 🔧 RTCPeerConnection created with iceTransportPolicy: all
+  ✅ 🎤 Adding 2 local tracks
+  ✅ ✅ Added video track
+  ✅ ✅ Added audio track
+
+Phase 2 - ICE Candidates:
+  ✅ 🧊 ICE Candidate generated: {type: "host"...}
+  ✅ 🧊 ICE Candidate generated: {type: "srflx"...}
+  ✅ 🧊 ICE Candidate generated: {type: "relay"...}
+      └─ 🔄 RELAY (TURN) candidate - TURN server reachable ⭐ MOST IMPORTANT
+
+Phase 3 - ICE Connection:
+  ✅ 🧊 ICE Connection State: checking
+  ✅ ✅ ICE Connection established
+
+Phase 4 - Peer Connection:
+  ✅ 🔌 Connection State: connecting
+  ✅ 🔌 Connection State: connected ⭐ CRITICAL
+
+Phase 5 - Remote Track:
+  ✅ 📥 ===== REMOTE TRACK RECEIVED ===== ⭐ CRITICAL
+  ✅ 📥 Track: video ID: [id]
+  ✅ 📥 Streams count: 1
+  ✅ ✅ Remote stream ready, calling callback
+  ✅ ✅ onRemoteStream callback invoked
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ SUCCESS CRITERIA
+───────────────────────────────────────────────────────────────────────────────
+
+Check off when you see:
+
+Desktop Console:
+  [ ] 🔄 RELAY (TURN) candidate - TURN server reachable
+  [ ] ✅ ICE Connection established
+  [ ] 🔌 Connection State: connected
+  [ ] 📥 ===== REMOTE TRACK RECEIVED =====
+  [ ] 📺 Remote video appearing!
+
+Mobile Console (when you add second device):
+  [ ] Same logs as desktop
+
+Visual:
+  [ ] Desktop sees mobile video within 15 seconds
+  [ ] Mobile sees desktop video within 15 seconds
+  [ ] Both can hear each other (if audio enabled)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+❌ IF TESTS FAIL - WHERE TO LOOK
+───────────────────────────────────────────────────────────────────────────────
+
+Issue 1: No RELAY candidates
+  └─ See only: host + srflx candidates
+  └─ Missing: 🔄 RELAY (TURN) candidate
+  └─ Cause: TURN server not being used
+  └─ Check: Render env variables (XIRSYS_IDENT, XIRSYS_SECRET)
+
+Issue 2: ICE Connection fails
+  └─ See: 🧊 ICE Connection State: failed
+  └─ Cause: None of the candidate pairs worked
+  └─ Check: Are RELAY candidates present?
+  └─ Fix: Try changing iceTransportPolicy from "all" to "relay"
+
+Issue 3: No "REMOTE TRACK RECEIVED" message
+  └─ See: Connection states are connected
+  └─ Missing: 📥 ===== REMOTE TRACK RECEIVED =====
+  └─ Cause: ontrack event not firing
+  └─ Check: Is remote peer sending tracks?
+  └─ Check: Offer/Answer properly exchanged?
+
+Issue 4: Remote track event but no video
+  └─ See: 📥 ===== REMOTE TRACK RECEIVED =====
+  └─ Missing: 📺 Remote video appearing!
+  └─ Cause: Stream not attached to video element
+  └─ Check: remoteVideoRef exists?
+  └─ Check: Is it different from localVideoRef?
+
+═══════════════════════════════════════════════════════════════════════════════
+
+TWO-DEVICE TEST
+───────────────────────────────────────────────────────────────────────────────
+
+1. Open on Desktop
+   → Click "Start Video Chat"
+   → Look for "Waiting for partner..."
+
+2. Open on Mobile (same WiFi or different network)
+   → Click "Start Video Chat"
+   → Within 10-15 seconds:
+      ✅ Desktop should see mobile video
+      ✅ Mobile should see desktop video
+      ✅ Both should show connected
+      ✅ Console shows RELAY candidates on both
+
+═══════════════════════════════════════════════════════════════════════════════
+
+KEY CONSOLE LOGS TO LOOK FOR
+───────────────────────────────────────────────────────────────────────────────
+
+Copy these into your test report:
+
+1. When RELAY working:
+   🔄 RELAY (TURN) candidate - TURN server reachable
+   Protocol: udp Port: 3478
+
+2. When ICE connected:
+   ✅ ICE Connection established
+
+3. When peer connected:
+   🔌 Connection State: connected
+
+4. When remote track arrives:
+   📥 ===== REMOTE TRACK RECEIVED =====
+   📥 Track: video ID: [some-id]
+   ✅ onRemoteStream callback invoked
+
+═══════════════════════════════════════════════════════════════════════════════
+
+MOBILE CHECKLIST
+───────────────────────────────────────────────────────────────────────────────
+
+Before testing on mobile, ensure:
+  ✅ Camera permission GRANTED
+  ✅ Microphone permission GRANTED
+  ✅ Battery saver OFF (critical!)
+  ✅ WiFi connected (or mobile data)
+  ✅ Browser in foreground (not background)
+  ✅ Latest Chrome/Safari version
+  ✅ No VPN blocking TURN ports (port 3478)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+WHAT TO REPORT
+───────────────────────────────────────────────────────────────────────────────
+
+After testing, send:
+
+✅ IF PASS:
+  Desktop: ✅ RELAY candidates, ✅ Connected, ✅ Remote track received
+  Mobile: ✅ RELAY candidates, ✅ Connected, ✅ Remote track received
+  Video: ✅ Both devices see each other
+  Result: 🎉 WebRTC working!
+
+❌ IF FAIL:
+  Device: [Desktop/Mobile/Both]
+  First failure: [which log missing]
+  Error message: [exact error from console]
+  Screenshot: [console showing the error]
+
+═══════════════════════════════════════════════════════════════════════════════
+
+DEPLOYED: Commit a614ead
+PRODUCTION URL: https://flinxx-backend-frontend.vercel.app/
+
+Ready to test! 🚀
