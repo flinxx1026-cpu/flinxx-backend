@@ -1659,8 +1659,8 @@ const Chat = () => {
               
               {/* Remote video wrapper - ABSOLUTE FULL SIZE */}
               <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: hasPartner ? 99999 : 1, overflow: 'visible', backgroundColor: hasPartner ? 'black' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                {/* Remote video element */}
-                {hasPartner && (
+                {/* Remote video element - ONLY show if partner has joined */}
+                {hasPartner ? (
                   <video
                     id="remote-video"
                     ref={remoteVideoRef}
@@ -1681,6 +1681,22 @@ const Chat = () => {
                       visibility: 'visible'
                     }}
                   />
+                ) : (
+                  // Show placeholder when no partner
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: '#000000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1
+                  }}>
+                    <p style={{ color: '#d9b85f', fontSize: '14px' }}>Waiting for partner video...</p>
+                  </div>
                 )}
 
                 {/* Connection status overlay - Top Right */}
