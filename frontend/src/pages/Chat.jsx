@@ -1237,26 +1237,33 @@ const Chat = () => {
 
   const getTurnServers = async () => {
     try {
-      // Try to fetch TURN servers from backend (XirSys API)
+      console.log('🔄 Fetching TURN servers from Xirsys via backend API...');
       const res = await fetch("https://flinxx-backend.onrender.com/api/turn");
       const data = await res.json();
 
-      if (data?.v?.iceServers) {
-        console.log('✅ TURN servers fetched from backend API');
+      console.log('📡 Xirsys API Response:', data);
+
+      if (data?.v?.iceServers && Array.isArray(data.v.iceServers)) {
+        console.log('✅ TURN servers fetched from Xirsys API');
+        console.log('✅ iceServers is an array with', data.v.iceServers.length, 'entries');
+        console.log('📋 ICE Servers:', data.v.iceServers);
         
-        // Convert XirSys format → WebRTC format
-        const iceServers = data.v.iceServers;
-        return iceServers;
+        // data.v.iceServers is already the correct array format for RTCPeerConnection
+        return data.v.iceServers;
       } else {
-        console.warn('⚠️ Invalid XirSys TURN response from backend, using fallback');
-        throw new Error("Invalid XirSys TURN response");
+        console.warn('⚠️ Invalid Xirsys TURN response format');
+        console.log('   Expected: data.v.iceServers as array');
+        console.log('   Received:', data);
+        throw new Error("Invalid Xirsys TURN response format");
       }
     } catch (error) {
-      console.error('❌ Error fetching TURN servers from backend:', error.message);
-      console.log('🔄 Using fallback TURN configuration from getIceServers()');
+      console.error('❌ Error fetching TURN servers from Xirsys:', error.message);
+      console.log('🔄 Falling back to static STUN/TURN configuration');
       
       // Fallback to static configuration - returns array directly
-      return getIceServers();
+      const fallbackServers = getIceServers();
+      console.log('📋 Using fallback ICE servers:', fallbackServers);
+      return fallbackServers;
     }
   };
 
