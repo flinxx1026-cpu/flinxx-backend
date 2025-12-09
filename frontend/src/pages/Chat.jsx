@@ -182,15 +182,16 @@ const Chat = () => {
       });
       console.log('🎥 STEP 3: Attempting to play video...');
       
-      // Force play
-      setTimeout(async () => {
-        console.log('🎥 STEP 3: Play timeout fired');
+      // Force play using requestAnimationFrame for proper DOM timing
+      requestAnimationFrame(() => {
+        console.log('🎥 STEP 3: requestAnimationFrame fired');
         if (localVideoRef.current && localVideoRef.current.srcObject) {
           try {
             console.log('🎥 STEP 3a: Calling video.play()...');
-            const playPromise = localVideoRef.current.play();
-            await playPromise;
-            console.log('🎥 ✅ STEP 3b: Local video playing successfully');
+            localVideoRef.current.play().catch(err => {
+              console.error('🎥 STEP 3b: Play error caught:', err);
+            });
+            console.log('🎥 ✅ STEP 3b: Play command dispatched successfully');
             console.log('🎥 Video element state after play:', {
               paused: localVideoRef.current.paused,
               readyState: localVideoRef.current.readyState,
@@ -207,7 +208,7 @@ const Chat = () => {
           console.error('   localVideoRef.current:', !!localVideoRef.current);
           console.error('   localVideoRef.current.srcObject:', !!localVideoRef.current?.srcObject);
         }
-      }, 50);
+      });
     } else {
       console.log('🎥 ⚠️ CONDITIONS NOT MET for force attach:');
       console.log('   hasPartner:', hasPartner);
@@ -304,19 +305,17 @@ const Chat = () => {
       
       console.log('🎥 [REINIT] srcObject set to new stream, calling play()...');
       
-      try {
-        const playPromise = localVideoRef.current.play();
-        if (playPromise !== undefined) {
-          await playPromise;
-        }
-        console.log('🎥 [REINIT] ✅ New camera preview playing successfully');
-        setCameraStarted(true);
-        console.log('🎥 ===== CAMERA RE-INITIALIZATION SUCCESSFUL =====\n\n');
-        return true;
-      } catch (err) {
-        console.error('🎥 [REINIT] ❌ Error playing new video:', err);
-        return false;
-      }
+      // Use requestAnimationFrame to ensure video element is ready
+      requestAnimationFrame(() => {
+        localVideoRef.current?.play().catch(err => {
+          console.log('🎥 [REINIT] Video play blocked:', err);
+        });
+        console.log('🎥 [REINIT] ✅ New camera preview play command dispatched');
+      });
+      
+      setCameraStarted(true);
+      console.log('🎥 ===== CAMERA RE-INITIALIZATION SUCCESSFUL =====\n\n');
+      return true;
     } catch (err) {
       console.error('🎥 [REINIT] ❌ Error reinitializing camera:', err);
       console.error('🎥 [REINIT] Error name:', err.name);
@@ -397,13 +396,15 @@ const Chat = () => {
       console.log('🎥 [VIDEO MOUNT DETECTOR] Stream attached, srcObject set');
       console.log('🎥 [VIDEO MOUNT DETECTOR] Attempting to play video...');
       
-      // Attempt to play video with proper error handling
-      setTimeout(async () => {
+      // Attempt to play video with requestAnimationFrame for proper timing
+      requestAnimationFrame(() => {
         if (localVideoRef.current && localVideoRef.current.srcObject) {
           try {
             console.log('🎥 [VIDEO MOUNT DETECTOR] Calling video.play()');
-            await localVideoRef.current.play();
-            console.log('🎥 [VIDEO MOUNT DETECTOR] ✅ Video playing successfully');
+            localVideoRef.current.play().catch(err => {
+              console.error('🎥 [VIDEO MOUNT DETECTOR] Play error:', err);
+            });
+            console.log('🎥 [VIDEO MOUNT DETECTOR] ✅ Play command dispatched');
             console.log('🎥 [VIDEO MOUNT DETECTOR] Video readyState:', localVideoRef.current.readyState);
             console.log('🎥 [VIDEO MOUNT DETECTOR] Video paused:', localVideoRef.current.paused);
           } catch (err) {
@@ -412,7 +413,7 @@ const Chat = () => {
             console.error('🎥 [VIDEO MOUNT DETECTOR] Error message:', err.message);
           }
         }
-      }, 100);
+      });
     } else {
       console.warn('🎥 [VIDEO MOUNT DETECTOR] ⚠️ Cannot attach stream - missing:');
       if (!localVideoRef.current) console.warn('   - localVideoRef.current (DOM element)');
