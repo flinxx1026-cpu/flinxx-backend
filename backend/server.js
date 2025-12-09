@@ -274,6 +274,7 @@ async function addToMatchingQueue(userId, socketId, userData) {
       userName: userData?.userName || 'Anonymous',
       userAge: userData?.userAge || 18,
       userLocation: userData?.userLocation || 'Unknown',
+      userPicture: userData?.userPicture || null,
       timestamp: Date.now()
     })
     await redis.lPush('matching_queue', queueData)
@@ -1297,7 +1298,8 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     socketId: socketId2,
     userName: userData2?.userName || 'Anonymous',
     userAge: userData2?.userAge || 18,
-    userLocation: userData2?.userLocation || 'Unknown'
+    userLocation: userData2?.userLocation || 'Unknown',
+    userPicture: userData2?.userPicture || null
   })
   console.log('✅ partner_found emitted to socketId1:', socketId1)
   
@@ -1307,7 +1309,8 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     socketId: socketId1,
     userName: userData1?.userName || 'Anonymous',
     userAge: userData1?.userAge || 18,
-    userLocation: userData1?.userLocation || 'Unknown'
+    userLocation: userData1?.userLocation || 'Unknown',
+    userPicture: userData1?.userPicture || null
   })
   console.log('✅ partner_found emitted to socketId2:', socketId2)
 
