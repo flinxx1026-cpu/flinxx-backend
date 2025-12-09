@@ -868,8 +868,18 @@ const Chat = () => {
       console.log('🎬 ABOUT TO CALL setHasPartner(true)');
       setHasPartner(true);
       console.log('🎬 ✅ setHasPartner(true) CALLED - force attach effect should trigger');
-      setPartnerInfo(data);
-      console.log('🎬 ✅ setPartnerInfo CALLED');
+      // CRITICAL: Ensure we have all partner fields including picture
+      const partnerData = {
+        ...data,
+        // Ensure picture field is included (may come as userPicture from server)
+        picture: data.userPicture || data.picture || null,
+        // Ensure all display fields exist
+        userName: data.userName || data.name || 'Anonymous',
+        userLocation: data.userLocation || data.location || 'Unknown',
+        userAge: data.userAge || data.age || 18
+      };
+      setPartnerInfo(partnerData);
+      console.log('🎬 ✅ setPartnerInfo CALLED with data:', partnerData);
 
       // CRITICAL: Determine who should send the offer
       // The peer with the LOWER socket ID (lexicographically) is the OFFERER
@@ -1325,7 +1335,8 @@ const Chat = () => {
         userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
         userName: currentUser.name || 'Anonymous',
         userAge: currentUser.age || 18,
-        userLocation: currentUser.location || 'Unknown'
+        userLocation: currentUser.location || 'Unknown',
+        userPicture: currentUser.picture || null  // Include picture so partner can display it
       });
 
       console.log('🎬 [MATCHING] ✅ find_partner event emitted - now waiting for a partner');
@@ -1651,8 +1662,12 @@ const Chat = () => {
             <div className="px-4 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ height: '56px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: 'rgba(19, 19, 19, 0.8)', borderBottom: '1px solid #d9b85f' }}>
               {/* Left: Partner Profile */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg flex-shrink-0">
-                  👤
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg flex-shrink-0 overflow-hidden">
+                  {hasPartner && partnerInfo && partnerInfo.picture ? (
+                    <img src={partnerInfo.picture} alt="Partner" className="w-full h-full object-cover" />
+                  ) : (
+                    '👤'
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="font-semibold text-sm leading-tight truncate" style={{ color: '#d9b85f' }}>
