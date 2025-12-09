@@ -1496,37 +1496,44 @@ const Chat = () => {
   const WaitingScreen = () => {
     // Diagnostic logging for stream attachment issue
     useEffect(() => {
-      console.log('\n🎬 ===== WAITING SCREEN MOUNTED =====');
-      console.log('📹 Video element:', localVideoRef.current);
-      console.log('📹 Local stream ref:', localStreamRef.current);
-      console.log('📹 Stream active:', localStreamRef.current?.active);
-      console.log('📹 Stream tracks:', localStreamRef.current?.getTracks().map(t => ({ 
-        kind: t.kind, 
-        enabled: t.enabled, 
-        readyState: t.readyState, 
-        id: t.id 
-      })));
+      console.log('\n\n🎬 ===== WAITING SCREEN DIAGNOSTIC CHECK =====\n');
       
-      // Attempt to attach stream if not already attached
-      if (localVideoRef.current && localStreamRef.current && !localVideoRef.current.srcObject) {
-        console.log('📹 Attaching stream to video element on WaitingScreen...');
-        localVideoRef.current.srcObject = localStreamRef.current;
-        localVideoRef.current.muted = true;
-        
-        // Use onloadedmetadata to ensure metadata is ready before playing
-        localVideoRef.current.onloadedmetadata = () => {
-          console.log('📹 Video metadata loaded, attempting play...');
-          localVideoRef.current?.play().catch(err => {
-            console.log('📹 Play error:', err.message);
-          });
-        };
-      } else {
-        console.log('📹 Stream already attached or stream/video missing', {
-          videoExists: !!localVideoRef.current,
-          streamExists: !!localStreamRef.current,
-          srcObjectExists: !!localVideoRef.current?.srcObject
-        });
+      // Check 1: Video element
+      const videoExists = !!localVideoRef.current;
+      console.log('✅ CHECK 1: Video element found?', videoExists ? 'YES' : 'NO', localVideoRef.current);
+      
+      // Check 2: Local stream
+      const streamExists = !!localStreamRef.current;
+      console.log('✅ CHECK 2: Local stream valid?', streamExists ? 'YES' : 'NO', localStreamRef.current);
+      
+      // Check 3: Video track
+      if (streamExists) {
+        const videoTracks = localStreamRef.current.getVideoTracks();
+        console.log('✅ CHECK 3: Does stream have video track?', videoTracks.length > 0 ? 'YES' : 'NO');
+        if (videoTracks.length > 0) {
+          const videoTrack = videoTracks[0];
+          console.log('   - kind:', videoTrack.kind);
+          console.log('   - enabled:', videoTrack.enabled);
+          console.log('   - readyState:', videoTrack.readyState);
+          console.log('   - id:', videoTrack.id);
+        }
       }
+      
+      // Check 4: Stream attached to video
+      if (videoExists && streamExists) {
+        const isAttached = localVideoRef.current.srcObject === localStreamRef.current;
+        console.log('✅ CHECK 4: Stream attached to video element?', isAttached ? 'YES' : 'NO');
+        
+        // If not attached, attach it now
+        if (!isAttached) {
+          console.log('   → Attaching stream to video element NOW...');
+          localVideoRef.current.srcObject = localStreamRef.current;
+          localVideoRef.current.muted = true;
+          console.log('   → Stream attached!');
+        }
+      }
+      
+      console.log('\n🎬 ===== END DIAGNOSTIC CHECK =====\n\n');
     }, [isMatchingStarted]);
 
     return (
