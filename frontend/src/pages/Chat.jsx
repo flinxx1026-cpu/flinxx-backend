@@ -1493,7 +1493,43 @@ const Chat = () => {
   );
 
   // Waiting Screen Component - Shows when matching is in progress
-  const WaitingScreen = () => (
+  const WaitingScreen = () => {
+    // Diagnostic logging for stream attachment issue
+    useEffect(() => {
+      console.log('\n🎬 ===== WAITING SCREEN MOUNTED =====');
+      console.log('📹 Video element:', localVideoRef.current);
+      console.log('📹 Local stream ref:', localStreamRef.current);
+      console.log('📹 Stream active:', localStreamRef.current?.active);
+      console.log('📹 Stream tracks:', localStreamRef.current?.getTracks().map(t => ({ 
+        kind: t.kind, 
+        enabled: t.enabled, 
+        readyState: t.readyState, 
+        id: t.id 
+      })));
+      
+      // Attempt to attach stream if not already attached
+      if (localVideoRef.current && localStreamRef.current && !localVideoRef.current.srcObject) {
+        console.log('📹 Attaching stream to video element on WaitingScreen...');
+        localVideoRef.current.srcObject = localStreamRef.current;
+        localVideoRef.current.muted = true;
+        
+        // Use onloadedmetadata to ensure metadata is ready before playing
+        localVideoRef.current.onloadedmetadata = () => {
+          console.log('📹 Video metadata loaded, attempting play...');
+          localVideoRef.current?.play().catch(err => {
+            console.log('📹 Play error:', err.message);
+          });
+        };
+      } else {
+        console.log('📹 Stream already attached or stream/video missing', {
+          videoExists: !!localVideoRef.current,
+          streamExists: !!localStreamRef.current,
+          srcObjectExists: !!localVideoRef.current?.srcObject
+        });
+      }
+    }, [isMatchingStarted]);
+
+    return (
     <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       {/* Left - Live camera preview box */}
       <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
@@ -1553,7 +1589,8 @@ const Chat = () => {
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   // Video Chat Screen Component
   const VideoChatScreen = () => {
