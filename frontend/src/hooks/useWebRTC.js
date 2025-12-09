@@ -28,8 +28,25 @@ export const useWebRTC = (socketId, onRemoteStream) => {
       method: "POST"
     });
     const data = await res.json();
+    
+    // ✅ Enhanced TURN configuration to force TURN when STUN fails
+    // Include explicit STUN + TURN servers with username/credential
+    const iceServers = [
+      {
+        urls: [
+          "stun:global.xirsys.net",
+          "turn:global.xirsys.net:3478?transport=udp",
+          "turn:global.xirsys.net:3478?transport=tcp"
+        ],
+        username: "nkhlvdv",
+        credential: "a8e244b8-cf5b-11f0-8771-0242ac140002"
+      },
+      ...(data.iceServers || []) // Add servers from API as backup
+    ];
+    
     const config = {
-      iceServers: data.iceServers,
+      iceServers,
+      iceTransportPolicy: "all",  // change to "relay" if mobile still disconnects
       iceCandidatePoolSize: 10
     };
     console.log('🔧 RTCPeerConnection config:', config);

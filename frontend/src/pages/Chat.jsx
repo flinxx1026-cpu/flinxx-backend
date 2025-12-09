@@ -586,11 +586,38 @@ const Chat = () => {
     // Log ICE server configuration for diagnostics
     logIceServers();
     
-    const iceServers = await getTurnServers();
+    const turnServers = await getTurnServers();
+    
+    // ✅ Enhanced TURN configuration to force TURN when STUN fails
+    // Include explicit STUN + TURN servers with username/credential
+    const iceServers = [
+      {
+        urls: [
+          "stun:global.xirsys.net",
+          "turn:global.xirsys.net:3478?transport=udp",
+          "turn:global.xirsys.net:3478?transport=tcp"
+        ],
+        username: "nkhlvdv",
+        credential: "a8e244b8-cf5b-11f0-8771-0242ac140002"
+      },
+      ...turnServers // Add servers from API as backup
+    ];
+    
+    console.log('🔧 ICE Servers Configuration:', {
+      count: iceServers.length,
+      servers: iceServers.map(s => ({
+        urls: s.urls,
+        username: s.username ? '***' : undefined,
+        credential: s.credential ? '***' : undefined
+      }))
+    });
 
-    const peerConnection = new RTCPeerConnection({ iceServers });
+    const peerConnection = new RTCPeerConnection({ 
+      iceServers,
+      iceTransportPolicy: "all"  // Use "relay" only if mobile still disconnects
+    });
     peerConnectionRef.current = peerConnection;  // ✅ Store immediately for use in event handlers
-    console.log('✅ RTCPeerConnection created');
+    console.log('✅ RTCPeerConnection created with iceTransportPolicy: all');
 
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
@@ -660,10 +687,24 @@ const Chat = () => {
             console.error('   - Check console for TURN error details');
             console.error('   - TURN error 701 = Network/ISP blocking ports 3478, 5349');
             console.error('   - Solutions: Try VPN, different WiFi, or mobile hotspot');
+            console.error('\n🔄 Attempting ICE restart...');
+            try {
+              peerConnection.restartIce();
+              console.log('✅ ICE restart requested');
+            } catch (err) {
+              console.error('❌ ICE restart failed:', err);
+            }
             break;
           case 'disconnected':
             console.warn('⚠️ State: DISCONNECTED - Lost connection to peer');
-            console.warn('⚠️ Will attempt to reconnect');
+            console.warn('⚠️ Attempting to reconnect...');
+            console.warn('🔄 Requesting ICE restart...');
+            try {
+              peerConnection.restartIce();
+              console.log('✅ ICE restart requested due to disconnection');
+            } catch (err) {
+              console.error('❌ ICE restart failed:', err);
+            }
             break;
           case 'closed':
             console.log('🛑 State: CLOSED - Connection closed');
