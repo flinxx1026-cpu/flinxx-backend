@@ -1296,29 +1296,38 @@ const Chat = () => {
       }]);
     });
 
-    // Partner disconnected
-    socket.on('partner_disconnected', () => {
-      console.log('\n\n🔴🔴🔴 ===== PARTNER DISCONNECTED =====');
+    // ✅ CRITICAL: Partner disconnected handler
+    socket.on('partner_disconnected', (data) => {
+      console.log('\n\n🔴🔴🔴🔴🔴 ===== PARTNER DISCONNECTED EVENT RECEIVED ===== 🔴🔴🔴🔴🔴');
+      console.log('🔴 Event Data:', data);
+      console.log('🔴 Timestamp:', new Date().toISOString());
       console.log('🔴 Partner has closed the browser/tab');
       console.log('🔴 Cleaning up WebRTC connection...');
       
       // Close peer connection
       if (peerConnectionRef.current) {
         console.log('🔴 Closing peer connection');
+        console.log('   Current state:', peerConnectionRef.current.connectionState);
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
+        console.log('🔴 Peer connection closed successfully');
+      } else {
+        console.log('🔴 WARNING: peerConnectionRef.current was null');
       }
       
       // Reset video refs
       if (remoteVideoRef.current) {
+        console.log('🔴 Clearing remote video ref');
         remoteVideoRef.current.srcObject = null;
       }
       if (localVideoRef.current) {
+        console.log('🔴 Clearing local video ref');
         localVideoRef.current.srcObject = null;
       }
       
       console.log('🔴 Calling endChat() to reset UI');
       endChat();
+      console.log('🔴🔴🔴 Cleanup complete - ready for new partner');
     });
 
     // Disconnect
@@ -1327,8 +1336,14 @@ const Chat = () => {
       cleanup();
     });
     
-    console.log('🔌 ===== ALL SOCKET LISTENERS REGISTERED =====');
-    console.log('🔌 Listeners registered for: partner_found, webrtc_offer, webrtc_answer, ice_candidate, receive_message, partner_disconnected, disconnect');
+    console.log('\n\n🔌 ===== ALL SOCKET LISTENERS REGISTERED =====');
+    console.log('🔌 ✅ partner_found listener active');
+    console.log('🔌 ✅ webrtc_offer listener active');
+    console.log('🔌 ✅ webrtc_answer listener active');
+    console.log('🔌 ✅ ice_candidate listener active');
+    console.log('🔌 ✅ receive_message listener active');
+    console.log('🔌 ✅ partner_disconnected listener active (CRITICAL FOR DISCONNECT)');
+    console.log('🔌 ✅ disconnect listener active');
     console.log('🔌 Ready to receive WebRTC signaling messages\n\n');
     
     // Cleanup function to remove listeners on unmount

@@ -1226,6 +1226,11 @@ io.on('connection', (socket) => {
     console.log('📨 SERVER: Received webrtc_answer from socket:', socket.id)
     console.log('📨 SERVER: Target partner socket ID:', partnerSocketId)
     if (userId && partnerSocketId) {
+      // ✅ CRITICAL: Also track partnership when answer is sent (in case offer didn't set it)
+      partnerSockets.set(socket.id, partnerSocketId)
+      partnerSockets.set(partnerSocketId, socket.id)
+      console.log('✅ Partner relationship confirmed via answer:', socket.id, '↔', partnerSocketId)
+      
       console.log('✅ SERVER: Sending webrtc_answer from', socket.id, 'to', partnerSocketId)
       io.to(partnerSocketId).emit('webrtc_answer', {
         answer: data.answer,
@@ -1243,6 +1248,13 @@ io.on('connection', (socket) => {
     const partnerSocketId = data.to
     console.log('🧊 SERVER: Received ICE candidate from socket:', socket.id)
     console.log('🧊 SERVER: Target partner socket ID:', partnerSocketId)
+    
+    // ✅ CRITICAL: Also track partnership via ICE candidates (belt and suspenders approach)
+    if (partnerSocketId) {
+      partnerSockets.set(socket.id, partnerSocketId)
+      partnerSockets.set(partnerSocketId, socket.id)
+    }
+    
     if (userId && partnerSocketId) {
       console.log('✅ SERVER: Sending ICE candidate from', socket.id, 'to', partnerSocketId)
       io.to(partnerSocketId).emit('ice_candidate', {
@@ -1285,10 +1297,18 @@ io.on('connection', (socket) => {
 
   // Handle disconnect
   socket.on('disconnect', async () => {
-    console.log(`\n\n❌ USER DISCONNECTED: ${socket.id}`)
+    console.log(`\n\n\n========================================`)
+    console.log(`❌ USER DISCONNECTED: ${socket.id}`)
+    console.log(`⏰ Time: ${new Date().toISOString()}`)
     
     const userId = userSockets.get(socket.id)
     const partnerSocketId = partnerSockets.get(socket.id)
+    
+    console.log(`📋 Disconnect Details:`)
+    console.log(`   userId: ${userId || 'NOT FOUND'}`)
+    console.log(`   partnerSocketId: ${partnerSocketId || 'NOT FOUND'}`)
+    console.log(`   partnerSockets size: ${partnerSockets.size}`)
+    console.log(`   All tracked partners:`, Array.from(partnerSockets.entries()))
     
     if (userId) {
       // Mark user as offline in Redis
@@ -1301,22 +1321,33 @@ io.on('connection', (socket) => {
     
     // ✅ CRITICAL: Notify partner about disconnection
     if (partnerSocketId) {
-      console.log(`🔔 NOTIFYING PARTNER: ${partnerSocketId} that user ${socket.id} disconnected`)
+      console.log(`\n🔔 🔔 🔔 NOTIFYING PARTNER ABOUT DISCONNECT 🔔 🔔 🔔`)
+      console.log(`🔔 Sending partner_disconnected to: ${partnerSocketId}`)
+      console.log(`🔔 From disconnected socket: ${socket.id}`)
+      console.log(`🔔 Reason: Partner closed browser/tab`)
       
       // Send disconnect event to partner
       io.to(partnerSocketId).emit('partner_disconnected', {
         reason: 'Partner closed browser/tab',
-        disconnectedSocketId: socket.id
+        disconnectedSocketId: socket.id,
+        timestamp: new Date().toISOString()
       })
+      
+      console.log(`✅ partner_disconnected emitted to socket: ${partnerSocketId}`)
       
       // Clean up partner's mapping
       partnerSockets.delete(partnerSocketId)
       console.log(`✅ Cleaned up partner socket mapping for: ${partnerSocketId}`)
+    } else {
+      console.warn(`⚠️ No partner found in mapping for socket: ${socket.id}`)
+      console.warn(`⚠️ This peer may have never established WebRTC connection`)
+      console.warn(`⚠️ partnerSockets has ${partnerSockets.size} entries`)
     }
     
     // Clean up this socket's partner mapping
     partnerSockets.delete(socket.id)
     console.log(`✅ Disconnection cleanup complete for socket: ${socket.id}`)
+    console.log(`========================================\n`)
   })
 })
 
