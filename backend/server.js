@@ -269,6 +269,19 @@ async function getRandomOnlineUser(excludeUserId) {
 // Queue management using Redis
 async function addToMatchingQueue(userId, socketId, userData) {
   try {
+    // CRITICAL: Check if this user is already in the queue (e.g., from a previous session)
+    const existingQueueEntries = await redis.lRange('matching_queue', 0, -1)
+    for (const entry of existingQueueEntries) {
+      const queuedUser = JSON.parse(entry)
+      if (queuedUser.userId === userId) {
+        console.warn(`⚠️ User ${userId} is already in the queue with old socket ${queuedUser.socketId}`)
+        console.warn(`⚠️ Removing old entry before adding new one`)
+        // Remove the old entry
+        await redis.lRem('matching_queue', 0, entry)
+        console.log(`✅ Removed old queue entry for user ${userId}`)
+      }
+    }
+
     const queueData = JSON.stringify({
       userId,
       socketId,
@@ -279,7 +292,7 @@ async function addToMatchingQueue(userId, socketId, userData) {
       timestamp: Date.now()
     })
     await redis.lPush('matching_queue', queueData)
-    console.log(`✅ User ${userId} added to matching queue`)
+    console.log(`✅ User ${userId} added to matching queue with socket ${socketId}`)
   } catch (error) {
     console.error('❌ Error adding to queue:', error)
   }
@@ -292,6 +305,32 @@ async function getNextFromQueue() {
   } catch (error) {
     console.error('❌ Error getting from queue:', error)
     return null
+  }
+}
+
+async function removeUserFromQueue(userId) {
+  try {
+    // Get all queue entries
+    const allEntries = await redis.lRange('matching_queue', 0, -1)
+    let removedCount = 0
+    
+    // Find and remove entries matching this userId
+    for (const entry of allEntries) {
+      const queuedUser = JSON.parse(entry)
+      if (queuedUser.userId === userId) {
+        await redis.lRem('matching_queue', 0, entry)
+        removedCount++
+        console.log(`✅ Removed user ${userId} from queue (${removedCount} entry)`)
+      }
+    }
+    
+    if (removedCount > 0) {
+      console.log(`✅ Totally removed ${removedCount} queue entries for user ${userId}`)
+    }
+    return removedCount
+  } catch (error) {
+    console.error('❌ Error removing user from queue:', error)
+    return 0
   }
 }
 
@@ -1325,6 +1364,13 @@ io.on('connection', (socket) => {
       // Mark user as offline in Redis
       await setUserOffline(userId)
       
+      // CRITICAL: Remove user from matching queue on disconnect
+      // This prevents them from matching with their old queue entry when they reconnect
+      const removedCount = await removeUserFromQueue(userId)
+      if (removedCount > 0) {
+        console.log(`🧹 CRITICAL: Removed ${removedCount} queue entries for user ${userId} from matching queue`)
+      }
+      
       // Remove from socket mapping
       userSockets.delete(socket.id)
       console.log(`✅ Removed userId mapping for socket: ${socket.id}`)
@@ -1364,17 +1410,30 @@ io.on('connection', (socket) => {
 
 // Matching Function
 async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, userData2) {
-  // CRITICAL: Prevent self-matching with strict check
+  // CRITICAL: Prevent self-matching with multiple checks
+  
+  // Check 1: userId must be different
   if (userId1 === userId2) {
-    console.error('❌ CRITICAL: ATTEMPTED SELF-MATCH DETECTED!')
+    console.error('❌ CRITICAL: ATTEMPTED SELF-MATCH DETECTED (userId comparison)!')
     console.error('   userId1:', userId1)
     console.error('   userId2:', userId2)
-    console.error('   These should NEVER be equal!')
+    console.error('   Aborting match...')
+    return
+  }
+  
+  // Check 2: socketId must be different
+  if (socketId1 === socketId2) {
+    console.error('❌ CRITICAL: ATTEMPTED SELF-MATCH DETECTED (socketId comparison)!')
+    console.error('   socketId1:', socketId1)
+    console.error('   socketId2:', socketId2)
+    console.error('   These are the SAME socket!')
     console.error('   Aborting match...')
     return
   }
 
-  console.log(`✅ SELF-MATCH CHECK PASSED: ${userId1} !== ${userId2}`)
+  console.log(`✅ SELF-MATCH CHECKS PASSED:`)
+  console.log(`   userId1: ${userId1} !== userId2: ${userId2}`)
+  console.log(`   socketId1: ${socketId1} !== socketId2: ${socketId2}`)
   
   // Create session
   const sessionId = uuidv4()
