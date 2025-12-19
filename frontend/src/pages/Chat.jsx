@@ -1747,8 +1747,8 @@ const Chat = () => {
       />
 
       {/* Left - Live camera preview box */}
-      <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
-        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f', width: '100%', height: '100%', minHeight: '100%' }}>
+      <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', position: 'relative', zIndex: 10 }}>
+        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f', width: '100%', height: '100%', minHeight: '100%', position: 'relative', zIndex: 10 }}>
           <video
             autoPlay={true}
             playsInline={true}
@@ -1762,7 +1762,9 @@ const Chat = () => {
               width: '100%',
               height: '100%',
               minHeight: '100%',
-              minWidth: '100%'
+              minWidth: '100%',
+              position: 'relative',
+              zIndex: 5
             }}
             srcObject={localStreamRef.current}
           />
@@ -1870,8 +1872,8 @@ const Chat = () => {
     return (
     <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       {/* Left - Live camera preview box */}
-      <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
-        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f', width: '100%', height: '100%', minHeight: '100%' }}>
+      <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', position: 'relative', zIndex: 10 }}>
+        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f', width: '100%', height: '100%', minHeight: '100%', position: 'relative', zIndex: 10 }}>
           <video
             autoPlay={true}
             playsInline={true}
@@ -1885,7 +1887,9 @@ const Chat = () => {
               width: '100%',
               height: '100%',
               minHeight: '100%',
-              minWidth: '100%'
+              minWidth: '100%',
+              position: 'relative',
+              zIndex: 5
             }}
             srcObject={localStreamRef.current}
           />
@@ -1896,7 +1900,7 @@ const Chat = () => {
       </div>
 
       {/* Right - Dark Waiting Panel with golden accents */}
-      <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', minHeight: '520px', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0, overflow: 'visible' }}>
+      <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', minHeight: '520px', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0, overflow: 'visible', position: 'relative', zIndex: 5 }}>
         <div className="flex flex-col items-center justify-center text-center gap-8 py-20">
           {/* Animated Waiting Icon */}
           <div className="animate-pulse text-6xl">
@@ -2117,8 +2121,8 @@ const Chat = () => {
         </div>
 
         {/* RIGHT - Local camera video */}
-        <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
-          <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f', width: '100%', height: '100%', minHeight: '100%' }}>
+        <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', position: 'relative', zIndex: 10 }}>
+          <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f', width: '100%', height: '100%', minHeight: '100%', position: 'relative', zIndex: 10 }}>
             <video
               autoPlay={true}
               playsInline={true}
@@ -2132,7 +2136,9 @@ const Chat = () => {
                 width: '100%',
                 height: '100%',
                 minHeight: '100%',
-                minWidth: '100%'
+                minWidth: '100%',
+                position: 'relative',
+                zIndex: 5
               }}
               srcObject={localStreamRef.current}
             />
