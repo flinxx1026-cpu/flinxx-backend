@@ -1140,22 +1140,20 @@ io.on('connection', (socket) => {
   console.log(`✅ User connected: ${socket.id}`)
   console.log(`📊 Active connections: ${io.engine.clientsCount}`)
 
-  // Register user
-  const userId = uuidv4()
-  userSockets.set(socket.id, userId)
-
-  socket.emit('user_registered', { userId })
-
   // Handle finding partner
   socket.on('find_partner', async (userData) => {
-    const userId = userSockets.get(socket.id)
+    // CRITICAL: Get userId from frontend data (NOT generate new UUID)
+    const userId = userData?.userId
     
     if (!userId) {
-      socket.emit('error', 'User not registered')
+      console.error('❌ [find_partner] No userId provided by frontend')
+      socket.emit('error', 'UserId is required')
       return
     }
 
-    console.log(`[find_partner] User ${userId} looking for partner`, { userName: userData?.userName })
+    // Store the mapping: socket.id -> userId (from frontend)
+    userSockets.set(socket.id, userId)
+    console.log(`[find_partner] User ${userId} looking for partner`, { userName: userData?.userName, socketId: socket.id })
 
     // Set user as online in Redis
     await setUserOnline(userId, socket.id)
@@ -1164,19 +1162,32 @@ io.on('connection', (socket) => {
     let waitingUser = await getNextFromQueue()
     
     // CRITICAL: Loop until we find a DIFFERENT user
+    let skippedCount = 0
     while (waitingUser && waitingUser.userId === userId) {
-      console.log(`[find_partner] ⚠️ Skipping self-match: ${waitingUser.userId} === ${userId}`)
+      skippedCount++
+      console.log(`[find_partner] ⚠️ SKIPPING SELF-MATCH ATTEMPT #${skippedCount}`)
+      console.log(`   Waiting user: ${waitingUser.userId}`)
+      console.log(`   Current user: ${userId}`)
+      console.log(`   These are the SAME - getting next user from queue...`)
       waitingUser = await getNextFromQueue() // Try next user
     }
     
+    if (skippedCount > 0) {
+      console.log(`[find_partner] ✅ Skipped ${skippedCount} self-match attempts`)
+    }
+    
     if (waitingUser) {
-      console.log(`[find_partner] Found waiting partner: ${waitingUser.userId}`)
-      console.log(`[find_partner] ✅ Verified: Current user ${userId} !== Partner ${waitingUser.userId}`)
+      console.log(`[find_partner] 🎯 MATCH FOUND!`)
+      console.log(`   Current user: ${userId}`)
+      console.log(`   Partner user: ${waitingUser.userId}`)
+      console.log(`[find_partner] ✅ Verified: ${userId} !== ${waitingUser.userId}`)
       matchUsers(socket.id, userId, waitingUser.socketId, waitingUser.userId, userData, waitingUser)
     } else {
       // Add to waiting queue
       await addToMatchingQueue(userId, socket.id, userData)
-      console.log(`[find_partner] Added to queue. Queue length: ${await getQueueLength()}`)
+      const queueLen = await getQueueLength()
+      console.log(`[find_partner] ⏳ Added user ${userId} to queue. Queue length: ${queueLen}`)
+      console.log(`[find_partner] 📋 Waiting for another user to join...`)
       socket.emit('waiting', { message: 'Waiting for a partner...' })
     }
   })
@@ -1353,6 +1364,18 @@ io.on('connection', (socket) => {
 
 // Matching Function
 async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, userData2) {
+  // CRITICAL: Prevent self-matching with strict check
+  if (userId1 === userId2) {
+    console.error('❌ CRITICAL: ATTEMPTED SELF-MATCH DETECTED!')
+    console.error('   userId1:', userId1)
+    console.error('   userId2:', userId2)
+    console.error('   These should NEVER be equal!')
+    console.error('   Aborting match...')
+    return
+  }
+
+  console.log(`✅ SELF-MATCH CHECK PASSED: ${userId1} !== ${userId2}`)
+  
   // Create session
   const sessionId = uuidv4()
   const startedAt = new Date()
