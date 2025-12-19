@@ -850,33 +850,44 @@ const Chat = () => {
         if (!remoteVideoRef.current) {
             console.error('❌ CRITICAL ERROR: remoteVideoRef.current is NULL!');
             console.error('   Cannot attach remote track - video element not available');
+            console.error('   remoteVideoRef must be attached to the remote-video HTML element');
+            console.error('   Check line ~1977: <video id="remote-video" ref={remoteVideoRef} />');
             return;
+        }
+        
+        if (!localVideoRef.current) {
+            console.warn('⚠️ WARNING: localVideoRef.current is NULL');
+            console.warn('   This is OK if not yet on a screen that uses it');
+            console.warn('   localVideoRef should only be used for local stream in left/right panels');
         }
         
         if (localVideoRef.current === remoteVideoRef.current) {
             console.error('❌❌❌ CRITICAL ERROR: localVideoRef and remoteVideoRef are the SAME OBJECT!');
             console.error('   This will OVERWRITE local video with remote track!');
-            console.error('   Check JSX ref assignments - they should be different video elements');
-            console.error('   localVideoRef should be in RIGHT panel');
-            console.error('   remoteVideoRef should be in LEFT panel');
+            console.error('   Check JSX ref assignments - they should be TWO DIFFERENT video elements');
+            console.error('   localVideoRef should be: <video ref={localVideoRef} className="local-video" /> in left/right panel');
+            console.error('   remoteVideoRef should be: <video id="remote-video" ref={remoteVideoRef} /> in remote-video-wrapper');
             return;
         }
         
         console.log('✅ CRITICAL CHECK PASSED - refs are DIFFERENT and valid');
-        console.log('📺 Proceeding to attach remote stream...');
+        console.log('📺 localVideoRef points to:', localVideoRef.current?.id || 'no-id', '(class=' + localVideoRef.current?.className + ')');
+        console.log('📺 remoteVideoRef points to:', remoteVideoRef.current?.id || 'no-id', '(class=' + remoteVideoRef.current?.className + ')');
+        console.log('📺 Proceeding to attach REMOTE stream to remoteVideoRef ONLY...');
         
         if (!event.streams || !event.streams[0]) {
             console.error('❌ No streams available in event');
             return;
         }
         
-        console.log('📺 STEP 1: Setting srcObject...');
+        console.log('📺 STEP 1: Setting remoteVideoRef.current.srcObject = event.streams[0]');
         const stream = event.streams[0];
         remoteVideoRef.current.srcObject = stream;
-        console.log('📺 STEP 2: ✅ srcObject assigned');
+        console.log('📺 STEP 2: ✅ Remote stream assigned to remoteVideoRef ONLY');
+        console.log('📺 LOCAL STREAM UNAFFECTED - localVideoRef still has:', localVideoRef.current?.srcObject ? 'a stream' : 'no stream');
         
         // Debug: Check what was set
-        console.log('📺 STEP 3: Verifying attachment:', {
+        console.log('📺 STEP 3: Verifying remote attachment:', {
           srcObjectExists: !!remoteVideoRef.current.srcObject,
           srcObjectSame: remoteVideoRef.current.srcObject === stream,
           srcObjectActive: remoteVideoRef.current.srcObject?.active,
@@ -891,32 +902,30 @@ const Chat = () => {
         remoteVideoRef.current.style.width = "100%";
         remoteVideoRef.current.style.height = "100%";
         remoteVideoRef.current.style.objectFit = "cover";
-        console.log('📺 STEP 4: ✅ CSS styles applied');
+        console.log('📺 STEP 4: ✅ CSS styles applied to remoteVideoRef');
         
         // ✅ FIX #6: Handle mobile autoplay restriction - play() with error handling
-        console.log('📺 STEP 5: Attempting to play remote video...');
+        console.log('📺 STEP 5: Attempting to play remote video on remoteVideoRef...');
         try {
           const playPromise = remoteVideoRef.current.play();
           if (playPromise !== undefined) {
             playPromise
               .then(() => {
-                console.log('📺 ✅ Remote video playing successfully');
+                console.log('📺 ✅ Remote video playing successfully on remoteVideoRef');
               })
               .catch((playError) => {
                 console.warn('📺 ⚠️ Play error (may be due to mobile autoplay policy):', playError.name, playError.message);
-                console.log('📺 NOTE: Video element has srcObject set, will play when user interacts');
-                // Video element is ready, autoplay will work once user interacts on mobile
+                console.log('📺 NOTE: Remote video element has srcObject set, will play when user interacts');
               });
           } else {
-            // Browser doesn't return a promise (older browsers)
-            console.log('📺 Play promise not returned (older browser), video should play automatically');
+            console.log('📺 Play promise not returned (older browser), remote video should play automatically');
           }
         } catch (err) {
           console.error('📺 ❌ Play attempt threw error:', err);
-          console.log('📺 Continuing - stream is attached and ready');
+          console.log('📺 Continuing - remote stream is attached and ready');
         }
         
-        console.log('✅ Remote video srcObject set successfully');
+        console.log('✅ ✅ ✅ Remote video srcObject set successfully on remoteVideoRef');
         console.log('📥 ===== REMOTE TRACK SETUP COMPLETE =====\n\n');
     };
 
