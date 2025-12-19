@@ -583,6 +583,35 @@ const Chat = () => {
     console.log('🔧 createPeerConnection called');
     console.log('   Current localStreamRef:', localStreamRef.current);
     
+    // ✅ CRITICAL FIX: If local stream is missing, attempt to reacquire it
+    if (!localStreamRef.current) {
+      console.warn('⚠️ CRITICAL: localStreamRef.current is null - attempting to reacquire camera stream');
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: true
+        });
+        localStreamRef.current = newStream;
+        
+        // Attach to video element
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = newStream;
+          localVideoRef.current.muted = true;
+          try {
+            await localVideoRef.current.play();
+          } catch (playErr) {
+            console.warn('⚠️ Play error during reacquisition:', playErr);
+          }
+        }
+        
+        console.log('✅ LOCAL STREAM RE-ACQUIRED SUCCESSFULLY');
+        console.log('   Tracks:', newStream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
+      } catch (reacqErr) {
+        console.error('❌ FATAL: Could not reacquire camera stream:', reacqErr.message);
+        throw new Error('Cannot proceed: local camera stream unavailable - ' + reacqErr.message);
+      }
+    }
+    
     // Log ICE server configuration for diagnostics
     logIceServers();
     
@@ -1024,6 +1053,45 @@ const Chat = () => {
       console.log('   Partner socket ID:', partnerSocketId);
       console.log('   Am I offerer? (myID < partnerID):', amIOfferer);
       
+      // ✅ CRITICAL DEFENSIVE CHECK: Verify local stream exists before proceeding
+      console.log('\n🔐 ===== CRITICAL STREAM VERIFICATION =====');
+      console.log('🔐 Checking localStreamRef.current status:');
+      console.log('   exists:', !!localStreamRef.current);
+      console.log('   tracks:', localStreamRef.current?.getTracks().length || 0);
+      console.log('   video element srcObject:', !!localVideoRef.current?.srcObject);
+      
+      if (!localStreamRef.current) {
+        console.error('🔐 ❌ CRITICAL: localStreamRef.current is NULL - cannot proceed to WebRTC');
+        console.error('   This means the camera stream was never acquired or was lost');
+        console.error('   Attempting emergency camera reacquisition...');
+        
+        try {
+          const emergencyStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: true
+          });
+          localStreamRef.current = emergencyStream;
+          
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = emergencyStream;
+            localVideoRef.current.muted = true;
+            try {
+              await localVideoRef.current.play();
+            } catch (e) {
+              console.warn('⚠️ Play error in emergency reacquisition');
+            }
+          }
+          
+          console.log('🔐 ✅ EMERGENCY: Camera stream re-acquired');
+        } catch (emergencyErr) {
+          console.error('🔐 ❌ EMERGENCY FAILED: Could not reacquire camera -', emergencyErr.message);
+          console.error('   User must allow camera permission to continue');
+          return;
+        }
+      }
+      
+      console.log('🔐 ✅ STREAM VERIFICATION PASSED - proceeding with WebRTC\n');
+      
       if (!amIOfferer) {
         console.log('📭 I am the ANSWERER - waiting for offer from offerer');
         return;
@@ -1171,6 +1239,33 @@ const Chat = () => {
         console.log('👤 ANSWERER localStreamRef.current:', localStreamRef.current);
         console.log('👤 ANSWERER localStreamRef.current === null?', localStreamRef.current === null);
         console.log('👤 ANSWERER localStreamRef.current === undefined?', localStreamRef.current === undefined);
+        
+        // ✅ CRITICAL DEFENSIVE CHECK: Verify and reacquire stream if missing
+        if (!localStreamRef.current) {
+          console.warn('⚠️ ANSWERER: localStreamRef.current is NULL - attempting emergency reacquisition');
+          try {
+            const emergencyStream = await navigator.mediaDevices.getUserMedia({
+              video: { width: { ideal: 640 }, height: { ideal: 480 } },
+              audio: true
+            });
+            localStreamRef.current = emergencyStream;
+            
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = emergencyStream;
+              localVideoRef.current.muted = true;
+              try {
+                await localVideoRef.current.play();
+              } catch (e) {
+                console.warn('⚠️ Play error in answerer emergency reacquisition');
+              }
+            }
+            
+            console.log('✅ ANSWERER: Emergency stream acquisition successful');
+          } catch (emergencyErr) {
+            console.error('❌ ANSWERER: Emergency stream acquisition failed:', emergencyErr.message);
+            throw new Error('ANSWERER: Cannot reacquire camera stream - ' + emergencyErr.message);
+          }
+        }
         
         if (localStreamRef.current) {
           console.log('\n✅ ANSWERER: localStream EXISTS - will add tracks');
