@@ -228,6 +228,37 @@ const Chat = () => {
     }
   }, [hasPartner]);
 
+  // CRITICAL: Re-attach camera stream when navigating between screens
+  // This fixes the black screen issue when going back from WaitingScreen to IntroScreen
+  useEffect(() => {
+    if (cameraStarted && localStreamRef.current && localVideoRef.current) {
+      console.log('🎥 [SCREEN CHANGE] Verifying stream attachment');
+      
+      // Check if stream is still attached
+      if (localVideoRef.current.srcObject !== localStreamRef.current) {
+        console.warn('🎥 [SCREEN CHANGE] ⚠️ Stream detached! Re-attaching...');
+        localVideoRef.current.srcObject = localStreamRef.current;
+        localVideoRef.current.muted = true;
+        
+        // Ensure video is playing
+        try {
+          const playPromise = localVideoRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              console.log('🎥 [SCREEN CHANGE] ✅ Stream re-attached and playing');
+            }).catch((error) => {
+              console.error('🎥 [SCREEN CHANGE] ❌ Playback error:', error);
+            });
+          }
+        } catch (error) {
+          console.error('🎥 [SCREEN CHANGE] ❌ Error playing video:', error);
+        }
+      } else {
+        console.log('🎥 [SCREEN CHANGE] ✅ Stream still attached');
+      }
+    }
+  }, [cameraStarted, isMatchingStarted, hasPartner]);
+
   // CRITICAL: Define functions AFTER state declarations to avoid TDZ
   // Expose camera re-initialization function that can be called from ProfileModal
   const reinitializeCamera = React.useCallback(async () => {
@@ -1507,15 +1538,14 @@ const Chat = () => {
         console.log('🔴 WARNING: peerConnectionRef.current was null');
       }
       
-      // Reset video refs
+      // Reset remote video ref (but NOT local - keep camera active!)
       if (remoteVideoRef.current) {
         console.log('🔴 Clearing remote video ref');
         remoteVideoRef.current.srcObject = null;
       }
-      if (localVideoRef.current) {
-        console.log('🔴 Clearing local video ref');
-        localVideoRef.current.srcObject = null;
-      }
+      // DO NOT clear localVideoRef.current.srcObject here
+      // The local camera should stay active when partner disconnects
+      // User can go back to WaitingScreen or IntroScreen and camera will still be there
       
       console.log('🔴 Calling endChat() to reset UI');
       endChat();
