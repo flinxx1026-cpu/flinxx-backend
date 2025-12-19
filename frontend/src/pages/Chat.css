@@ -599,6 +599,43 @@ video {
   }
 }
 
+/* ===== WAITING SCREEN MOBILE FIX ===== */
+/* Only affects WaitingScreen layout on mobile */
+@media (max-width: 768px) {
+  /* Main WaitingScreen container - stack vertically */
+  .flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .left-panel {
+    width: 100% !important;
+    height: 60vh !important;
+    flex: 1 !important;
+    margin-bottom: 12px !important;
+  }
+
+  .flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel {
+    width: 100% !important;
+    flex: 1 !important;
+    margin-top: 12px !important;
+    margin-left: 0 !important;
+  }
+
+  /* WaitingScreen main container - flex column */
+  div[style*="gap: 12"] {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small screens - WaitingScreen */
+  .flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .left-panel {
+    width: 100% !important;
+    height: 50vh !important;
+  }
+
+  .flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel {
+    width: 100% !important;
+  }
+}
+
 /* ✅ LOCAL VIDEO PANEL - CONSTRAINED POSITIONING */
 .left-panel {
   position: relative;          /* CRITICAL: Creates positioning context */
