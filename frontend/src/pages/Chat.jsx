@@ -1747,13 +1747,15 @@ const Chat = () => {
       />
 
       {/* Left - Live camera preview box */}
-      <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', position: 'relative', zIndex: 10, overflow: 'hidden' }}>
-        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f', width: '100%', height: '100%', minHeight: '100%', position: 'relative', zIndex: 10 }}>
-          {/* Video positioned absolutely fills this container */}
-          <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-20" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
-            <p className="font-semibold text-sm" style={{ color: '#d9b85f', margin: 0 }}>You</p>
-          </div>
-        </div>
+      <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden' }}>
+        <video
+          ref={localVideoRef}
+          className="local-video"
+          autoPlay={true}
+          playsInline={true}
+          muted={true}
+        />
+        <div className="you-badge">You</div>
       </div>
 
       {/* Right - Welcome panel with dark theme */}
@@ -1854,13 +1856,15 @@ const Chat = () => {
     return (
     <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       {/* Left - Live camera preview box */}
-      <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', position: 'relative', zIndex: 10, overflow: 'hidden' }}>
-        <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f', width: '100%', height: '100%', minHeight: '100%', position: 'relative', zIndex: 10 }}>
-          {/* Video positioned absolutely fills this container */}
-          <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-20" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
-            <p className="font-semibold text-sm" style={{ color: '#d9b85f', margin: 0 }}>You</p>
-          </div>
-        </div>
+      <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden' }}>
+        <video
+          ref={localVideoRef}
+          className="local-video"
+          autoPlay={true}
+          playsInline={true}
+          muted={true}
+        />
+        <div className="you-badge">You</div>
       </div>
 
       {/* Right - Dark Waiting Panel with golden accents */}
@@ -2085,13 +2089,15 @@ const Chat = () => {
         </div>
 
         {/* RIGHT - Local camera video */}
-        <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', position: 'relative', zIndex: 10, overflow: 'hidden' }}>
-          <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f', width: '100%', height: '100%', minHeight: '100%', position: 'relative', zIndex: 10 }}>
-            {/* Video positioned absolutely fills this container */}
-            <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-20" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
-              <p className="font-semibold text-sm" style={{ color: '#d9b85f', margin: 0 }}>You</p>
-            </div>
-          </div>
+        <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden' }}>
+          <video
+            ref={localVideoRef}
+            className="local-video"
+            autoPlay={true}
+            playsInline={true}
+            muted={true}
+          />
+          <div className="you-badge">You</div>
         </div>
     </div>
     );
@@ -2099,26 +2105,6 @@ const Chat = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
-      {/* ✅ SINGLE video element - positioned absolutely within left panel container */}
-      {/* position: absolute + inset: 0 fills parent container perfectly */}
-      <video
-        ref={localVideoRef}
-        autoPlay={true}
-        playsInline={true}
-        muted={true}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: '24px',
-          objectFit: 'cover',
-          backgroundColor: '#000000',
-          display: 'block',
-          zIndex: 100,
-          border: '1px solid #d9b85f',
-          pointerEvents: 'none'
-        }}
-      />
-      
       {/* Main content - Show correct screen based on state */}
       {hasPartner ? (
         // Partner found: Show video chat
