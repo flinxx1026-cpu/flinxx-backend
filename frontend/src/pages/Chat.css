@@ -361,21 +361,104 @@ video {
     max-width: 100% !important;
   }
 
+  /* Main container - responsive layout */
+  #main-container {
+    width: 100% !important;
+    padding: 0 !important;
+    gap: 1rem !important;
+  }
+
+  /* Video chat container - stack vertically on mobile */
+  .video-chat-container {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    padding: 1rem !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* Main chat layout - stack panels vertically */
+  .main-chat-layout {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    padding: 1rem !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+  }
+
+  /* Chat screen - vertical stacking */
+  .chat-screen {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    overflow: visible !important;
+    min-height: auto !important;
+  }
+
+  /* Screen container - single column on mobile */
+  .screen-container {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    padding: 1rem !important;
+  }
+
+  .screen-container > div {
+    width: 100% !important;
+    height: 50vh !important;
+    min-height: 50vh !important;
+  }
+
   /* Video container - full width, responsive height */
   .video-box {
     width: 100% !important;
-    height: auto !important;
-    min-height: 300px !important;
+    height: 50vh !important;
+    min-height: 50vh !important;
     margin: 0 auto !important;
     border-radius: 1.25rem !important;
+    flex: 1 !important;
   }
 
   /* Right panel - full width below video */
   .right-panel {
     width: 100% !important;
+    height: 50vh !important;
+    min-height: 50vh !important;
+    margin-top: 0 !important;
+    margin-bottom: 1rem !important;
+    flex: 1 !important;
+  }
+
+  /* Left panel - full width responsive height */
+  .left-panel {
+    width: 100% !important;
+    height: 50vh !important;
+    min-height: 50vh !important;
+    margin-bottom: 1rem !important;
+  }
+
+  /* Local video wrapper - full panel fill */
+  .local-video-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+    flex: 1 !important;
+  }
+
+  .local-video-wrapper video {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Local video - fill panel */
+  .local-video {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Video wrapper - responsive sizing */
+  .video-wrapper {
+    width: 100% !important;
     height: auto !important;
-    min-height: 300px !important;
-    margin-top: 1.25rem !important;
+    max-height: 50vh !important;
+    padding: 0 !important;
   }
 
   /* Icon navigation - center and make responsive */
@@ -388,6 +471,7 @@ video {
     left: 10px;
     width: calc(100% - 20px);
     max-width: 90%;
+    z-index: 100;
   }
 
   /* Smaller icons on mobile */
@@ -411,12 +495,26 @@ video {
   div[style*="width: 520px"] {
     width: 100% !important;
     height: auto !important;
-    min-height: 300px !important;
+    min-height: 50vh !important;
   }
 
   /* Adjust chat screen for mobile */
   .video-container {
     border-radius: 1.25rem;
+    width: 100% !important;
+    height: 50vh !important;
+  }
+
+  /* Remote video wrapper - responsive */
+  #remote-video-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* All videos on mobile - fill container */
+  video {
+    width: 100% !important;
+    height: 100% !important;
   }
 }
 
@@ -427,15 +525,45 @@ video {
     gap: 0.5rem !important;
   }
 
+  .video-chat-container {
+    padding: 0.5rem !important;
+    gap: 0.5rem !important;
+    height: 100vh !important;
+  }
+
+  .main-chat-layout {
+    padding: 0.5rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .chat-screen {
+    gap: 0.5rem !important;
+  }
+
+  .screen-container {
+    padding: 0.5rem !important;
+    gap: 0.5rem !important;
+  }
+
   .video-box {
     height: auto !important;
-    min-height: 250px !important;
+    min-height: 45vh !important;
     border-radius: 1rem !important;
+    width: 100% !important;
   }
 
   .right-panel {
     height: auto !important;
-    min-height: 250px !important;
+    min-height: 45vh !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .left-panel {
+    height: auto !important;
+    min-height: 45vh !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem !important;
   }
 
   .top-right-icons {
@@ -444,6 +572,7 @@ video {
     left: 5px;
     width: calc(100% - 10px);
     gap: 6px;
+    z-index: 100;
   }
 
   .icon-circle {
@@ -461,6 +590,12 @@ video {
     font-size: 9px;
     top: -8px;
     right: -8px;
+  }
+
+  video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
   }
 }
 
