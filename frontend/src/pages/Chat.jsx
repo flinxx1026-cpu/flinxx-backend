@@ -830,12 +830,37 @@ const Chat = () => {
         remoteVideoRef.current.style.height = "100%";
         remoteVideoRef.current.style.objectFit = "cover";
         console.log('📺 STEP 4: ✅ CSS styles applied');
+        
+        // ✅ FIX #6: Handle mobile autoplay restriction - play() with error handling
+        console.log('📺 STEP 5: Attempting to play remote video...');
+        try {
+          const playPromise = remoteVideoRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                console.log('📺 ✅ Remote video playing successfully');
+              })
+              .catch((playError) => {
+                console.warn('📺 ⚠️ Play error (may be due to mobile autoplay policy):', playError.name, playError.message);
+                console.log('📺 NOTE: Video element has srcObject set, will play when user interacts');
+                // Video element is ready, autoplay will work once user interacts on mobile
+              });
+          } else {
+            // Browser doesn't return a promise (older browsers)
+            console.log('📺 Play promise not returned (older browser), video should play automatically');
+          }
+        } catch (err) {
+          console.error('📺 ❌ Play attempt threw error:', err);
+          console.log('📺 Continuing - stream is attached and ready');
+        }
+        
         console.log('✅ Remote video srcObject set successfully');
         console.log('📥 ===== REMOTE TRACK SETUP COMPLETE =====\n\n');
     };
 
     peerConnection.onconnectionstatechange = () => {
-        console.log("🔄 Connection State Changed:", peerConnection.connectionState);
+        console.log("\n🔌 ===== CONNECTION STATE CHANGED =====");
+        console.log("🔌 New Connection State:", peerConnection.connectionState);
         console.log("   ICE Connection State:", peerConnection.iceConnectionState);
         console.log("   ICE Gathering State:", peerConnection.iceGatheringState);
         console.log("   Signaling State:", peerConnection.signalingState);
@@ -843,6 +868,36 @@ const Chat = () => {
         if (peerConnection.connectionState === 'connected') {
           setIsConnected(true);
           console.log('✅ WebRTC connection ESTABLISHED');
+          
+          // ✅ FIX #5: Debug check after connection - log receivers
+          setTimeout(() => {
+            console.log('\n📊 ===== RECEIVER DEBUG CHECK (after connected) =====');
+            const receivers = peerConnection.getReceivers();
+            console.log('📊 Total receivers:', receivers.length);
+            receivers.forEach((receiver, i) => {
+              console.log(`📊 Receiver ${i}:`, {
+                kind: receiver.track?.kind,
+                enabled: receiver.track?.enabled,
+                readyState: receiver.track?.readyState,
+                id: receiver.track?.id,
+                muted: receiver.track?.muted
+              });
+            });
+            
+            console.log('📊 Audio and video tracks should be present above');
+            
+            // Also log senders for verification
+            const senders = peerConnection.getSenders();
+            console.log('\n📊 Total senders:', senders.length);
+            senders.forEach((sender, i) => {
+              console.log(`📊 Sender ${i}:`, {
+                kind: sender.track?.kind,
+                enabled: sender.track?.enabled,
+                readyState: sender.track?.readyState,
+                id: sender.track?.id
+              });
+            });
+          }, 1000);
         } else if (peerConnection.connectionState === 'disconnected') {
           setIsConnected(false);
           console.log('⚠️ WebRTC connection DISCONNECTED');

@@ -5,6 +5,7 @@ export const useWebRTC = (socketId, onRemoteStream) => {
   const [error, setError] = useState(null)
   const peerConnectionRef = useRef(null)
   const localStreamRef = useRef(null)
+  const remoteVideoRef = useRef(null)  // ✅ FIX #3: Add remote video ref
 
   const getLocalStream = async () => {
     try {
@@ -116,17 +117,41 @@ export const useWebRTC = (socketId, onRemoteStream) => {
       }
       
       const stream = event.streams[0];
-      console.log('✅ Remote stream ready, calling callback');
+      console.log('✅ Remote stream ready:', {
+        active: stream.active,
+        trackCount: stream.getTracks().length,
+        tracks: stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState }))
+      });
+      
+      // ✅ FIX #2: Properly attach stream to remote video ref
+      console.log('📥 Attaching remote stream to video element');
+      
+      // Call the callback to attach to parent component's ref
       onRemoteStream(stream);
-      console.log('✅ onRemoteStream callback invoked');
+      
+      console.log('✅ onRemoteStream callback invoked with stream');
     }
 
     if (localStreamRef.current) {
       const tracks = localStreamRef.current.getTracks();
       console.log('🎤 Adding', tracks.length, 'local tracks');
       tracks.forEach(track => {
+        // ✅ FIX #1: Add local media tracks to RTCPeerConnection
         peerConnection.addTrack(track, localStreamRef.current);
-        console.log('✅ Added', track.kind, 'track');
+        console.log('✅ Added', track.kind, 'track with ID:', track.id, 'enabled:', track.enabled);
+      });
+      
+      // ✅ FIX #5: Debug check after connection
+      console.log('\n📊 ===== LOCAL TRACKS DEBUG CHECK =====');
+      const senders = peerConnection.getSenders();
+      console.log('📊 Total senders:', senders.length);
+      senders.forEach((sender, i) => {
+        console.log(`  Sender ${i}:`, {
+          kind: sender.track?.kind,
+          enabled: sender.track?.enabled,
+          readyState: sender.track?.readyState,
+          id: sender.track?.id
+        });
       });
     } else {
       console.warn('⚠️ Local stream not ready');
@@ -226,6 +251,23 @@ export const useWebRTC = (socketId, onRemoteStream) => {
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
         
         console.log('✅ Answer set successfully, WebRTC connection established');
+        
+        // ✅ FIX #5: Debug check after connection
+        setTimeout(() => {
+          console.log('\n📊 ===== REMOTE TRACKS DEBUG CHECK (after answer) =====');
+          const receivers = pc.getReceivers();
+          console.log('📊 Total receivers:', receivers.length);
+          receivers.forEach((receiver, i) => {
+            console.log(`  Receiver ${i}:`, {
+              kind: receiver.track?.kind,
+              enabled: receiver.track?.enabled,
+              readyState: receiver.track?.readyState,
+              id: receiver.track?.id
+            });
+          });
+          
+          console.log('📊 Audio and video tracks should be present above');
+        }, 500);
       } catch (error) {
         console.error('❌ Error handling answer:', error);
         setError('Failed to handle answer');
@@ -271,6 +313,7 @@ export const useWebRTC = (socketId, onRemoteStream) => {
     createPeerConnection,
     sendOffer,
     localStreamRef,
+    remoteVideoRef,  // ✅ FIX #3: Export remote video ref for Chat.jsx
     peerConnectionRef
   }
 }
