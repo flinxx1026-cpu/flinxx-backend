@@ -520,6 +520,39 @@ const Chat = () => {
     };
   }, [shouldStartAsIntro]);
 
+  // ✅ CRITICAL FIX: Dedicated useEffect to attach local stream to video element
+  // This runs whenever localStreamRef changes and ALWAYS ensures the stream is attached
+  // to localVideoRef, independent of screen transitions or re-renders
+  useEffect(() => {
+    console.log('\n\n✅ ===== STREAM ATTACHMENT EFFECT RUNNING =====');
+    console.log('✅ localVideoRef exists:', !!localVideoRef.current);
+    console.log('✅ localStreamRef exists:', !!localStreamRef.current);
+    
+    if (localVideoRef.current && localStreamRef.current) {
+      console.log('✅ ATTACHING STREAM TO VIDEO ELEMENT');
+      console.log('   localStreamRef.current:', localStreamRef.current);
+      console.log('   Stream tracks:', localStreamRef.current.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled })));
+      
+      // Attach the stream to the hidden video element
+      localVideoRef.current.srcObject = localStreamRef.current;
+      
+      console.log('✅ srcObject assigned successfully');
+      console.log('✅ Video element now has stream:', !!localVideoRef.current.srcObject);
+      
+      // Attempt to play
+      localVideoRef.current.play().catch(err => {
+        console.warn('⚠️ Play error (expected on first setup):', err.name);
+      });
+      
+      console.log('✅ ===== STREAM ATTACHMENT COMPLETE =====\n\n');
+    } else {
+      console.warn('⚠️ Cannot attach stream - missing ref or stream:', {
+        refExists: !!localVideoRef.current,
+        streamExists: !!localStreamRef.current
+      });
+    }
+  }, [localStreamRef.current]); // Dependency on localStreamRef to re-attach if stream changes
+
   // Debug: Monitor wrapper element when partner connects
   useEffect(() => {
     if (hasPartner) {
@@ -1717,7 +1750,6 @@ const Chat = () => {
       <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
         <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
           <video
-            ref={localVideoRef}
             autoPlay={true}
             playsInline={true}
             muted={true}
@@ -1728,6 +1760,7 @@ const Chat = () => {
               zoom: 1,
               display: 'block'
             }}
+            srcObject={localStreamRef.current}
           />
           <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-10" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
             <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>You</p>
@@ -1836,7 +1869,6 @@ const Chat = () => {
       <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
         <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
           <video
-            ref={localVideoRef}
             autoPlay={true}
             playsInline={true}
             muted={true}
@@ -1847,6 +1879,7 @@ const Chat = () => {
               zoom: 1,
               display: 'block'
             }}
+            srcObject={localStreamRef.current}
           />
           <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-10" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
             <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>You</p>
@@ -2079,7 +2112,6 @@ const Chat = () => {
         <div className="video-box flex-1 rounded-3xl shadow-xl flex items-center justify-center" style={{ height: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f' }}>
           <div className="w-full h-full bg-black rounded-3xl flex items-center justify-center shadow-2xl overflow-hidden relative" style={{ border: '1px solid #d9b85f' }}>
             <video
-              ref={localVideoRef}
               autoPlay={true}
               playsInline={true}
               muted={true}
@@ -2092,6 +2124,7 @@ const Chat = () => {
                 width: '100%',
                 height: '100%'
               }}
+              srcObject={localStreamRef.current}
             />
             <div className="absolute bottom-4 left-4 px-4 py-2 rounded-xl z-10" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', border: '1px solid #d9b85f' }}>
               <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>You</p>
@@ -2104,6 +2137,21 @@ const Chat = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+      {/* ✅ CRITICAL FIX: Single hidden video element ALWAYS mounted - stream is attached ONLY here */}
+      {/* This element is ALWAYS in DOM, independent of screen transitions */}
+      {/* Display is hidden but video is playing in background */}
+      <video
+        ref={localVideoRef}
+        autoPlay={true}
+        playsInline={true}
+        muted={true}
+        style={{
+          display: 'none', // Hidden - not displayed on screen
+          width: 0,
+          height: 0
+        }}
+      />
+      
       {/* Main content - Show correct screen based on state */}
       {hasPartner ? (
         // Partner found: Show video chat
