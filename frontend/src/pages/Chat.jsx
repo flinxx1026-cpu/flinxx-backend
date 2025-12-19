@@ -2100,7 +2100,7 @@ const Chat = () => {
   return (
     <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       {/* ✅ SINGLE video element - positioned absolutely within left panel container */}
-      {/* Uses position: relative on panel + absolute + inset:0 on video for perfect alignment */}
+      {/* position: absolute + inset: 0 fills parent container perfectly */}
       <video
         ref={localVideoRef}
         autoPlay={true}
@@ -2108,10 +2108,7 @@ const Chat = () => {
         muted={true}
         style={{
           position: 'absolute',
-          top: '160px',
-          left: 'calc(5% + 40px)',
-          width: '32%',
-          height: '520px',
+          inset: 0,
           borderRadius: '24px',
           objectFit: 'cover',
           backgroundColor: '#000000',
