@@ -705,7 +705,7 @@ const Chat = () => {
     socket.off('partner_found');
     socket.off('webrtc_offer');
     socket.off('webrtc_answer');
-    socket.off('ice-candidate');
+    socket.off('ice_candidate');
     socket.off('receive_message');
     socket.off('partner_disconnected');
     socket.off('disconnect');
