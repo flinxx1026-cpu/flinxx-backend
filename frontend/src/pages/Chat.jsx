@@ -1931,44 +1931,33 @@ const Chat = () => {
       
       {/* 🔥 CRITICAL FIX: Remote video element ALWAYS in DOM, NEVER unmounted
           This is the ONLY remote video element - it must persist across all state changes
-          When !hasPartner: positioned off-screen, invisible, but still receiving stream
-          When hasPartner: VideoChatScreen moves this element on-screen and shows it
+          Position: fixed prevents it from affecting page layout
+          When !hasPartner: positioned way off-screen (left: -9999px) - NOT part of normal flow
+          When hasPartner: positioned at top-left covering full screen
           KEY: Do NOT create second video element in VideoChatScreen - reuse this one!
       */}
-      <div id="remote-video-wrapper-persistent" style={{ 
-        position: 'fixed', 
-        top: hasPartner ? 0 : -9999,
-        left: hasPartner ? 0 : -9999,
-        right: hasPartner ? 0 : 'auto',
-        bottom: hasPartner ? 0 : 'auto',
-        width: hasPartner ? '100%' : '1px',
-        height: hasPartner ? '100%' : '1px',
-        zIndex: hasPartner ? 99999 : -1,
-        backgroundColor: hasPartner ? 'black' : 'transparent',
-        pointerEvents: hasPartner ? 'none' : 'none',
-        transition: 'none',
-        overflow: 'hidden'
-      }}>
-        <video
-          id="remote-video-singleton"
-          ref={remoteVideoRef}
-          autoPlay={true}
-          playsInline={true}
-          muted={true}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            backgroundColor: 'black',
-            display: hasPartner ? 'block' : 'none',
-            opacity: hasPartner ? 1 : 0,
-            visibility: hasPartner ? 'visible' : 'hidden'
-          }}
-        />
-      </div>
+      <video
+        id="remote-video-singleton"
+        ref={remoteVideoRef}
+        autoPlay={true}
+        playsInline={true}
+        muted={true}
+        style={{
+          position: 'fixed',
+          top: hasPartner ? 0 : 0,
+          left: hasPartner ? 0 : -9999,
+          width: hasPartner ? '100%' : '1px',
+          height: hasPartner ? '100%' : '1px',
+          zIndex: hasPartner ? 99999 : -1,
+          objectFit: 'cover',
+          backgroundColor: 'black',
+          display: 'block',
+          opacity: hasPartner ? 1 : 0,
+          visibility: hasPartner ? 'visible' : 'hidden',
+          pointerEvents: 'none',
+          transition: 'none'
+        }}
+      />
       
       {/* Main content - Show correct screen based on state */}
       {hasPartner ? (
