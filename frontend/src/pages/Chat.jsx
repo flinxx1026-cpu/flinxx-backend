@@ -145,119 +145,10 @@ const Chat = () => {
   const [messageInput, setMessageInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // NOW safe to use state in useEffect hooks (state is declared above)
-  // CRITICAL: Force attach local stream to video element when partner connects
-  useEffect(() => {
-    console.log('\n\n🎥 ===== FORCE ATTACH EFFECT TRIGGERED =====');
-    console.log('🎥 hasPartner:', hasPartner);
-    console.log('🎥 localVideoRef.current:', localVideoRef.current?.tagName, localVideoRef.current ? '✅ EXISTS' : '❌ NULL');
-    console.log('🎥 localStreamRef.current:', localStreamRef.current ? '✅ EXISTS' : '❌ NULL');
-    
-    if (hasPartner && localVideoRef.current && localStreamRef.current) {
-      console.log('\n🎥 ===== FORCE ATTACH LOCAL STREAM ON PARTNER FOUND =====');
-      console.log('🎥 ALL CONDITIONS MET - Attaching local stream to video element');
-      console.log('🎥 localVideoRef.current:', {
-        element: localVideoRef.current.tagName,
-        id: localVideoRef.current.id,
-        muted: localVideoRef.current.muted,
-        currentSrcObject: !!localVideoRef.current.srcObject,
-        paused: localVideoRef.current.paused
-      });
-      console.log('🎥 localStreamRef.current:', {
-        active: localStreamRef.current.active,
-        tracks: localStreamRef.current.getTracks().length,
-        trackDetails: localStreamRef.current.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState, id: t.id }))
-      });
-      
-      // Force attachment
-      console.log('🎥 STEP 1: Setting srcObject...');
-      localVideoRef.current.srcObject = localStreamRef.current;
-      localVideoRef.current.muted = true;
-      
-      console.log('🎥 STEP 2: ✅ Local stream attached to video element');
-      console.log('🎥 STEP 2 VERIFICATION:', {
-        srcObjectSet: !!localVideoRef.current.srcObject,
-        srcObjectActive: localVideoRef.current.srcObject?.active,
-        tracksAttached: localVideoRef.current.srcObject?.getTracks().length
-      });
-      console.log('🎥 STEP 3: Attempting to play video...');
-      
-      // Force play using requestAnimationFrame for proper DOM timing
-      requestAnimationFrame(() => {
-        console.log('🎥 STEP 3: requestAnimationFrame fired');
-        if (localVideoRef.current && localVideoRef.current.srcObject) {
-          try {
-            console.log('🎥 STEP 3a: Calling video.play()...');
-            localVideoRef.current.play().catch(err => {
-              console.error('🎥 STEP 3b: Play error caught:', err);
-            });
-            console.log('🎥 ✅ STEP 3b: Play command dispatched successfully');
-            console.log('🎥 Video element state after play:', {
-              paused: localVideoRef.current.paused,
-              readyState: localVideoRef.current.readyState,
-              networkState: localVideoRef.current.networkState,
-              currentTime: localVideoRef.current.currentTime,
-              duration: localVideoRef.current.duration
-            });
-          } catch (err) {
-            console.error('🎥 ❌ STEP 3c: Play error:', err.message);
-            console.error('🎥 Error details:', { name: err.name, code: err.code });
-          }
-        } else {
-          console.error('🎥 ❌ STEP 3: srcObject not available for play');
-          console.error('   localVideoRef.current:', !!localVideoRef.current);
-          console.error('   localVideoRef.current.srcObject:', !!localVideoRef.current?.srcObject);
-        }
-      });
-    } else {
-      console.log('🎥 ⚠️ CONDITIONS NOT MET for force attach:');
-      console.log('   hasPartner:', hasPartner);
-      console.log('   localVideoRef.current exists:', !!localVideoRef.current);
-      console.log('   localStreamRef.current exists:', !!localStreamRef.current);
-    }
-  }, [hasPartner]);
-
-  // Track hasPartner state changes
-  useEffect(() => {
-    console.log('🔄 hasPartner state changed:', hasPartner);
-    if (hasPartner) {
-      console.log('   ✅ Partner connected!');
-      console.log('   Force attach effect should have run above');
-    } else {
-      console.log('   ❌ Partner disconnected');
-    }
-  }, [hasPartner]);
-
-  // CRITICAL: Re-attach camera stream when navigating between screens
-  // This fixes the black screen issue when going back from WaitingScreen to IntroScreen
-  useEffect(() => {
-    if (cameraStarted && localStreamRef.current && localVideoRef.current) {
-      console.log('🎥 [SCREEN CHANGE] Verifying stream attachment');
-      
-      // Check if stream is still attached
-      if (localVideoRef.current.srcObject !== localStreamRef.current) {
-        console.warn('🎥 [SCREEN CHANGE] ⚠️ Stream detached! Re-attaching...');
-        localVideoRef.current.srcObject = localStreamRef.current;
-        localVideoRef.current.muted = true;
-        
-        // Ensure video is playing
-        try {
-          const playPromise = localVideoRef.current.play();
-          if (playPromise !== undefined) {
-            playPromise.then(() => {
-              console.log('🎥 [SCREEN CHANGE] ✅ Stream re-attached and playing');
-            }).catch((error) => {
-              console.error('🎥 [SCREEN CHANGE] ❌ Playback error:', error);
-            });
-          }
-        } catch (error) {
-          console.error('🎥 [SCREEN CHANGE] ❌ Error playing video:', error);
-        }
-      } else {
-        console.log('🎥 [SCREEN CHANGE] ✅ Stream still attached');
-      }
-    }
-  }, [cameraStarted, isMatchingStarted, hasPartner]);
+  // ========================================
+  // CRITICAL: Camera attachment happens ONLY in startPreview() useEffect
+  // Do NOT re-attach in hasPartner useEffect - causes DOM thrashing
+  // ========================================
 
   // CRITICAL: Define functions AFTER state declarations to avoid TDZ
   // Expose camera re-initialization function that can be called from ProfileModal
@@ -550,39 +441,6 @@ const Chat = () => {
       clearTimeout(timer);
     };
   }, [shouldStartAsIntro]);
-
-  // ✅ CRITICAL FIX: Dedicated useEffect to attach local stream to video element
-  // This runs whenever localStreamRef changes and ALWAYS ensures the stream is attached
-  // to localVideoRef, independent of screen transitions or re-renders
-  useEffect(() => {
-    console.log('\n\n✅ ===== STREAM ATTACHMENT EFFECT RUNNING =====');
-    console.log('✅ localVideoRef exists:', !!localVideoRef.current);
-    console.log('✅ localStreamRef exists:', !!localStreamRef.current);
-    
-    if (localVideoRef.current && localStreamRef.current) {
-      console.log('✅ ATTACHING STREAM TO VIDEO ELEMENT');
-      console.log('   localStreamRef.current:', localStreamRef.current);
-      console.log('   Stream tracks:', localStreamRef.current.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled })));
-      
-      // Attach the stream to the hidden video element
-      localVideoRef.current.srcObject = localStreamRef.current;
-      
-      console.log('✅ srcObject assigned successfully');
-      console.log('✅ Video element now has stream:', !!localVideoRef.current.srcObject);
-      
-      // Attempt to play
-      localVideoRef.current.play().catch(err => {
-        console.warn('⚠️ Play error (expected on first setup):', err.name);
-      });
-      
-      console.log('✅ ===== STREAM ATTACHMENT COMPLETE =====\n\n');
-    } else {
-      console.warn('⚠️ Cannot attach stream - missing ref or stream:', {
-        refExists: !!localVideoRef.current,
-        streamExists: !!localStreamRef.current
-      });
-    }
-  }, [localStreamRef.current]); // Dependency on localStreamRef to re-attach if stream changes
 
   // Debug: Monitor wrapper element when partner connects
   useEffect(() => {
