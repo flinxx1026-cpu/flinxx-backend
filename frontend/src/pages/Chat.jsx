@@ -811,35 +811,6 @@ const Chat = () => {
         console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
     };
 
-    // ✅ MONITOR OVERALL CONNECTION STATE
-    peerConnection.onconnectionstatechange = () => {
-        const state = peerConnection.connectionState;
-        console.log('\n🔌 ===== CONNECTION STATE CHANGED =====');
-        console.log('🔌 New Connection State:', state);
-        
-        switch(state) {
-          case 'new':
-            console.log('🔌 State: NEW - peer connection created');
-            break;
-          case 'connecting':
-            console.log('🔌 State: CONNECTING - establishing connection');
-            break;
-          case 'connected':
-            console.log('✅ State: CONNECTED - peer connection established');
-            console.log('🎉 Ready for media transmission');
-            break;
-          case 'disconnected':
-            console.warn('⚠️ State: DISCONNECTED - lost peer connection');
-            break;
-          case 'failed':
-            console.error('❌ State: FAILED - peer connection failed');
-            break;
-          case 'closed':
-            console.log('🛑 State: CLOSED - peer connection closed');
-            break;
-        }
-    };
-
     peerConnection.ontrack = (event) => {
         console.log('\n\n🔴🔴🔴 ===== CRITICAL: ONTRACK HANDLER FIRING! =====');
         console.log('🔴 ONTRACK CALLED AT:', new Date().toISOString());
@@ -911,6 +882,13 @@ const Chat = () => {
             return;
         }
         
+        // ✅ CRITICAL GUARD: Only attach stream if not already set with valid tracks
+        if (remoteVideoRef.current.srcObject && remoteVideoRef.current.srcObject.getTracks().length > 0) {
+          console.log('📺 ⚠️ GUARD: Remote stream already attached with tracks, skipping re-attachment');
+          console.log('📺 Current stream has', remoteVideoRef.current.srcObject.getTracks().length, 'tracks');
+          return;
+        }
+        
         console.log('📺 STEP 1: Setting remoteVideoRef.current.srcObject = event.streams[0]');
         const stream = event.streams[0];
         remoteVideoRef.current.srcObject = stream;
@@ -943,17 +921,40 @@ const Chat = () => {
             playPromise
               .then(() => {
                 console.log('📺 ✅ Remote video playing successfully on remoteVideoRef');
+                // ✅ NOW that video is playing, unmute it for audio
+                // (Browsers require muted=true for autoplay, then we can unmute)
+                setTimeout(() => {
+                  if (remoteVideoRef.current) {
+                    remoteVideoRef.current.muted = false;
+                    console.log('📺 ✅ Remote video UNMUTED - audio should now play');
+                  }
+                }, 100);
               })
               .catch((playError) => {
                 console.warn('📺 ⚠️ Play error (may be due to mobile autoplay policy):', playError.name, playError.message);
                 console.log('📺 NOTE: Remote video element has srcObject set, will play when user interacts');
+                // Try to unmute anyway in case autoplay was blocked but we want audio if user interacts
+                if (remoteVideoRef.current) {
+                  remoteVideoRef.current.muted = false;
+                  console.log('📺 Remote video UNMUTED (in case autoplay was blocked)');
+                }
               });
           } else {
             console.log('📺 Play promise not returned (older browser), remote video should play automatically');
+            // Unmute for older browsers too
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.muted = false;
+              console.log('📺 Remote video UNMUTED (older browser)');
+            }
           }
         } catch (err) {
           console.error('📺 ❌ Play attempt threw error:', err);
           console.log('📺 Continuing - remote stream is attached and ready');
+          // Try to unmute even on error
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.muted = false;
+            console.log('📺 Remote video UNMUTED (after error)');
+          }
         }
         
         console.log('✅ ✅ ✅ Remote video srcObject set successfully on remoteVideoRef');
@@ -1175,6 +1176,18 @@ const Chat = () => {
       // Create peer connection and send offer
       try {
         console.log('\n🏠 OFFERER: Creating peer connection');
+        
+        // ✅ CRITICAL: Only create ONE peer connection per call
+        if (peerConnectionRef.current) {
+          console.warn('⚠️ OFFERER: WARNING - Peer connection already exists! Not recreating.');
+          console.warn('   Existing PC state:', {
+            connectionState: peerConnectionRef.current.connectionState,
+            iceConnectionState: peerConnectionRef.current.iceConnectionState,
+            signalingState: peerConnectionRef.current.signalingState
+          });
+          return;
+        }
+        
         let pc;
         try {
           pc = await createPeerConnection();
@@ -1197,29 +1210,38 @@ const Chat = () => {
           const allTracks = localStreamRef.current.getTracks();
           console.log('👤 OFFERER: All available tracks:', allTracks);
           console.log('📹 OFFERER tracks detail:', allTracks.map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled, state: t.readyState })));
-          console.log(`\n📹 OFFERER: Adding ${allTracks.length} local tracks to peer connection`);
           
-          allTracks.forEach((track, index) => {
-            console.log(`  [${index}] Adding ${track.kind} track (id: ${track.id}, enabled: ${track.enabled})`);
-            try {
-              const sender = pc.addTrack(track, localStreamRef.current);
-              console.log(`  [${index}] ✅ addTrack succeeded, sender:`, sender);
-            } catch (addTrackErr) {
-              console.error(`  [${index}] ❌ addTrack failed:`, addTrackErr);
-            }
-          });
+          // ✅ CRITICAL: Check if tracks already added to avoid duplicate senders
+          const existingSenders = pc.getSenders();
+          console.log('📤 OFFERER: Existing senders count:', existingSenders.length);
+          if (existingSenders.length > 0) {
+            console.warn('⚠️ OFFERER WARNING: Tracks already added! Senders:', existingSenders.map(s => ({ kind: s.track?.kind, id: s.track?.id })));
+            console.warn('   Not adding tracks again to avoid duplicates');
+          } else {
+            console.log(`\n📹 OFFERER: Adding ${allTracks.length} local tracks to peer connection`);
+            
+            allTracks.forEach((track, index) => {
+              console.log(`  [${index}] Adding ${track.kind} track (id: ${track.id}, enabled: ${track.enabled})`);
+              try {
+                const sender = pc.addTrack(track, localStreamRef.current);
+                console.log(`  [${index}] ✅ addTrack succeeded, sender:`, sender);
+              } catch (addTrackErr) {
+                console.error(`  [${index}] ❌ addTrack failed:`, addTrackErr);
+              }
+            });
           
-          console.log('\n✅ OFFERER: All tracks added to peer connection');
-          const senders = pc.getSenders();
-          console.log('📤 OFFERER senders count:', senders.length);
-          console.log('📤 OFFERER senders after addTrack:', senders.map((s, i) => ({ 
-            index: i,
-            kind: s.track?.kind, 
-            id: s.track?.id,
-            trackExists: !!s.track,
-            trackEnabled: s.track?.enabled
-          })));
-          console.log('🚀 OFFERER: Ready to send offer with', allTracks.length, 'tracks\n');
+            console.log('\n✅ OFFERER: All tracks added to peer connection');
+            const senders = pc.getSenders();
+            console.log('📤 OFFERER senders count:', senders.length);
+            console.log('📤 OFFERER senders after addTrack:', senders.map((s, i) => ({ 
+              index: i,
+              kind: s.track?.kind, 
+              id: s.track?.id,
+              trackExists: !!s.track,
+              trackEnabled: s.track?.enabled
+            })));
+            console.log('🚀 OFFERER: Ready to send offer with', allTracks.length, 'tracks\n');
+          }
         } else {
           console.error('❌ OFFERER: No local stream available - TRACKS WILL NOT BE SENT!');
           console.error('❌ OFFERER: localStreamRef.current is:', localStreamRef.current);
@@ -1358,34 +1380,42 @@ const Chat = () => {
             console.warn('⚠️ ANSWERER: WARNING - localStream exists but getTracks() returned empty array!');
           }
           
-          console.log(`\n📹 ANSWERER: Attempting to add ${allTracks.length} local tracks to peer connection`);
-          let successCount = 0;
-          let failureCount = 0;
-          
-          allTracks.forEach((track, idx) => {
-            console.log(`  [${idx}] About to add ${track.kind} track (id: ${track.id}, enabled: ${track.enabled})`);
-            try {
-              const sender = peerConnectionRef.current.addTrack(track, localStreamRef.current);
-              console.log(`  [${idx}] ✅ addTrack SUCCEEDED`);
-              console.log(`  [${idx}] Sender:`, sender);
-              successCount++;
-            } catch (addTrackErr) {
-              console.error(`  [${idx}] ❌ addTrack FAILED`);
-              console.error(`  [${idx}] Error:`, addTrackErr.message);
-              failureCount++;
-            }
-          });
-          
-          console.log(`\n✅ ANSWERER: Track addition complete (${successCount} succeeded, ${failureCount} failed)`);
-          const senders = peerConnectionRef.current.getSenders();
-          console.log('📤 ANSWERER: Final senders count:', senders.length);
-          console.log('📤 ANSWERER: Senders:', senders.map((s, i) => ({ 
-            index: i,
-            kind: s.track?.kind, 
-            id: s.track?.id,
-            trackExists: !!s.track,
-            trackEnabled: s.track?.enabled
-          })));
+          // ✅ CRITICAL: Check if tracks already added to avoid duplicate senders
+          const existingSenders = peerConnectionRef.current.getSenders();
+          console.log('📤 ANSWERER: Existing senders count:', existingSenders.length);
+          if (existingSenders.length > 0) {
+            console.warn('⚠️ ANSWERER WARNING: Tracks already added! Senders:', existingSenders.map(s => ({ kind: s.track?.kind, id: s.track?.id })));
+            console.warn('   Not adding tracks again to avoid duplicates');
+          } else {
+            console.log(`\n📹 ANSWERER: Attempting to add ${allTracks.length} local tracks to peer connection`);
+            let successCount = 0;
+            let failureCount = 0;
+            
+            allTracks.forEach((track, idx) => {
+              console.log(`  [${idx}] About to add ${track.kind} track (id: ${track.id}, enabled: ${track.enabled})`);
+              try {
+                const sender = peerConnectionRef.current.addTrack(track, localStreamRef.current);
+                console.log(`  [${idx}] ✅ addTrack SUCCEEDED`);
+                console.log(`  [${idx}] Sender:`, sender);
+                successCount++;
+              } catch (addTrackErr) {
+                console.error(`  [${idx}] ❌ addTrack FAILED`);
+                console.error(`  [${idx}] Error:`, addTrackErr.message);
+                failureCount++;
+              }
+            });
+            
+            console.log(`\n✅ ANSWERER: Track addition complete (${successCount} succeeded, ${failureCount} failed)`);
+            const senders = peerConnectionRef.current.getSenders();
+            console.log('📤 ANSWERER: Final senders count:', senders.length);
+            console.log('📤 ANSWERER: Senders:', senders.map((s, i) => ({ 
+              index: i,
+              kind: s.track?.kind, 
+              id: s.track?.id,
+              trackExists: !!s.track,
+              trackEnabled: s.track?.enabled
+            })));
+          }
         } else {
           console.error('\n❌ ANSWERER: CRITICAL ERROR - localStreamRef.current is NULL!');
           console.error('❌ ANSWERER: Cannot add tracks - stream does not exist');
@@ -2072,7 +2102,7 @@ const Chat = () => {
                   ref={remoteVideoRef}
                   autoPlay={true}
                   playsInline={true}
-                  muted={false}
+                  muted={true}
                   style={{
                     width: '100%',
                     height: '100%',
