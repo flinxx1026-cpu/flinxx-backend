@@ -1581,6 +1581,41 @@ const Chat = () => {
     };
   }, []); // Empty dependency array - runs ONCE on component mount
 
+  // CRITICAL: Cancel matching when user navigates away or component unmounts
+  useEffect(() => {
+    return () => {
+      console.log('\n\n🧹 🧹 🧹 CHAT COMPONENT UNMOUNTING - CRITICAL CLEANUP 🧹 🧹 🧹');
+      
+      // If user is still matching (isMatchingStarted but no partner yet), remove from queue
+      if (isMatchingStarted && !hasPartner) {
+        console.log('🧹 User was still looking for partner - emitting cancel_matching');
+        socket.emit('cancel_matching', {
+          userId: userIdRef.current,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Close peer connection
+      if (peerConnectionRef.current) {
+        console.log('🧹 Closing peer connection');
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      
+      // Stop all local tracks
+      if (localStreamRef.current) {
+        console.log('🧹 Stopping all local media tracks');
+        localStreamRef.current.getTracks().forEach(track => {
+          console.log('🧹 Stopping track:', track.kind);
+          track.stop();
+        });
+        localStreamRef.current = null;
+      }
+      
+      console.log('✅ Chat component cleanup complete');
+    };
+  }, [isMatchingStarted, hasPartner]);
+
   // Only cleanup peer connection when component unmounts
   useEffect(() => {
     return () => {
@@ -1930,7 +1965,12 @@ const Chat = () => {
           {/* Cancel Button */}
           <button
             onClick={() => {
-              console.log('🔙 Cancel matching');
+              console.log('🔙 Cancel matching - emitting cancel_matching event');
+              // CRITICAL: Remove from queue on server before changing UI
+              socket.emit('cancel_matching', {
+                userId: userIdRef.current,
+                timestamp: new Date().toISOString()
+              });
               setIsMatchingStarted(false);
               setIsLoading(false);
             }}

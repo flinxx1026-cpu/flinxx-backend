@@ -271,15 +271,23 @@ async function addToMatchingQueue(userId, socketId, userData) {
   try {
     // CRITICAL: Check if this user is already in the queue (e.g., from a previous session)
     const existingQueueEntries = await redis.lRange('matching_queue', 0, -1)
+    let removedCount = 0
+    
     for (const entry of existingQueueEntries) {
       const queuedUser = JSON.parse(entry)
       if (queuedUser.userId === userId) {
-        console.warn(`⚠️ User ${userId} is already in the queue with old socket ${queuedUser.socketId}`)
-        console.warn(`⚠️ Removing old entry before adding new one`)
+        console.warn(`⚠️ DUPLICATE ENTRY FOUND: User ${userId} already in queue`)
+        console.warn(`   Old socket: ${queuedUser.socketId}`)
+        console.warn(`   New socket: ${socketId}`)
+        console.warn(`   Removing old entry...`)
         // Remove the old entry
         await redis.lRem('matching_queue', 0, entry)
-        console.log(`✅ Removed old queue entry for user ${userId}`)
+        removedCount++
       }
+    }
+    
+    if (removedCount > 0) {
+      console.log(`✅ REMOVED ${removedCount} duplicate queue entries for user ${userId}`)
     }
 
     const queueData = JSON.stringify({
@@ -293,6 +301,10 @@ async function addToMatchingQueue(userId, socketId, userData) {
     })
     await redis.lPush('matching_queue', queueData)
     console.log(`✅ User ${userId} added to matching queue with socket ${socketId}`)
+    
+    // Verify it was added
+    const queueLen = await redis.lLen('matching_queue')
+    console.log(`✅ Queue length after add: ${queueLen}`)
   } catch (error) {
     console.error('❌ Error adding to queue:', error)
   }
@@ -1192,6 +1204,18 @@ io.on('connection', (socket) => {
 
     // Store the mapping: socket.id -> userId (from frontend)
     userSockets.set(socket.id, userId)
+    
+    // Log queue state BEFORE processing
+    const queueLenBefore = await getQueueLength()
+    const queueEntriesBefore = await redis.lRange('matching_queue', 0, -1)
+    console.log(`\n📊 [find_partner] QUEUE STATE BEFORE PROCESSING:`)
+    console.log(`   Queue length: ${queueLenBefore}`)
+    console.log(`   Queue entries:`)
+    for (const entry of queueEntriesBefore) {
+      const parsed = JSON.parse(entry)
+      console.log(`      - userId: ${parsed.userId}, socketId: ${parsed.socketId}, timestamp: ${new Date(parsed.timestamp).toISOString()}`)
+    }
+    
     console.log(`[find_partner] User ${userId} looking for partner`, { userName: userData?.userName, socketId: socket.id })
 
     // Set user as online in Redis
@@ -1227,6 +1251,15 @@ io.on('connection', (socket) => {
       const queueLen = await getQueueLength()
       console.log(`[find_partner] ⏳ Added user ${userId} to queue. Queue length: ${queueLen}`)
       console.log(`[find_partner] 📋 Waiting for another user to join...`)
+      
+      // Log queue state AFTER adding
+      const queueEntriesAfter = await redis.lRange('matching_queue', 0, -1)
+      console.log(`📊 [find_partner] QUEUE STATE AFTER ADDING USER:`)
+      for (const entry of queueEntriesAfter) {
+        const parsed = JSON.parse(entry)
+        console.log(`   - userId: ${parsed.userId}, socketId: ${parsed.socketId}`)
+      }
+      
       socket.emit('waiting', { message: 'Waiting for a partner...' })
     }
   })
@@ -1317,6 +1350,35 @@ io.on('connection', (socket) => {
   })
 
   // Handle skip user
+  // Handle cancel matching - user clicks "Back" or navigates away while waiting
+  socket.on('cancel_matching', async (data) => {
+    const userId = userSockets.get(socket.id)
+    
+    if (!userId) {
+      console.log(`[cancel_matching] ⚠️ No userId found for socket ${socket.id}`)
+      return
+    }
+    
+    console.log(`\n📋 [cancel_matching] User ${userId} cancelled matching`)
+    console.log(`[cancel_matching] Socket ID: ${socket.id}`)
+    
+    // Remove user from matching queue
+    const removedCount = await removeUserFromQueue(userId)
+    if (removedCount > 0) {
+      console.log(`✅ [cancel_matching] Removed ${removedCount} queue entries for user ${userId}`)
+    } else {
+      console.log(`ℹ️ [cancel_matching] User ${userId} was not in queue`)
+    }
+    
+    // Mark user as offline
+    await setUserOffline(userId)
+    console.log(`✅ [cancel_matching] User ${userId} marked as offline`)
+    
+    // Remove socket mapping
+    userSockets.delete(socket.id)
+    console.log(`✅ [cancel_matching] Removed socket mapping for ${socket.id}`)
+  })
+
   socket.on('skip_user', async (data) => {
     const userId = userSockets.get(socket.id)
     const partnerSocketId = data?.partnerSocketId
