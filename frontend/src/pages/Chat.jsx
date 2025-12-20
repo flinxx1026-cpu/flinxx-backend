@@ -1582,12 +1582,18 @@ const Chat = () => {
   }, []); // Empty dependency array - runs ONCE on component mount
 
   // CRITICAL: Cancel matching when user navigates away or component unmounts
+  // IMPORTANT: Use refs to capture current state without adding dependencies
+  // This prevents cleanup from running on state changes - only on unmount!
   useEffect(() => {
+    // Capture refs at effect time
+    const isMatchingRef = isMatchingStarted;
+    const hasPartnerRef = hasPartner;
+    
     return () => {
       console.log('\n\n🧹 🧹 🧹 CHAT COMPONENT UNMOUNTING - CRITICAL CLEANUP 🧹 🧹 🧹');
       
-      // If user is still matching (isMatchingStarted but no partner yet), remove from queue
-      if (isMatchingStarted && !hasPartner) {
+      // Only cancel matching if user was still searching (not in active chat)
+      if (isMatchingRef && !hasPartnerRef) {
         console.log('🧹 User was still looking for partner - emitting cancel_matching');
         socket.emit('cancel_matching', {
           userId: userIdRef.current,
@@ -1595,26 +1601,22 @@ const Chat = () => {
         });
       }
       
-      // Close peer connection
+      // CRITICAL: Do NOT stop tracks here!
+      // Tracks should ONLY stop when:
+      // 1. User clicks Cancel Search button
+      // 2. User ends chat (skipUser/endChat functions)
+      // 3. App is truly closing/navigating away permanently
+      
+      // Only close peer connection (it will be recreated if needed)
       if (peerConnectionRef.current) {
         console.log('🧹 Closing peer connection');
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
       }
       
-      // Stop all local tracks
-      if (localStreamRef.current) {
-        console.log('🧹 Stopping all local media tracks');
-        localStreamRef.current.getTracks().forEach(track => {
-          console.log('🧹 Stopping track:', track.kind);
-          track.stop();
-        });
-        localStreamRef.current = null;
-      }
-      
-      console.log('✅ Chat component cleanup complete');
+      console.log('✅ Chat component cleanup complete (tracks NOT stopped - will be reused)');
     };
-  }, [isMatchingStarted, hasPartner]);
+  }, []); // CRITICAL: Empty dependency array - cleanup only on unmount!
 
   // Only cleanup peer connection when component unmounts
   useEffect(() => {
@@ -1782,13 +1784,29 @@ const Chat = () => {
       peerConnectionRef.current = null;
     }
 
-    // Look for new partner
+    // Look for new partner (do NOT stop camera - reuse same stream)
     socket.emit('find_partner', {
       userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
       userName: currentUser.name || 'Anonymous',
       userAge: currentUser.age || 18,
       userLocation: currentUser.location || 'Unknown'
     });
+  };
+
+  // Stop camera tracks - ONLY called when user explicitly ends session or logs out
+  const stopCameraStream = () => {
+    console.log('🎥 Stopping camera stream - user ended session');
+    if (localStreamRef.current) {
+      console.log('🎥 Stopping all local media tracks');
+      localStreamRef.current.getTracks().forEach(track => {
+        console.log('🎥 Stopping track:', track.kind);
+        track.stop();
+      });
+      localStreamRef.current = null;
+    }
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
   };
 
   const cleanup = () => {
