@@ -1803,13 +1803,37 @@ const Chat = () => {
             {/* SECTION 2: MIDDLE - Messages area with remote video */}
             <div id="main-container" className="overflow-visible flex flex-col w-full flex-1" style={{ zIndex: 1, backgroundColor: 'transparent', padding: 0, overflow: 'visible' }}>
               
-              {/* Remote video wrapper - USES PERSISTENT VIDEO ELEMENT FROM ROOT
-                  The actual <video ref={remoteVideoRef} /> is mounted at root level and never unmounted
-                  This wrapper just provides layout/positioning when hasPartner = true
-                  The video element itself is moved into position via CSS at root level
+              {/* Remote video wrapper - CONTAINS the persistent remote video element
+                  The <video ref={remoteVideoRef} /> lives here, inside the layout
+                  NOT using position: fixed (that broke the entire UI)
+                  Using display: none to hide when !hasPartner
               */}
               <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'visible', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                {/* NO video element here - using persistent one at root level! */}
+                
+                {/* 🔥 CRITICAL: Remote video element - ALWAYS mounted, NEVER unmounted
+                    Hidden with display: none when !hasPartner (not with position: fixed!)
+                    This keeps layout normal, ref stable, and allows ontrack to attach stream
+                */}
+                <video
+                  id="remote-video-singleton"
+                  ref={remoteVideoRef}
+                  autoPlay={true}
+                  playsInline={true}
+                  muted={true}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    backgroundColor: 'black',
+                    display: hasPartner ? 'block' : 'none',
+                    zIndex: 10
+                  }}
+                />
+                
+                {/* NO video element here - using persistent one above! */}
                 
                 {/* Placeholder shown when no partner */}
                 {!hasPartner && (
@@ -1929,39 +1953,9 @@ const Chat = () => {
   return (
     <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       
-      {/* 🔥 CRITICAL FIX: Remote video element ALWAYS in DOM, NEVER unmounted
-          This is the ONLY remote video element - it must persist across all state changes
-          Position: fixed prevents it from affecting page layout
-          When !hasPartner: positioned way off-screen (left: -9999px) - NOT part of normal flow
-          When hasPartner: positioned at top-left covering full screen
-          KEY: Do NOT create second video element in VideoChatScreen - reuse this one!
-      */}
-      <video
-        id="remote-video-singleton"
-        ref={remoteVideoRef}
-        autoPlay={true}
-        playsInline={true}
-        muted={true}
-        style={{
-          position: 'fixed',
-          top: hasPartner ? 0 : 0,
-          left: hasPartner ? 0 : -9999,
-          width: hasPartner ? '100%' : '1px',
-          height: hasPartner ? '100%' : '1px',
-          zIndex: hasPartner ? 99999 : -1,
-          objectFit: 'cover',
-          backgroundColor: 'black',
-          display: 'block',
-          opacity: hasPartner ? 1 : 0,
-          visibility: hasPartner ? 'visible' : 'hidden',
-          pointerEvents: 'none',
-          transition: 'none'
-        }}
-      />
-      
       {/* Main content - Show correct screen based on state */}
       {hasPartner ? (
-        // Partner found: Show video chat (NO remote video here - uses persistent one above)
+        // Partner found: Show video chat (includes remote video inside)
         <VideoChatScreen />
       ) : isMatchingStarted ? (
         // Matching in progress: Show waiting screen
