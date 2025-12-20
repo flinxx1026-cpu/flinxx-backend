@@ -2063,30 +2063,33 @@ const Chat = () => {
               
               {/* Remote video wrapper - ABSOLUTE FULL SIZE */}
               <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: hasPartner ? 99999 : 1, overflow: 'visible', backgroundColor: hasPartner ? 'black' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                {/* Remote video element - ONLY show if partner has joined */}
-                {hasPartner ? (
-                  <video
-                    id="remote-video"
-                    ref={remoteVideoRef}
-                    autoPlay={true}
-                    playsInline={true}
-                    muted={false}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      backgroundColor: 'black',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      zIndex: 9999,
-                      display: 'block',
-                      opacity: 1,
-                      visibility: 'visible'
-                    }}
-                  />
-                ) : (
-                  // Show placeholder when no partner
+                {/* CRITICAL FIX: Remote video element ALWAYS exists in DOM
+                    This ensures remoteVideoRef is ready when ontrack fires
+                    Display is controlled by hasPartner state via CSS
+                */}
+                <video
+                  id="remote-video"
+                  ref={remoteVideoRef}
+                  autoPlay={true}
+                  playsInline={true}
+                  muted={false}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    backgroundColor: 'black',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    zIndex: 9999,
+                    display: hasPartner ? 'block' : 'none',
+                    opacity: hasPartner ? 1 : 0,
+                    visibility: hasPartner ? 'visible' : 'hidden'
+                  }}
+                />
+                
+                {/* Placeholder shown when no partner */}
+                {!hasPartner && (
                   <div style={{
                     position: 'absolute',
                     top: 0,
