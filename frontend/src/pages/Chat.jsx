@@ -99,33 +99,6 @@ const Chat = () => {
     console.log('   localStreamRef.current exists:', !!localStreamRef.current);
   }, []);
 
-  // CRITICAL DEBUG: Monitor video ref status
-  useEffect(() => {
-    const checkInterval = setInterval(() => {
-      if (localVideoRef.current && remoteVideoRef.current) {
-        console.log('🎬 VIDEO REF STATUS CHECK:');
-        console.log('   Local video ref:', {
-          exists: !!localVideoRef.current,
-          inDOM: !!localVideoRef.current.parentElement,
-          hasStream: !!localVideoRef.current.srcObject,
-          paused: localVideoRef.current.paused,
-          playing: !localVideoRef.current.paused,
-          readyState: localVideoRef.current.readyState
-        });
-        console.log('   Remote video ref:', {
-          exists: !!remoteVideoRef.current,
-          inDOM: !!remoteVideoRef.current.parentElement,
-          hasStream: !!remoteVideoRef.current.srcObject,
-          paused: remoteVideoRef.current.paused,
-          playing: !remoteVideoRef.current.paused,
-          readyState: remoteVideoRef.current.readyState
-        });
-      }
-    }, 5000); // Check every 5 seconds
-
-    return () => clearInterval(checkInterval);
-  }, []);
-
   // UI state - MUST BE DECLARED FIRST, BEFORE ANY useEffect THAT USES THEM
   const [cameraStarted, setCameraStarted] = useState(false);
   const [isMatchingStarted, setIsMatchingStarted] = useState(false);
@@ -273,105 +246,6 @@ const Chat = () => {
     }
   }, [hasPartner, cameraStarted]);
 
-  // CRITICAL: Monitor video element mounting and auto-attach stream when element is ready
-  useEffect(() => {
-    console.log('🎥 [VIDEO MOUNT DETECTOR] Checking video element mount status');
-    console.log('   localVideoRef.current exists:', !!localVideoRef.current);
-    console.log('   localStreamRef.current exists:', !!localStreamRef.current);
-    console.log('   cameraStarted:', cameraStarted);
-    
-    if (localVideoRef.current && localStreamRef.current && cameraStarted) {
-      console.log('🎥 [VIDEO MOUNT DETECTOR] ✅ Video element is mounted on DOM');
-      console.log('🎥 [VIDEO MOUNT DETECTOR] Attaching stream to video element:', localStreamRef.current);
-      console.log('🎥 [VIDEO MOUNT DETECTOR] Video element dimensions:', {
-        width: localVideoRef.current.clientWidth,
-        height: localVideoRef.current.clientHeight,
-        offsetWidth: localVideoRef.current.offsetWidth,
-        offsetHeight: localVideoRef.current.offsetHeight,
-        displayStyle: localVideoRef.current.style.display,
-        computedDisplay: window.getComputedStyle(localVideoRef.current).display
-      });
-      
-      // Attach stream to video element
-      console.log('🎥 [VIDEO MOUNT DETECTOR] About to attach stream to localVideoRef');
-      console.log('   localVideoRef:', {
-        exists: !!localVideoRef.current,
-        inDOM: !!localVideoRef.current.parentElement,
-        element: localVideoRef.current?.tagName,
-        id: localVideoRef.current?.id
-      });
-      console.log('   localStreamRef:', {
-        exists: !!localStreamRef.current,
-        trackCount: localStreamRef.current?.getTracks().length,
-        active: localStreamRef.current?.active
-      });
-
-      localVideoRef.current.srcObject = localStreamRef.current;
-      localVideoRef.current.muted = true;
-      
-      console.log('🎥 [VIDEO MOUNT DETECTOR] ✅ Stream attached to localVideoRef');
-      console.log('🎥 [VIDEO MOUNT DETECTOR] Verifying attachment:', {
-        srcObject: !!localVideoRef.current.srcObject,
-        srcObjectActive: localVideoRef.current.srcObject?.active,
-        trackCount: localVideoRef.current.srcObject?.getTracks().length
-      });
-      console.log('🎥 [VIDEO MOUNT DETECTOR] Stream attached, srcObject set');
-      console.log('🎥 [VIDEO MOUNT DETECTOR] Attempting to play video...');
-      
-      // Attempt to play video with requestAnimationFrame for proper timing
-      requestAnimationFrame(() => {
-        if (localVideoRef.current && localVideoRef.current.srcObject) {
-          try {
-            console.log('🎥 [VIDEO MOUNT DETECTOR] Calling video.play()');
-            localVideoRef.current.play().catch(err => {
-              console.error('🎥 [VIDEO MOUNT DETECTOR] Play error:', err);
-            });
-            console.log('🎥 [VIDEO MOUNT DETECTOR] ✅ Play command dispatched');
-            console.log('🎥 [VIDEO MOUNT DETECTOR] Video readyState:', localVideoRef.current.readyState);
-            console.log('🎥 [VIDEO MOUNT DETECTOR] Video paused:', localVideoRef.current.paused);
-          } catch (err) {
-            console.error('🎥 [VIDEO MOUNT DETECTOR] ❌ Play error:', err);
-            console.error('🎥 [VIDEO MOUNT DETECTOR] Error name:', err.name);
-            console.error('🎥 [VIDEO MOUNT DETECTOR] Error message:', err.message);
-          }
-        }
-      });
-    } else {
-      console.warn('🎥 [VIDEO MOUNT DETECTOR] ⚠️ Cannot attach stream - missing:');
-      if (!localVideoRef.current) console.warn('   - localVideoRef.current (DOM element)');
-      if (!localStreamRef.current) console.warn('   - localStreamRef.current (media stream)');
-      if (!cameraStarted) console.warn('   - cameraStarted flag is false');
-    }
-  }, [localVideoRef, localStreamRef, cameraStarted]);
-
-  // Ensure video stream is attached when camera starts (original effect)
-  useEffect(() => {
-    if (cameraStarted && localStreamRef.current && localVideoRef.current) {
-      console.log('🎥 [CAMERA START] Attaching stream to video element:', localStreamRef.current);
-      console.log('🎥 [CAMERA START] Video element dimensions:', {
-        width: localVideoRef.current.clientWidth,
-        height: localVideoRef.current.clientHeight,
-        offsetWidth: localVideoRef.current.offsetWidth,
-        offsetHeight: localVideoRef.current.offsetHeight
-      });
-      
-      localVideoRef.current.srcObject = localStreamRef.current;
-      localVideoRef.current.muted = true;
-      
-      // Attempt to play video
-      setTimeout(async () => {
-        if (localVideoRef.current && localVideoRef.current.srcObject) {
-          try {
-            await localVideoRef.current.play();
-            console.log('✅ Video playing successfully');
-          } catch (err) {
-            console.error('❌ Play error:', err);
-          }
-        }
-      }, 100);
-    }
-  }, [cameraStarted]);
-
   // Auto-start camera preview on page load (lobby screen)
   // CRITICAL: Delayed initialization - only start after a short delay to ensure DOM is ready
   // IMPORTANT: Skip if coming from profile completion (view=home) - camera starts when user clicks "Start Video Chat"
@@ -441,57 +315,6 @@ const Chat = () => {
       clearTimeout(timer);
     };
   }, [shouldStartAsIntro]);
-
-  // Debug: Monitor wrapper element when partner connects
-  useEffect(() => {
-    if (hasPartner) {
-      setTimeout(() => {
-        const wrapper = document.getElementById('remote-video-wrapper');
-        const video = document.getElementById('remote-video');
-        if (wrapper && video) {
-          const wrapperRect = wrapper.getBoundingClientRect();
-          const videoRect = video.getBoundingClientRect();
-          const wrapperComputed = window.getComputedStyle(wrapper);
-          const videoComputed = window.getComputedStyle(video);
-          
-          console.log('\n\n🎥 ===== WRAPPER & VIDEO DEBUG (AFTER PARTNER FOUND) =====');
-          console.log('📦 Remote video wrapper dimensions:', {
-            width: wrapperRect.width,
-            height: wrapperRect.height,
-            top: wrapperRect.top,
-            left: wrapperRect.left,
-            display: wrapperComputed.display,
-            position: wrapperComputed.position,
-            zIndex: wrapperComputed.zIndex,
-            overflow: wrapperComputed.overflow,
-            backgroundColor: wrapperComputed.backgroundColor
-          });
-          console.log('🎬 Video element dimensions:', {
-            width: videoRect.width,
-            height: videoRect.height,
-            top: videoRect.top,
-            left: videoRect.left,
-            display: videoComputed.display,
-            position: videoComputed.position,
-            zIndex: videoComputed.zIndex,
-            objectFit: videoComputed.objectFit
-          });
-          console.log('🎬 Video element properties:', {
-            srcObject: !!video.srcObject,
-            srcObjectTracks: video.srcObject?.getTracks().length,
-            readyState: video.readyState,
-            networkState: video.networkState,
-            currentTime: video.currentTime,
-            duration: video.duration,
-            paused: video.paused,
-            volume: video.volume
-          });
-          console.log('📦 Wrapper visible in viewport:', wrapperRect.height > 0 && wrapperRect.width > 0);
-          console.log('🎬 Video visible in viewport:', videoRect.height > 0 && videoRect.width > 0);
-        }
-      }, 500);
-    }
-  }, [hasPartner]);
 
   // ========================================
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
