@@ -5,7 +5,6 @@ export const useWebRTC = (socketId, onRemoteStream) => {
   const [error, setError] = useState(null)
   const peerConnectionRef = useRef(null)
   const localStreamRef = useRef(null)
-  const remoteVideoRef = useRef(null)  // ✅ FIX #3: Add remote video ref
 
   const getLocalStream = async () => {
     try {
@@ -118,36 +117,13 @@ export const useWebRTC = (socketId, onRemoteStream) => {
       // ✅ FIX #2: Properly attach stream to remote video ref AND guarantee playback
       console.log('📥 Attaching remote stream to video element');
       
-      // Call the callback to attach to parent component's ref
+      // ✅ CRITICAL ARCHITECTURE: Hook ONLY sends stream to parent via callback
+      // Hook does NOT touch video DOM - that's Chat.jsx's responsibility
+      // This prevents dual DOM control which causes black screen
+      console.log('📥 Sending remote stream to parent component via onRemoteStream callback');
       onRemoteStream(stream);
       
-      // ✅ CRITICAL: Also directly attach and play if remoteVideoRef exists
-      // This guarantees video playback even if parent component has timing issues
-      if (remoteVideoRef.current) {
-        console.log('📥 STEP 1: Setting srcObject directly on remoteVideoRef');
-        remoteVideoRef.current.srcObject = stream;
-        remoteVideoRef.current.muted = false;
-        
-        console.log('📥 STEP 2: Attempting to play video...');
-        const playPromise = remoteVideoRef.current.play();
-        
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              console.log('📺 ✅ Remote video playing successfully');
-            })
-            .catch((playError) => {
-              console.warn('📺 ⚠️ Play error (may be mobile autoplay policy):', playError.name, playError.message);
-              console.log('📺 NOTE: Video element has srcObject set, will play when user interacts');
-            });
-        } else {
-          console.log('📺 Play promise not returned (older browser)');
-        }
-      } else {
-        console.warn('⚠️ remoteVideoRef not available in useWebRTC hook');
-      }
-      
-      console.log('✅ ontrack handler complete');
+      console.log('✅ ontrack handler complete - video control delegated to Chat.jsx');
     }
 
     if (localStreamRef.current) {
@@ -331,7 +307,6 @@ export const useWebRTC = (socketId, onRemoteStream) => {
     createPeerConnection,
     sendOffer,
     localStreamRef,
-    remoteVideoRef,  // ✅ FIX #3: Export remote video ref for Chat.jsx
     peerConnectionRef
   }
 }
