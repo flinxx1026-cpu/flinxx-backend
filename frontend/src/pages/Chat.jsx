@@ -99,6 +99,62 @@ const Chat = () => {
     console.log('   localStreamRef.current exists:', !!localStreamRef.current);
   }, []);
 
+  // ✅ CRITICAL: Handle persistent local video element positioning
+  // The video element is at root level but needs to be positioned inside the correct left-panel
+  // This effect ensures the video moves with screen transitions
+  useEffect(() => {
+    console.log('\n🎥 [POSITIONING] Local video positioning effect triggered');
+    console.log('   hasPartner:', hasPartner);
+    console.log('   isMatchingStarted:', isMatchingStarted);
+    
+    const persistentVideo = document.getElementById('local-video-singleton');
+    
+    if (!persistentVideo) {
+      console.warn('⚠️ [POSITIONING] Persistent video element not found in DOM');
+      return;
+    }
+    
+    // Find all left-panel containers on the page
+    const leftPanels = document.querySelectorAll('.left-panel');
+    console.log(`   Found ${leftPanels.length} left-panel containers`);
+    
+    // Remove video from all panels first
+    leftPanels.forEach((panel, index) => {
+      const videoInPanel = panel.querySelector('video');
+      if (videoInPanel && videoInPanel.id === 'local-video-singleton') {
+        console.log(`   [POSITIONING] Removing video from left-panel ${index}`);
+        // Don't actually remove, just ensure we reposition correctly
+      }
+    });
+    
+    // Find the visible left-panel and append video to it
+    for (let i = 0; i < leftPanels.length; i++) {
+      const panel = leftPanels[i];
+      const isVisible = panel.offsetParent !== null; // Check if element is visible
+      
+      if (isVisible) {
+        console.log(`   [POSITIONING] Visible left-panel found at index ${i}`);
+        
+        // Check if video is already in this panel
+        if (persistentVideo.parentElement !== panel) {
+          console.log(`   [POSITIONING] Moving video into left-panel ${i}`);
+          
+          // Insert video at the beginning of the panel (before the you-badge)
+          panel.insertBefore(persistentVideo, panel.firstChild);
+          
+          // Show the video
+          persistentVideo.style.display = 'block';
+          console.log(`   ✅ [POSITIONING] Video positioned in left-panel ${i}`);
+        } else {
+          console.log(`   ℹ️ [POSITIONING] Video already in correct panel`);
+          persistentVideo.style.display = 'block';
+        }
+        
+        break;
+      }
+    }
+  }, [hasPartner, isMatchingStarted]);
+
   // 🔥 CRITICAL: Monitor remoteVideoRef availability for debugging
   useEffect(() => {
     const remoteRefCheckInterval = setInterval(() => {
@@ -1580,15 +1636,9 @@ const Chat = () => {
         isFixedPosition={true}
       />
 
-      {/* Left - Live camera preview box */}
-      <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden' }}>
-        <video
-          ref={localVideoRef}
-          className="local-video"
-          autoPlay={true}
-          playsInline={true}
-          muted={true}
-        />
+      {/* Right - Welcome panel with dark theme */}
+      <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden', position: 'relative' }}>
+        {/* ✅ This panel is a visual container. The persistent video element overlays it from root level */}
         <div className="you-badge">You</div>
       </div>
 
@@ -1689,15 +1739,9 @@ const Chat = () => {
 
     return (
     <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
-      {/* Left - Live camera preview box */}
-      <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden' }}>
-        <video
-          ref={localVideoRef}
-          className="local-video"
-          autoPlay={true}
-          playsInline={true}
-          muted={true}
-        />
+      {/* Left - Live camera preview box (visual container for persistent video overlay) */}
+      <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden', position: 'relative' }}>
+        {/* ✅ This panel is a visual container. The persistent video element overlays it from root level */}
         <div className="you-badge">You</div>
       </div>
 
@@ -1935,15 +1979,9 @@ const Chat = () => {
           </div>
         </div>
 
-        {/* RIGHT - Local camera video */}
-        <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden' }}>
-          <video
-            ref={localVideoRef}
-            className="local-video"
-            autoPlay={true}
-            playsInline={true}
-            muted={true}
-          />
+        {/* RIGHT - Local camera video panel */}
+        <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden', position: 'relative' }}>
+          {/* ✅ This panel is a visual container. The persistent video element overlays it from root level */}
           <div className="you-badge">You</div>
         </div>
     </div>
@@ -1952,6 +1990,25 @@ const Chat = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+      
+      {/* ✅ CRITICAL: PERSISTENT LOCAL VIDEO ELEMENT - ALWAYS MOUNTED, NEVER UNMOUNTED
+          This element survives all screen transitions (IntroScreen → WaitingScreen → VideoChatScreen)
+          The stream is obtained once and persists across the entire app lifecycle
+          Positioning and visibility controlled by CSS/screen-specific styling
+      */}
+      <video
+        ref={localVideoRef}
+        id="local-video-singleton"
+        className="local-video"
+        autoPlay={true}
+        playsInline={true}
+        muted={true}
+        style={{
+          position: 'absolute',
+          display: 'none',  // Hidden by default, shown when needed by screen components
+          zIndex: -1
+        }}
+      />
       
       {/* Main content - Show correct screen based on state */}
       {hasPartner ? (

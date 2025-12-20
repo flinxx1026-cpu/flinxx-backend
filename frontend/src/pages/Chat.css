@@ -646,13 +646,28 @@ video {
   justify-content: center;
 }
 
-/* LOCAL VIDEO ELEMENT */
+/* LOCAL VIDEO ELEMENT - PERSISTENT, ALWAYS IN DOM */
 .local-video {
-  position: absolute;
-  inset: 0;                    /* Fills ONLY left panel (not screen) */
+  /* ✅ CRITICAL: This is a persistent element at root level that must overlay the left-panel in each screen
+     We'll use JavaScript to dynamically move/clone it to the correct visual container
+     For now, keep it invisible at root and visible when positioned inside panels via DOM manipulation
+  */
+  position: fixed;
   width: 100%;
   height: 100%;
-  object-fit: cover;           /* Maintains aspect ratio */
+  object-fit: cover;
+  background: #000;
+  z-index: -1;
+  display: none;  /* Hidden by default, shown by JavaScript when positioning is correct */
+}
+
+/* When inside a left-panel, make it fill the container */
+.left-panel .local-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   background: #000;
   display: block;
   z-index: 1;
