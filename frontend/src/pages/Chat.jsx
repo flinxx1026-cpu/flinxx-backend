@@ -146,12 +146,15 @@ const Chat = () => {
     console.log('   hasPartner:', hasPartner);
     console.log('   isMatchingStarted:', isMatchingStarted);
     
-    const persistentVideo = document.getElementById('local-video-singleton');
+    // ✅ Use the ref directly instead of searching DOM - ref is always available after render
+    const persistentVideo = localVideoRef.current;
     
     if (!persistentVideo) {
-      console.warn('⚠️ [POSITIONING] Persistent video element not found in DOM');
+      console.warn('⚠️ [POSITIONING] Persistent video ref is null - element not yet rendered');
       return;
     }
+    
+    console.log('✅ [POSITIONING] Video element ref found:', persistentVideo);
     
     // Find all left-panel containers on the page
     const leftPanels = document.querySelectorAll('.left-panel');
