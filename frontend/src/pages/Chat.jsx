@@ -141,10 +141,18 @@ const Chat = () => {
   // The video element is at root level but needs to be positioned inside the correct left-panel
   // This effect ensures the video moves with screen transitions
   // NOTE: Must come AFTER state declarations to avoid TDZ (temporal dead zone)
+  // CRITICAL: Must watch cameraStarted so effect runs on Intro/Waiting screens
   useEffect(() => {
     console.log('\n🎥 [POSITIONING] Local video positioning effect triggered');
+    console.log('   cameraStarted:', cameraStarted);
     console.log('   hasPartner:', hasPartner);
     console.log('   isMatchingStarted:', isMatchingStarted);
+    
+    // CRITICAL: Guard - only position video if camera is actually started
+    if (!cameraStarted) {
+      console.log('   [POSITIONING] Camera not started yet, skipping positioning');
+      return;
+    }
     
     // ✅ Use the ref directly instead of searching DOM - ref is always available after render
     const persistentVideo = localVideoRef.current;
@@ -183,10 +191,10 @@ const Chat = () => {
           persistentVideo.style.display = 'block';
         }
         
-        break;
+        return;
       }
     }
-  }, [hasPartner, isMatchingStarted]);
+  }, [cameraStarted, hasPartner, isMatchingStarted]);
 
   // ========================================
   // CRITICAL: Camera attachment happens ONLY in startPreview() useEffect
@@ -2000,12 +2008,12 @@ const Chat = () => {
         muted={true}
         style={{
           position: 'absolute',
-          inset: 0,  // Fill container when inside left-panel
+          inset: 0,
           width: '100%',
           height: '100%',
           objectFit: 'cover',
           backgroundColor: '#000',
-          display: 'none',  // Hidden by default at root level, shown by useEffect when in left-panel
+          display: cameraStarted ? 'block' : 'none',
           zIndex: 1
         }}
       />
