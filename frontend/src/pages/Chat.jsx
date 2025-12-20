@@ -781,24 +781,11 @@ const Chat = () => {
             console.error('   - Check console for TURN error details');
             console.error('   - TURN error 701 = Network/ISP blocking ports 3478, 5349');
             console.error('   - Solutions: Try VPN, different WiFi, or mobile hotspot');
-            console.error('\n🔄 Attempting ICE restart...');
-            try {
-              peerConnection.restartIce();
-              console.log('✅ ICE restart requested');
-            } catch (err) {
-              console.error('❌ ICE restart failed:', err);
-            }
+            console.error('   - User can retry with a retry button (do NOT auto-restart ICE)');
             break;
           case 'disconnected':
             console.warn('⚠️ State: DISCONNECTED - Lost connection to peer');
-            console.warn('⚠️ Attempting to reconnect...');
-            console.warn('🔄 Requesting ICE restart...');
-            try {
-              peerConnection.restartIce();
-              console.log('✅ ICE restart requested due to disconnection');
-            } catch (err) {
-              console.error('❌ ICE restart failed:', err);
-            }
+            console.warn('   Note: ICE restart is manual only to prevent stream loss');
             break;
           case 'closed':
             console.log('🛑 State: CLOSED - Connection closed');
