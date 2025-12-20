@@ -82,24 +82,16 @@ export const useWebRTC = (socketId, onRemoteStream) => {
       const state = peerConnection.iceConnectionState;
       console.log('🧊 ICE Connection State:', state);
       
-      if (state === 'failed') {
-        console.error('❌ ICE failed, attempting restart');
-        try {
-          peerConnection.restartIce();
-          console.log('✅ ICE restart requested');
-        } catch (err) {
-          console.error('❌ ICE restart failed:', err);
-        }
-      } else if (state === 'disconnected') {
-        console.warn('⚠️ ICE disconnected, attempting restart');
-        try {
-          peerConnection.restartIce();
-          console.log('✅ ICE restart requested');
-        } catch (err) {
-          console.error('❌ ICE restart failed:', err);
-        }
-      } else if (state === 'connected' || state === 'completed') {
+      // ✅ CRITICAL: DO NOT auto-restart ICE
+      // Automatic restart causes media pipeline reset and stream loss
+      // ICE restart should be manual only (user-triggered retry button)
+      
+      if (state === 'connected' || state === 'completed') {
         console.log('✅ ICE Connection established');
+      } else if (state === 'failed') {
+        console.error('❌ ICE Connection failed - user should retry manually');
+      } else if (state === 'disconnected') {
+        console.warn('⚠️ ICE Connection disconnected - user can retry');
       }
     }
 
@@ -123,13 +115,39 @@ export const useWebRTC = (socketId, onRemoteStream) => {
         tracks: stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState }))
       });
       
-      // ✅ FIX #2: Properly attach stream to remote video ref
+      // ✅ FIX #2: Properly attach stream to remote video ref AND guarantee playback
       console.log('📥 Attaching remote stream to video element');
       
       // Call the callback to attach to parent component's ref
       onRemoteStream(stream);
       
-      console.log('✅ onRemoteStream callback invoked with stream');
+      // ✅ CRITICAL: Also directly attach and play if remoteVideoRef exists
+      // This guarantees video playback even if parent component has timing issues
+      if (remoteVideoRef.current) {
+        console.log('📥 STEP 1: Setting srcObject directly on remoteVideoRef');
+        remoteVideoRef.current.srcObject = stream;
+        remoteVideoRef.current.muted = false;
+        
+        console.log('📥 STEP 2: Attempting to play video...');
+        const playPromise = remoteVideoRef.current.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('📺 ✅ Remote video playing successfully');
+            })
+            .catch((playError) => {
+              console.warn('📺 ⚠️ Play error (may be mobile autoplay policy):', playError.name, playError.message);
+              console.log('📺 NOTE: Video element has srcObject set, will play when user interacts');
+            });
+        } else {
+          console.log('📺 Play promise not returned (older browser)');
+        }
+      } else {
+        console.warn('⚠️ remoteVideoRef not available in useWebRTC hook');
+      }
+      
+      console.log('✅ ontrack handler complete');
     }
 
     if (localStreamRef.current) {
