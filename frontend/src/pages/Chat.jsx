@@ -1803,32 +1803,13 @@ const Chat = () => {
             {/* SECTION 2: MIDDLE - Messages area with remote video */}
             <div id="main-container" className="overflow-visible flex flex-col w-full flex-1" style={{ zIndex: 1, backgroundColor: 'transparent', padding: 0, overflow: 'visible' }}>
               
-              {/* Remote video wrapper - ABSOLUTE FULL SIZE */}
-              <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: hasPartner ? 99999 : 1, overflow: 'visible', backgroundColor: hasPartner ? 'black' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                {/* CRITICAL FIX: Remote video element ALWAYS exists in DOM
-                    This ensures remoteVideoRef is ready when ontrack fires
-                    Display is controlled by hasPartner state via CSS
-                */}
-                <video
-                  id="remote-video"
-                  ref={remoteVideoRef}
-                  autoPlay={true}
-                  playsInline={true}
-                  muted={true}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    backgroundColor: 'black',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    zIndex: 9999,
-                    display: hasPartner ? 'block' : 'none',
-                    opacity: hasPartner ? 1 : 0,
-                    visibility: hasPartner ? 'visible' : 'hidden'
-                  }}
-                />
+              {/* Remote video wrapper - USES PERSISTENT VIDEO ELEMENT FROM ROOT
+                  The actual <video ref={remoteVideoRef} /> is mounted at root level and never unmounted
+                  This wrapper just provides layout/positioning when hasPartner = true
+                  The video element itself is moved into position via CSS at root level
+              */}
+              <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'visible', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                {/* NO video element here - using persistent one at root level! */}
                 
                 {/* Placeholder shown when no partner */}
                 {!hasPartner && (
@@ -1948,34 +1929,50 @@ const Chat = () => {
   return (
     <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       
-      {/* 🔥 CRITICAL FIX: Remote video element ALWAYS in DOM, regardless of screen state
-          This ensures remoteVideoRef is available when ontrack fires, even before VideoChatScreen renders
-          Display is controlled entirely by CSS visibility, never unmounted
+      {/* 🔥 CRITICAL FIX: Remote video element ALWAYS in DOM, NEVER unmounted
+          This is the ONLY remote video element - it must persist across all state changes
+          When !hasPartner: positioned off-screen, invisible, but still receiving stream
+          When hasPartner: VideoChatScreen moves this element on-screen and shows it
+          KEY: Do NOT create second video element in VideoChatScreen - reuse this one!
       */}
-      {!hasPartner && (
-        <div id="remote-video-wrapper-hidden" style={{ position: 'fixed', top: -9999, left: -9999, width: 1, height: 1, zIndex: -1, pointerEvents: 'none', overflow: 'hidden' }}>
-          <video
-            id="remote-video-always-in-dom"
-            ref={remoteVideoRef}
-            autoPlay={true}
-            playsInline={true}
-            muted={true}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '1px',
-              height: '1px',
-              backgroundColor: 'black',
-              display: 'none'
-            }}
-          />
-        </div>
-      )}
+      <div id="remote-video-wrapper-persistent" style={{ 
+        position: 'fixed', 
+        top: hasPartner ? 0 : -9999,
+        left: hasPartner ? 0 : -9999,
+        right: hasPartner ? 0 : 'auto',
+        bottom: hasPartner ? 0 : 'auto',
+        width: hasPartner ? '100%' : '1px',
+        height: hasPartner ? '100%' : '1px',
+        zIndex: hasPartner ? 99999 : -1,
+        backgroundColor: hasPartner ? 'black' : 'transparent',
+        pointerEvents: hasPartner ? 'none' : 'none',
+        transition: 'none',
+        overflow: 'hidden'
+      }}>
+        <video
+          id="remote-video-singleton"
+          ref={remoteVideoRef}
+          autoPlay={true}
+          playsInline={true}
+          muted={true}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            backgroundColor: 'black',
+            display: hasPartner ? 'block' : 'none',
+            opacity: hasPartner ? 1 : 0,
+            visibility: hasPartner ? 'visible' : 'hidden'
+          }}
+        />
+      </div>
       
       {/* Main content - Show correct screen based on state */}
       {hasPartner ? (
-        // Partner found: Show video chat
+        // Partner found: Show video chat (NO remote video here - uses persistent one above)
         <VideoChatScreen />
       ) : isMatchingStarted ? (
         // Matching in progress: Show waiting screen
