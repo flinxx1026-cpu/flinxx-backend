@@ -1986,7 +1986,7 @@ const Chat = () => {
       {/* ✅ CRITICAL: PERSISTENT LOCAL VIDEO ELEMENT - ALWAYS MOUNTED, NEVER UNMOUNTED
           This element survives all screen transitions (IntroScreen → WaitingScreen → VideoChatScreen)
           The stream is obtained once and persists across the entire app lifecycle
-          Positioning and visibility controlled by CSS/screen-specific styling
+          Initially hidden at root level, shown when positioned inside left-panel by useEffect
       */}
       <video
         ref={localVideoRef}
@@ -1997,8 +1997,13 @@ const Chat = () => {
         muted={true}
         style={{
           position: 'absolute',
-          display: 'none',  // Hidden by default, shown when needed by screen components
-          zIndex: -1
+          inset: 0,  // Fill container when inside left-panel
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          backgroundColor: '#000',
+          display: 'none',  // Hidden by default at root level, shown by useEffect when in left-panel
+          zIndex: 1
         }}
       />
       

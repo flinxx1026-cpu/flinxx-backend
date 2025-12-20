@@ -648,29 +648,14 @@ video {
 
 /* LOCAL VIDEO ELEMENT - PERSISTENT, ALWAYS IN DOM */
 .local-video {
-  /* ✅ CRITICAL: This is a persistent element at root level that must overlay the left-panel in each screen
-     We'll use JavaScript to dynamically move/clone it to the correct visual container
-     For now, keep it invisible at root and visible when positioned inside panels via DOM manipulation
+  /* ✅ CRITICAL: Persistent video element
+     - Always mounted, never removed from DOM
+     - Stream attached via srcObject in useEffect
+     - Initially at root level with display: none
+     - useEffect moves it into left-panel and sets display: block
+     - Inline styles contain all necessary properties
   */
-  position: fixed;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  background: #000;
-  z-index: -1;
-  display: none;  /* Hidden by default, shown by JavaScript when positioning is correct */
-}
-
-/* When inside a left-panel, make it fill the container */
-.left-panel .local-video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  background: #000;
-  display: block;
-  z-index: 1;
+  /* CSS here is minimal since inline styles handle the positioning */
 }
 
 /* YOU LABEL */
