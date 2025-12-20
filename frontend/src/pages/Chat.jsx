@@ -99,62 +99,6 @@ const Chat = () => {
     console.log('   localStreamRef.current exists:', !!localStreamRef.current);
   }, []);
 
-  // ✅ CRITICAL: Handle persistent local video element positioning
-  // The video element is at root level but needs to be positioned inside the correct left-panel
-  // This effect ensures the video moves with screen transitions
-  useEffect(() => {
-    console.log('\n🎥 [POSITIONING] Local video positioning effect triggered');
-    console.log('   hasPartner:', hasPartner);
-    console.log('   isMatchingStarted:', isMatchingStarted);
-    
-    const persistentVideo = document.getElementById('local-video-singleton');
-    
-    if (!persistentVideo) {
-      console.warn('⚠️ [POSITIONING] Persistent video element not found in DOM');
-      return;
-    }
-    
-    // Find all left-panel containers on the page
-    const leftPanels = document.querySelectorAll('.left-panel');
-    console.log(`   Found ${leftPanels.length} left-panel containers`);
-    
-    // Remove video from all panels first
-    leftPanels.forEach((panel, index) => {
-      const videoInPanel = panel.querySelector('video');
-      if (videoInPanel && videoInPanel.id === 'local-video-singleton') {
-        console.log(`   [POSITIONING] Removing video from left-panel ${index}`);
-        // Don't actually remove, just ensure we reposition correctly
-      }
-    });
-    
-    // Find the visible left-panel and append video to it
-    for (let i = 0; i < leftPanels.length; i++) {
-      const panel = leftPanels[i];
-      const isVisible = panel.offsetParent !== null; // Check if element is visible
-      
-      if (isVisible) {
-        console.log(`   [POSITIONING] Visible left-panel found at index ${i}`);
-        
-        // Check if video is already in this panel
-        if (persistentVideo.parentElement !== panel) {
-          console.log(`   [POSITIONING] Moving video into left-panel ${i}`);
-          
-          // Insert video at the beginning of the panel (before the you-badge)
-          panel.insertBefore(persistentVideo, panel.firstChild);
-          
-          // Show the video
-          persistentVideo.style.display = 'block';
-          console.log(`   ✅ [POSITIONING] Video positioned in left-panel ${i}`);
-        } else {
-          console.log(`   ℹ️ [POSITIONING] Video already in correct panel`);
-          persistentVideo.style.display = 'block';
-        }
-        
-        break;
-      }
-    }
-  }, [hasPartner, isMatchingStarted]);
-
   // 🔥 CRITICAL: Monitor remoteVideoRef availability for debugging
   useEffect(() => {
     const remoteRefCheckInterval = setInterval(() => {
@@ -192,6 +136,54 @@ const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // ✅ CRITICAL: Handle persistent local video element positioning
+  // The video element is at root level but needs to be positioned inside the correct left-panel
+  // This effect ensures the video moves with screen transitions
+  // NOTE: Must come AFTER state declarations to avoid TDZ (temporal dead zone)
+  useEffect(() => {
+    console.log('\n🎥 [POSITIONING] Local video positioning effect triggered');
+    console.log('   hasPartner:', hasPartner);
+    console.log('   isMatchingStarted:', isMatchingStarted);
+    
+    const persistentVideo = document.getElementById('local-video-singleton');
+    
+    if (!persistentVideo) {
+      console.warn('⚠️ [POSITIONING] Persistent video element not found in DOM');
+      return;
+    }
+    
+    // Find all left-panel containers on the page
+    const leftPanels = document.querySelectorAll('.left-panel');
+    console.log(`   Found ${leftPanels.length} left-panel containers`);
+    
+    // Find the visible left-panel and append video to it
+    for (let i = 0; i < leftPanels.length; i++) {
+      const panel = leftPanels[i];
+      const isVisible = panel.offsetParent !== null; // Check if element is visible
+      
+      if (isVisible) {
+        console.log(`   [POSITIONING] Visible left-panel found at index ${i}`);
+        
+        // Check if video is already in this panel
+        if (persistentVideo.parentElement !== panel) {
+          console.log(`   [POSITIONING] Moving video into left-panel ${i}`);
+          
+          // Insert video at the beginning of the panel (before the you-badge)
+          panel.insertBefore(persistentVideo, panel.firstChild);
+          
+          // Show the video
+          persistentVideo.style.display = 'block';
+          console.log(`   ✅ [POSITIONING] Video positioned in left-panel ${i}`);
+        } else {
+          console.log(`   ℹ️ [POSITIONING] Video already in correct panel`);
+          persistentVideo.style.display = 'block';
+        }
+        
+        break;
+      }
+    }
+  }, [hasPartner, isMatchingStarted]);
 
   // ========================================
   // CRITICAL: Camera attachment happens ONLY in startPreview() useEffect
