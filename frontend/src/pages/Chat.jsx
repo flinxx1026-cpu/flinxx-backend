@@ -99,6 +99,25 @@ const Chat = () => {
     console.log('   localStreamRef.current exists:', !!localStreamRef.current);
   }, []);
 
+  // 🔥 CRITICAL: Monitor remoteVideoRef availability for debugging
+  useEffect(() => {
+    const remoteRefCheckInterval = setInterval(() => {
+      const remoteExists = !!remoteVideoRef.current;
+      const remoteInDOM = remoteVideoRef.current?.parentElement ? true : false;
+      const remoteSrcObject = !!remoteVideoRef.current?.srcObject;
+      
+      if (remoteExists && remoteInDOM) {
+        console.log('✅ remoteVideoRef is AVAILABLE in DOM and ready for ontrack');
+      } else if (remoteExists && !remoteInDOM) {
+        console.warn('⚠️ remoteVideoRef exists but NOT in DOM - ontrack may fail!');
+      } else {
+        console.log('⏳ Waiting for remoteVideoRef to be mounted...');
+      }
+    }, 2000);
+    
+    return () => clearInterval(remoteRefCheckInterval);
+  }, []);
+
   // UI state - MUST BE DECLARED FIRST, BEFORE ANY useEffect THAT USES THEM
   const [cameraStarted, setCameraStarted] = useState(false);
   const [isMatchingStarted, setIsMatchingStarted] = useState(false);
@@ -582,6 +601,31 @@ const Chat = () => {
         console.log('📺 STEP 4: ✅ CSS styles applied to remoteVideoRef');
         
         // ✅ FIX #6: Handle mobile autoplay restriction - play() with error handling
+        // 🔥 CRITICAL LOGGING: Verify stream has tracks before play attempt
+        const streamTracks = stream?.getTracks ? stream.getTracks() : [];
+        console.log('🔥 CRITICAL: Remote stream details BEFORE play():');
+        console.log('   Stream exists:', !!stream);
+        console.log('   Stream active:', stream?.active);
+        console.log('   Stream tracks count:', streamTracks.length);
+        console.log('   Track details:', streamTracks.map(t => ({
+          kind: t.kind,
+          id: t.id,
+          enabled: t.enabled,
+          readyState: t.readyState,
+          muted: t.muted,
+          label: t.label
+        })));
+        
+        // Check video element state
+        console.log('🔥 Video element state:');
+        console.log('   srcObject:', !!remoteVideoRef.current.srcObject);
+        console.log('   readyState:', remoteVideoRef.current.readyState, '(0=HAVE_NOTHING, 1=HAVE_METADATA, 2=HAVE_CURRENT_DATA, 3=HAVE_FUTURE_DATA, 4=HAVE_ENOUGH_DATA)');
+        console.log('   networkState:', remoteVideoRef.current.networkState, '(0=NETWORK_EMPTY, 1=NETWORK_IDLE, 2=NETWORK_LOADING, 3=NETWORK_NO_SOURCE)');
+        console.log('   paused:', remoteVideoRef.current.paused);
+        console.log('   muted:', remoteVideoRef.current.muted);
+        console.log('   style.display:', remoteVideoRef.current.style.display);
+        console.log('   Computed style display:', window.getComputedStyle(remoteVideoRef.current).display);
+        
         console.log('📺 STEP 5: Attempting to play remote video on remoteVideoRef...');
         try {
           const playPromise = remoteVideoRef.current.play();
@@ -1903,6 +1947,32 @@ const Chat = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+      
+      {/* 🔥 CRITICAL FIX: Remote video element ALWAYS in DOM, regardless of screen state
+          This ensures remoteVideoRef is available when ontrack fires, even before VideoChatScreen renders
+          Display is controlled entirely by CSS visibility, never unmounted
+      */}
+      {!hasPartner && (
+        <div id="remote-video-wrapper-hidden" style={{ position: 'fixed', top: -9999, left: -9999, width: 1, height: 1, zIndex: -1, pointerEvents: 'none', overflow: 'hidden' }}>
+          <video
+            id="remote-video-always-in-dom"
+            ref={remoteVideoRef}
+            autoPlay={true}
+            playsInline={true}
+            muted={true}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '1px',
+              height: '1px',
+              backgroundColor: 'black',
+              display: 'none'
+            }}
+          />
+        </div>
+      )}
+      
       {/* Main content - Show correct screen based on state */}
       {hasPartner ? (
         // Partner found: Show video chat
