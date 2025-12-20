@@ -1,7 +1,7 @@
-// DEPLOYMENT VERSION: d172a01 - TDZ FIX: Move functions after state - 2025-12-08
-// Last updated: 2025-12-08 - Temporal deadzone fix complete
-// BUILD TIMESTAMP: 2025-12-08T16:00:00Z - FORCE CLEAN BUILD #3 FINAL
-console.log('🎯 CHAT BUILD: 2025-12-08T16:00:00Z - Fresh clean bundle - TDZ error FIXED');
+// DEPLOYMENT VERSION: webrtc-stable-streams - Remote stream fix - 2025-12-20
+// Last updated: 2025-12-20 - WebRTC remote black screen fix with persistent stream
+// BUILD TIMESTAMP: 2025-12-20T00:00:00Z - STABLE REMOTE STREAM FIX
+console.log('🎯 CHAT BUILD: 2025-12-20T00:00:00Z - WebRTC stable remote stream handling');
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -557,179 +557,49 @@ const Chat = () => {
         console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
     };
 
+    // ✅ FIX #1: Create persistent remote MediaStream ONCE per peer connection
+    if (!peerConnectionRef.current._remoteStream) {
+      peerConnectionRef.current._remoteStream = new MediaStream();
+      console.log('✅ PERSISTENT REMOTE STREAM CREATED - will accumulate all incoming tracks');
+    }
+
     peerConnection.ontrack = (event) => {
         console.log('\n\n🔴🔴🔴 ===== CRITICAL: ONTRACK HANDLER FIRING! =====');
         console.log('🔴 ONTRACK CALLED AT:', new Date().toISOString());
-        console.log('🔴 This is the REMOTE TRACK RECEIVER - the most important handler!');
-        console.log('\n📥 ===== REMOTE TRACK RECEIVED =====');
-        console.log('📥 TIMESTAMP:', new Date().toISOString());
-        console.log('📥 Remote track received:', {
-          kind: event.track.kind,
-          id: event.track.id,
-          enabled: event.track.enabled,
-          readyState: event.track.readyState,
-          muted: event.track.muted
-        });
-        console.log('📥 Event streams:', event.streams.map(s => ({
-          id: s.id,
-          active: s.active,
-          trackCount: s.getTracks().length,
-          tracks: s.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled, muted: t.muted }))
-        })));
+        console.log('🔴 Track received:', { kind: event.track.kind, id: event.track.id, enabled: event.track.enabled });
         
-        // CRITICAL: Verify we're attaching to REMOTE video ref, not local
-        console.log('\n📺 ===== CRITICAL VIDEO REF CHECK =====');
-        console.log('📺 localVideoRef.current:', {
-          exists: !!localVideoRef.current,
-          element: localVideoRef.current?.tagName,
-          id: localVideoRef.current?.id,
-          srcObject: !!localVideoRef.current?.srcObject,
-          object: localVideoRef.current
-        });
-        console.log('📺 remoteVideoRef.current:', {
-          exists: !!remoteVideoRef.current,
-          element: remoteVideoRef.current?.tagName,
-          id: remoteVideoRef.current?.id,
-          srcObject: !!remoteVideoRef.current?.srcObject,
-          object: remoteVideoRef.current
-        });
-        console.log('📺 SAME REF?:', localVideoRef.current === remoteVideoRef.current);
+        // ✅ FIX #1: Use persistent remote MediaStream
+        const remoteStream = peerConnectionRef.current._remoteStream;
+        console.log('🔴 Using persistent remote stream ID:', remoteStream.id);
+        
+        // Add track to persistent stream
+        remoteStream.addTrack(event.track);
+        console.log('✅ Track added to persistent remote stream');
+        console.log('📥 Remote stream now has', remoteStream.getTracks().length, 'track(s)');
+        console.log('📥 Tracks:', remoteStream.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled })));
         
         if (!remoteVideoRef.current) {
             console.error('❌ CRITICAL ERROR: remoteVideoRef.current is NULL!');
             console.error('   Cannot attach remote track - video element not available');
-            console.error('   remoteVideoRef must be attached to the remote-video HTML element');
-            console.error('   Check line ~1977: <video id="remote-video" ref={remoteVideoRef} />');
             return;
         }
         
-        if (!localVideoRef.current) {
-            console.warn('⚠️ WARNING: localVideoRef.current is NULL');
-            console.warn('   This is OK if not yet on a screen that uses it');
-            console.warn('   localVideoRef should only be used for local stream in left/right panels');
+        // ✅ FIX #1: Attach srcObject ONLY ONCE, never overwrite
+        if (remoteVideoRef.current.srcObject !== remoteStream) {
+          console.log('📺 ATTACHING PERSISTENT STREAM to remoteVideoRef');
+          remoteVideoRef.current.srcObject = remoteStream;
+          remoteVideoRef.current.muted = false;
+          
+          console.log('📺 srcObject attached, attempting play()...');
+          remoteVideoRef.current.play().catch(() => {
+            console.log('ℹ️ Autoplay blocked - will play on user interaction');
+          });
+        } else {
+          console.log('📺 STREAM ALREADY ATTACHED - skipping re-attachment');
+          console.log('   Stream has', remoteStream.getTracks().length, 'tracks now');
         }
         
-        if (localVideoRef.current === remoteVideoRef.current) {
-            console.error('❌❌❌ CRITICAL ERROR: localVideoRef and remoteVideoRef are the SAME OBJECT!');
-            console.error('   This will OVERWRITE local video with remote track!');
-            console.error('   Check JSX ref assignments - they should be TWO DIFFERENT video elements');
-            console.error('   localVideoRef should be: <video ref={localVideoRef} className="local-video" /> in left/right panel');
-            console.error('   remoteVideoRef should be: <video id="remote-video" ref={remoteVideoRef} /> in remote-video-wrapper');
-            return;
-        }
-        
-        console.log('✅ CRITICAL CHECK PASSED - refs are DIFFERENT and valid');
-        console.log('📺 localVideoRef points to:', localVideoRef.current?.id || 'no-id', '(class=' + localVideoRef.current?.className + ')');
-        console.log('📺 remoteVideoRef points to:', remoteVideoRef.current?.id || 'no-id', '(class=' + remoteVideoRef.current?.className + ')');
-        console.log('📺 Proceeding to attach REMOTE stream to remoteVideoRef ONLY...');
-        
-        if (!event.streams || !event.streams[0]) {
-            console.error('❌ No streams available in event');
-            return;
-        }
-        
-        // ✅ CRITICAL GUARD: Only attach stream if not already set with valid tracks
-        if (remoteVideoRef.current.srcObject && remoteVideoRef.current.srcObject.getTracks().length > 0) {
-          console.log('📺 ⚠️ GUARD: Remote stream already attached with tracks, skipping re-attachment');
-          console.log('📺 Current stream has', remoteVideoRef.current.srcObject.getTracks().length, 'tracks');
-          return;
-        }
-        
-        console.log('📺 STEP 1: Setting remoteVideoRef.current.srcObject = event.streams[0]');
-        const stream = event.streams[0];
-        remoteVideoRef.current.srcObject = stream;
-        console.log('📺 STEP 2: ✅ Remote stream assigned to remoteVideoRef ONLY');
-        console.log('📺 LOCAL STREAM UNAFFECTED - localVideoRef still has:', localVideoRef.current?.srcObject ? 'a stream' : 'no stream');
-        
-        // Debug: Check what was set
-        console.log('📺 STEP 3: Verifying remote attachment:', {
-          srcObjectExists: !!remoteVideoRef.current.srcObject,
-          srcObjectSame: remoteVideoRef.current.srcObject === stream,
-          srcObjectActive: remoteVideoRef.current.srcObject?.active,
-          srcObjectTracks: remoteVideoRef.current.srcObject?.getTracks().length,
-          trackDetails: remoteVideoRef.current.srcObject?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, muted: t.muted })),
-          videoReadyState: remoteVideoRef.current.readyState,
-          videoNetworkState: remoteVideoRef.current.networkState,
-          videoPaused: remoteVideoRef.current.paused
-        });
-        
-        remoteVideoRef.current.style.display = "block";
-        remoteVideoRef.current.style.width = "100%";
-        remoteVideoRef.current.style.height = "100%";
-        remoteVideoRef.current.style.objectFit = "cover";
-        console.log('📺 STEP 4: ✅ CSS styles applied to remoteVideoRef');
-        
-        // ✅ FIX #6: Handle mobile autoplay restriction - play() with error handling
-        // 🔥 CRITICAL LOGGING: Verify stream has tracks before play attempt
-        const streamTracks = stream?.getTracks ? stream.getTracks() : [];
-        console.log('🔥 CRITICAL: Remote stream details BEFORE play():');
-        console.log('   Stream exists:', !!stream);
-        console.log('   Stream active:', stream?.active);
-        console.log('   Stream tracks count:', streamTracks.length);
-        console.log('   Track details:', streamTracks.map(t => ({
-          kind: t.kind,
-          id: t.id,
-          enabled: t.enabled,
-          readyState: t.readyState,
-          muted: t.muted,
-          label: t.label
-        })));
-        
-        // Check video element state
-        console.log('🔥 Video element state:');
-        console.log('   srcObject:', !!remoteVideoRef.current.srcObject);
-        console.log('   readyState:', remoteVideoRef.current.readyState, '(0=HAVE_NOTHING, 1=HAVE_METADATA, 2=HAVE_CURRENT_DATA, 3=HAVE_FUTURE_DATA, 4=HAVE_ENOUGH_DATA)');
-        console.log('   networkState:', remoteVideoRef.current.networkState, '(0=NETWORK_EMPTY, 1=NETWORK_IDLE, 2=NETWORK_LOADING, 3=NETWORK_NO_SOURCE)');
-        console.log('   paused:', remoteVideoRef.current.paused);
-        console.log('   muted:', remoteVideoRef.current.muted);
-        console.log('   style.display:', remoteVideoRef.current.style.display);
-        console.log('   Computed style display:', window.getComputedStyle(remoteVideoRef.current).display);
-        
-        console.log('📺 STEP 5: Attempting to play remote video on remoteVideoRef...');
-        try {
-          const playPromise = remoteVideoRef.current.play();
-          if (playPromise !== undefined) {
-            playPromise
-              .then(() => {
-                console.log('📺 ✅ Remote video playing successfully on remoteVideoRef');
-                // ✅ NOW that video is playing, unmute it for audio
-                // (Browsers require muted=true for autoplay, then we can unmute)
-                setTimeout(() => {
-                  if (remoteVideoRef.current) {
-                    remoteVideoRef.current.muted = false;
-                    console.log('📺 ✅ Remote video UNMUTED - audio should now play');
-                  }
-                }, 100);
-              })
-              .catch((playError) => {
-                console.warn('📺 ⚠️ Play error (may be due to mobile autoplay policy):', playError.name, playError.message);
-                console.log('📺 NOTE: Remote video element has srcObject set, will play when user interacts');
-                // Try to unmute anyway in case autoplay was blocked but we want audio if user interacts
-                if (remoteVideoRef.current) {
-                  remoteVideoRef.current.muted = false;
-                  console.log('📺 Remote video UNMUTED (in case autoplay was blocked)');
-                }
-              });
-          } else {
-            console.log('📺 Play promise not returned (older browser), remote video should play automatically');
-            // Unmute for older browsers too
-            if (remoteVideoRef.current) {
-              remoteVideoRef.current.muted = false;
-              console.log('📺 Remote video UNMUTED (older browser)');
-            }
-          }
-        } catch (err) {
-          console.error('📺 ❌ Play attempt threw error:', err);
-          console.log('📺 Continuing - remote stream is attached and ready');
-          // Try to unmute even on error
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.muted = false;
-            console.log('📺 Remote video UNMUTED (after error)');
-          }
-        }
-        
-        console.log('✅ ✅ ✅ Remote video srcObject set successfully on remoteVideoRef');
-        console.log('📥 ===== REMOTE TRACK SETUP COMPLETE =====\n\n');
+        console.log('✅ ✅ ✅ ONTRACK COMPLETE - Remote stream persisted and attached\n\n');
     };
 
     peerConnection.onconnectionstatechange = () => {
