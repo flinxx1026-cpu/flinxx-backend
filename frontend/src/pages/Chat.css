@@ -600,39 +600,165 @@ video {
 }
 
 /* ===== WAITING SCREEN MOBILE FIX ===== */
-/* Only affects WaitingScreen layout on mobile */
+/* ===== MOBILE WAITING SCREEN FIX ===== */
+/* Mobile-only CSS fix for waiting screen responsiveness */
+/* Issue: Desktop layout (flex-row, height: 520px) breaks on mobile */
+/* Solution: Column layout, responsive heights, full-width components */
+
 @media (max-width: 768px) {
-  /* Main WaitingScreen container - stack vertically */
-  .flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .left-panel {
-    width: 100% !important;
-    height: 60vh !important;
-    flex: 1 !important;
-    margin-bottom: 12px !important;
-  }
-
-  .flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel {
-    width: 100% !important;
-    flex: 1 !important;
-    margin-top: 12px !important;
-    margin-left: 0 !important;
-  }
-
-  /* WaitingScreen main container - flex column */
-  div[style*="gap: 12"] {
+  /* WaitingScreen container - convert from row to column layout */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start {
     flex-direction: column !important;
+    gap: 16px !important;
+    padding: 12px !important;
+    margin-top: 12px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Left panel - local video container - full width, responsive height */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .left-panel {
+    width: 100% !important;
+    height: 55vh !important;
+    min-height: 55vh !important;
+    max-height: 55vh !important;
+    flex: 0 0 55vh !important;
+    border-radius: 24px !important;
+    border: 1px solid #d9b85f !important;
+    overflow: hidden !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #000000 !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Right panel - waiting card - full width below video */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 220px !important;
+    flex: 1 !important;
+    border-radius: 24px !important;
+    border: 1px solid #d9b85f !important;
+    padding: 24px !important;
+    overflow: visible !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-top: 0 !important;
+    margin-left: 0 !important;
+    background-color: #131313 !important;
+  }
+
+  /* Ensure child divs inside right panel are centered and responsive */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel > div {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
     gap: 12px !important;
+  }
+
+  /* Video element inside left panel - fill container */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .left-panel video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+    border-radius: 24px !important;
+  }
+
+  /* You badge - reposition for mobile */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .left-panel .you-badge {
+    bottom: 12px !important;
+    left: 12px !important;
+    z-index: 10 !important;
+  }
+
+  /* Waiting icon - responsive size */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel .animate-pulse {
+    font-size: 48px !important;
+    line-height: 1 !important;
+  }
+
+  /* Waiting text - responsive typography */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel h2 {
+    font-size: 20px !important;
+    line-height: 1.5 !important;
+    margin: 0 !important;
+  }
+
+  /* Waiting subtext - responsive size */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel p:not(.font-semibold) {
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+  }
+
+  /* Cancel button - full width and touch-friendly */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel button {
+    width: 90% !important;
+    max-width: 100% !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+    border-radius: 16px !important;
+    min-height: 44px !important;
+    margin-top: 8px !important;
+    border: 2px solid #d9b85f !important;
+  }
+
+  /* Animated dots - responsive spacing */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel .flex.gap-2 {
+    gap: 6px !important;
+  }
+
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel .flex.gap-2 > div {
+    width: 6px !important;
+    height: 6px !important;
   }
 }
 
 @media (max-width: 480px) {
-  /* Extra small screens - WaitingScreen */
-  .flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .left-panel {
-    width: 100% !important;
-    height: 50vh !important;
+  /* Extra small screens - waiting screen */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start {
+    gap: 12px !important;
+    padding: 8px !important;
   }
 
-  .flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel {
-    width: 100% !important;
+  /* Left panel - smaller on very small devices */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .left-panel {
+    height: 50vh !important;
+    min-height: 50vh !important;
+    max-height: 50vh !important;
+    flex: 0 0 50vh !important;
+  }
+
+  /* Right panel - adjust spacing for small screens */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel {
+    padding: 16px !important;
+    min-height: 180px !important;
+  }
+
+  /* Waiting text - even smaller on tiny screens */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel h2 {
+    font-size: 18px !important;
+  }
+
+  /* Waiting icon - smaller on tiny screens */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel .animate-pulse {
+    font-size: 40px !important;
+  }
+
+  /* Cancel button - slightly larger touch target */
+  div.flex.flex-row.w-full.max-w-\[1500px\].mx-auto.gap-12.px-10.mt-20.items-start > .right-panel button {
+    width: 95% !important;
+    padding: 10px 14px !important;
+    font-size: 13px !important;
   }
 }
 
@@ -672,5 +798,3 @@ video {
   font-weight: 600;
   border: 1px solid #d4af37;
 }
-
-
