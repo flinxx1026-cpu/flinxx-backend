@@ -59,7 +59,7 @@ const Home = () => {
           <button
             onClick={handleStartChat}
             disabled={isLoading}
-            className={`inline-flex items-center gap-2 px-8 py-4 text-lg font-bold rounded-lg transition-all transform hover:scale-105 mb-12 ${
+            className={`inline-flex items-center gap-2 px-8 py-4 text-lg font-bold rounded-lg transition-all transform hover:scale-105 mb-6 ${
               isLoading
                 ? 'cursor-not-allowed text-gray-700'
                 : 'text-white'
@@ -82,21 +82,19 @@ const Home = () => {
             )}
           </button>
 
+          {/* Contact Us Button */}
+          <button
+            onClick={() => setIsChatOpen(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-800 font-bold rounded-full shadow-lg transition-all transform hover:scale-105 hover:shadow-xl mb-12"
+          >
+            <span className="text-lg">💬</span>
+            Contact Us
+          </button>
+
           {/* Info Text */}
           <p className="text-white/80 text-sm">
             Fast, simple video chats • Real users, real time
           </p>
-
-          {/* Contact Us Button */}
-          <div className="mt-8 flex justify-center">
-            <button
-              onClick={() => setIsChatOpen(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-800 font-bold rounded-full shadow-lg transition-all transform hover:scale-105 hover:shadow-xl"
-            >
-              <span className="text-lg">💬</span>
-              Contact Us
-            </button>
-          </div>
         </div>
       </div>
 
