@@ -764,6 +764,68 @@ app.post('/api/users/reset-profile', async (req, res) => {
   }
 });
 
+// Accept terms and conditions
+app.post('/api/users/accept-terms', async (req, res) => {
+  try {
+    console.log('\n\n📋 ===== ACCEPT-TERMS ENDPOINT CALLED =====');
+    console.log('[ACCEPT TERMS] Request body:', JSON.stringify(req.body, null, 2));
+    
+    const { userId } = req.body;
+    
+    console.log('[ACCEPT TERMS] Extracted userId:', userId);
+    
+    if (!userId) {
+      console.error('[ACCEPT TERMS] ❌ VALIDATION ERROR: Missing userId');
+      return res.status(400).json({ error: 'Missing required field: userId' });
+    }
+    
+    // Find user
+    console.log('[ACCEPT TERMS] Finding user with id:', userId);
+    const user = await prisma.users.findUnique({
+      where: { id: userId }
+    });
+    
+    if (!user) {
+      console.error('[ACCEPT TERMS] ❌ User not found:', userId);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log('[ACCEPT TERMS] ✓ User found:', user.email);
+    console.log('[ACCEPT TERMS] Current termsAccepted status:', user.termsAccepted);
+    
+    // Update termsAccepted to true
+    console.log('[ACCEPT TERMS] Setting termsAccepted to true...');
+    const updatedUser = await prisma.users.update({
+      where: { id: userId },
+      data: {
+        termsAccepted: true
+      }
+    });
+    
+    console.log('[ACCEPT TERMS] ✅ TERMS ACCEPTED SUCCESSFULLY');
+    console.log('[ACCEPT TERMS] User email:', updatedUser.email);
+    console.log('[ACCEPT TERMS] Updated user data:', {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      termsAccepted: updatedUser.termsAccepted
+    });
+    
+    res.json({
+      success: true,
+      message: 'Terms accepted successfully',
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        termsAccepted: updatedUser.termsAccepted
+      }
+    });
+  } catch (error) {
+    console.error('[ACCEPT TERMS] ❌ ERROR:', error.message);
+    console.error('[ACCEPT TERMS] Stack:', error.stack);
+    res.status(500).json({ error: 'Failed to accept terms', details: error.message });
+  }
+});
+
 // Get user by ID
 app.get('/api/users/:userId', async (req, res) => {
   try {

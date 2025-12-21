@@ -2,11 +2,13 @@ import { useEffect, useState, useContext } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import ProfileSetupModal from "../components/ProfileSetupModal";
+import TermsConfirmationModal from "../components/TermsConfirmationModal";
 
 export default function AuthSuccess() {
   const navigate = useNavigate();
-  const { setAuthToken } = useContext(AuthContext) || {};
+  const { setAuthToken, logout } = useContext(AuthContext) || {};
   const [searchParams] = useSearchParams();
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,13 +57,17 @@ export default function AuthSuccess() {
 
           console.log("✅ User data saved to localStorage");
 
-          // Check if profile is completed
-          if (!user.profileCompleted) {
+          // Check if terms are accepted - if not, show terms modal
+          if (!user.termsAccepted) {
+            console.log("📋 Terms not accepted, showing terms confirmation modal");
+            setUserData(user);
+            setShowTermsModal(true);
+          } else if (!user.profileCompleted) {
             console.log("ℹ️ Profile not completed, showing setup modal");
             setUserData(user);
             setShowProfileSetup(true);
           } else {
-            console.log("✅ Profile completed, redirecting to chat");
+            console.log("✅ Profile completed and terms accepted, redirecting to chat");
             setTimeout(() => {
               navigate("/chat");
             }, 500);
@@ -79,6 +85,79 @@ export default function AuthSuccess() {
 
     handleAuthSuccess();
   }, [searchParams, navigate, setAuthToken]);
+
+  const handleTermsContinue = async () => {
+    try {
+      console.log("📋 User accepted terms");
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      
+      // Save terms acceptance to backend
+      const response = await fetch(`${BACKEND_URL}/api/users/accept-terms`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userId: userData.id })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save terms acceptance: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log("✅ Terms accepted and saved to backend");
+
+      // Update user data with termsAccepted flag
+      const updatedUser = { ...userData, termsAccepted: true };
+      setUserData(updatedUser);
+
+      // Update localStorage
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      // Close terms modal
+      setShowTermsModal(false);
+
+      // Check if profile is completed
+      if (!updatedUser.profileCompleted) {
+        console.log("ℹ️ Showing profile setup modal");
+        setShowProfileSetup(true);
+      } else {
+        console.log("✅ Profile already completed, redirecting to chat");
+        setTimeout(() => {
+          navigate("/chat");
+        }, 500);
+      }
+    } catch (err) {
+      console.error("❌ Error accepting terms:", err);
+      setError(err.message || "Failed to accept terms");
+    }
+  };
+
+  const handleTermsCancel = async () => {
+    try {
+      console.log("❌ User cancelled terms - logging out");
+      
+      // Logout user
+      if (logout) {
+        logout();
+      } else {
+        // Fallback: clear localStorage manually
+        localStorage.removeItem("token");
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("user");
+        localStorage.removeItem("authProvider");
+        localStorage.removeItem("userInfo");
+      }
+
+      // Redirect to login
+      setTimeout(() => {
+        navigate("/login");
+      }, 500);
+    } catch (err) {
+      console.error("❌ Error cancelling terms:", err);
+      navigate("/login");
+    }
+  };
 
   const handleProfileComplete = (completedUser) => {
     console.log("✅ Profile completed, redirecting to chat");
@@ -102,6 +181,16 @@ export default function AuthSuccess() {
           </button>
         </div>
       </div>
+    );
+  }
+
+  if (showTermsModal && userData) {
+    return (
+      <TermsConfirmationModal
+        user={userData}
+        onContinue={handleTermsContinue}
+        onCancel={handleTermsCancel}
+      />
     );
   }
 

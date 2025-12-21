@@ -51,8 +51,13 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/auth" replace state={{ from: location }} />
   }
 
-  console.log('✅ Access granted - User authenticated:', user)
-  return children
-}
+  // Check if user has accepted terms (if they have the termsAccepted field)
+  if (user.termsAccepted === false || user.termsAccepted === null || user.termsAccepted === undefined) {
+    console.log('🔐 Access denied - User has not accepted terms. Redirecting to /auth', { 
+      termsAccepted: user.termsAccepted,
+      attemptedPath: location.pathname 
+    })
+    return <Navigate to="/auth" replace state={{ from: location }} />
+  }
 
-export default ProtectedRoute
+  console.log('✅ Access granted - User authenticated and terms accepted:', user)
