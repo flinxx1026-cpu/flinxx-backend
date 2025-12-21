@@ -230,7 +230,7 @@ const Login = () => {
           <p className="text-xs text-white/60">
             By signing in, you agree to our{' '}
             <a href="#" className="text-white/80 hover:text-white underline">
-              Terms of Service
+              TERMS & CONDITIONS
             </a>
             {' '}and{' '}
             <a href="#" className="text-white/80 hover:text-white underline">
