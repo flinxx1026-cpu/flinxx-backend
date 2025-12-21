@@ -27,15 +27,6 @@ const Home = () => {
           
           <div className="flex items-center gap-4">
             <button 
-              onClick={() => setIsChatOpen(true)}
-              className="text-white font-bold px-6 py-2 rounded-lg transition transform hover:scale-105 shadow-lg border-2 border-white/50 hover:border-white"
-              style={{
-                background: 'transparent'
-              }}
-            >
-              Contact Us
-            </button>
-            <button 
               onClick={handleStartChat}
               className="text-white font-bold px-6 py-2 rounded-lg transition transform hover:scale-105 shadow-lg"
               style={{
@@ -95,6 +86,17 @@ const Home = () => {
           <p className="text-white/80 text-sm">
             Fast, simple video chats • Real users, real time
           </p>
+
+          {/* Contact Us Button */}
+          <div className="mt-8 flex justify-center">
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-800 font-bold rounded-full shadow-lg transition-all transform hover:scale-105 hover:shadow-xl"
+            >
+              <span className="text-lg">💬</span>
+              Contact Us
+            </button>
+          </div>
         </div>
       </div>
 
