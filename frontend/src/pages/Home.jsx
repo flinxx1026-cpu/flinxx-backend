@@ -55,41 +55,44 @@ const Home = () => {
             Connect instantly with strangers through video chat
           </p>
 
-          {/* CTA Button */}
-          <button
-            onClick={handleStartChat}
-            disabled={isLoading}
-            className={`inline-flex items-center gap-2 px-8 py-4 text-lg font-bold rounded-lg transition-all transform hover:scale-105 mb-6 ${
-              isLoading
-                ? 'cursor-not-allowed text-gray-700'
-                : 'text-white'
-            }`}
-            style={isLoading ? { backgroundColor: '#9CA3AF' } : {
-              background: 'linear-gradient(90deg, #FFB31A, #FF8A00)',
-              boxShadow: '0 0 30px rgba(255, 139, 0, 0.4)'
-            }}
-            onMouseEnter={(e) => !isLoading && (e.target.style.background = 'linear-gradient(90deg, #FF9900, #FF6A00)')}
-            onMouseLeave={(e) => !isLoading && (e.target.style.background = 'linear-gradient(90deg, #FFB31A, #FF8A00)')}
-          >
-            {isLoading ? (
-              <>
-                <span className="animate-spin">⟳</span> Starting Chat...
-              </>
-            ) : (
-              <>
-                <span>⚡</span> Start Chatting Now
-              </>
-            )}
-          </button>
+          {/* CTA Buttons - Horizontal Layout */}
+          <div className="flex items-center justify-center gap-4 mb-12">
+            {/* Start Chatting Now Button */}
+            <button
+              onClick={handleStartChat}
+              disabled={isLoading}
+              className={`inline-flex items-center gap-2 px-8 py-4 text-lg font-bold rounded-lg transition-all transform hover:scale-105 ${
+                isLoading
+                  ? 'cursor-not-allowed text-gray-700'
+                  : 'text-white'
+              }`}
+              style={isLoading ? { backgroundColor: '#9CA3AF' } : {
+                background: 'linear-gradient(90deg, #FFB31A, #FF8A00)',
+                boxShadow: '0 0 30px rgba(255, 139, 0, 0.4)'
+              }}
+              onMouseEnter={(e) => !isLoading && (e.target.style.background = 'linear-gradient(90deg, #FF9900, #FF6A00)')}
+              onMouseLeave={(e) => !isLoading && (e.target.style.background = 'linear-gradient(90deg, #FFB31A, #FF8A00)')}
+            >
+              {isLoading ? (
+                <>
+                  <span className="animate-spin">⟳</span> Starting Chat...
+                </>
+              ) : (
+                <>
+                  <span>⚡</span> Start Chatting Now
+                </>
+              )}
+            </button>
 
-          {/* Contact Us Button */}
-          <button
-            onClick={() => setIsChatOpen(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-800 font-bold rounded-full shadow-lg transition-all transform hover:scale-105 hover:shadow-xl mb-12"
-          >
-            <span className="text-lg">💬</span>
-            Contact Us
-          </button>
+            {/* Contact Us Button */}
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="inline-flex items-center gap-2 px-6 py-4 bg-white text-gray-800 font-bold rounded-full shadow-lg transition-all transform hover:scale-105 hover:shadow-xl"
+            >
+              <span className="text-lg">💬</span>
+              Contact Us
+            </button>
+          </div>
 
           {/* Info Text */}
           <p className="text-white/80 text-sm">
