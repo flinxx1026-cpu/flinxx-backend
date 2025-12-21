@@ -200,7 +200,16 @@ const Auth = () => {
 
           {/* Info Text */}
           <p className="text-white/70 text-xs text-center mt-8">
-            By signing in, you agree to our TERMS & CONDITIONS and Privacy Policy
+            By signing in, you agree to our{' '}
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/70 hover:text-white underline"
+            >
+              TERMS & CONDITIONS
+            </a>
+            {' '}and Privacy Policy
           </p>
 
           {/* Features */}
