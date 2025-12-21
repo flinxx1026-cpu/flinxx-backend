@@ -83,15 +83,6 @@ const Home = () => {
                 </>
               )}
             </button>
-
-            {/* Contact Us Button */}
-            <button
-              onClick={() => setIsChatOpen(true)}
-              className="inline-flex items-center gap-2 px-6 py-4 bg-white text-gray-800 font-bold rounded-full shadow-lg transition-all transform hover:scale-105 hover:shadow-xl"
-            >
-              <span className="text-lg">💬</span>
-              Contact Us
-            </button>
           </div>
 
           {/* Info Text */}
@@ -150,7 +141,7 @@ const Home = () => {
         <div className="max-w-4xl mx-auto">
           <h2 className="text-5xl font-black text-white text-center mb-16">How It Works</h2>
           
-          <div className="bg-white/10 backdrop-blur-md rounded-3xl p-12 border border-white/20">
+          <div className="relative bg-white/10 backdrop-blur-md rounded-3xl p-12 border border-white/20">
             <div className="space-y-12">
               {/* Step 1 */}
               <div className="flex flex-col items-center text-center">
@@ -179,6 +170,15 @@ const Home = () => {
                 <p className="text-white/80 text-base">Chat, connect, and meet awesome people</p>
               </div>
             </div>
+
+            {/* Contact Us Button - Floating Bottom-Right */}
+            <button
+              onClick={() => setIsChatOpen(true)}
+              className="absolute bottom-6 right-6 inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-800 font-bold rounded-full shadow-lg transition-all transform hover:scale-110 hover:shadow-2xl"
+            >
+              <span className="text-lg">💬</span>
+              Contact Us
+            </button>
           </div>
         </div>
       </div>
