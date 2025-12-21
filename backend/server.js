@@ -1126,7 +1126,7 @@ app.get('/auth-success', async (req, res) => {
       })
     }
     
-    // Return user data with profileCompleted flag
+    // Return user data with profileCompleted and termsAccepted flags
     res.json({
       success: true,
       token: token,
@@ -1136,7 +1136,8 @@ app.get('/auth-success', async (req, res) => {
         name: user.display_name,
         picture: user.photo_url,
         googleId: user.google_id,
-        profileCompleted: user.profileCompleted
+        profileCompleted: user.profileCompleted,
+        termsAccepted: user.termsAccepted
       }
     })
   } catch (error) {
