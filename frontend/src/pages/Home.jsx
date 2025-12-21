@@ -256,15 +256,17 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Fixed Contact Us Button - Bottom Right */}
-      <button
-        onClick={() => setIsChatOpen(true)}
-        className="fixed bottom-6 right-6 inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-800 font-bold rounded-full shadow-lg transition-all transform hover:scale-110 hover:shadow-2xl"
-        style={{ zIndex: 9999 }}
-      >
-        <span className="text-lg">💬</span>
-        Contact Us
-      </button>
+      {/* Fixed Contact Us Button - Bottom Right (Hidden when chat is open) */}
+      {!isChatOpen && (
+        <button
+          onClick={() => setIsChatOpen(true)}
+          className="fixed bottom-6 right-6 inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-800 font-bold rounded-full shadow-lg transition-all transform hover:scale-110 hover:shadow-2xl"
+          style={{ zIndex: 9999 }}
+        >
+          <span className="text-lg">💬</span>
+          Contact Us
+        </button>
+      )}
 
       {/* Contact Chat Popup */}
       <ContactChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
