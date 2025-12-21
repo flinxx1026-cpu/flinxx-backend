@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import flinxxPremiumLogo from '../assets/flinxx-premium-logo.svg'
+import ContactChat from '../components/ContactChat'
 
 const Home = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   const handleStartChat = () => {
     setIsLoading(true)
@@ -24,6 +26,15 @@ const Home = () => {
           </div>
           
           <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsChatOpen(true)}
+              className="text-white font-bold px-6 py-2 rounded-lg transition transform hover:scale-105 shadow-lg border-2 border-white/50 hover:border-white"
+              style={{
+                background: 'transparent'
+              }}
+            >
+              Contact Us
+            </button>
             <button 
               onClick={handleStartChat}
               className="text-white font-bold px-6 py-2 rounded-lg transition transform hover:scale-105 shadow-lg"
@@ -250,6 +261,9 @@ const Home = () => {
           </button>
         </div>
       </div>
+
+      {/* Contact Chat Popup */}
+      <ContactChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </div>
   )
 }
