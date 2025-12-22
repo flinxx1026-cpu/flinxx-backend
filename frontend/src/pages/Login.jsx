@@ -319,14 +319,12 @@ const Login = () => {
             By signing in, you agree to our{' '}
             <a
               href="/terms"
-              target="_blank"
-              rel="noopener noreferrer"
               className="text-white/80 hover:text-white underline"
             >
               TERMS & CONDITIONS
             </a>
             {' '}and{' '}
-            <a href="#" className="text-white/80 hover:text-white underline">
+            <a href="/terms" className="text-white/80 hover:text-white underline">
               Privacy Policy
             </a>
           </p>

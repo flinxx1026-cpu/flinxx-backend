@@ -203,8 +203,6 @@ const Auth = () => {
             By signing in, you agree to our{' '}
             <a
               href="/terms"
-              target="_blank"
-              rel="noopener noreferrer"
               className="text-white/70 hover:text-white underline"
             >
               TERMS & CONDITIONS
