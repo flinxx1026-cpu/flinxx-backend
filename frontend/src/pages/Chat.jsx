@@ -13,6 +13,7 @@ import GenderFilterModal from '../components/GenderFilterModal';
 import ProfileModal from '../components/ProfileModal';
 import MatchHistory from '../components/MatchHistory';
 import TopActions from '../components/TopActions';
+import TermsConfirmationModal from '../components/TermsConfirmationModal';
 import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
@@ -21,6 +22,66 @@ const Chat = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useContext(AuthContext) || {};
+
+  // CRITICAL: Terms acceptance state
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsCheckComplete, setTermsCheckComplete] = useState(false);
+
+  // Check terms acceptance when component mounts - MUST BE FIRST useEffect
+  useEffect(() => {
+    console.log('🔐 [TERMS CHECK] Checking if terms are accepted...');
+    
+    try {
+      const termsAccepted = localStorage.getItem('termsAccepted') === 'true';
+      console.log('📋 [TERMS CHECK] termsAccepted from localStorage:', termsAccepted);
+      
+      if (!termsAccepted) {
+        console.log('⚠️ [TERMS CHECK] User has not accepted terms - showing modal');
+        setShowTermsModal(true);
+      } else {
+        console.log('✅ [TERMS CHECK] User has accepted terms - allowing access');
+        setTermsCheckComplete(true);
+      }
+    } catch (error) {
+      console.error('❌ [TERMS CHECK] Error checking terms:', error);
+      // Allow access on error
+      setTermsCheckComplete(true);
+    }
+  }, []);
+
+  // Handle terms acceptance from modal on dashboard
+  const handleDashboardTermsAccept = () => {
+    console.log('✅ User accepted terms on dashboard');
+    localStorage.setItem('termsAccepted', 'true');
+    setShowTermsModal(false);
+    setTermsCheckComplete(true);
+  }
+
+  // Handle terms cancellation - redirect to login
+  const handleDashboardTermsCancel = () => {
+    console.log('❌ User cancelled terms on dashboard - redirecting to login');
+    setShowTermsModal(false);
+    navigate('/login');
+  }
+
+  // If terms modal is shown and user hasn't completed check, don't render chat
+  if (showTermsModal || !termsCheckComplete) {
+    return (
+      <>
+        {showTermsModal && (
+          <TermsConfirmationModal
+            onCancel={handleDashboardTermsCancel}
+            onContinue={handleDashboardTermsAccept}
+          />
+        )}
+        <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center">
+          <div className="text-center text-white">
+            <p>Loading...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   // CRITICAL: All computed values MUST be in state, never in component body
   // This prevents temporal deadzone errors with minified variables

@@ -4,11 +4,45 @@ import { jwtDecode } from 'jwt-decode'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 import googleIcon from '../assets/google-icon.svg'
 import { signInWithGoogle, signInWithFacebook, checkRedirectResult } from '../config/firebase'
+import TermsConfirmationModal from '../components/TermsConfirmationModal'
+
+// Helper function to check if terms are accepted
+const isTermsAccepted = () => {
+  try {
+    const termsAccepted = localStorage.getItem('termsAccepted')
+    return termsAccepted === 'true'
+  } catch (error) {
+    console.error('❌ Error checking terms acceptance:', error)
+    return false
+  }
+}
+
+// Helper function to mark terms as accepted
+const acceptTerms = () => {
+  try {
+    localStorage.setItem('termsAccepted', 'true')
+    console.log('✅ Terms accepted and saved to localStorage')
+  } catch (error) {
+    console.error('❌ Error saving terms acceptance:', error)
+  }
+}
 
 // Custom Google Login Button Component
-const GoogleCustomButton = ({ isSigningIn }) => {
+const GoogleCustomButton = ({ isSigningIn, onShowTermsModal }) => {
   const handleGoogleClick = () => {
-    // Get backend URL from environment or use fallback
+    console.log('🔐 Google login clicked - checking terms acceptance')
+    
+    // Check if terms are already accepted
+    if (isTermsAccepted()) {
+      console.log('✅ Terms already accepted - proceeding with Google login')
+      triggerGoogleLogin()
+    } else {
+      console.log('⚠️ Terms not accepted - showing modal first')
+      onShowTermsModal('google')
+    }
+  }
+
+  const triggerGoogleLogin = () => {
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
     console.log('🔗 Redirecting to Google OAuth:', `${BACKEND_URL}/auth/google`)
     window.location.href = `${BACKEND_URL}/auth/google`
@@ -34,6 +68,8 @@ const Login = () => {
   const navigate = useNavigate()
   const [isSigningIn, setIsSigningIn] = useState(false)
   const [error, setError] = useState(null)
+  const [showTermsModal, setShowTermsModal] = useState(false)
+  const [pendingLoginProvider, setPendingLoginProvider] = useState(null)
 
   useEffect(() => {
     // Check if user was redirected back from OAuth
@@ -51,6 +87,48 @@ const Login = () => {
     
     checkLogin()
   }, [navigate])
+
+  // Handle showing terms modal before login
+  const handleShowTermsModal = (provider) => {
+    console.log(`📋 Showing Terms modal for ${provider}`)
+    setPendingLoginProvider(provider)
+    setShowTermsModal(true)
+  }
+
+  // Handle terms modal cancellation
+  const handleTermsCancel = () => {
+    console.log('❌ User cancelled terms modal')
+    setShowTermsModal(false)
+    setPendingLoginProvider(null)
+  }
+
+  // Handle terms acceptance and trigger login
+  const handleTermsContinue = async () => {
+    console.log('✅ User accepted terms')
+    
+    // Save consent to localStorage
+    acceptTerms()
+    
+    // Close modal
+    setShowTermsModal(false)
+    
+    // Trigger the pending login provider
+    if (pendingLoginProvider === 'google') {
+      console.log('🔐 Proceeding with Google login after terms acceptance')
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+      window.location.href = `${BACKEND_URL}/auth/google`
+    } else if (pendingLoginProvider === 'facebook') {
+      console.log('🔐 Proceeding with Facebook login after terms acceptance')
+      try {
+        await signInWithFacebook()
+      } catch (err) {
+        console.error('❌ Facebook login error:', err)
+        setError('Facebook login failed. Please try again.')
+      }
+    }
+    
+    setPendingLoginProvider(null)
+  }
 
   const handleGoogleLoginSuccess = async (credentialResponse) => {
     setIsSigningIn(true)
@@ -160,20 +238,29 @@ const Login = () => {
   }
 
   const handleFacebookLogin = async () => {
-    setIsSigningIn(true)
-    setError(null)
-    try {
-      console.log('📱 Starting Facebook login...')
-      console.log('Facebook App ID:', import.meta.env.VITE_FACEBOOK_APP_ID)
-      console.log('Redirect URL:', import.meta.env.VITE_FIREBASE_REDIRECT_URL)
-      
-      await signInWithFacebook()
-      // Note: signInWithFacebook uses redirect, so page will reload after authentication
-      // The checkRedirectResult in useEffect will handle the response
-    } catch (err) {
-      console.error('❌ Facebook login error:', err)
-      setError('Facebook login failed. Please try again.')
-      setIsSigningIn(false)
+    console.log('🔐 Facebook login clicked - checking terms acceptance')
+    
+    // Check if terms are already accepted
+    if (isTermsAccepted()) {
+      console.log('✅ Terms already accepted - proceeding with Facebook login')
+      setIsSigningIn(true)
+      setError(null)
+      try {
+        console.log('📱 Starting Facebook login...')
+        console.log('Facebook App ID:', import.meta.env.VITE_FACEBOOK_APP_ID)
+        console.log('Redirect URL:', import.meta.env.VITE_FIREBASE_REDIRECT_URL)
+        
+        await signInWithFacebook()
+        // Note: signInWithFacebook uses redirect, so page will reload after authentication
+        // The checkRedirectResult in useEffect will handle the response
+      } catch (err) {
+        console.error('❌ Facebook login error:', err)
+        setError('Facebook login failed. Please try again.')
+        setIsSigningIn(false)
+      }
+    } else {
+      console.log('⚠️ Terms not accepted - showing modal first')
+      handleShowTermsModal('facebook')
     }
   }
 
@@ -209,6 +296,7 @@ const Login = () => {
           {/* Custom Google Login Button */}
           <GoogleCustomButton 
             isSigningIn={isSigningIn}
+            onShowTermsModal={handleShowTermsModal}
           />
 
           {/* Facebook Login Button */}
@@ -267,6 +355,14 @@ const Login = () => {
           </div>
         </div>
       </div>
+
+      {/* Terms Confirmation Modal */}
+      {showTermsModal && (
+        <TermsConfirmationModal
+          onCancel={handleTermsCancel}
+          onContinue={handleTermsContinue}
+        />
+      )}
     </div>
   )
 }
