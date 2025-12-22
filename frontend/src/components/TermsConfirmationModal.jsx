@@ -70,10 +70,10 @@ const TermsConfirmationModal = ({ user, onContinue, onCancel }) => {
 
         {/* Body text */}
         <div className="mb-8">
-          <p className="text-gray-700 text-center leading-relaxed">
+          <p className="text-gray-700 text-center leading-snug text-sm">
             By continuing, you confirm that you are 18 years or older and agree to Flinxx's Terms & Conditions and Privacy Policy.
           </p>
-          <p className="text-gray-700 text-center leading-relaxed mt-4">
+          <p className="text-gray-700 text-center leading-snug text-sm mt-4">
             You understand that Flinxx is a live interaction platform and you use it at your own responsibility.
           </p>
         </div>
@@ -84,13 +84,13 @@ const TermsConfirmationModal = ({ user, onContinue, onCancel }) => {
             onClick={handleCancel}
             className="flex-1 px-4 py-2 bg-gray-200 text-gray-900 font-semibold rounded-lg hover:bg-gray-300 transition-colors"
           >
-            Cancel
+            Decline
           </button>
           <button
             onClick={handleContinue}
             className="flex-1 px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
           >
-            Continue
+            Accept & Proceed
           </button>
         </div>
       </div>
