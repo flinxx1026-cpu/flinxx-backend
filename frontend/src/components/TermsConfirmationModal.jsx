@@ -71,10 +71,10 @@ const TermsConfirmationModal = ({ user, onContinue, onCancel }) => {
         {/* Body text */}
         <div className="mb-8">
           <p className="text-gray-700 text-center leading-relaxed">
-            Please take a moment to review and agree to our Platform Rules and Privacy Notice.
+            By continuing, you confirm that you are 18 years or older and agree to Flinxx's Terms & Conditions and Privacy Policy.
           </p>
           <p className="text-gray-700 text-center leading-relaxed mt-4">
-            By clicking Continue, you confirm that you are 18 years or older and meet the legal age requirements in your region.
+            You understand that Flinxx is a live interaction platform and you use it at your own responsibility.
           </p>
         </div>
 
