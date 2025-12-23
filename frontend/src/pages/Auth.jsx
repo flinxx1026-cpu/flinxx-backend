@@ -207,7 +207,13 @@ const Auth = () => {
             >
               TERMS & CONDITIONS
             </a>
-            {' '}and Privacy Policy
+            {' '}and{' '}
+            <a
+              href="/privacy-policy"
+              className="text-white/70 hover:text-white underline"
+            >
+              Privacy Policy
+            </a>
           </p>
 
           {/* Features */}

@@ -9,6 +9,7 @@ import AuthCallback from '../pages/AuthCallback'
 import Callback from '../pages/callback'
 import AuthSuccess from '../pages/auth-success'
 import Terms from '../pages/Terms'
+import PrivacyPolicy from '../pages/PrivacyPolicy'
 import ProtectedChatRoute from './ProtectedChatRoute'
 import './Layout.css'
 
@@ -21,6 +22,7 @@ function Layout() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/callback" element={<Callback />} />
             <Route path="/auth-success" element={<AuthSuccess />} />
             <Route path="/chat" element={<ProtectedChatRoute><Chat /></ProtectedChatRoute>} />

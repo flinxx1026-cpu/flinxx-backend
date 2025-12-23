@@ -324,7 +324,7 @@ const Login = () => {
               TERMS & CONDITIONS
             </a>
             {' '}and{' '}
-            <a href="/terms" className="text-white/80 hover:text-white underline">
+            <a href="/privacy-policy" className="text-white/80 hover:text-white underline">
               Privacy Policy
             </a>
           </p>
