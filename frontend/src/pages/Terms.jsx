@@ -8,17 +8,11 @@ const Terms = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600">
       {/* Header Navigation */}
       <div className="relative z-20 w-full bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 shadow-lg">
-        <div className="px-6 py-4 flex justify-between items-center max-w-full">
+        <div className="px-6 py-4 flex justify-start items-center max-w-full">
           <div className="flex items-center gap-3">
             <img src={flinxxLogo} alt="Flinxx" className="w-10 h-10" />
             <h1 className="text-2xl font-bold text-white">Flinxx</h1>
           </div>
-          <button
-            onClick={() => navigate('/', { replace: true })}
-            className="text-white font-semibold hover:text-white/80 transition"
-          >
-            ← Back
-          </button>
         </div>
       </div>
 
