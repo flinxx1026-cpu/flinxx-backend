@@ -89,6 +89,10 @@ export default function AuthSuccess() {
   const handleTermsContinue = async () => {
     try {
       console.log("📋 User accepted terms");
+      
+      // Save to localStorage immediately
+      localStorage.setItem("termsAccepted", "true");
+      
       const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
       
       // Save terms acceptance to backend
