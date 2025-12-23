@@ -22,6 +22,7 @@ function Layout() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/terms-and-conditions" element={<Terms />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/callback" element={<Callback />} />
             <Route path="/auth-success" element={<AuthSuccess />} />

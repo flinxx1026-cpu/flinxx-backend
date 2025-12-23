@@ -71,7 +71,29 @@ const TermsConfirmationModal = ({ user, onContinue, onCancel }) => {
         {/* Body text */}
         <div className="mb-8">
           <p className="text-gray-700 text-center leading-snug text-sm">
-            By continuing, you confirm that you are 18 years or older and agree to Flinxx's Terms & Conditions and Privacy Policy.
+            By continuing, you confirm that you are 18 years or older and agree to Flinxx's{' '}
+            <a
+              href="/terms-and-conditions"
+              className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault()
+                navigate('/terms-and-conditions', { replace: true })
+              }}
+            >
+              Terms & Conditions
+            </a>
+            {' '}and{' '}
+            <a
+              href="/privacy-policy"
+              className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault()
+                navigate('/privacy-policy', { replace: true })
+              }}
+            >
+              Privacy Policy
+            </a>
+            .
           </p>
           <p className="text-gray-700 text-center leading-snug text-sm mt-4">
             You understand that Flinxx is a live interaction platform and you use it at your own responsibility.
