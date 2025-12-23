@@ -189,25 +189,6 @@ const Chat = () => {
     return () => clearInterval(remoteRefCheckInterval);
   }, []);
 
-  // If terms modal is shown and user hasn't completed check, don't render chat
-  if (showTermsModal || !termsCheckComplete) {
-    return (
-      <>
-        {showTermsModal && (
-          <TermsConfirmationModal
-            onCancel={handleDashboardTermsCancel}
-            onContinue={handleDashboardTermsAccept}
-          />
-        )}
-        <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center">
-          <div className="text-center text-white">
-            <p>Loading...</p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
 
 
   // ✅ CRITICAL: Handle persistent local video element positioning
@@ -1935,87 +1916,106 @@ const Chat = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
-      
-      {/* ✅ CRITICAL: PERSISTENT LOCAL VIDEO ELEMENT - ALWAYS MOUNTED, NEVER UNMOUNTED
-          This element survives all screen transitions (IntroScreen → WaitingScreen → VideoChatScreen)
-          The stream is obtained once and persists across the entire app lifecycle
-          Initially hidden at root level, shown when positioned inside left-panel by useEffect
-      */}
-      <video
-        ref={localVideoRef}
-        id="local-video-singleton"
-        className="local-video"
-        autoPlay={true}
-        playsInline={true}
-        muted={true}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          backgroundColor: '#000',
-          display: cameraStarted ? 'block' : 'none',
-          zIndex: 1
-        }}
-      />
-      
-      {/* Main content - Show correct screen based on state */}
-      {hasPartner ? (
-        // Partner found: Show video chat (includes remote video inside)
-        <VideoChatScreen />
-      ) : isMatchingStarted ? (
-        // Matching in progress: Show waiting screen
-        <WaitingScreen />
-      ) : (
-        // Initial state: Show intro screen
-        <IntroScreen />
+    <>
+      {/* ✅ Terms modal – SAFE (no hook violation) */}
+      {showTermsModal && (
+        <TermsConfirmationModal
+          onCancel={handleDashboardTermsCancel}
+          onContinue={handleDashboardTermsAccept}
+        />
       )}
 
-      {/* Premium Modal */}
-      <PremiumModal 
-        isOpen={isPremiumOpen} 
-        onClose={() => setIsPremiumOpen(false)} 
-      />
-
-      {/* Profile Modal */}
-      <ProfileModal 
-        isOpen={isProfileOpen} 
-        onClose={() => setIsProfileOpen(false)}
-        onOpenPremium={() => setIsPremiumOpen(true)}
-        onReinitializeCamera={cameraFunctionsRef.current?.reinitializeCamera}
-      />
-
-      {/* Match History Modal */}
-      <MatchHistory 
-        isOpen={isMatchHistoryOpen} 
-        onClose={() => setIsMatchHistoryOpen(false)}
-      />
-
-      {/* Gender Filter Modal */}
-      <GenderFilterModal 
-        isOpen={isGenderFilterOpen} 
-        onClose={() => setIsGenderFilterOpen(false)}
-        currentGender={selectedGender}
-        onOpenPremium={() => setIsPremiumOpen(true)}
-      />
-
-      {/* Guest Session Timeout Modal */}
-      {showGuestTimeoutModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl p-8 max-w-md w-full border border-white/20 shadow-2xl">
-            <h3 className="text-2xl font-bold text-white mb-4 text-center">⏱️ Time's Up!</h3>
-            <p className="text-white/90 text-center mb-4">
-              Your 2-minute guest preview has ended. Redirecting to login...
-            </p>
-            <div className="flex items-center justify-center">
-              <div className="animate-spin text-4xl">⟳</div>
-            </div>
+      {/* ✅ Loading state or chat UI */}
+      {!termsCheckComplete ? (
+        <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center">
+          <div className="text-center text-white">
+            <p>Loading...</p>
           </div>
         </div>
+      ) : (
+        <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+          
+          {/* ✅ CRITICAL: PERSISTENT LOCAL VIDEO ELEMENT - ALWAYS MOUNTED, NEVER UNMOUNTED
+              This element survives all screen transitions (IntroScreen → WaitingScreen → VideoChatScreen)
+              The stream is obtained once and persists across the entire app lifecycle
+              Initially hidden at root level, shown when positioned inside left-panel by useEffect
+          */}
+          <video
+            ref={localVideoRef}
+            id="local-video-singleton"
+            className="local-video"
+            autoPlay={true}
+            playsInline={true}
+            muted={true}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              backgroundColor: '#000',
+              display: cameraStarted ? 'block' : 'none',
+              zIndex: 1
+            }}
+          />
+          
+          {/* Main content - Show correct screen based on state */}
+          {hasPartner ? (
+            // Partner found: Show video chat (includes remote video inside)
+            <VideoChatScreen />
+          ) : isMatchingStarted ? (
+            // Matching in progress: Show waiting screen
+            <WaitingScreen />
+          ) : (
+            // Initial state: Show intro screen
+            <IntroScreen />
+          )}
+
+          {/* Premium Modal */}
+          <PremiumModal 
+            isOpen={isPremiumOpen} 
+            onClose={() => setIsPremiumOpen(false)} 
+          />
+
+          {/* Profile Modal */}
+          <ProfileModal 
+            isOpen={isProfileOpen} 
+            onClose={() => setIsProfileOpen(false)}
+            onOpenPremium={() => setIsPremiumOpen(true)}
+            onReinitializeCamera={cameraFunctionsRef.current?.reinitializeCamera}
+          />
+
+          {/* Match History Modal */}
+          <MatchHistory 
+            isOpen={isMatchHistoryOpen} 
+            onClose={() => setIsMatchHistoryOpen(false)}
+          />
+
+          {/* Gender Filter Modal */}
+          <GenderFilterModal 
+            isOpen={isGenderFilterOpen} 
+            onClose={() => setIsGenderFilterOpen(false)}
+            currentGender={selectedGender}
+            onOpenPremium={() => setIsPremiumOpen(true)}
+          />
+
+          {/* Guest Session Timeout Modal */}
+          {showGuestTimeoutModal && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl p-8 max-w-md w-full border border-white/20 shadow-2xl">
+                <h3 className="text-2xl font-bold text-white mb-4 text-center">⏱️ Time's Up!</h3>
+                <p className="text-white/90 text-center mb-4">
+                  Your 2-minute guest preview has ended. Redirecting to login...
+                </p>
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin text-4xl">⟳</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 };
 
