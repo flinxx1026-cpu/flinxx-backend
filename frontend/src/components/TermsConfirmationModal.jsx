@@ -55,10 +55,16 @@ const TermsConfirmationModal = ({ onContinue, onCancel }) => {
         </p>
 
         <div className="flex gap-4 mt-6">
-          <button onClick={onCancel} className="flex-1 bg-gray-200 rounded-lg py-2">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-2 bg-gray-200 text-gray-900 font-semibold rounded-lg hover:bg-gray-300 transition-colors"
+          >
             Decline
           </button>
-          <button onClick={handleContinue} className="flex-1 bg-purple-600 text-white rounded-lg py-2">
+          <button
+            onClick={handleContinue}
+            className="flex-1 px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+          >
             Accept & Proceed
           </button>
         </div>
