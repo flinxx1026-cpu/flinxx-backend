@@ -61,7 +61,7 @@ const Chat = () => {
   const handleDashboardTermsCancel = () => {
     console.log('❌ User cancelled terms on dashboard - redirecting to login');
     setShowTermsModal(false);
-    navigate('/login');
+    navigate('/login', { replace: true });
   }
 
   // If terms modal is shown and user hasn't completed check, don't render chat

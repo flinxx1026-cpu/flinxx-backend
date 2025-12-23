@@ -19,7 +19,7 @@ export default function Callback() {
 
       if (error) {
         console.error("❌ OAuth Error:", error);
-        navigate("/login?error=" + encodeURIComponent(error));
+        navigate("/login?error=" + encodeURIComponent(error), { replace: true });
         return;
       }
 
@@ -49,15 +49,15 @@ export default function Callback() {
           }
         } catch (parseError) {
           console.error("❌ Error parsing user data:", parseError);
-          navigate("/login?error=invalid_user_data");
+          navigate("/login?error=invalid_user_data", { replace: true });
         }
       } else {
         console.error("❌ Missing token or user data");
-        navigate("/login?error=missing_data");
+        navigate("/login?error=missing_data", { replace: true });
       }
     } catch (error) {
       console.error("❌ Callback error:", error);
-      navigate("/login?error=" + encodeURIComponent(error.message));
+      navigate("/login?error=" + encodeURIComponent(error.message), { replace: true });
     }
   }, [searchParams, navigate]);
 

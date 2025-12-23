@@ -14,7 +14,7 @@ const Terms = () => {
             <h1 className="text-2xl font-bold text-white">Flinxx</h1>
           </div>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/', { replace: true })}
             className="text-white font-semibold hover:text-white/80 transition"
           >
             ← Back

@@ -151,7 +151,7 @@ export default function AuthSuccess() {
 
       // Redirect to login
       setTimeout(() => {
-        navigate("/login");
+        navigate("/login", { replace: true });
       }, 500);
     } catch (err) {
       console.error("❌ Error cancelling terms:", err);
@@ -174,7 +174,7 @@ export default function AuthSuccess() {
           <div className="text-white text-2xl font-bold mb-4">❌ Authentication Error</div>
           <p className="text-white/70 text-lg mb-6">{error}</p>
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/login", { replace: true })}
             className="px-6 py-2 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100"
           >
             Back to Login

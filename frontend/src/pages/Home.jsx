@@ -11,7 +11,7 @@ const Home = () => {
   const handleStartChat = () => {
     setIsLoading(true)
     setTimeout(() => {
-      navigate('/login')
+      navigate('/login', { replace: true })
     }, 500)
   }
 

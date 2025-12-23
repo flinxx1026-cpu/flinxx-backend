@@ -17,7 +17,7 @@ const AuthCallback = () => {
       if (error) {
         console.error('❌ OAuth Error:', error)
         // Redirect to login with error
-        navigate('/login?error=' + encodeURIComponent(error))
+        navigate('/login?error=' + encodeURIComponent(error), { replace: true })
         return
       }
 
@@ -40,15 +40,15 @@ const AuthCallback = () => {
           }, 500)
         } catch (parseError) {
           console.error('❌ Error parsing user data:', parseError)
-          navigate('/login?error=invalid_user_data')
+          navigate('/login?error=invalid_user_data', { replace: true })
         }
       } else {
         console.error('❌ Missing token or user data')
-        navigate('/login?error=missing_data')
+        navigate('/login?error=missing_data', { replace: true })
       }
     } catch (error) {
       console.error('❌ Auth callback error:', error)
-      navigate('/login?error=' + encodeURIComponent(error.message))
+      navigate('/login?error=' + encodeURIComponent(error.message), { replace: true })
     }
   }, [searchParams, navigate])
 

@@ -16,7 +16,7 @@ const Callback = () => {
 
     if (error) {
       console.error('❌ OAuth Error:', error)
-      navigate('/login?error=' + encodeURIComponent(error))
+      navigate('/login?error=' + encodeURIComponent(error), { replace: true })
       return
     }
 
@@ -77,11 +77,11 @@ const Callback = () => {
           })
       } catch (parseError) {
         console.error('❌ Error processing callback:', parseError)
-        navigate('/login?error=invalid_data')
+        navigate('/login?error=invalid_data', { replace: true })
       }
     } else {
       console.error('❌ Missing token')
-      navigate('/login?error=missing_token')
+      navigate('/login?error=missing_token', { replace: true })
     }
   }, [navigate])
 

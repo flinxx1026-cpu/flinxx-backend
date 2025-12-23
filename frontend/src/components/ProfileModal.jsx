@@ -277,7 +277,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
       await signOut(auth);
       localStorage.removeItem('userInfo');
       localStorage.removeItem('userProfile');
-      navigate('/login');
+      navigate('/login', { replace: true });
     } catch (err) {
       console.error('Sign out error:', err);
     }
