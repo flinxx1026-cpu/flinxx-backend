@@ -568,6 +568,14 @@ app.post('/api/users/complete-profile', async (req, res) => {
       return res.status(400).json({ error: 'Missing required field: gender' })
     }
 
+    // ✅ CRITICAL: Validate gender is only male or female
+    const validGenders = ['male', 'female'];
+    const genderLowercase = gender.toLowerCase().trim();
+    if (!validGenders.includes(genderLowercase)) {
+      console.error(`[PROFILE SAVE] ❌ VALIDATION ERROR: Invalid gender value: ${gender}. Only 'male' and 'female' are allowed.`);
+      return res.status(400).json({ error: 'Invalid gender. Only "male" and "female" are allowed.' });
+    }
+
     // Validate birthday format (YYYY-MM-DD)
     if (typeof birthday !== 'string' || birthday.length < 10) {
       console.error(`[PROFILE SAVE] ❌ VALIDATION ERROR: Invalid birthday format received: ${birthday} (type: ${typeof birthday}, length: ${birthday?.length})`);
@@ -638,7 +646,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
     console.log(`[PROFILE SAVE] Updating user with:`);
     console.log(`  - birthday: ${birthday} (type: ${typeof birthday})`);
     console.log(`  - birthDate: ${birthDate.toISOString()}`);
-    console.log(`  - gender: ${gender}`);
+    console.log(`  - gender: ${genderLowercase}`);
     console.log(`  - age: ${age}`);
     console.log(`  - profileCompleted: true`);
     
@@ -646,7 +654,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
       where: { id: userId },
       data: {
         birthday: birthDate,
-        gender: gender,
+        gender: genderLowercase,
         age: age,
         profileCompleted: true
       }
