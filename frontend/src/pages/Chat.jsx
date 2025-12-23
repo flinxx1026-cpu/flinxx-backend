@@ -18,7 +18,7 @@ import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
 const Chat = () => {
-  console.log('🎯 CHAT COMPONENT LOADED - BUILD: 895cedd (temporal deadzone fix - useRef(null))');
+  // ✅ ALL HOOKS FIRST - BEFORE ANY LOGIC OR RETURNS
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useContext(AuthContext) || {};
@@ -26,6 +26,54 @@ const Chat = () => {
   // CRITICAL: Terms acceptance state
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [termsCheckComplete, setTermsCheckComplete] = useState(false);
+
+  // CRITICAL: All computed values MUST be in state, never in component body
+  // This prevents temporal deadzone errors with minified variables
+  const [viewParam, setViewParam] = useState(null);
+  const [shouldStartAsIntro, setShouldStartAsIntro] = useState(false);
+
+  // Video and stream state
+  const [cameraStarted, setCameraStarted] = useState(false);
+  const [isMatchingStarted, setIsMatchingStarted] = useState(false);
+  const [hasPartner, setHasPartner] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [partnerInfo, setPartnerInfo] = useState(null);
+  const [connectionTime, setConnectionTime] = useState(0);
+  const [isPremiumOpen, setIsPremiumOpen] = useState(false);
+  const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
+  const [selectedGender, setSelectedGender] = useState('both');
+  const [isRequestingCamera, setIsRequestingCamera] = useState(false);
+
+  // Chat state
+  const [messages, setMessages] = useState([]);
+  const [messageInput, setMessageInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Create a ref to expose camera functions to child components
+  const cameraFunctionsRef = useRef(null);
+
+  // Peer connection reference - keep as ref for internal use only
+  const peerConnectionRef = useRef(null);
+  
+  // CRITICAL: Store current user in a ref - initialize in useEffect only
+  const currentUserRef = useRef(null);
+  const userIdRef = useRef(null);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Video and stream refs
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const partnerSocketIdRef = useRef(null);  // CRITICAL: Store partner socket ID for sending offers/answers
+
+  // Monitor guest session timeout
+  const guestSessionTimerRef = useRef(null);
+  const [showGuestTimeoutModal, setShowGuestTimeoutModal] = useState(false);
+
+  // ✅ NOW CONSOLE LOG AND LOGIC AFTER ALL HOOKS
+  console.log('🎯 CHAT COMPONENT LOADED - BUILD: 895cedd (temporal deadzone fix - move hooks to top)');
 
   // Check terms acceptance when component mounts - MUST BE FIRST useEffect
   useEffect(() => {
@@ -64,30 +112,6 @@ const Chat = () => {
     navigate('/login', { replace: true });
   }
 
-  // If terms modal is shown and user hasn't completed check, don't render chat
-  if (showTermsModal || !termsCheckComplete) {
-    return (
-      <>
-        {showTermsModal && (
-          <TermsConfirmationModal
-            onCancel={handleDashboardTermsCancel}
-            onContinue={handleDashboardTermsAccept}
-          />
-        )}
-        <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center">
-          <div className="text-center text-white">
-            <p>Loading...</p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // CRITICAL: All computed values MUST be in state, never in component body
-  // This prevents temporal deadzone errors with minified variables
-  const [viewParam, setViewParam] = useState(null);
-  const [shouldStartAsIntro, setShouldStartAsIntro] = useState(false);
-
   // Initialize view params from location ONLY in useEffect
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -99,17 +123,6 @@ const Chat = () => {
     console.log('[Chat] view parameter:', view);
     console.log('[Chat] shouldStartAsIntro:', view === 'home');
   }, [location.search]);
-
-  // Create a ref to expose camera functions to child components
-  const cameraFunctionsRef = useRef(null);
-
-  // Peer connection reference - keep as ref for internal use only
-  const peerConnectionRef = useRef(null);
-  
-  // CRITICAL: Store current user in a ref - initialize in useEffect only
-  const currentUserRef = useRef(null);
-  const userIdRef = useRef(null);
-  const [currentUser, setCurrentUser] = useState(null);
 
   // CRITICAL: Initialize currentUser from context ONLY in useEffect
   // This prevents temporal deadzone errors with minified variables
@@ -133,9 +146,6 @@ const Chat = () => {
   }, [user]);
 
   // Monitor guest session timeout
-  const guestSessionTimerRef = useRef(null);
-  const [showGuestTimeoutModal, setShowGuestTimeoutModal] = useState(false);
-
   useEffect(() => {
     // Skip guest session monitoring since authentication is removed
     return () => {
@@ -144,12 +154,6 @@ const Chat = () => {
       }
     };
   }, []);
-
-  // Video and stream state
-  const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
-  const localStreamRef = useRef(null);
-  const partnerSocketIdRef = useRef(null);  // CRITICAL: Store partner socket ID for sending offers/answers
 
   // Log ref initialization
   useEffect(() => {
@@ -179,24 +183,26 @@ const Chat = () => {
     return () => clearInterval(remoteRefCheckInterval);
   }, []);
 
-  // UI state - MUST BE DECLARED FIRST, BEFORE ANY useEffect THAT USES THEM
-  const [cameraStarted, setCameraStarted] = useState(false);
-  const [isMatchingStarted, setIsMatchingStarted] = useState(false);
-  const [hasPartner, setHasPartner] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [partnerInfo, setPartnerInfo] = useState(null);
-  const [connectionTime, setConnectionTime] = useState(0);
-  const [isPremiumOpen, setIsPremiumOpen] = useState(false);
-  const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
-  const [selectedGender, setSelectedGender] = useState('both');
-  const [isRequestingCamera, setIsRequestingCamera] = useState(false);
+  // If terms modal is shown and user hasn't completed check, don't render chat
+  if (showTermsModal || !termsCheckComplete) {
+    return (
+      <>
+        {showTermsModal && (
+          <TermsConfirmationModal
+            onCancel={handleDashboardTermsCancel}
+            onContinue={handleDashboardTermsAccept}
+          />
+        )}
+        <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center">
+          <div className="text-center text-white">
+            <p>Loading...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
-  // Chat state
-  const [messages, setMessages] = useState([]);
-  const [messageInput, setMessageInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+
 
   // ✅ CRITICAL: Handle persistent local video element positioning
   // The video element is at root level but needs to be positioned inside the correct left-panel
