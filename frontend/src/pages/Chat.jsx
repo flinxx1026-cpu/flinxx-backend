@@ -18,6 +18,9 @@ import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
 const Chat = () => {
+  // 🧪 DEBUG TEST - Check if this log appears first
+  console.log("RENDER START");
+  
   // ✅ ALL HOOKS FIRST - BEFORE ANY LOGIC OR RETURNS
   const navigate = useNavigate();
   const location = useLocation();
@@ -71,6 +74,9 @@ const Chat = () => {
   // Monitor guest session timeout
   const guestSessionTimerRef = useRef(null);
   const [showGuestTimeoutModal, setShowGuestTimeoutModal] = useState(false);
+
+  // 🧪 DEBUG TEST - Check if both "RENDER START" and "HOOKS DONE" appear in console
+  console.log("HOOKS DONE");
 
   // ✅ NOW CONSOLE LOG AND LOGIC AFTER ALL HOOKS
   console.log('🎯 CHAT COMPONENT LOADED - BUILD: 895cedd (temporal deadzone fix - move hooks to top)');
