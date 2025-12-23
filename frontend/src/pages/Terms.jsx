@@ -176,7 +176,7 @@ const Terms = () => {
           {/* Back Button */}
           <div className="text-center mt-8">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/', { replace: true })}
               className="px-8 py-3 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100 transition-all"
             >
               Back to Home
