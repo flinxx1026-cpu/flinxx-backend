@@ -1009,6 +1009,69 @@ const getGoogleUserInfo = async (accessToken) => {
   }
 }
 
+// Search user by ID (google_id field - TEXT/STRING only)
+app.get('/api/search-user', async (req, res) => {
+  try {
+    const searchId = req.query.q?.trim();
+
+    console.log('\n🔍 [SEARCH USER] Search request received');
+    console.log('  - Query param:', searchId);
+    console.log('  - Query type:', typeof searchId);
+
+    if (!searchId || searchId.length === 0) {
+      console.log('[SEARCH USER] Empty search query');
+      return res.json([]);
+    }
+
+    // Search by google_id field (TEXT/STRING field)
+    console.log('[SEARCH USER] Searching database for google_id:', searchId);
+    
+    const user = await prisma.users.findFirst({
+      where: {
+        google_id: searchId  // TEXT exact match - NO NUMBER CONVERSION
+      },
+      select: {
+        id: true,
+        email: true,
+        display_name: true,
+        photo_url: true,
+        google_id: true,
+        age: true,
+        gender: true
+      }
+    });
+
+    console.log('[SEARCH USER] Search result:', user ? 'Found' : 'Not found');
+
+    if (user) {
+      console.log('[SEARCH USER] ✅ User found:', {
+        id: user.id,
+        email: user.email,
+        google_id: user.google_id
+      });
+      return res.json([{
+        id: user.id,
+        name: user.display_name || 'User',
+        avatar: user.photo_url || '👤',
+        email: user.email,
+        userId: user.google_id,
+        age: user.age,
+        gender: user.gender
+      }]);
+    } else {
+      console.log('[SEARCH USER] ❌ No user found with google_id:', searchId);
+      return res.json([]);
+    }
+  } catch (error) {
+    console.error('[SEARCH USER] ❌ Search error:', error.message);
+    console.error('[SEARCH USER] Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Search failed', 
+      details: error.message 
+    });
+  }
+})
+
 // Step 1: Redirect to Google OAuth consent screen
 app.get('/auth/google', (req, res) => {
   try {

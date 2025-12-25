@@ -4,18 +4,41 @@ import './SearchFriendsModal.css';
 const SearchFriendsModal = ({ isOpen, onClose }) => {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSearch = (value) => {
+  const handleSearch = async (value) => {
     setSearch(value);
-    // TODO: Connect to backend API for friend search
-    // For now, just update the search state
-    if (value.trim()) {
-      // Mock search results
+    
+    if (!value.trim()) {
       setResults([]);
-    } else {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const response = await fetch(`${BACKEND_URL}/api/search-user?q=${encodeURIComponent(value)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        console.error('Search error:', response.status);
+        setResults([]);
+        return;
+      }
+
+      const data = await response.json();
+      setResults(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Search error:', error);
       setResults([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -55,7 +78,7 @@ const SearchFriendsModal = ({ isOpen, onClose }) => {
                 <div className="result-avatar">{user.avatar || '👤'}</div>
                 <div className="result-info">
                   <p className="result-name">{user.name}</p>
-                  <p className="result-id">ID: {user.id}</p>
+                  <p className="result-id">ID: {user.userId}</p>
                 </div>
               </div>
             ))
