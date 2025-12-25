@@ -731,20 +731,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
       profileCompleted: user.profileCompleted
     }, null, 2));
 
-    res.json({
-      success: true,
-      user: {
-        id: user.public_id,
-        email: user.email,
-        displayName: user.display_name,
-        photoURL: user.photo_url,
-        birthday: user.birthday,
-        gender: user.gender,
-        age: user.age,
-        profileCompleted: user.profileCompleted,
-        authProvider: user.auth_provider
-      }
-    })
+    res.status(200).json({ success: true })
   } catch (error) {
     console.error('[PROFILE SAVE] ❌ ===== PROFILE UPDATE ERROR =====');
     console.error('[PROFILE SAVE] Error message:', error.message);
