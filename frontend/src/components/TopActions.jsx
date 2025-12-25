@@ -6,6 +6,7 @@ const TopActions = ({
   onPremiumClick, 
   onMatchHistoryClick,
   onSearchClick,
+  onRequestsClick,
   isFixedPosition = false 
 }) => {
   const containerStyle = isFixedPosition 
@@ -40,6 +41,16 @@ const TopActions = ({
         style={{ cursor: 'pointer' }}
       >
         🔍
+      </div>
+
+      {/* Requests Heart Icon */}
+      <div 
+        className="icon-circle" 
+        title="Requests"
+        onClick={onRequestsClick}
+        style={{ cursor: 'pointer' }}
+      >
+        ❤️
       </div>
 
       {/* Messages Icon */}
