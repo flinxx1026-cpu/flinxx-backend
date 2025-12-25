@@ -209,24 +209,39 @@
   line-height: 1.2;
 }
 
-.friend-request-btn {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 255, 255, 0.05));
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  font-size: 16px;
+.friend-badge-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
   cursor: pointer;
-  padding: 6px 10px;
-  color: #ffd700;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
   flex-shrink: 0;
-  border-radius: 6px;
 }
 
-.friend-request-btn:hover {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 255, 255, 0.1));
-  border-color: rgba(255, 215, 0, 0.5);
-  color: #ffff00;
-  transform: scale(1.05);
-  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+.friend-badge-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.04);
+}
+
+.friend-badge-btn:active {
+  transform: scale(0.96);
+}
+
+.friend-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.friend-text {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #ffffff;
 }
 
 /* Scrollbar Styling */

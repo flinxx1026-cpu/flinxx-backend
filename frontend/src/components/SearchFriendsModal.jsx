@@ -115,14 +115,15 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   <div className="result-id-container">
                     <p className="result-id">ID: {user.publicId}</p>
                     <button
-                      className="friend-request-btn"
+                      className="friend-badge-btn"
+                      title="Send Friend Request"
                       onClick={(e) => {
                         e.stopPropagation();
                         sendFriendRequest(user.id || user.publicId);
                       }}
-                      title="Send Friend Request"
                     >
-                      🫂
+                      <span className="friend-emoji">🫂</span>
+                      <span className="friend-text">FRIEND</span>
                     </button>
                   </div>
                 </div>
