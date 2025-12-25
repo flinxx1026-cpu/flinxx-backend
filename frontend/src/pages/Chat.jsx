@@ -1590,14 +1590,16 @@ const Chat = () => {
               <p className="text-sm" style={{ color: '#d9b85f' }}>Meet new people in real time.</p>
             </div>
 
-            {/* Preference Badge */}
-            <button 
-              onClick={() => setIsGenderFilterOpen(true)}
-              className="rounded-full px-4 py-1 transition-all cursor-pointer text-xs"
-              style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
-            >
-              <span className="font-semibold">👥 {selectedGender === 'girls' ? 'Girls Only' : selectedGender === 'guys' ? 'Guys Only' : 'Both'}</span>
-            </button>
+            {/* Preference Badge - BOTH button hidden */}
+            {!(selectedGender === 'both') && (
+              <button 
+                onClick={() => setIsGenderFilterOpen(true)}
+                className="rounded-full px-4 py-1 transition-all cursor-pointer text-xs"
+                style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
+              >
+                <span className="font-semibold">👥 {selectedGender === 'girls' ? 'Girls Only' : selectedGender === 'guys' ? 'Guys Only' : 'Both'}</span>
+              </button>
+            )}
           </div>
 
           {/* Bottom Section - Start Button */}
