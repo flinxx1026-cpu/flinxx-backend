@@ -209,20 +209,24 @@
   line-height: 1.2;
 }
 
-.copy-id-btn {
-  background: none;
-  border: none;
-  font-size: 14px;
+.friend-request-btn {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  font-size: 16px;
   cursor: pointer;
-  padding: 4px 6px;
-  color: rgba(255, 255, 255, 0.7);
-  transition: all 0.2s;
+  padding: 6px 10px;
+  color: #ffd700;
+  transition: all 0.3s;
   flex-shrink: 0;
+  border-radius: 6px;
 }
 
-.copy-id-btn:hover {
-  color: rgba(255, 255, 255, 1);
-  transform: scale(1.1);
+.friend-request-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 255, 255, 0.1));
+  border-color: rgba(255, 215, 0, 0.5);
+  color: #ffff00;
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
 }
 
 /* Scrollbar Styling */

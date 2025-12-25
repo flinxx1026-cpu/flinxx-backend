@@ -5,7 +5,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [copiedId, setCopiedId] = useState(null);
   
   const isNotificationMode = mode === 'notifications';
 
@@ -45,10 +44,9 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   };
 
-  const handleCopyId = (shortId) => {
-    navigator.clipboard.writeText(shortId);
-    setCopiedId(shortId);
-    setTimeout(() => setCopiedId(null), 2000);
+  const sendFriendRequest = (targetUserId) => {
+    console.log('Friend request sent to:', targetUserId);
+    // API call will be added here later
   };
 
   return (
@@ -117,14 +115,14 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   <div className="result-id-container">
                     <p className="result-id">ID: {user.publicId}</p>
                     <button
-                      className="copy-id-btn"
+                      className="friend-request-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleCopyId(user.publicId);
+                        sendFriendRequest(user.id || user.publicId);
                       }}
-                      title="Copy ID"
+                      title="Send Friend Request"
                     >
-                      {copiedId === user.publicId ? '✓' : '📋'}
+                      🫂
                     </button>
                   </div>
                 </div>
