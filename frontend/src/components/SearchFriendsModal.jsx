@@ -45,19 +45,25 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
   // Get current user fresh from localStorage with backend fallback
   const getCurrentUser = async () => {
-    const storedUser = localStorage.getItem('user');
-
-    if (storedUser) {
-      try {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
         const user = JSON.parse(storedUser);
-        if (user.publicId) return user;
-      } catch (e) {
-        console.error('Failed to parse stored user', e);
-      }
-    }
 
-    // Fallback to backend
-    return await ensureCurrentUser();
+        // Normalize publicId from all possible sources
+        user.publicId =
+          user.publicId ||
+          user.public_id ||
+          user.id;
+
+        return user;
+      }
+
+      return await ensureCurrentUser();
+    } catch (e) {
+      console.error('Failed to read current user', e);
+      return null;
+    }
   };
 
   // Fetch friend request status for a user
