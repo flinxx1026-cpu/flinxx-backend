@@ -1183,46 +1183,67 @@ app.get('/auth/google/callback', async (req, res) => {
     const userInfo = await getGoogleUserInfo(tokens.access_token)
     console.log(`✅ Retrieved user info:`, userInfo.email)
     
-    // Generate unique 8-digit public ID for new users
-    const publicId = await generateUniquePublicId()
-    console.log(`✅ Generated public_id:`, publicId)
-    
-    // Save user to database using Prisma upsert with google_id as key
-    const user = await prisma.users.upsert({
-      where: { google_id: userInfo.id },
-      create: {
-        email: userInfo.email,
-        display_name: userInfo.name || 'User',
-        photo_url: userInfo.picture || null,
-        auth_provider: 'google',
-        provider_id: userInfo.id,
-        google_id: userInfo.id,
-        public_id: publicId,
-        profileCompleted: false
-      },
-      update: {
-        email: userInfo.email,
-        display_name: userInfo.name || 'User',
-        photo_url: userInfo.picture || null,
-        auth_provider: 'google',
-        provider_id: userInfo.id,
-        updated_at: new Date()
-      }
+    // Check if user already exists
+    let existingUser = await prisma.users.findUnique({
+      where: { email: userInfo.email }
     })
     
-    console.log(`✅ User saved to database:`, user.email)
+    let isNewUser = false
+    let user
+    
+    if (!existingUser) {
+      // NEW USER - Generate unique public ID
+      console.log(`📝 New user detected, creating account...`)
+      const publicId = await generateUniquePublicId()
+      console.log(`✅ Generated public_id:`, publicId)
+      
+      user = await prisma.users.create({
+        data: {
+          email: userInfo.email,
+          display_name: userInfo.name || 'User',
+          photo_url: userInfo.picture || null,
+          auth_provider: 'google',
+          provider_id: userInfo.id,
+          google_id: userInfo.id,
+          public_id: publicId,
+          profileCompleted: false,
+          termsAccepted: false
+        }
+      })
+      
+      isNewUser = true
+      console.log(`✅ New user created:`, user.email)
+    } else {
+      // EXISTING USER
+      console.log(`✅ Existing user found:`, existingUser.email)
+      user = existingUser
+      isNewUser = false
+    }
     
     // Create a JWT token with user data
     const token = Buffer.from(JSON.stringify({
       userId: user.id,
       email: user.email,
-      googleId: user.google_id,
+      publicId: user.public_id,
       timestamp: Date.now()
     })).toString('base64')
     
-    // Redirect to frontend with token
+    // Build response data
+    const responseData = {
+      isNewUser: isNewUser,
+      profileCompleted: user.profileCompleted || false,
+      user: {
+        id: user.public_id,
+        email: user.email
+      }
+    }
+    
+    // Encode response data in URL
+    const encodedResponse = encodeURIComponent(JSON.stringify(responseData))
+    
+    // Redirect to frontend with token and response data
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
-    const redirectUrl = `${baseUrl}/auth-success?token=${token}`
+    const redirectUrl = `${baseUrl}/auth-success?token=${token}&data=${encodedResponse}`
     
     console.log(`🔗 Redirecting to frontend: ${redirectUrl}`)
     res.redirect(redirectUrl)

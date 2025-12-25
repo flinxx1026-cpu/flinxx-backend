@@ -18,6 +18,7 @@ export default function AuthSuccess() {
     const handleAuthSuccess = async () => {
       try {
         const token = searchParams.get("token");
+        const data_param = searchParams.get("data");
         
         if (!token) {
           setError("No authentication token received");
@@ -26,6 +27,17 @@ export default function AuthSuccess() {
         }
 
         console.log("🔐 Auth Success - Token received:", token.substring(0, 10) + "...");
+
+        // Parse the data parameter if available (from Google callback redirect)
+        let responseData = null;
+        if (data_param) {
+          try {
+            responseData = JSON.parse(decodeURIComponent(data_param));
+            console.log("✅ Response data from backend:", responseData);
+          } catch (e) {
+            console.warn("⚠️ Could not parse response data:", e);
+          }
+        }
 
         // Fetch user data from backend using token
         const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
@@ -56,22 +68,50 @@ export default function AuthSuccess() {
           }
 
           console.log("✅ User data saved to localStorage");
+          setUserData(user);
 
-          // Check if terms are accepted - if not, show terms modal
-          if (!user.termsAccepted) {
-            console.log("📋 Terms not accepted, showing terms confirmation modal");
-            setUserData(user);
-            setShowTermsModal(true);
-          } else if (!user.profileCompleted) {
-            console.log("ℹ️ Profile not completed, showing setup modal");
-            setUserData(user);
-            setShowProfileSetup(true);
+          // Determine redirect path based on response data or user state
+          let redirectPath = "/chat";
+          
+          if (responseData) {
+            // Use the response data from backend
+            console.log("🔄 Using response data to determine redirect...");
+            
+            if (responseData.isNewUser) {
+              console.log("👤 New user detected → Redirect to /terms (onboarding)");
+              redirectPath = "/terms";
+            } else if (!responseData.profileCompleted) {
+              console.log("⚠️ Profile incomplete → Redirect to /matching (complete profile)");
+              redirectPath = "/matching";
+            } else {
+              console.log("✅ User complete → Redirect to /chat");
+              redirectPath = "/chat";
+            }
           } else {
-            console.log("✅ Profile completed and terms accepted, redirecting to chat");
-            setTimeout(() => {
-              navigate("/chat");
-            }, 500);
+            // Fallback to checking user data
+            console.log("ℹ️ No response data, checking user state...");
+            
+            if (!user.termsAccepted) {
+              console.log("📋 Terms not accepted, showing terms confirmation modal");
+              setShowTermsModal(true);
+              setLoading(false);
+              return;
+            } else if (!user.profileCompleted) {
+              console.log("ℹ️ Profile not completed, showing setup modal");
+              setShowProfileSetup(true);
+              setLoading(false);
+              return;
+            } else {
+              console.log("✅ Profile completed and terms accepted, redirecting to chat");
+              redirectPath = "/chat";
+            }
           }
+
+          // Perform the redirect
+          setTimeout(() => {
+            console.log(`🔗 Navigating to: ${redirectPath}`);
+            navigate(redirectPath);
+          }, 500);
         } else {
           setError(data.error || "Failed to authenticate");
         }
