@@ -8,6 +8,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [friendRequestStates, setFriendRequestStates] = useState({}); // Track request status by userId
   const [pendingRequests, setPendingRequests] = useState([]); // For notifications mode
   const [sendingRequest, setSendingRequest] = useState(null); // Track which request is being sent
+  const [currentUser, setCurrentUser] = useState(null); // Load once when modal opens
   
   const isNotificationMode = mode === 'notifications';
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
@@ -62,15 +63,15 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // Fetch friend request status for a user
   const checkFriendRequestStatus = async (userId) => {
     try {
-      const currentUser = await getCurrentUser();
+      const currentUserData = currentUser;
 
-      if (!currentUser || !currentUser.publicId) {
+      if (!currentUserData || !currentUserData.publicId) {
         console.warn('Current user not available for status check');
         return;
       }
 
       const response = await fetch(
-        `${BACKEND_URL}/api/friends/status/${userId}?currentPublicId=${currentUser.publicId}`,
+        `${BACKEND_URL}/api/friends/status/${userId}?currentPublicId=${currentUserData.publicId}`,
         {
           method: 'GET',
           headers: {
@@ -111,6 +112,18 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       console.error('Error fetching pending requests:', error);
     }
   };
+
+  // Load current user once when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadCurrentUser = async () => {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+    };
+
+    loadCurrentUser();
+  }, [isOpen]);
 
   // Load pending requests when switching to notifications mode
   useEffect(() => {
@@ -188,7 +201,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
     setSendingRequest(targetUserId);
     try {
-      const currentUserData = await getCurrentUser();
+      const currentUserData = currentUser;
 
       if (!currentUserData || !currentUserData.publicId) {
         console.error('Current user publicId not found:', currentUserData);
