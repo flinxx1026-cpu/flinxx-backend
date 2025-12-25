@@ -11,17 +11,36 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   
   const isNotificationMode = mode === 'notifications';
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  
+  // Get current user from localStorage
+  const currentUser = React.useMemo(() => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      return storedUser ? JSON.parse(storedUser) : null;
+    } catch (error) {
+      console.error('Error parsing current user:', error);
+      return null;
+    }
+  }, []);
 
   // Fetch friend request status for a user
   const checkFriendRequestStatus = async (userId) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/friends/status/${userId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+      if (!currentUser || !currentUser.id) {
+        console.warn('Current user not available for status check');
+        return;
+      }
+
+      const response = await fetch(
+        `${BACKEND_URL}/api/friends/status/${userId}?currentPublicId=${currentUser.id || currentUser.publicId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
         }
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -119,6 +138,13 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   };
 
   const sendFriendRequest = async (targetUserId) => {
+    // CHANGE 2: Prevent duplicate friend request
+    const friendStatus = friendRequestStates[targetUserId];
+    if (friendStatus === 'pending' || friendStatus === 'accepted') {
+      console.log('Friend request already sent or accepted');
+      return;
+    }
+
     setSendingRequest(targetUserId);
     try {
       // Get current user from localStorage
@@ -128,8 +154,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         return;
       }
 
-      const currentUser = JSON.parse(storedUser);
-      const senderPublicId = currentUser.id || currentUser.publicId;
+      const currentUserData = JSON.parse(storedUser);
+      const senderPublicId = currentUserData.id || currentUserData.publicId;
 
       if (!senderPublicId) {
         console.error('Current user publicId not found');
@@ -149,7 +175,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       });
 
       if (response.ok) {
-        // Update local state to show SENT
+        // CHANGE 3: Update UI state immediately after success
         setFriendRequestStates(prev => ({
           ...prev,
           [targetUserId]: 'pending'
@@ -277,13 +303,14 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     <button
                       className="friend-badge-btn"
                       title="Send Friend Request"
+                      disabled={friendRequestStates[user.id || user.publicId] === 'pending'}
                       onClick={(e) => {
                         e.stopPropagation();
                         sendFriendRequest(user.id || user.publicId);
                       }}
                     >
-                      <span className="friend-emoji" aria-hidden="true">🤝</span>
-                      <span className="friend-text">FRIEND</span>
+                      <span className="friend-emoji" aria-hidden="true">{getButtonEmoji(user.id || user.publicId)}</span>
+                      <span className="friend-text">{getButtonText(user.id || user.publicId)}</span>
                     </button>
                   </div>
                   <p className="result-id">ID: {user.publicId}</p>
