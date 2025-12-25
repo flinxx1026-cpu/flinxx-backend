@@ -73,9 +73,9 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect }) => {
               </p>
             </div>
           ) : (
-            results.map((user) => (
+            results.map((user, index) => (
               <div 
-                key={user.id} 
+                key={`user-${user.userId}-${index}`} 
                 className="search-result-item"
                 onClick={() => {
                   if (onUserSelect) {

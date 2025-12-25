@@ -1050,7 +1050,6 @@ app.get('/api/search-user', async (req, res) => {
         google_id: user.google_id
       });
       return res.json([{
-        id: user.id,
         name: user.display_name || 'User',
         avatar: user.photo_url || '👤',
         email: user.email,
