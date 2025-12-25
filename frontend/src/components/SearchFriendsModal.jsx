@@ -121,13 +121,31 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const sendFriendRequest = async (targetUserId) => {
     setSendingRequest(targetUserId);
     try {
+      // Get current user from localStorage
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        console.error('Current user not found in localStorage');
+        return;
+      }
+
+      const currentUser = JSON.parse(storedUser);
+      const senderPublicId = currentUser.id || currentUser.publicId;
+
+      if (!senderPublicId) {
+        console.error('Current user publicId not found');
+        return;
+      }
+
       const response = await fetch(`${BACKEND_URL}/api/friends/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ targetUserId })
+        body: JSON.stringify({ 
+          senderPublicId,
+          receiverPublicId: targetUserId
+        })
       });
 
       if (response.ok) {
@@ -216,7 +234,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {/* Results Container - Search Mode */}
+        {/* Results Container */}
         {!isNotificationMode && (
           <div className="search-results">
             {results.length === 0 ? (
@@ -258,75 +276,17 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     <p className="result-name">{user.name}</p>
                     <button
                       className="friend-badge-btn"
-                      title={getButtonText(user.id || user.publicId)}
+                      title="Send Friend Request"
                       onClick={(e) => {
                         e.stopPropagation();
                         sendFriendRequest(user.id || user.publicId);
                       }}
-                      disabled={friendRequestStates[user.id || user.publicId] === 'pending' || sendingRequest === (user.id || user.publicId)}
                     >
-                      <span className="friend-emoji" aria-hidden="true">{getButtonEmoji(user.id || user.publicId)}</span>
-                      <span className="friend-text">{getButtonText(user.id || user.publicId)}</span>
+                      <span className="friend-emoji" aria-hidden="true">🤝</span>
+                      <span className="friend-text">FRIEND</span>
                     </button>
                   </div>
                   <p className="result-id">ID: {user.publicId}</p>
-                </div>
-              </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* Notifications Mode - Pending Friend Requests */}
-        {isNotificationMode && (
-          <div className="search-results">
-            {pendingRequests.length === 0 ? (
-              <div className="search-empty-state">
-                <p style={{ textAlign: 'center', color: 'rgba(255, 255, 255, 0.6)', marginTop: '40px' }}>
-                  No pending friend requests
-                </p>
-              </div>
-            ) : (
-              pendingRequests.map((request) => (
-                <div 
-                  key={request.id} 
-                  className="notification-request-item"
-                >
-                <div className="request-avatar">
-                  {request.senderAvatar && request.senderAvatar.startsWith('http') ? (
-                    <img
-                      src={request.senderAvatar}
-                      alt="avatar"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: '50%',
-                        objectFit: 'cover'
-                      }}
-                    />
-                  ) : (
-                    '👤'
-                  )}
-                </div>
-                <div className="request-info">
-                  <p className="request-name">{request.senderName}</p>
-                  <p className="request-id">ID: {request.senderId}</p>
-                </div>
-                <div className="request-actions">
-                  <button
-                    className="accept-btn"
-                    title="Accept"
-                    onClick={() => handleAcceptRequest(request.id, request.senderId)}
-                  >
-                    ✔️
-                  </button>
-                  <button
-                    className="reject-btn"
-                    title="Reject"
-                    onClick={() => handleRejectRequest(request.id)}
-                  >
-                    ❌
-                  </button>
                 </div>
               </div>
               ))

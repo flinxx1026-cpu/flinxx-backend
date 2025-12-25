@@ -119,6 +119,20 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON sessions(started_at);
     `)
 
+    // Create friend_requests table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS friend_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(sender_id, receiver_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_friend_requests_receiver ON friend_requests(receiver_id);
+      CREATE INDEX IF NOT EXISTS idx_friend_requests_sender ON friend_requests(sender_id);
+    `)
+
     console.log('✅ PostgreSQL tables initialized')
   } catch (error) {
     console.error('❌ Error initializing database tables:', error)
@@ -1129,6 +1143,123 @@ app.get('/api/search-user', async (req, res) => {
       error: 'Search failed', 
       details: error.message 
     });
+  }
+})
+
+// ===== FRIEND REQUEST ENDPOINTS =====
+
+// Send friend request
+app.post('/api/friends/send', async (req, res) => {
+  try {
+    const { senderPublicId, receiverPublicId } = req.body
+
+    if (!senderPublicId || !receiverPublicId) {
+      return res.status(400).json({ error: 'Missing senderPublicId or receiverPublicId' })
+    }
+
+    // Fetch sender and receiver UUIDs from database
+    const [sender, receiver] = await Promise.all([
+      prisma.users.findUnique({ where: { public_id: senderPublicId } }),
+      prisma.users.findUnique({ where: { public_id: receiverPublicId } })
+    ])
+
+    if (!sender || !receiver) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    // Insert friend request
+    const result = await pool.query(
+      `INSERT INTO friend_requests (sender_id, receiver_id, status)
+       VALUES ($1, $2, 'pending')
+       ON CONFLICT (sender_id, receiver_id) DO NOTHING
+       RETURNING id, sender_id, receiver_id, status, created_at`,
+      [sender.id, receiver.id]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Friend request already exists' })
+    }
+
+    const request = result.rows[0]
+    console.log(`✅ Friend request sent from ${sender.public_id} to ${receiver.public_id}`)
+
+    res.status(201).json({
+      success: true,
+      message: 'Friend request sent',
+      requestId: request.id
+    })
+  } catch (error) {
+    console.error('❌ Error sending friend request:', error)
+    res.status(500).json({ error: 'Failed to send friend request', details: error.message })
+  }
+})
+
+// Accept friend request
+app.post('/api/friends/accept', async (req, res) => {
+  try {
+    const { requestId } = req.body
+
+    if (!requestId) {
+      return res.status(400).json({ error: 'Missing requestId' })
+    }
+
+    // Update request status to accepted
+    const result = await pool.query(
+      `UPDATE friend_requests
+       SET status = 'accepted'
+       WHERE id = $1
+       RETURNING id, sender_id, receiver_id, status`,
+      [requestId]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Friend request not found' })
+    }
+
+    const request = result.rows[0]
+    console.log(`✅ Friend request ${requestId} accepted`)
+
+    res.json({
+      success: true,
+      message: 'Friend request accepted',
+      request
+    })
+  } catch (error) {
+    console.error('❌ Error accepting friend request:', error)
+    res.status(500).json({ error: 'Failed to accept friend request', details: error.message })
+  }
+})
+
+// Reject friend request
+app.post('/api/friends/reject', async (req, res) => {
+  try {
+    const { requestId } = req.body
+
+    if (!requestId) {
+      return res.status(400).json({ error: 'Missing requestId' })
+    }
+
+    // Delete friend request
+    const result = await pool.query(
+      `DELETE FROM friend_requests
+       WHERE id = $1
+       RETURNING id`,
+      [requestId]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Friend request not found' })
+    }
+
+    console.log(`✅ Friend request ${requestId} rejected`)
+
+    res.json({
+      success: true,
+      message: 'Friend request rejected'
+    })
+  } catch (error) {
+    console.error('❌ Error rejecting friend request:', error)
+    res.status(500).json({ error: 'Failed to reject friend request', details: error.message })
   }
 })
 
