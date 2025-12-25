@@ -48,6 +48,7 @@ const Chat = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [selectedGender, setSelectedGender] = useState('both');
   const [isRequestingCamera, setIsRequestingCamera] = useState(false);
 
@@ -1563,6 +1564,7 @@ const Chat = () => {
         onPremiumClick={() => setIsPremiumOpen(true)}
         onMatchHistoryClick={() => setIsMatchHistoryOpen(true)}
         onSearchClick={() => setIsSearchOpen(true)}
+        onRequestsClick={() => setIsNotificationsOpen(true)}
         isFixedPosition={true}
       />
 
@@ -2000,10 +2002,18 @@ const Chat = () => {
           <SearchFriendsModal 
             isOpen={isSearchOpen} 
             onClose={() => setIsSearchOpen(false)}
+            mode="search"
             onUserSelect={(user) => {
               console.log('Selected user from search:', user);
               // TODO: Navigate to user profile or open chat
             }}
+          />
+
+          {/* Notifications Modal (Reuse SearchFriendsModal) */}
+          <SearchFriendsModal 
+            isOpen={isNotificationsOpen} 
+            onClose={() => setIsNotificationsOpen(false)}
+            mode="notifications"
           />
 
           {/* Gender Filter Modal */}

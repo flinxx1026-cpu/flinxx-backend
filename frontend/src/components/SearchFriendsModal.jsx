@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import './SearchFriendsModal.css';
 
-const SearchFriendsModal = ({ isOpen, onClose, onUserSelect }) => {
+const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
+  
+  const isNotificationMode = mode === 'notifications';
 
   if (!isOpen) return null;
 
@@ -54,43 +56,46 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect }) => {
       <div className="search-friends-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="search-friends-header">
-          <h2>Search Friends</h2>
+          <h2>{isNotificationMode ? 'Notifications' : 'Search Friends'}</h2>
           <button className="search-close-btn" onClick={onClose}>✖</button>
         </div>
 
-        {/* Search Input */}
-        <div className="search-input-container">
-          <input
-            type="text"
-            placeholder="Search a friend by ID"
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="search-input"
-            autoFocus
-          />
-          <span className="search-icon">🔍</span>
-        </div>
+        {/* Search Input - Hidden in Notifications Mode */}
+        {!isNotificationMode && (
+          <div className="search-input-container">
+            <input
+              type="text"
+              placeholder="Search a friend by ID"
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="search-input"
+              autoFocus
+            />
+            <span className="search-icon">🔍</span>
+          </div>
+        )}
 
         {/* Results Container */}
-        <div className="search-results">
-          {results.length === 0 ? (
-            <div className="search-empty-state">
-              <p style={{ textAlign: 'center', color: 'rgba(255, 255, 255, 0.6)', marginTop: '40px' }}>
-                {search ? 'No users found' : 'Start typing to search'}
-              </p>
-            </div>
-          ) : (
-            results.map((user, index) => (
-              <div 
-                key={`user-${user.shortId}-${index}`} 
-                className="search-result-item"
-                onClick={() => {
-                  if (onUserSelect) {
-                    onUserSelect(user);
-                  }
-                  onClose();
-                }}
-              >
+        {!isNotificationMode && (
+          <div className="search-results">
+            {results.length === 0 ? (
+              <div className="search-empty-state">
+                <p style={{ textAlign: 'center', color: 'rgba(255, 255, 255, 0.6)', marginTop: '40px' }}>
+                  {search ? 'No users found' : 'Start typing to search'}
+                </p>
+              </div>
+            ) : (
+              results.map((user, index) => (
+                <div 
+                  key={`user-${user.shortId}-${index}`} 
+                  className="search-result-item"
+                  onClick={() => {
+                    if (onUserSelect) {
+                      onUserSelect(user);
+                    }
+                    onClose();
+                  }}
+                >
                 <div className="result-avatar">
                   {user.avatar && user.avatar.startsWith('http') ? (
                     <img
@@ -124,9 +129,10 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect }) => {
                   </div>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
