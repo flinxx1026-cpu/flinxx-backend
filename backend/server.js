@@ -673,6 +673,20 @@ app.post('/api/users/complete-profile', async (req, res) => {
       profileCompleted: existingUser.profileCompleted
     }, null, 2));
 
+    // Ensure user has an 8-digit public ID
+    let publicId = existingUser.public_id;
+    if (!publicId) {
+      console.log('[PROFILE SAVE] ⚠️ public_id missing, generating new one');
+      publicId = await generateUniquePublicId();
+      await prisma.users.update({
+        where: { id: existingUser.id },
+        data: { public_id: publicId }
+      });
+      console.log('[PROFILE SAVE] ✅ public_id generated:', publicId);
+    } else {
+      console.log('[PROFILE SAVE] ✓ public_id already exists:', publicId);
+    }
+
     // Calculate age from birthday
     console.log('[PROFILE SAVE] Calculating age from birthday:', birthday);
     const birthDate = new Date(birthday)

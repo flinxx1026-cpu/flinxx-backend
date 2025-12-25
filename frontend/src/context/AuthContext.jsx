@@ -76,7 +76,11 @@ export const AuthProvider = ({ children }) => {
                 })
                 
                 console.log('🔵 [AuthContext] Setting user state with:', { email: data.user.email, profileCompleted: data.user.profileCompleted })
-                setUser(data.user)
+                const normalizedUser = {
+                  ...data.user,
+                  id: data.user.id || data.user.public_id
+                }
+                setUser(normalizedUser)
                 setIsAuthenticated(true)
                 setIsLoading(false)
                 console.log('🔵 [AuthContext] ✅ COMPLETE - Returning from token validation path')
@@ -112,7 +116,11 @@ export const AuthProvider = ({ children }) => {
               isProfileCompleted: user.isProfileCompleted
             })
             console.log('🔵 [AuthContext] Setting user state with profileCompleted:', user.profileCompleted)
-            setUser(user)
+            const normalizedUser = {
+              ...user,
+              id: user.id || user.public_id
+            }
+            setUser(normalizedUser)
             setIsAuthenticated(true)
             setIsLoading(false)
             console.log('🔵 [AuthContext] ✅ COMPLETE - Returning from localStorage fallback path')
@@ -169,7 +177,11 @@ export const AuthProvider = ({ children }) => {
                     profileCompleted: profileData.user.profileCompleted
                   })
                   console.log('🔵 [AuthContext] Setting user state with profileCompleted:', profileData.user.profileCompleted);
-                  setUser(profileData.user)
+                  const normalizedUser = {
+                    ...profileData.user,
+                    id: profileData.user.id || profileData.user.public_id
+                  }
+                  setUser(normalizedUser)
                   setIsAuthenticated(true)
                   setIsLoading(false)
                   return
@@ -194,9 +206,13 @@ export const AuthProvider = ({ children }) => {
             
             console.log('[AuthContext] Using fallback userInfo (database fetch failed):', userInfo.email)
             console.log('[AuthContext] ⚠️ WARNING: profileCompleted not loaded from database, defaulting to false');
-            setUser(userInfo)
+            const normalizedUser = {
+              ...userInfo,
+              id: userInfo.id || userInfo.uid
+            }
+            setUser(normalizedUser)
             setIsAuthenticated(true)
-            localStorage.setItem('userInfo', JSON.stringify(userInfo))
+            localStorage.setItem('userInfo', JSON.stringify(normalizedUser))
             localStorage.setItem('authProvider', authProvider)
           } else {
             console.log('🔵 [AuthContext] Firebase user is null/logged out');
@@ -211,7 +227,11 @@ export const AuthProvider = ({ children }) => {
             if (authToken && authProvider === 'guest') {
               const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
               console.log('🔵 [AuthContext] Restoring guest login');
-              setUser(userInfo)
+              const normalizedUser = {
+                ...userInfo,
+                id: userInfo.id || userInfo.public_id
+              }
+              setUser(normalizedUser)
               setIsAuthenticated(true)
             } else {
               // No auth found, redirect to login
@@ -251,7 +271,11 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(userData))
     localStorage.setItem('authProvider', 'google')
-    setUser(userData)
+    const normalizedUser = {
+      ...userData,
+      id: userData.id || userData.public_id
+    }
+    setUser(normalizedUser)
     setIsAuthenticated(true)
   }
 
