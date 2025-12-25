@@ -111,9 +111,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   )}
                 </div>
                 <div className="result-info">
-                  <p className="result-name">{user.name}</p>
-                  <div className="result-id-container">
-                    <p className="result-id">ID: {user.publicId}</p>
+                  <div className="result-name-row">
+                    <p className="result-name">{user.name}</p>
                     <button
                       className="friend-badge-btn"
                       title="Send Friend Request"
@@ -126,6 +125,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       <span className="friend-text">FRIEND</span>
                     </button>
                   </div>
+                  <p className="result-id">ID: {user.publicId}</p>
                 </div>
               </div>
               ))

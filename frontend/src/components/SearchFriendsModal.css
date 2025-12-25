@@ -181,6 +181,13 @@
   gap: 2px;
 }
 
+.result-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .result-id-container {
   display: flex;
   align-items: center;
