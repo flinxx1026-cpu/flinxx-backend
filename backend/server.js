@@ -655,7 +655,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
     // Verify user exists in database
     console.log('[PROFILE SAVE] Checking if user exists in database...');
     const existingUser = await prisma.users.findUnique({
-      where: { id: userId }
+      where: { public_id: userId }
     })
 
     if (!existingUser) {
@@ -711,7 +711,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
     console.log(`  - profileCompleted: true`);
     
     const user = await prisma.users.update({
-      where: { id: userId },
+      where: { public_id: userId },
       data: {
         birthday: birthDate,
         gender: genderLowercase,
