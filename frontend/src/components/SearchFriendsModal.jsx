@@ -12,20 +12,21 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const isNotificationMode = mode === 'notifications';
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   
-  // Get current user from localStorage
-  const currentUser = React.useMemo(() => {
+  // Get current user fresh from localStorage (not cached)
+  const getCurrentUser = () => {
     try {
       const storedUser = localStorage.getItem('user');
       return storedUser ? JSON.parse(storedUser) : null;
-    } catch (error) {
-      console.error('Error parsing current user:', error);
+    } catch {
       return null;
     }
-  }, []);
+  };
 
   // Fetch friend request status for a user
   const checkFriendRequestStatus = async (userId) => {
     try {
+      const currentUser = getCurrentUser();
+
       if (!currentUser || !currentUser.publicId) {
         console.warn('Current user not available for status check');
         return;
@@ -141,7 +142,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   };
 
   const sendFriendRequest = async (targetUserId) => {
-    // CHANGE 2: Prevent duplicate friend request
+    // Prevent duplicate friend request
     const friendStatus = friendRequestStates[targetUserId];
     if (friendStatus === 'pending' || friendStatus === 'accepted') {
       console.log('Friend request already sent or accepted');
@@ -150,20 +151,14 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
     setSendingRequest(targetUserId);
     try {
-      // Get current user from localStorage
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) {
-        console.error('Current user not found in localStorage');
-        return;
-      }
+      const currentUserData = getCurrentUser();
 
-      const currentUserData = JSON.parse(storedUser);
-      const senderPublicId = currentUserData.publicId;
-
-      if (!senderPublicId) {
+      if (!currentUserData || !currentUserData.publicId) {
         console.error('Current user publicId not found');
         return;
       }
+
+      const senderPublicId = currentUserData.publicId;
 
       const response = await fetch(`${BACKEND_URL}/api/friends/send`, {
         method: 'POST',
@@ -178,7 +173,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       });
 
       if (response.ok) {
-        // CHANGE 3: Update UI state immediately after success
+        // Update UI state immediately after success
         setFriendRequestStates(prev => ({
           ...prev,
           [targetUserId]: 'pending'
