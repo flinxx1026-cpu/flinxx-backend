@@ -12,28 +12,57 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const isNotificationMode = mode === 'notifications';
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   
-  // Get current user fresh from localStorage (not cached)
-  const getCurrentUser = () => {
+  // Fetch current user from backend and store in localStorage
+  const ensureCurrentUser = async () => {
     try {
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) return null;
+      const res = await fetch(`${BACKEND_URL}/api/profile`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
 
-      const user = JSON.parse(storedUser);
+      if (!res.ok) return null;
 
-      // Normalize publicId (backend sends public_id, frontend expects publicId)
-      user.publicId = user.publicId || user.public_id;
+      const data = await res.json();
 
-      return user;
+      if (data?.user) {
+        const user = {
+          ...data.user,
+          publicId: data.user.public_id
+        };
+
+        localStorage.setItem('user', JSON.stringify(user));
+        return user;
+      }
+
+      return null;
     } catch (e) {
-      console.error('Failed to read current user', e);
+      console.error('Failed to ensure current user', e);
       return null;
     }
+  };
+
+  // Get current user fresh from localStorage with backend fallback
+  const getCurrentUser = async () => {
+    const storedUser = localStorage.getItem('user');
+
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        if (user.publicId) return user;
+      } catch (e) {
+        console.error('Failed to parse stored user', e);
+      }
+    }
+
+    // Fallback to backend
+    return await ensureCurrentUser();
   };
 
   // Fetch friend request status for a user
   const checkFriendRequestStatus = async (userId) => {
     try {
-      const currentUser = getCurrentUser();
+      const currentUser = await getCurrentUser();
 
       if (!currentUser || !currentUser.publicId) {
         console.warn('Current user not available for status check');
@@ -159,7 +188,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
     setSendingRequest(targetUserId);
     try {
-      const currentUserData = getCurrentUser();
+      const currentUserData = await getCurrentUser();
 
       if (!currentUserData || !currentUserData.publicId) {
         console.error('Current user publicId not found:', currentUserData);
