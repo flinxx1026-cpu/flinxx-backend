@@ -84,7 +84,22 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect }) => {
                   onClose();
                 }}
               >
-                <div className="result-avatar">{user.avatar || '👤'}</div>
+                <div className="result-avatar">
+                  {user.avatar && user.avatar.startsWith('http') ? (
+                    <img
+                      src={user.avatar}
+                      alt="avatar"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  ) : (
+                    '👤'
+                  )}
+                </div>
                 <div className="result-info">
                   <p className="result-name">{user.name}</p>
                   <p className="result-id">ID: {user.userId}</p>
