@@ -2,13 +2,9 @@
 .search-friends-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(8px);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  z-index: 999;
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -22,16 +18,20 @@
 }
 
 .search-friends-modal {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  width: 360px;
+  max-width: 90vw;
   background: #1a1a2e;
-  border-radius: 20px;
-  width: 100%;
-  max-width: 450px;
+  border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   max-height: 80vh;
   animation: slideUp 0.3s ease-out;
+  z-index: 1000;
 }
 
 @keyframes slideUp {
@@ -214,9 +214,20 @@
 }
 
 /* Responsive */
+@media (max-width: 768px) {
+  .search-friends-modal {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    top: 80px;
+    width: 92%;
+    max-width: 92vw;
+  }
+}
+
 @media (max-width: 480px) {
   .search-friends-modal {
-    max-width: 100%;
     max-height: 90vh;
   }
 
