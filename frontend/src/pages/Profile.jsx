@@ -76,7 +76,7 @@ const Profile = () => {
             email: data.profile.email || user.email || prev.email,
             displayName: data.profile.name || user.name || prev.displayName,
             photoURL: data.profile.picture || user.picture || prev.photoURL,
-            userId: data.profile.userId || prev.userId,
+            userId: data.profile.id || prev.userId,
           }))
         } else {
           // Fallback to localStorage user data if backend doesn't have it
