@@ -2000,6 +2000,10 @@ const Chat = () => {
           <SearchFriendsModal 
             isOpen={isSearchOpen} 
             onClose={() => setIsSearchOpen(false)}
+            onUserSelect={(user) => {
+              console.log('Selected user from search:', user);
+              // TODO: Navigate to user profile or open chat
+            }}
           />
 
           {/* Gender Filter Modal */}

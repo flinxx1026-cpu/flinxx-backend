@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './SearchFriendsModal.css';
 
-const SearchFriendsModal = ({ isOpen, onClose }) => {
+const SearchFriendsModal = ({ isOpen, onClose, onUserSelect }) => {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +74,16 @@ const SearchFriendsModal = ({ isOpen, onClose }) => {
             </div>
           ) : (
             results.map((user) => (
-              <div key={user.id} className="search-result-item">
+              <div 
+                key={user.id} 
+                className="search-result-item"
+                onClick={() => {
+                  if (onUserSelect) {
+                    onUserSelect(user);
+                  }
+                  onClose();
+                }}
+              >
                 <div className="result-avatar">{user.avatar || '👤'}</div>
                 <div className="result-info">
                   <p className="result-name">{user.name}</p>
