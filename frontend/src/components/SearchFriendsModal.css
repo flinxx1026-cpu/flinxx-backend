@@ -221,6 +221,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  align-self: center;
 }
 
 .friend-badge-btn:hover {
