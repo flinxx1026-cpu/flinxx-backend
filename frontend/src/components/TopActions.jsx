@@ -5,6 +5,7 @@ const TopActions = ({
   onProfileClick, 
   onPremiumClick, 
   onMatchHistoryClick,
+  onSearchClick,
   isFixedPosition = false 
 }) => {
   const containerStyle = isFixedPosition 
@@ -35,7 +36,8 @@ const TopActions = ({
       <div 
         className="icon-circle" 
         title="Search"
-        onClick={() => console.log('Search clicked')}
+        onClick={onSearchClick}
+        style={{ cursor: 'pointer' }}
       >
         🔍
       </div>

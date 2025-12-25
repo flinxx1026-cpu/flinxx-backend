@@ -12,6 +12,7 @@ import PremiumModal from '../components/PremiumModal';
 import GenderFilterModal from '../components/GenderFilterModal';
 import ProfileModal from '../components/ProfileModal';
 import MatchHistory from '../components/MatchHistory';
+import SearchFriendsModal from '../components/SearchFriendsModal';
 import TopActions from '../components/TopActions';
 import TermsConfirmationModal from '../components/TermsConfirmationModal';
 import logo from '../assets/flinxx-logo.svg';
@@ -46,6 +47,7 @@ const Chat = () => {
   const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedGender, setSelectedGender] = useState('both');
   const [isRequestingCamera, setIsRequestingCamera] = useState(false);
 
@@ -1560,6 +1562,7 @@ const Chat = () => {
         onProfileClick={() => setIsProfileOpen(true)}
         onPremiumClick={() => setIsPremiumOpen(true)}
         onMatchHistoryClick={() => setIsMatchHistoryOpen(true)}
+        onSearchClick={() => setIsSearchOpen(true)}
         isFixedPosition={true}
       />
 
@@ -1991,6 +1994,12 @@ const Chat = () => {
           <MatchHistory 
             isOpen={isMatchHistoryOpen} 
             onClose={() => setIsMatchHistoryOpen(false)}
+          />
+
+          {/* Search Friends Modal */}
+          <SearchFriendsModal 
+            isOpen={isSearchOpen} 
+            onClose={() => setIsSearchOpen(false)}
           />
 
           {/* Gender Filter Modal */}
