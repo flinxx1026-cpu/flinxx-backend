@@ -5,6 +5,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect }) => {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
 
   if (!isOpen) return null;
 
@@ -42,6 +43,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect }) => {
     }
   };
 
+  const handleCopyId = (shortId) => {
+    navigator.clipboard.writeText(shortId);
+    setCopiedId(shortId);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   return (
     <div className="search-friends-overlay" onClick={onClose}>
       <div className="search-friends-modal" onClick={(e) => e.stopPropagation()}>
@@ -75,7 +82,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect }) => {
           ) : (
             results.map((user, index) => (
               <div 
-                key={`user-${user.userId}-${index}`} 
+                key={`user-${user.shortId}-${index}`} 
                 className="search-result-item"
                 onClick={() => {
                   if (onUserSelect) {
@@ -102,7 +109,19 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect }) => {
                 </div>
                 <div className="result-info">
                   <p className="result-name">{user.name}</p>
-                  <p className="result-id">ID: {user.userId}</p>
+                  <div className="result-id-container">
+                    <p className="result-id">ID: {user.shortId}</p>
+                    <button
+                      className="copy-id-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopyId(user.shortId);
+                      }}
+                      title="Copy ID"
+                    >
+                      {copiedId === user.shortId ? '✓' : '📋'}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))

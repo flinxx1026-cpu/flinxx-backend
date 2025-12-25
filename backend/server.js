@@ -58,6 +58,7 @@ async function initializeDatabase() {
         auth_provider VARCHAR(50),
         provider_id VARCHAR(255),
         google_id VARCHAR(255) UNIQUE,
+        short_id VARCHAR(8) UNIQUE,
         birthday DATE,
         gender VARCHAR(50),
         age INTEGER,
@@ -67,6 +68,7 @@ async function initializeDatabase() {
       );
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+      CREATE INDEX IF NOT EXISTS idx_users_short_id ON users(short_id);
       CREATE INDEX IF NOT EXISTS idx_users_provider ON users(auth_provider, provider_id);
       CREATE INDEX IF NOT EXISTS idx_users_profile_completed ON users(profileCompleted);
     `)
@@ -353,6 +355,33 @@ async function getQueueLength() {
     console.error('❌ Error getting queue length:', error)
     return 0
   }
+}
+
+// Generate unique 8-digit user ID
+async function generateUniqueShortId() {
+  let shortId
+  let exists = true
+  let attempts = 0
+  const maxAttempts = 100
+
+  while (exists && attempts < maxAttempts) {
+    // Generate random 8-digit number
+    shortId = Math.floor(10000000 + Math.random() * 90000000).toString()
+    
+    // Check if it already exists in database
+    const existingUser = await prisma.users.findUnique({
+      where: { short_id: shortId }
+    })
+    
+    exists = !!existingUser
+    attempts++
+  }
+
+  if (attempts >= maxAttempts) {
+    throw new Error('Failed to generate unique short_id after maximum attempts')
+  }
+
+  return shortId
 }
 
 // Routes
@@ -1009,7 +1038,7 @@ const getGoogleUserInfo = async (accessToken) => {
   }
 }
 
-// Search user by ID (google_id field - TEXT/STRING only)
+// Search user by ID (short_id field - 8-digit user ID)
 app.get('/api/search-user', async (req, res) => {
   try {
     const searchId = req.query.q?.trim();
@@ -1023,19 +1052,19 @@ app.get('/api/search-user', async (req, res) => {
       return res.json([]);
     }
 
-    // Search by google_id field (TEXT/STRING field)
-    console.log('[SEARCH USER] Searching database for google_id:', searchId);
+    // Search by short_id field (8-digit user ID)
+    console.log('[SEARCH USER] Searching database for short_id:', searchId);
     
     const user = await prisma.users.findFirst({
       where: {
-        google_id: searchId  // TEXT exact match - NO NUMBER CONVERSION
+        short_id: searchId  // 8-digit ID exact match
       },
       select: {
         id: true,
         email: true,
         display_name: true,
         photo_url: true,
-        google_id: true,
+        short_id: true,
         age: true,
         gender: true
       }
@@ -1047,18 +1076,18 @@ app.get('/api/search-user', async (req, res) => {
       console.log('[SEARCH USER] ✅ User found:', {
         id: user.id,
         email: user.email,
-        google_id: user.google_id
+        short_id: user.short_id
       });
       return res.json([{
         name: user.display_name || 'User',
         avatar: user.photo_url || '👤',
         email: user.email,
-        userId: user.google_id,
+        shortId: user.short_id,
         age: user.age,
         gender: user.gender
       }]);
     } else {
-      console.log('[SEARCH USER] ❌ No user found with google_id:', searchId);
+      console.log('[SEARCH USER] ❌ No user found with short_id:', searchId);
       return res.json([]);
     }
   } catch (error) {
@@ -1123,6 +1152,10 @@ app.get('/auth/google/callback', async (req, res) => {
     const userInfo = await getGoogleUserInfo(tokens.access_token)
     console.log(`✅ Retrieved user info:`, userInfo.email)
     
+    // Generate unique 8-digit short ID for new users
+    const shortId = await generateUniqueShortId()
+    console.log(`✅ Generated short_id:`, shortId)
+    
     // Save user to database using Prisma upsert with google_id as key
     const user = await prisma.users.upsert({
       where: { google_id: userInfo.id },
@@ -1133,6 +1166,7 @@ app.get('/auth/google/callback', async (req, res) => {
         auth_provider: 'google',
         provider_id: userInfo.id,
         google_id: userInfo.id,
+        short_id: shortId,
         profileCompleted: false
       },
       update: {
