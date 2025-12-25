@@ -21,9 +21,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       const user = JSON.parse(storedUser);
 
       // Normalize publicId (backend sends public_id, frontend expects publicId)
-      if (!user.publicId && user.public_id) {
-        user.publicId = user.public_id;
-      }
+      user.publicId = user.publicId || user.public_id;
 
       return user;
     } catch (e) {
@@ -167,7 +165,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       const currentUserData = getCurrentUser();
 
       if (!currentUserData || !currentUserData.publicId) {
-        console.error('Current user publicId not found');
+        console.error('Current user publicId not found:', currentUserData);
         return;
       }
 
