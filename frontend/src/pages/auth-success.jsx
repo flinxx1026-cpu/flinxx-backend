@@ -48,19 +48,25 @@ export default function AuthSuccess() {
 
         if (data.success && data.user) {
           const user = data.user;
+
+          // Normalize publicId from all possible sources
+          const normalizedUser = {
+            ...user,
+            publicId: user.publicId || user.public_id || user.id
+          };
           
           // Store user data and token
           if (setAuthToken) {
             console.log('[AuthSuccess] Storing token and user via AuthContext');
-            setAuthToken(token, user);
+            setAuthToken(token, normalizedUser);
           } else {
             // Fallback: save directly to localStorage
             console.log('[AuthSuccess] AuthContext not available, saving to localStorage directly');
             localStorage.setItem("token", token);
             localStorage.setItem("authToken", token);
-            localStorage.setItem("user", JSON.stringify(user));
+            localStorage.setItem("user", JSON.stringify(normalizedUser));
             localStorage.setItem("authProvider", "google");
-            localStorage.setItem("userInfo", JSON.stringify(user));
+            localStorage.setItem("userInfo", JSON.stringify(normalizedUser));
           }
 
           console.log("✅ User data saved");
