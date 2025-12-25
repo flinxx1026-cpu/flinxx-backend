@@ -110,16 +110,16 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect }) => {
                 <div className="result-info">
                   <p className="result-name">{user.name}</p>
                   <div className="result-id-container">
-                    <p className="result-id">ID: {user.shortId}</p>
+                    <p className="result-id">ID: {user.publicId}</p>
                     <button
                       className="copy-id-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleCopyId(user.shortId);
+                        handleCopyId(user.publicId);
                       }}
                       title="Copy ID"
                     >
-                      {copiedId === user.shortId ? '✓' : '📋'}
+                      {copiedId === user.publicId ? '✓' : '📋'}
                     </button>
                   </div>
                 </div>

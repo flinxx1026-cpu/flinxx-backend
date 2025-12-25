@@ -113,6 +113,7 @@ model sessions {
 model users {
   id                                      String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                                   String     @unique @db.VarChar(255)
+  public_id                               String?    @unique @db.VarChar(8)
   display_name                            String?    @db.VarChar(255)
   photo_url                               String?
   auth_provider                           String?    @db.VarChar(50)
@@ -134,5 +135,6 @@ model users {
   @@index([email], map: "idx_users_email")
   @@index([auth_provider, provider_id], map: "idx_users_provider")
   @@index([google_id], map: "idx_users_google_id")
+  @@index([public_id], map: "idx_users_public_id")
   @@index([profileCompleted], map: "idx_users_profile_completed")
 }

@@ -30,7 +30,7 @@ const Profile = () => {
     email: user?.email || '',
     displayName: user?.name || '',
     photoURL: user?.picture || '',
-    googleId: user?.googleId || 'N/A',
+    userId: user?.userId || 'N/A',
   })
 
   const [loading, setLoading] = useState(true)
@@ -76,7 +76,7 @@ const Profile = () => {
             email: data.profile.email || user.email || prev.email,
             displayName: data.profile.name || user.name || prev.displayName,
             photoURL: data.profile.picture || user.picture || prev.photoURL,
-            googleId: user.googleId || data.profile.id || prev.googleId,
+            userId: data.profile.userId || prev.userId,
           }))
         } else {
           // Fallback to localStorage user data if backend doesn't have it
@@ -85,7 +85,7 @@ const Profile = () => {
             email: user.email || prev.email,
             displayName: user.name || prev.displayName,
             photoURL: user.picture || prev.photoURL,
-            googleId: user.googleId || prev.googleId,
+            userId: user.userId || prev.userId,
           }))
         }
       } catch (error) {
@@ -96,7 +96,7 @@ const Profile = () => {
           email: user.email || prev.email,
           displayName: user.name || prev.displayName,
           photoURL: user.picture || prev.photoURL,
-          googleId: user.googleId || prev.googleId,
+          userId: user.userId || prev.userId,
         }))
       } finally {
         setLoading(false)
@@ -210,11 +210,20 @@ const Profile = () => {
                   </div>
                 )}
 
-                {/* Google ID */}
-                {profile.googleId && profile.googleId !== 'N/A' && (
+                {/* User ID */}
+                {profile.userId && profile.userId !== 'N/A' && (
                   <div>
-                    <label className="text-white/70 text-sm font-semibold">Google ID</label>
-                    <p className="text-white font-mono text-sm mt-2 break-all">{profile.googleId}</p>
+                    <label className="text-white/70 text-sm font-semibold">User ID</label>
+                    <div className="flex items-center gap-2 mt-2">
+                      <p className="text-white font-mono text-sm">{profile.userId}</p>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(profile.userId)}
+                        className="text-white/70 hover:text-white transition"
+                        title="Copy ID"
+                      >
+                        📋
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -294,13 +303,13 @@ const Profile = () => {
                   />
                 </div>
 
-                {/* Google ID - Read Only */}
-                {formData.googleId && formData.googleId !== 'N/A' && (
+                {/* User ID - Read Only */}
+                {formData.userId && formData.userId !== 'N/A' && (
                   <div>
-                    <label className="text-white/70 text-sm font-semibold">Google ID (Read-only)</label>
+                    <label className="text-white/70 text-sm font-semibold">User ID (Read-only)</label>
                     <input
                       type="text"
-                      value={formData.googleId}
+                      value={formData.userId}
                       disabled
                       className="w-full mt-2 bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-white/60 cursor-not-allowed"
                     />

@@ -202,6 +202,37 @@ const partnerSockets = new Map() // socketId -> partnerSocketId mapping (for Web
 
 // ===== HELPER FUNCTIONS =====
 
+// Generate unique 8-digit public user ID
+function generate8DigitId() {
+  return Math.floor(10000000 + Math.random() * 90000000).toString()
+}
+
+// Generate unique public ID with database collision check
+async function generateUniquePublicId() {
+  let publicId
+  let exists = true
+  let attempts = 0
+  const maxAttempts = 100
+
+  while (exists && attempts < maxAttempts) {
+    publicId = generate8DigitId()
+    
+    // Check if already exists in database
+    const existingUser = await prisma.users.findUnique({
+      where: { public_id: publicId }
+    })
+    
+    exists = !!existingUser
+    attempts++
+  }
+
+  if (attempts >= maxAttempts) {
+    throw new Error('Failed to generate unique public_id after maximum attempts')
+  }
+
+  return publicId
+}
+
 // Get TURN credentials from Metered service
 async function getTurnCredentials() {
   try {
@@ -1052,19 +1083,19 @@ app.get('/api/search-user', async (req, res) => {
       return res.json([]);
     }
 
-    // Search by short_id field (8-digit user ID)
-    console.log('[SEARCH USER] Searching database for short_id:', searchId);
+    // Search by public_id field (8-digit user ID)
+    console.log('[SEARCH USER] Searching database for public_id:', searchId);
     
     const user = await prisma.users.findFirst({
       where: {
-        short_id: searchId  // 8-digit ID exact match
+        public_id: searchId  // 8-digit ID exact match
       },
       select: {
         id: true,
         email: true,
         display_name: true,
         photo_url: true,
-        short_id: true,
+        public_id: true,
         age: true,
         gender: true
       }
@@ -1076,18 +1107,18 @@ app.get('/api/search-user', async (req, res) => {
       console.log('[SEARCH USER] ✅ User found:', {
         id: user.id,
         email: user.email,
-        short_id: user.short_id
+        public_id: user.public_id
       });
       return res.json([{
         name: user.display_name || 'User',
         avatar: user.photo_url || '👤',
         email: user.email,
-        shortId: user.short_id,
+        publicId: user.public_id,
         age: user.age,
         gender: user.gender
       }]);
     } else {
-      console.log('[SEARCH USER] ❌ No user found with short_id:', searchId);
+      console.log('[SEARCH USER] ❌ No user found with public_id:', searchId);
       return res.json([]);
     }
   } catch (error) {
@@ -1152,9 +1183,9 @@ app.get('/auth/google/callback', async (req, res) => {
     const userInfo = await getGoogleUserInfo(tokens.access_token)
     console.log(`✅ Retrieved user info:`, userInfo.email)
     
-    // Generate unique 8-digit short ID for new users
-    const shortId = await generateUniqueShortId()
-    console.log(`✅ Generated short_id:`, shortId)
+    // Generate unique 8-digit public ID for new users
+    const publicId = await generateUniquePublicId()
+    console.log(`✅ Generated public_id:`, publicId)
     
     // Save user to database using Prisma upsert with google_id as key
     const user = await prisma.users.upsert({
@@ -1166,7 +1197,7 @@ app.get('/auth/google/callback', async (req, res) => {
         auth_provider: 'google',
         provider_id: userInfo.id,
         google_id: userInfo.id,
-        short_id: shortId,
+        public_id: publicId,
         profileCompleted: false
       },
       update: {
@@ -1337,7 +1368,7 @@ app.get('/api/profile', async (req, res) => {
         birthday: user.birthday,
         profileCompleted: user.profileCompleted,
         authProvider: user.auth_provider,
-        googleId: user.google_id,
+        userId: user.public_id,
         createdAt: user.created_at,
         updatedAt: user.updated_at
       }
