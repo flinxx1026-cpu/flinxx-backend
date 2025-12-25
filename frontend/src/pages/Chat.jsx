@@ -1575,10 +1575,10 @@ const Chat = () => {
           {/* Top Section - Toggle Buttons */}
           <div className="flex gap-3 justify-center">
             <button className="text-white font-bold py-2 px-6 rounded-lg transition-all text-sm shadow-md hover:shadow-lg" style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}>
-              SOLO
+              SoloX
             </button>
             <button className="text-white font-bold py-2 px-6 rounded-lg transition-all text-sm" style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}>
-              DUO
+              DuoX
             </button>
           </div>
 
