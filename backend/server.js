@@ -1365,7 +1365,20 @@ app.get('/api/profile', async (req, res) => {
     // Fetch full user data from database
     console.log('[PROFILE API] Fetching user from database with id:', decoded.userId)
     const user = await prisma.users.findUnique({
-      where: { id: decoded.userId }
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        public_id: true,
+        email: true,
+        display_name: true,
+        photo_url: true,
+        gender: true,
+        birthday: true,
+        profileCompleted: true,
+        auth_provider: true,
+        created_at: true,
+        updated_at: true
+      }
     })
     console.log('[PROFILE API] User fetch result:', user ? 'Found' : 'Not found')
     

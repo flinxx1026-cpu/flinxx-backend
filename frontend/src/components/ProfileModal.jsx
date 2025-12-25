@@ -10,6 +10,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
   const { user } = useContext(AuthContext) || {};
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
+    id: '',
     name: '',
     email: '',
     picture: '',
@@ -96,6 +97,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
       // First set data from context
       setProfileData(prev => ({
         ...prev,
+        id: user.id || '',
         name: user.name || 'User',
         email: user.email || '',
         picture: user.picture || '',
@@ -123,6 +125,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
           if (data.success && data.user) {
             setProfileData(prev => ({
               ...prev,
+              id: data.user.id || data.user.userId || '',
               name: data.user.name || 'User',
               email: data.user.email || '',
               picture: data.user.picture || '',
@@ -327,7 +330,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
             <h2 className="profile-name">{profileData.name}</h2>
           )}
 
-          <p className="profile-uid">ID: {profileData.googleId || 'N/A'}</p>
+          <p className="profile-uid">ID: {profileData.id || 'N/A'}</p>
         </div>
 
         {/* Monkey Plus Section */}
