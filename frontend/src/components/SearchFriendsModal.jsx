@@ -16,11 +16,24 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const getCurrentUser = () => {
     try {
       const storedUser = localStorage.getItem('user');
-      return storedUser ? JSON.parse(storedUser) : null;
-    } catch {
+      if (!storedUser) return null;
+
+      const user = JSON.parse(storedUser);
+
+      // Normalize publicId (backend sends public_id, frontend expects publicId)
+      if (!user.publicId && user.public_id) {
+        user.publicId = user.public_id;
+      }
+
+      return user;
+    } catch (e) {
+      console.error('Failed to read current user', e);
       return null;
     }
   };
+
+  // Debug: Check current user from localStorage
+  console.log('[DEBUG] current user from localStorage:', getCurrentUser());
 
   // Fetch friend request status for a user
   const checkFriendRequestStatus = async (userId) => {
