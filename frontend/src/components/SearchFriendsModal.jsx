@@ -121,7 +121,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                         sendFriendRequest(user.id || user.publicId);
                       }}
                     >
-                      <span className="friend-emoji">🫂</span>
+                      <span className="friend-emoji">�</span>
                       <span className="friend-text">FRIEND</span>
                     </button>
                   </div>
