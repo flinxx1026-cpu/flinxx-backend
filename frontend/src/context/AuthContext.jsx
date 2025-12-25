@@ -75,12 +75,15 @@ export const AuthProvider = ({ children }) => {
                   gender: data.user.gender
                 })
                 
-                console.log('🔵 [AuthContext] Setting user state with:', { email: data.user.email, profileCompleted: data.user.profileCompleted })
-                const normalizedUser = {
+                // Ensure publicId is included in user object
+                const userWithPublicId = {
                   ...data.user,
-                  id: data.user.id || data.user.public_id
+                  publicId: data.user.public_id || data.user.publicId
                 }
-                setUser(normalizedUser)
+                
+                console.log('🔵 [AuthContext] Setting user state with:', { email: userWithPublicId.email, profileCompleted: userWithPublicId.profileCompleted, publicId: userWithPublicId.publicId })
+                setUser(userWithPublicId)
+                localStorage.setItem('user', JSON.stringify(userWithPublicId))
                 setIsAuthenticated(true)
                 setIsLoading(false)
                 console.log('🔵 [AuthContext] ✅ COMPLETE - Returning from token validation path')
@@ -106,21 +109,26 @@ export const AuthProvider = ({ children }) => {
           try {
             console.log('\n🔵 [AuthContext] STEP 3: Restore from localStorage (no token validation)');
             const user = JSON.parse(storedUser)
+            
+            // Ensure publicId exists (convert from public_id if needed)
+            if (!user.publicId && user.public_id) {
+              user.publicId = user.public_id
+            }
+            
             console.log('🔵 [AuthContext]   - Email:', user.email)
+            console.log('🔵 [AuthContext]   - publicId:', user.publicId)
             console.log('🔵 [AuthContext]   - profileCompleted:', user.profileCompleted, '(type:', typeof user.profileCompleted + ')')
             console.log('🔵 [AuthContext] ✅ User loaded from localStorage (no token validation):', user.email)
             console.log('🔵 [AuthContext] User data from localStorage:', {
               id: user.id,
               email: user.email,
+              publicId: user.publicId,
               profileCompleted: user.profileCompleted,
               isProfileCompleted: user.isProfileCompleted
             })
             console.log('🔵 [AuthContext] Setting user state with profileCompleted:', user.profileCompleted)
-            const normalizedUser = {
-              ...user,
-              id: user.id || user.public_id
-            }
-            setUser(normalizedUser)
+            setUser(user)
+            localStorage.setItem('user', JSON.stringify(user))
             setIsAuthenticated(true)
             setIsLoading(false)
             console.log('🔵 [AuthContext] ✅ COMPLETE - Returning from localStorage fallback path')
@@ -177,11 +185,7 @@ export const AuthProvider = ({ children }) => {
                     profileCompleted: profileData.user.profileCompleted
                   })
                   console.log('🔵 [AuthContext] Setting user state with profileCompleted:', profileData.user.profileCompleted);
-                  const normalizedUser = {
-                    ...profileData.user,
-                    id: profileData.user.id || profileData.user.public_id
-                  }
-                  setUser(normalizedUser)
+                  setUser(profileData.user)
                   setIsAuthenticated(true)
                   setIsLoading(false)
                   return
@@ -206,13 +210,9 @@ export const AuthProvider = ({ children }) => {
             
             console.log('[AuthContext] Using fallback userInfo (database fetch failed):', userInfo.email)
             console.log('[AuthContext] ⚠️ WARNING: profileCompleted not loaded from database, defaulting to false');
-            const normalizedUser = {
-              ...userInfo,
-              id: userInfo.id || userInfo.uid
-            }
-            setUser(normalizedUser)
+            setUser(userInfo)
             setIsAuthenticated(true)
-            localStorage.setItem('userInfo', JSON.stringify(normalizedUser))
+            localStorage.setItem('userInfo', JSON.stringify(userInfo))
             localStorage.setItem('authProvider', authProvider)
           } else {
             console.log('🔵 [AuthContext] Firebase user is null/logged out');
@@ -227,11 +227,7 @@ export const AuthProvider = ({ children }) => {
             if (authToken && authProvider === 'guest') {
               const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
               console.log('🔵 [AuthContext] Restoring guest login');
-              const normalizedUser = {
-                ...userInfo,
-                id: userInfo.id || userInfo.public_id
-              }
-              setUser(normalizedUser)
+              setUser(userInfo)
               setIsAuthenticated(true)
             } else {
               // No auth found, redirect to login
@@ -271,11 +267,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(userData))
     localStorage.setItem('authProvider', 'google')
-    const normalizedUser = {
-      ...userData,
-      id: userData.id || userData.public_id
-    }
-    setUser(normalizedUser)
+    setUser(userData)
     setIsAuthenticated(true)
   }
 
