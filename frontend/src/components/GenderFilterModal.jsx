@@ -57,14 +57,16 @@ const GenderFilterModal = ({ isOpen, onClose, currentGender = "both", onOpenPrem
               <div className="gender-label">Guys Only</div>
             </button>
 
-            {/* Both */}
-            <button
-              className={`gender-option ${selectedGender === "both" ? "selected" : ""}`}
-              onClick={() => setSelectedGender("both")}
-            >
-              <div className="gender-emoji">👨‍👩</div>
-              <div className="gender-label">Both</div>
-            </button>
+            {/* Both - TEMPORARILY HIDDEN */}
+            {false && (
+              <button
+                className={`gender-option ${selectedGender === "both" ? "selected" : ""}`}
+                onClick={() => setSelectedGender("both")}
+              >
+                <div className="gender-emoji">👨‍👩</div>
+                <div className="gender-label">Both</div>
+              </button>
+            )}
           </div>
         </div>
 
