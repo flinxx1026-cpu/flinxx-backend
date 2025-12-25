@@ -26,13 +26,13 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // Fetch friend request status for a user
   const checkFriendRequestStatus = async (userId) => {
     try {
-      if (!currentUser || !currentUser.id) {
+      if (!currentUser || !currentUser.publicId) {
         console.warn('Current user not available for status check');
         return;
       }
 
       const response = await fetch(
-        `${BACKEND_URL}/api/friends/status/${userId}?currentPublicId=${currentUser.id || currentUser.publicId}`,
+        `${BACKEND_URL}/api/friends/status/${userId}?currentPublicId=${currentUser.publicId}`,
         {
           method: 'GET',
           headers: {
@@ -84,6 +84,9 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   if (!isOpen) return null;
 
   const handleSearch = async (value) => {
+    // Optional safety check: prevent accidental wrong search requests
+    if (!value || typeof value !== 'string') return;
+    
     setSearch(value);
     
     if (!value.trim()) {
@@ -112,7 +115,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       // Check friend request status for each result
       if (Array.isArray(data)) {
         data.forEach(user => {
-          checkFriendRequestStatus(user.id || user.publicId);
+          checkFriendRequestStatus(user.publicId);
         });
       }
     } catch (error) {
@@ -155,7 +158,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       }
 
       const currentUserData = JSON.parse(storedUser);
-      const senderPublicId = currentUserData.id || currentUserData.publicId;
+      const senderPublicId = currentUserData.publicId;
 
       if (!senderPublicId) {
         console.error('Current user publicId not found');
@@ -303,14 +306,14 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     <button
                       className="friend-badge-btn"
                       title="Send Friend Request"
-                      disabled={friendRequestStates[user.id || user.publicId] === 'pending'}
+                      disabled={friendRequestStates[user.publicId] === 'pending'}
                       onClick={(e) => {
                         e.stopPropagation();
-                        sendFriendRequest(user.id || user.publicId);
+                        sendFriendRequest(user.publicId);
                       }}
                     >
-                      <span className="friend-emoji" aria-hidden="true">{getButtonEmoji(user.id || user.publicId)}</span>
-                      <span className="friend-text">{getButtonText(user.id || user.publicId)}</span>
+                      <span className="friend-emoji" aria-hidden="true">{getButtonEmoji(user.publicId)}</span>
+                      <span className="friend-text">{getButtonText(user.publicId)}</span>
                     </button>
                   </div>
                   <p className="result-id">ID: {user.publicId}</p>
