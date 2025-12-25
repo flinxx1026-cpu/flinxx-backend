@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
+import { Copy } from 'lucide-react';
 import { auth } from '../config/firebase';
 import { AuthContext } from '../context/AuthContext';
 import './ProfileModal.css';
@@ -23,6 +24,14 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
   });
   const [loading, setLoading] = useState(false);
   const [locationData, setLocationData] = useState(null);
+  const [copyFeedback, setCopyFeedback] = useState(false);
+
+  const handleCopyId = (id) => {
+    if (!id) return;
+    navigator.clipboard.writeText(id);
+    setCopyFeedback(true);
+    setTimeout(() => setCopyFeedback(false), 2000);
+  };
 
   // Load user data when modal opens
   useEffect(() => {
@@ -330,7 +339,32 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
             <h2 className="profile-name">{profileData.name}</h2>
           )}
 
-          <p className="profile-uid">ID: {profileData.id || 'N/A'}</p>
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "8px", 
+            opacity: 0.8 
+          }}>
+            <span className="profile-uid">ID: {profileData.id || 'N/A'}</span>
+            {profileData.id && (
+              <button
+                onClick={() => handleCopyId(profileData.id)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  opacity: copyFeedback ? 1 : 0.6,
+                  transition: "opacity 0.2s"
+                }}
+                title={copyFeedback ? "Copied!" : "Copy ID"}
+              >
+                <Copy size={16} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Monkey Plus Section */}
