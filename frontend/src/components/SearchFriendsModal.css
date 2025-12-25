@@ -243,6 +243,7 @@
 .friend-emoji {
   font-size: 18px;
   line-height: 1;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 .friend-text {
