@@ -185,7 +185,14 @@ export const AuthProvider = ({ children }) => {
                     profileCompleted: profileData.user.profileCompleted
                   })
                   console.log('🔵 [AuthContext] Setting user state with profileCompleted:', profileData.user.profileCompleted);
-                  setUser(profileData.user)
+                  
+                  // Ensure publicId is included in user object
+                  const userWithPublicId = {
+                    ...profileData.user,
+                    publicId: profileData.user.public_id || profileData.user.publicId
+                  }
+                  
+                  setUser(userWithPublicId)
                   setIsAuthenticated(true)
                   setIsLoading(false)
                   return
@@ -204,6 +211,7 @@ export const AuthProvider = ({ children }) => {
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
+              publicId: firebaseUser.uid, // Use UID as temporary publicId
               authProvider: authProvider,
               profileCompleted: false  // Default to false if not found
             }
@@ -226,6 +234,12 @@ export const AuthProvider = ({ children }) => {
             
             if (authToken && authProvider === 'guest') {
               const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+              
+              // Ensure publicId exists
+              if (!userInfo.publicId && userInfo.public_id) {
+                userInfo.publicId = userInfo.public_id
+              }
+              
               console.log('🔵 [AuthContext] Restoring guest login');
               setUser(userInfo)
               setIsAuthenticated(true)
@@ -264,10 +278,17 @@ export const AuthProvider = ({ children }) => {
 
   const setAuthToken = (token, userData) => {
     console.log('[AuthContext] Storing token and user data:', userData?.email)
+    
+    // Ensure publicId is included
+    const userDataWithPublicId = {
+      ...userData,
+      publicId: userData?.public_id || userData?.publicId || userData?.id
+    }
+    
     localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(userData))
+    localStorage.setItem('user', JSON.stringify(userDataWithPublicId))
     localStorage.setItem('authProvider', 'google')
-    setUser(userData)
+    setUser(userDataWithPublicId)
     setIsAuthenticated(true)
   }
 
