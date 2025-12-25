@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import "./PremiumModal.css";
 
 const PremiumModal = ({ isOpen, onClose }) => {
-  const [mainTab, setMainTab] = useState("premium");
+  const [mainTab, setMainTab] = useState("flex");
   const [activePremiumTab, setActivePremiumTab] = useState("lite");
 
   if (!isOpen) return null;
@@ -127,12 +127,15 @@ const PremiumModal = ({ isOpen, onClose }) => {
 
         {/* Main Tabs */}
         <div className="main-tabs-container">
-          <button
-            className={`main-tab ${mainTab === "premium" ? "active" : ""}`}
-            onClick={() => setMainTab("premium")}
-          >
-            Premium Plans
-          </button>
+          {/* TEMPORARILY HIDDEN: Premium Plans Tab */}
+          {false && (
+            <button
+              className={`main-tab ${mainTab === "premium" ? "active" : ""}`}
+              onClick={() => setMainTab("premium")}
+            >
+              Premium Plans
+            </button>
+          )}
           <button
             className={`main-tab ${mainTab === "flex" ? "active" : ""}`}
             onClick={() => setMainTab("flex")}
@@ -141,8 +144,8 @@ const PremiumModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* PREMIUM TAB CONTENT */}
-        {mainTab === "premium" && (
+        {/* TEMPORARILY HIDDEN: PREMIUM TAB CONTENT */}
+        {false && mainTab === "premium" && (
           <div className="tab-content">
             {/* Premium Plan Tabs */}
             <div className="premium-tabs-container">
