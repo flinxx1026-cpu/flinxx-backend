@@ -83,19 +83,19 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
 
       console.log('✅ Profile saved successfully:', data)
       
-      // Update localStorage with completed profile data
+      // Mark profile as completed locally
       const updatedUser = {
         ...user,
-        id: data.user.id,
-        birthday: data.user.birthday,
-        gender: data.user.gender,
-        age: data.user.age,
-        profileCompleted: data.user.profileCompleted,
-        isProfileCompleted: true
+        profileCompleted: true,
+        isProfileCompleted: true,
+        birthday,
+        gender,
+        age
       }
+
+      localStorage.setItem('profileCompleted', 'true')
       localStorage.setItem('user', JSON.stringify(updatedUser))
-      
-      // Call the callback to update auth context
+
       if (onProfileComplete) {
         onProfileComplete(updatedUser)
       }
