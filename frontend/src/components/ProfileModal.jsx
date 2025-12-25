@@ -339,13 +339,18 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
             <h2 className="profile-name">{profileData.name}</h2>
           )}
 
-          <div style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "8px", 
-            opacity: 0.8 
-          }}>
-            <span className="profile-uid">ID: {profileData.id || 'N/A'}</span>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "8px",
+              marginTop: "6px",
+              opacity: 0.8
+            }}
+          >
+            <span>ID: {profileData.id || 'N/A'}</span>
+
             {profileData.id && (
               <button
                 onClick={() => handleCopyId(profileData.id)}
@@ -353,15 +358,12 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                  padding: 0,
                   display: "flex",
-                  alignItems: "center",
-                  opacity: copyFeedback ? 1 : 0.6,
-                  transition: "opacity 0.2s"
+                  alignItems: "center"
                 }}
-                title={copyFeedback ? "Copied!" : "Copy ID"}
+                title="Copy ID"
               >
-                <Copy size={16} />
+                📋
               </button>
             )}
           </div>
