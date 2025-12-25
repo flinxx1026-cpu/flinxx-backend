@@ -30,9 +30,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   };
 
-  // Debug: Check current user from localStorage
-  console.log('[DEBUG] current user from localStorage:', getCurrentUser());
-
   // Fetch friend request status for a user
   const checkFriendRequestStatus = async (userId) => {
     try {
