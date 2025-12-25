@@ -572,7 +572,7 @@ app.post('/api/users/save', async (req, res) => {
     res.json({
       success: true,
       user: {
-        id: user.id,
+        id: user.public_id,
         email: user.email,
         displayName: user.display_name,
         photoURL: user.photo_url,
@@ -723,7 +723,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
     console.log(`[PROFILE SAVE] ✅ PROFILE UPDATED SUCCESSFULLY`);
     console.log(`[PROFILE SAVE] User email: ${user.email}`);
     console.log(`[PROFILE SAVE] Updated user data:`, JSON.stringify({
-      id: user.id,
+      id: user.public_id,
       email: user.email,
       birthday: user.birthday,
       gender: user.gender,
@@ -734,7 +734,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
     res.json({
       success: true,
       user: {
-        id: user.id,
+        id: user.public_id,
         email: user.email,
         displayName: user.display_name,
         photoURL: user.photo_url,
@@ -912,7 +912,7 @@ app.get('/api/users/:userId', async (req, res) => {
     }
 
     res.json({
-      id: user.id,
+      id: user.public_id,
       email: user.email,
       displayName: user.display_name,
       photoURL: user.photo_url,
@@ -949,7 +949,7 @@ app.get('/api/users/email/:email', async (req, res) => {
     }
 
     res.json({
-      id: user.id,
+      id: user.public_id,
       email: user.email,
       displayName: user.display_name,
       photoURL: user.photo_url,
@@ -1000,7 +1000,7 @@ app.get('/api/user/profile', async (req, res) => {
     res.json({
       success: true,
       profile: {
-        id: user.id,
+        id: user.public_id,
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
@@ -1105,7 +1105,7 @@ app.get('/api/search-user', async (req, res) => {
 
     if (user) {
       console.log('[SEARCH USER] ✅ User found:', {
-        id: user.id,
+        id: user.public_id,
         email: user.email,
         public_id: user.public_id
       });
@@ -1287,7 +1287,7 @@ app.get('/auth-success', async (req, res) => {
       success: true,
       token: token,
       user: {
-        id: user.id,
+        id: user.public_id,
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
@@ -1381,7 +1381,7 @@ app.get('/api/profile', async (req, res) => {
     res.json({
       success: true,
       user: {
-        id: user.id,
+        id: user.public_id,
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
