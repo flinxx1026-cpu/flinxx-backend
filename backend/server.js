@@ -1307,6 +1307,47 @@ app.get('/api/friends/status', async (req, res) => {
   }
 })
 
+// Get incoming friend requests (for notifications)
+app.get('/api/friends/requests/incoming', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid authorization header' })
+    }
+    
+    const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
+    const receiverId = decoded.userId // UUID from token
+    
+    console.log('📬 Fetching incoming requests for user:', receiverId)
+    
+    const result = await pool.query(
+      `
+      SELECT
+        fr.id,
+        fr.status,
+        fr.created_at,
+        u.display_name as name,
+        u.public_id,
+        u.photo_url as avatar
+      FROM friend_requests fr
+      JOIN users u ON u.id = fr.sender_id
+      WHERE fr.receiver_id = $1
+        AND fr.status = 'pending'
+      ORDER BY fr.created_at DESC
+      `,
+      [receiverId]
+    )
+
+    console.log('✅ Found', result.rows.length, 'incoming requests')
+    res.json(result.rows)
+  } catch (err) {
+    console.error('❌ Incoming requests error:', err)
+    res.status(500).json({ error: 'Failed to fetch requests' })
+  }
+})
+
 // Step 1: Redirect to Google OAuth consent screen
 app.get('/auth/google', (req, res) => {
   try {
