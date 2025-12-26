@@ -1151,8 +1151,12 @@ app.get('/api/search-user', async (req, res) => {
 // Send friend request
 app.post('/api/friends/send', async (req, res) => {
   try {
-    console.log('Friend Request Body:', req.body);
     const { senderPublicId, receiverPublicId } = req.body
+
+    console.log("FRIEND REQUEST PAYLOAD:", {
+      senderPublicId,
+      receiverPublicId
+    });
 
     if (!senderPublicId || !receiverPublicId) {
       return res.status(400).json({ error: 'Missing senderPublicId or receiverPublicId' })

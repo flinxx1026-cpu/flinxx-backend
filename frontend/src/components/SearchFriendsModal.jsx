@@ -64,13 +64,13 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     try {
       const currentUserData = getCurrentUser();
 
-      if (!currentUserData || !currentUserData.publicId) {
+      if (!currentUserData || !currentUserData.id) {
         console.warn('Current user not available for status check');
         return;
       }
 
       const response = await fetch(
-        `${BACKEND_URL}/api/friends/status?senderPublicId=${currentUserData.publicId}&receiverPublicId=${userId}`,
+        `${BACKEND_URL}/api/friends/status?senderPublicId=${currentUserData.id}&receiverPublicId=${userId}`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -195,8 +195,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     try {
       const currentUserData = getCurrentUser();
 
-      if (!currentUserData?.publicId) {
-        console.error('Current user publicId not found', currentUserData);
+      if (!currentUserData?.id) {
+        console.error('Current user id not found', currentUserData);
         return;
       }
 
@@ -207,8 +207,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ 
-          senderPublicId: currentUserData.publicId,
-          receiverPublicId: targetUserId
+          senderPublicId: String(currentUserData.id),
+          receiverPublicId: String(targetUserId)
         })
       });
 
