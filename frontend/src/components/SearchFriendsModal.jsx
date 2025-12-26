@@ -296,7 +296,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {/* Results Container */}
+        {/* Results Container - Search Mode */}
         {!isNotificationMode && (
           <div className="search-results">
             {results.length === 0 ? (
@@ -352,6 +352,58 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   <p className="result-id">ID: {user.publicId}</p>
                 </div>
               </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Notifications Container - Notifications Mode */}
+        {isNotificationMode && (
+          <div className="search-results">
+            {pendingRequests.length === 0 ? (
+              <p
+                style={{
+                  textAlign: 'center',
+                  color: 'rgba(255,255,255,0.6)',
+                  marginTop: '40px'
+                }}
+              >
+                No friend requests
+              </p>
+            ) : (
+              pendingRequests.map(req => (
+                <div key={req.id} className="search-result-item">
+                  <div className="result-avatar">
+                    {req.sender_avatar ? (
+                      <img src={req.sender_avatar} alt="avatar" />
+                    ) : (
+                      '👤'
+                    )}
+                  </div>
+
+                  <div className="result-info">
+                    <p className="result-name">{req.sender_name}</p>
+                    <p className="result-id">ID: {req.sender_public_id}</p>
+
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                      <button
+                        className="friend-badge-btn"
+                        onClick={() =>
+                          handleAcceptRequest(req.id, req.sender_public_id)
+                        }
+                      >
+                        ✅ Accept
+                      </button>
+
+                      <button
+                        className="friend-badge-btn"
+                        onClick={() => handleRejectRequest(req.id)}
+                      >
+                        ❌ Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))
             )}
           </div>
