@@ -641,6 +641,7 @@ app.post('/api/users/save', async (req, res) => {
       success: true,
       user: {
         id: user.id,
+        uuid: user.id,
         email: user.email,
         displayName: user.display_name,
         photoURL: user.photo_url,
@@ -1693,6 +1694,7 @@ app.get('/api/profile', async (req, res) => {
       success: true,
       user: {
         id: user.id,
+        uuid: user.id,
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,

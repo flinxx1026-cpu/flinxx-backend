@@ -7,7 +7,7 @@ const ChatBox = ({ friend, onBack }) => {
   
   // Get current user UUID from localStorage
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-  const myUserId = currentUser.id; // UUID only, no fallback
+  const myUserId = currentUser.uuid || currentUser.id; // UUID only
 
   // ✅ JOIN CHAT ROOM when component opens
   useEffect(() => {

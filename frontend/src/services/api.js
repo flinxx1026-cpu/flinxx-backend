@@ -8,7 +8,7 @@ const getToken = () => localStorage.getItem('token');
 export const getFriends = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = currentUser.id; // MUST be UUID
+    const userId = currentUser.uuid || currentUser.id; // UUID from backend
 
     if (!userId) return [];
 
