@@ -1378,9 +1378,11 @@ app.get('/api/friends/requests/incoming', authMiddleware, async (req, res) => {
 app.get('/api/friends/requests', authMiddleware, async (req, res) => {
   try {
     const receiverId = req.user.id // UUID from authMiddleware
+    const publicId = req.user.publicId
     
-    console.log('📬 Fetching friend requests for user:', receiverId)
+    console.log('📬 Fetching friend requests for user:', { receiverId, publicId })
     
+    // Query for pending friend requests where this user is the receiver
     const result = await pool.query(
       `
       SELECT
@@ -1399,7 +1401,7 @@ app.get('/api/friends/requests', authMiddleware, async (req, res) => {
       [receiverId]
     )
 
-    console.log('✅ Found', result.rows.length, 'friend requests')
+    console.log('✅ Found', result.rows.length, 'friend requests for user', publicId)
     res.json(result.rows)
   } catch (err) {
     console.error('❌ Friend requests error:', err)
