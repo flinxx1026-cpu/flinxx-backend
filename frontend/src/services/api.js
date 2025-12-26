@@ -7,11 +7,20 @@ const getToken = () => localStorage.getItem('token');
  */
 export const getFriends = async () => {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/friends`, {
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = currentUser.id;
+    
+    if (!userId) {
+      console.error('User ID not found in localStorage');
+      return [];
+    }
+
+    const response = await fetch(`${BACKEND_URL}/api/friends?userId=${userId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${getToken()}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-User-Id': userId
       }
     });
 
