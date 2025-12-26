@@ -8,31 +8,26 @@ const getToken = () => localStorage.getItem('token');
 export const getFriends = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = currentUser.id;
-    
-    if (!userId) {
-      console.error('User ID not found in localStorage');
-      return [];
-    }
+    const userId = currentUser.id; // MUST be UUID
 
-    const response = await fetch(`${BACKEND_URL}/api/friends?userId=${userId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${getToken()}`,
-        'Content-Type': 'application/json',
-        'X-User-Id': userId
+    if (!userId) return [];
+
+    const response = await fetch(
+      `${BACKEND_URL}/api/friends?userId=${userId}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+          'Content-Type': 'application/json',
+        },
       }
-    });
+    );
 
-    if (!response.ok) {
-      console.error('Failed to fetch friends:', response.status);
-      return [];
-    }
+    if (!response.ok) return [];
 
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching friends:', error);
+    return await response.json();
+  } catch (err) {
+    console.error('Error fetching friends:', err);
     return [];
   }
 };
