@@ -208,6 +208,40 @@ app.use(cors({
 
 app.use(express.json())
 
+// ===== AUTH MIDDLEWARE =====
+const authMiddleware = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid authorization header' })
+    }
+    
+    const token = authHeader.substring(7) // Remove 'Bearer ' prefix
+    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
+    
+    // Fetch user from database
+    const user = await prisma.users.findUnique({
+      where: { id: decoded.userId }
+    })
+    
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' })
+    }
+    
+    // Set req.user with UUID and publicId
+    req.user = {
+      id: user.id,
+      publicId: user.public_id
+    }
+    
+    next()
+  } catch (error) {
+    console.error('❌ Auth middleware error:', error)
+    res.status(401).json({ error: 'Invalid token' })
+  }
+}
+
 // User Management (now using Redis for online presence)
 // In-memory maps kept for socket connections during session
 const userSockets = new Map() // socketId -> userId mapping
@@ -1308,17 +1342,9 @@ app.get('/api/friends/status', async (req, res) => {
 })
 
 // Get incoming friend requests (for notifications)
-app.get('/api/friends/requests/incoming', async (req, res) => {
+app.get('/api/friends/requests/incoming', authMiddleware, async (req, res) => {
   try {
-    const authHeader = req.headers.authorization
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Missing or invalid authorization header' })
-    }
-    
-    const token = authHeader.substring(7) // Remove 'Bearer ' prefix
-    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
-    const receiverId = decoded.userId // UUID from token
+    const receiverId = req.user.id // UUID from authMiddleware
     
     console.log('📬 Fetching incoming requests for user:', receiverId)
     
@@ -1328,9 +1354,9 @@ app.get('/api/friends/requests/incoming', async (req, res) => {
         fr.id,
         fr.status,
         fr.created_at,
-        u.display_name as name,
-        u.public_id,
-        u.photo_url as avatar
+        u.public_id AS sender_public_id,
+        u.display_name AS sender_name,
+        u.photo_url AS sender_avatar
       FROM friend_requests fr
       JOIN users u ON u.id = fr.sender_id
       WHERE fr.receiver_id = $1
