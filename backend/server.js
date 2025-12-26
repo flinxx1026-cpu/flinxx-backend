@@ -1727,9 +1727,24 @@ io.on('connection', (socket) => {
     console.log(`✅ User ${userId} joined room: ${userId}`)
   })
 
-  // ✅ SEND MESSAGE & SAVE TO DATABASE
+  // ✅ SEND MESSAGE (handles both WebRTC partner chat & friend DM)
   socket.on('send_message', async (data) => {
-    const { senderId, receiverId, message } = data
+    const { senderId, receiverId, message, to } = data
+
+    // Case 1: WebRTC Partner Chat (1-to-1 via socket, no DB save)
+    if (to) {
+      console.log(`💬 Partner message: ${socket.id} → ${to}`)
+      io.to(to).emit('receive_message', {
+        message
+      })
+      return
+    }
+
+    // Case 2: Friend DM (save to DB + deliver via UUID room)
+    if (!senderId || !receiverId || !message) {
+      console.warn('❌ Missing message data:', { senderId, receiverId, message })
+      return
+    }
 
     try {
       // 1. Save message to database

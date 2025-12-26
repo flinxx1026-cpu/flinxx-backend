@@ -1489,7 +1489,8 @@ const Chat = () => {
 
     setMessages(prev => [...prev, newMessage]);
     socket.emit('send_message', {
-      message: messageInput
+      message: messageInput,
+      to: partnerSocketIdRef.current   // 🔥 CRITICAL - Route to partner socket
     });
     setMessageInput('');
   };
