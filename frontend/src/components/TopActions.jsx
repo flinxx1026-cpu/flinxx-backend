@@ -7,6 +7,7 @@ const TopActions = ({
   onMatchHistoryClick,
   onSearchClick,
   onRequestsClick,
+  onMessageClick,
   isFixedPosition = false 
 }) => {
   const containerStyle = isFixedPosition 
@@ -57,7 +58,8 @@ const TopActions = ({
       <div 
         className="icon-circle" 
         title="Messages"
-        onClick={() => console.log('Messages clicked')}
+        onClick={onMessageClick}
+        style={{ cursor: 'pointer' }}
       >
         💬
       </div>

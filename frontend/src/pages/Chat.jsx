@@ -49,7 +49,7 @@ const Chat = () => {
   const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [showRequests, setShowRequests] = useState(false);
+  const [activePanel, setActivePanel] = useState(null); // 'notification' | 'message' | null
   const [selectedGender, setSelectedGender] = useState('both');
   const [isRequestingCamera, setIsRequestingCamera] = useState(false);
 
@@ -1565,7 +1565,8 @@ const Chat = () => {
         onPremiumClick={() => setIsPremiumOpen(true)}
         onMatchHistoryClick={() => setIsMatchHistoryOpen(true)}
         onSearchClick={() => setIsSearchOpen(true)}
-        onRequestsClick={() => setShowRequests(prev => !prev)}
+        onRequestsClick={() => setActivePanel(activePanel === 'notification' ? null : 'notification')}
+        onMessageClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
         isFixedPosition={true}
       />
 
@@ -2010,11 +2011,11 @@ const Chat = () => {
             }}
           />
 
-          {/* Notifications Modal (Reuse SearchFriendsModal) */}
+          {/* Top Panel (Notifications or Messages) */}
           <SearchFriendsModal 
-            isOpen={showRequests} 
-            onClose={() => setShowRequests(false)}
-            mode="notifications"
+            isOpen={activePanel !== null} 
+            onClose={() => setActivePanel(null)}
+            mode={activePanel === 'message' ? 'message' : 'notifications'}
           />
 
           {/* Gender Filter Modal */}

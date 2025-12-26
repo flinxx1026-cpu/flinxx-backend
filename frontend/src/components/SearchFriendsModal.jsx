@@ -11,6 +11,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [currentUser, setCurrentUser] = useState(null); // Load once when modal opens
   
   const isNotificationMode = mode === 'notifications';
+  const isMessageMode = mode === 'message';
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   
   // Fetch current user from backend and store in localStorage
@@ -277,12 +278,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       <div className="search-friends-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="search-friends-header">
-          <h2>{isNotificationMode ? 'Notifications' : 'Search Friends'}</h2>
+          <h2>{isMessageMode ? 'Message' : isNotificationMode ? 'Notifications' : 'Search Friends'}</h2>
           <button className="search-close-btn" onClick={onClose}>✖</button>
         </div>
 
-        {/* Search Input - Hidden in Notifications Mode */}
-        {!isNotificationMode && (
+        {/* Search Input - Hidden in Notifications or Message Mode */}
+        {!isNotificationMode && !isMessageMode && (
           <div className="search-input-container">
             <input
               type="text"
@@ -406,6 +407,21 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* Message Container - Message Mode */}
+        {isMessageMode && (
+          <div className="search-results">
+            <p
+              style={{
+                textAlign: 'center',
+                color: 'rgba(255,255,255,0.6)',
+                marginTop: '40px'
+              }}
+            >
+              No messages yet
+            </p>
           </div>
         )}
       </div>
