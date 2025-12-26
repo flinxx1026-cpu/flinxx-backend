@@ -1,5 +1,6 @@
 import express from 'express';
 import db from '../db.js';
+import { validate as isUUID } from 'uuid';
 
 const router = express.Router();
 
@@ -7,9 +8,9 @@ router.get('/friends', async (req, res) => {
   try {
     const userId = req.query.userId;
 
-    // 1️⃣ Validate UUID format (UUIDs are ~36 chars with hyphens)
-    if (!userId || userId.length < 30) {
-      return res.status(400).json({ error: 'Invalid userId' });
+    // 1️⃣ Validate UUID format (must be valid UUID, not numeric)
+    if (!userId || !isUUID(userId)) {
+      return res.status(400).json({ error: 'Invalid userId: must be valid UUID' });
     }
 
     console.log('👥 Fetching friends for userId:', userId);

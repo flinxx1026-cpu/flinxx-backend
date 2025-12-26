@@ -640,7 +640,7 @@ app.post('/api/users/save', async (req, res) => {
     res.json({
       success: true,
       user: {
-        id: user.public_id,
+        id: user.id,
         email: user.email,
         displayName: user.display_name,
         photoURL: user.photo_url,
@@ -1692,7 +1692,7 @@ app.get('/api/profile', async (req, res) => {
     res.json({
       success: true,
       user: {
-        id: user.public_id,
+        id: user.id,
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
@@ -1700,7 +1700,7 @@ app.get('/api/profile', async (req, res) => {
         birthday: user.birthday,
         profileCompleted: user.profileCompleted,
         authProvider: user.auth_provider,
-        userId: user.public_id,
+        userId: user.id,
         createdAt: user.created_at,
         updatedAt: user.updated_at
       }
