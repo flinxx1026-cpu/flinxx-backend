@@ -1758,13 +1758,21 @@ io.on('connection', (socket) => {
 
       console.log(`💬 Message saved: ${senderId} → ${receiverId}`)
 
-      // 2. Send message to receiver in real-time
+      // 2. Send message to receiver in real-time (using UUID room)
       io.to(receiverId).emit('receive_message', {
         senderId,
         message
       })
 
       console.log(`📨 Message delivered to room: ${receiverId}`)
+
+      // 3. Send confirmation back to sender (using UUID room)
+      io.to(senderId).emit('receive_message', {
+        senderId,
+        message
+      })
+
+      console.log(`📨 Message confirmation sent to sender: ${senderId}`)
     } catch (err) {
       console.error('❌ Message send error:', err)
       socket.emit('message_error', { error: 'Failed to send message' })
