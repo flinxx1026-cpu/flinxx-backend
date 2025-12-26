@@ -49,6 +49,7 @@ const Chat = () => {
   const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [showRequests, setShowRequests] = useState(false);
   const [selectedGender, setSelectedGender] = useState('both');
   const [isRequestingCamera, setIsRequestingCamera] = useState(false);
 
@@ -1564,7 +1565,8 @@ const Chat = () => {
         onPremiumClick={() => setIsPremiumOpen(true)}
         onMatchHistoryClick={() => setIsMatchHistoryOpen(true)}
         onSearchClick={() => setIsSearchOpen(true)}
-        onRequestsClick={() => setIsNotificationsOpen(true)}
+        onRequestsMouseEnter={() => setShowRequests(true)}
+        onRequestsMouseLeave={() => setShowRequests(false)}
         isFixedPosition={true}
       />
 
@@ -2011,8 +2013,8 @@ const Chat = () => {
 
           {/* Notifications Modal (Reuse SearchFriendsModal) */}
           <SearchFriendsModal 
-            isOpen={isNotificationsOpen} 
-            onClose={() => setIsNotificationsOpen(false)}
+            isOpen={showRequests} 
+            onClose={() => setShowRequests(false)}
             mode="notifications"
           />
 

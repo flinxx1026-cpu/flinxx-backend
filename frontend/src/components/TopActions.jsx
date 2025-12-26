@@ -6,7 +6,8 @@ const TopActions = ({
   onPremiumClick, 
   onMatchHistoryClick,
   onSearchClick,
-  onRequestsClick,
+  onRequestsMouseEnter,
+  onRequestsMouseLeave,
   isFixedPosition = false 
 }) => {
   const containerStyle = isFixedPosition 
@@ -47,7 +48,8 @@ const TopActions = ({
       <div 
         className="icon-circle" 
         title="Requests"
-        onClick={onRequestsClick}
+        onMouseEnter={onRequestsMouseEnter}
+        onMouseLeave={onRequestsMouseLeave}
         style={{ cursor: 'pointer' }}
       >
         ❤️
