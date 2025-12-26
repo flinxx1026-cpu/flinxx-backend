@@ -197,7 +197,7 @@ const io = new Server(httpServer, {
     origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"]
+    allowedHeaders: ["Content-Type", "Authorization", "X-User-Id"]
   },
   transports: ['websocket', 'polling'],
   pingInterval: 25000,
@@ -216,10 +216,12 @@ app.use(cors({
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Id'],
   exposedHeaders: ['Content-Length', 'X-JSON-Response'],
   maxAge: 86400 // 24 hours
 }))
+
+app.options('*', cors())
 
 app.use(express.json())
 
