@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './SearchFriendsModal.css';
 import { getFriends } from '../services/api';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -438,8 +440,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   key={friend.id}
                   className="search-result-item"
                   onClick={() => {
-                    // Navigate to chat with friend
-                    console.log('Opening chat with friend:', friend.id);
+                    navigate(`/chat/${friend.id}`, {
+                      state: {
+                        name: friend.display_name,
+                        photo: friend.photo_url
+                      }
+                    });
                     onClose();
                   }}
                 >
