@@ -5,9 +5,9 @@ const ChatBox = ({ friend, onBack }) => {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   
-  // Get current user ID from localStorage
+  // Get current user UUID from localStorage
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-  const myUserId = currentUser.id || currentUser.publicId;
+  const myUserId = currentUser.id; // UUID only, no fallback
 
   const send = () => {
     if (!text.trim()) return;
@@ -15,7 +15,7 @@ const ChatBox = ({ friend, onBack }) => {
     // ✅ SEND MESSAGE VIA SOCKET AND SAVE TO DB
     socket.emit('send_message', {
       senderId: myUserId,
-      receiverId: friend.id,
+      receiverId: friend.id, // UUID from friend object
       message: text
     });
 
