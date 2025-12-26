@@ -1721,13 +1721,18 @@ io.on('connection', (socket) => {
   console.log(`✅ User connected: ${socket.id}`)
   console.log(`📊 Active connections: ${io.engine.clientsCount}`)
 
-  // ✅ USER JOIN THEIR OWN ROOM
-  socket.on('join', (userId) => {
-    socket.join(userId)
-    console.log(`✅ User ${userId} joined room: ${userId}`)
+  // ✅ JOIN CHAT ROOM (shared room for sender + receiver)
+  socket.on('join_chat', ({ senderId, receiverId }) => {
+    // Create deterministic room ID (same for both users)
+    const roomId = senderId < receiverId 
+      ? `${senderId}_${receiverId}` 
+      : `${receiverId}_${senderId}`
+    
+    socket.join(roomId)
+    console.log(`✅ User ${senderId} joined chat room: ${roomId}`)
   })
 
-  // ✅ SEND MESSAGE (handles both WebRTC partner chat & friend DM)
+  // ✅ SEND MESSAGE (friend DM to shared room)
   socket.on('send_message', async (data) => {
     const { senderId, receiverId, message, to } = data
 
@@ -1740,13 +1745,18 @@ io.on('connection', (socket) => {
       return
     }
 
-    // Case 2: Friend DM (save to DB + deliver via UUID room)
+    // Case 2: Friend DM (save to DB + deliver via shared room)
     if (!senderId || !receiverId || !message) {
       console.warn('❌ Missing message data:', { senderId, receiverId, message })
       return
     }
 
     try {
+      // Create deterministic room ID (same for both users)
+      const roomId = senderId < receiverId 
+        ? `${senderId}_${receiverId}` 
+        : `${receiverId}_${senderId}`
+
       // 1. Save message to database
       await pool.query(
         `
@@ -1758,21 +1768,13 @@ io.on('connection', (socket) => {
 
       console.log(`💬 Message saved: ${senderId} → ${receiverId}`)
 
-      // 2. Send message to receiver in real-time (using UUID room)
-      io.to(receiverId).emit('receive_message', {
+      // 2. Send message to BOTH users in shared room
+      io.to(roomId).emit('receive_message', {
         senderId,
         message
       })
 
-      console.log(`📨 Message delivered to room: ${receiverId}`)
-
-      // 3. Send confirmation back to sender (using UUID room)
-      io.to(senderId).emit('receive_message', {
-        senderId,
-        message
-      })
-
-      console.log(`📨 Message confirmation sent to sender: ${senderId}`)
+      console.log(`📨 Message delivered to shared room: ${roomId}`)
     } catch (err) {
       console.error('❌ Message send error:', err)
       socket.emit('message_error', { error: 'Failed to send message' })

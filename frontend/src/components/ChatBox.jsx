@@ -9,6 +9,17 @@ const ChatBox = ({ friend, onBack }) => {
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const myUserId = currentUser.id; // UUID only, no fallback
 
+  // ✅ JOIN CHAT ROOM when component opens
+  useEffect(() => {
+    if (!myUserId || !friend) return;
+
+    console.log(`📍 Joining chat room: ${myUserId} ↔ ${friend.id}`);
+    socket.emit('join_chat', {
+      senderId: myUserId,
+      receiverId: friend.id
+    });
+  }, [friend, myUserId]);
+
   const send = () => {
     if (!text.trim()) return;
 
@@ -24,17 +35,19 @@ const ChatBox = ({ friend, onBack }) => {
     setText('');
   };
 
-  // ✅ RECEIVE MESSAGES FROM SOCKET
+  // ✅ RECEIVE MESSAGES FROM SOCKET (from shared room)
   useEffect(() => {
-    socket.on('receive_message', (data) => {
+    const handleReceiveMessage = (data) => {
       setMessages(prev => [
         ...prev,
-        { me: false, text: data.message }
+        { me: data.senderId === myUserId, text: data.message }
       ]);
-    });
+    };
 
-    return () => socket.off('receive_message');
-  }, []);
+    socket.on('receive_message', handleReceiveMessage);
+
+    return () => socket.off('receive_message', handleReceiveMessage);
+  }, [myUserId]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

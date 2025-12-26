@@ -137,14 +137,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
   // Open chat handler
   const openChat = (friend) => {
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const myUserId = currentUser.id; // UUID only, no fallback
-    
-    // Join socket room when opening chat
-    if (myUserId) {
-      joinUserRoom(myUserId);
-    }
-    
+    // Just set the active chat - ChatBox component will handle socket room joining
     setActiveChat(friend);
   };
 
