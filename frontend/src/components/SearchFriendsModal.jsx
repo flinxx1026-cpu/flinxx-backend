@@ -43,25 +43,18 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   };
 
-  // Get current user fresh from localStorage with backend fallback
-  const getCurrentUser = async () => {
+  // Get current user fresh from localStorage - synchronous
+  const getCurrentUser = () => {
     try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
+      const storedUser = JSON.parse(localStorage.getItem('user'));
+      if (!storedUser) return null;
 
-        // Normalize publicId from all possible sources
-        user.publicId =
-          user.publicId ||
-          user.public_id ||
-          user.id;
-
-        return user;
-      }
-
-      return await ensureCurrentUser();
+      // Normalize publicId from all possible sources
+      return {
+        ...storedUser,
+        publicId: storedUser.publicId || storedUser.public_id || storedUser.id
+      };
     } catch (e) {
-      console.error('Failed to read current user', e);
       return null;
     }
   };
@@ -69,7 +62,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // Fetch friend request status for a user
   const checkFriendRequestStatus = async (userId) => {
     try {
-      const currentUserData = currentUser;
+      const currentUserData = getCurrentUser();
 
       if (!currentUserData || !currentUserData.publicId) {
         console.warn('Current user not available for status check');
@@ -77,11 +70,17 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       }
 
       const response = await fetch(
-        `${BACKEND_URL}/api/friends/status?currentUserId=${currentUserData.publicId}&targetUserId=${userId}`,
+        `${BACKEND_URL}/api/friends/status`,
         {
+          method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+          },
+          body: JSON.stringify({
+            targetPublicId: userId,
+            currentPublicId: currentUserData.publicId
+          })
         }
       );
 
@@ -117,16 +116,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   };
 
-  // Load current user once when modal opens
+  // Ensure current user is in localStorage when modal opens
   useEffect(() => {
     if (!isOpen) return;
-
-    const loadCurrentUser = async () => {
-      const user = await getCurrentUser();
-      setCurrentUser(user);
-    };
-
-    loadCurrentUser();
+    // Call ensureCurrentUser to refresh user data if needed
+    ensureCurrentUser();
   }, [isOpen]);
 
   // Load pending requests when switching to notifications mode
@@ -205,14 +199,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
     setSendingRequest(targetUserId);
     try {
-      const currentUserData = currentUser;
+      const currentUserData = getCurrentUser();
 
-      if (!currentUserData || !currentUserData.publicId) {
-        console.error('Current user publicId not found:', currentUserData);
+      if (!currentUserData?.publicId) {
+        console.error('Current user publicId not found', currentUserData);
         return;
       }
-
-      const senderPublicId = currentUserData.publicId;
 
       const response = await fetch(`${BACKEND_URL}/api/friends/send`, {
         method: 'POST',
@@ -221,8 +213,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ 
-          senderId: senderPublicId,
-          receiverId: targetUserId
+          senderPublicId: currentUserData.publicId,
+          receiverPublicId: targetUserId
         })
       });
 

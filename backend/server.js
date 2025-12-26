@@ -1152,16 +1152,16 @@ app.get('/api/search-user', async (req, res) => {
 app.post('/api/friends/send', async (req, res) => {
   try {
     console.log('Friend Request Body:', req.body);
-    const { senderId, receiverId } = req.body
+    const { senderPublicId, receiverPublicId } = req.body
 
-    if (!senderId || !receiverId) {
-      return res.status(400).json({ error: 'Missing senderId or receiverId' })
+    if (!senderPublicId || !receiverPublicId) {
+      return res.status(400).json({ error: 'Missing senderPublicId or receiverPublicId' })
     }
 
     // Fetch sender and receiver UUIDs from database
     const [sender, receiver] = await Promise.all([
-      prisma.users.findUnique({ where: { public_id: senderId } }),
-      prisma.users.findUnique({ where: { public_id: receiverId } })
+      prisma.users.findUnique({ where: { public_id: senderPublicId } }),
+      prisma.users.findUnique({ where: { public_id: receiverPublicId } })
     ])
 
     if (!sender || !receiver) {
@@ -1265,18 +1265,18 @@ app.post('/api/friends/reject', async (req, res) => {
 })
 
 // Get friend request status between two users
-app.get('/api/friends/status', async (req, res) => {
+app.post('/api/friends/status', async (req, res) => {
   try {
-    const { currentUserId, targetUserId } = req.query
+    const { currentPublicId, targetPublicId } = req.body
 
-    if (!currentUserId || !targetUserId) {
+    if (!currentPublicId || !targetPublicId) {
       return res.status(400).json({ message: 'Missing user IDs' })
     }
 
     // Fetch user IDs from database
     const [currentUser, targetUser] = await Promise.all([
-      prisma.users.findUnique({ where: { public_id: currentUserId } }),
-      prisma.users.findUnique({ where: { public_id: targetUserId } })
+      prisma.users.findUnique({ where: { public_id: currentPublicId } }),
+      prisma.users.findUnique({ where: { public_id: targetPublicId } })
     ])
 
     if (!currentUser || !targetUser) {
