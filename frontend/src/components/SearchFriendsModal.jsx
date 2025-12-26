@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import './SearchFriendsModal.css';
 import { getFriends } from '../services/api';
+import ChatBox from './ChatBox';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
-  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -13,6 +12,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [sendingRequest, setSendingRequest] = useState(null); // Track which request is being sent
   const [currentUser, setCurrentUser] = useState(null); // Load once when modal opens
   const [friends, setFriends] = useState([]); // For message mode
+  const [activeChat, setActiveChat] = useState(null); // null = friends list, object = open chat
   
   const isNotificationMode = mode === 'notifications';
   const isMessageMode = mode === 'message';
@@ -133,6 +133,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       getFriends().then(data => setFriends(data));
     }
   }, [isOpen, isMessageMode]);
+
+  // Open chat handler
+  const openChat = (friend) => {
+    setActiveChat(friend);
+  };
 
   if (!isOpen) return null;
 
@@ -423,55 +428,58 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
         {/* Message Container - Message Mode */}
         {isMessageMode && (
-          <div className="search-results">
-            {friends.length === 0 ? (
-              <p
-                style={{
-                  textAlign: 'center',
-                  color: 'rgba(255,255,255,0.6)',
-                  marginTop: '40px'
-                }}
-              >
-                No friends yet
-              </p>
-            ) : (
-              friends.map(friend => (
-                <div 
-                  key={friend.id}
-                  className="search-result-item"
-                  onClick={() => {
-                    navigate(`/chat/${friend.id}`, {
-                      state: {
-                        name: friend.display_name,
-                        photo: friend.photo_url
-                      }
-                    });
-                    onClose();
-                  }}
-                >
-                  <div className="result-avatar">
-                    {friend.photo_url ? (
-                      <img 
-                        src={friend.photo_url} 
-                        alt={friend.display_name}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          borderRadius: '50%',
-                          objectFit: 'cover'
-                        }}
-                      />
-                    ) : (
-                      '👤'
-                    )}
-                  </div>
+          <div className="message-panel-body">
+            {!activeChat ? (
+              // FRIEND LIST VIEW
+              <div className="search-results">
+                {friends.length === 0 ? (
+                  <p
+                    style={{
+                      textAlign: 'center',
+                      color: 'rgba(255,255,255,0.6)',
+                      marginTop: '40px'
+                    }}
+                  >
+                    No friends yet
+                  </p>
+                ) : (
+                  friends.map(friend => (
+                    <div 
+                      key={friend.id}
+                      className="search-result-item friend-row"
+                      onClick={() => openChat(friend)}
+                    >
+                      <div className="result-avatar">
+                        {friend.photo_url ? (
+                          <img 
+                            src={friend.photo_url} 
+                            alt={friend.display_name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              borderRadius: '50%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                        ) : (
+                          '👤'
+                        )}
+                      </div>
 
-                  <div className="result-info">
-                    <p className="result-name">{friend.display_name}</p>
-                    <p className="result-id">ID: {friend.public_id}</p>
-                  </div>
-                </div>
-              ))
+                      <div className="result-info">
+                        <p className="result-name">{friend.display_name}</p>
+                        <p className="result-id">ID: {friend.public_id}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              // CHAT VIEW
+              <ChatBox
+                friend={activeChat}
+                onBack={() => setActiveChat(null)}
+              />
             )}
           </div>
         )}

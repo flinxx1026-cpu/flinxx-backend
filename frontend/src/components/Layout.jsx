@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Home from '../pages/Home'
 import Login from '../pages/Login'
 import Chat from '../pages/Chat'
-import ChatPanel from '../pages/ChatPanel'
 import Matching from '../pages/Matching'
 import Profile from '../pages/Profile'
 import AuthCallback from '../pages/AuthCallback'
@@ -28,7 +27,6 @@ function Layout() {
             <Route path="/callback" element={<Callback />} />
             <Route path="/auth-success" element={<AuthSuccess />} />
             <Route path="/chat" element={<ProtectedChatRoute><Chat /></ProtectedChatRoute>} />
-            <Route path="/chat/:friendId" element={<ProtectedChatRoute><ChatPanel /></ProtectedChatRoute>} />
             <Route path="/matching" element={<Matching />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
