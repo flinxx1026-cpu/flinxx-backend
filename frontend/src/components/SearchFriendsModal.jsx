@@ -77,11 +77,9 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       }
 
       const response = await fetch(
-        `${BACKEND_URL}/api/friends/status/${userId}?currentPublicId=${currentUserData.publicId}`,
+        `${BACKEND_URL}/api/friends/status?currentUserId=${currentUserData.publicId}&targetUserId=${userId}`,
         {
-          method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         }
@@ -223,8 +221,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ 
-          senderPublicId,
-          receiverPublicId: targetUserId
+          senderId: senderPublicId,
+          receiverId: targetUserId
         })
       });
 

@@ -1151,16 +1151,17 @@ app.get('/api/search-user', async (req, res) => {
 // Send friend request
 app.post('/api/friends/send', async (req, res) => {
   try {
-    const { senderPublicId, receiverPublicId } = req.body
+    console.log('Friend Request Body:', req.body);
+    const { senderId, receiverId } = req.body
 
-    if (!senderPublicId || !receiverPublicId) {
-      return res.status(400).json({ error: 'Missing senderPublicId or receiverPublicId' })
+    if (!senderId || !receiverId) {
+      return res.status(400).json({ error: 'Missing senderId or receiverId' })
     }
 
     // Fetch sender and receiver UUIDs from database
     const [sender, receiver] = await Promise.all([
-      prisma.users.findUnique({ where: { public_id: senderPublicId } }),
-      prisma.users.findUnique({ where: { public_id: receiverPublicId } })
+      prisma.users.findUnique({ where: { public_id: senderId } }),
+      prisma.users.findUnique({ where: { public_id: receiverId } })
     ])
 
     if (!sender || !receiver) {
@@ -1260,6 +1261,45 @@ app.post('/api/friends/reject', async (req, res) => {
   } catch (error) {
     console.error('❌ Error rejecting friend request:', error)
     res.status(500).json({ error: 'Failed to reject friend request', details: error.message })
+  }
+})
+
+// Get friend request status between two users
+app.get('/api/friends/status', async (req, res) => {
+  try {
+    const { currentUserId, targetUserId } = req.query
+
+    if (!currentUserId || !targetUserId) {
+      return res.status(400).json({ message: 'Missing user IDs' })
+    }
+
+    // Fetch user IDs from database
+    const [currentUser, targetUser] = await Promise.all([
+      prisma.users.findUnique({ where: { public_id: currentUserId } }),
+      prisma.users.findUnique({ where: { public_id: targetUserId } })
+    ])
+
+    if (!currentUser || !targetUser) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    // Check if there's a friend request between them
+    const friendRequest = await pool.query(
+      `SELECT status FROM friend_requests 
+       WHERE (sender_id = $1 AND receiver_id = $2) 
+          OR (sender_id = $2 AND receiver_id = $1)
+       LIMIT 1`,
+      [currentUser.id, targetUser.id]
+    )
+
+    if (friendRequest.rows.length > 0) {
+      return res.json({ status: friendRequest.rows[0].status })
+    }
+
+    res.json({ status: 'none' }) // 'none' | 'pending' | 'accepted'
+  } catch (error) {
+    console.error('❌ Error checking friend status:', error)
+    res.status(500).json({ error: 'Failed to check friend status', details: error.message })
   }
 })
 
