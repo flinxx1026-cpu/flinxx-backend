@@ -134,6 +134,20 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_friend_requests_sender ON friend_requests(sender_id);
     `)
 
+    // Create messages table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(sender_id, receiver_id);
+    `)
+
     console.log('✅ PostgreSQL tables initialized')
   } catch (error) {
     console.error('❌ Error initializing database tables:', error)
@@ -1704,6 +1718,41 @@ app.get('/api/profile', async (req, res) => {
 io.on('connection', (socket) => {
   console.log(`✅ User connected: ${socket.id}`)
   console.log(`📊 Active connections: ${io.engine.clientsCount}`)
+
+  // ✅ USER JOIN THEIR OWN ROOM
+  socket.on('join', (userId) => {
+    socket.join(userId)
+    console.log(`✅ User ${userId} joined room: ${userId}`)
+  })
+
+  // ✅ SEND MESSAGE & SAVE TO DATABASE
+  socket.on('send_message', async (data) => {
+    const { senderId, receiverId, message } = data
+
+    try {
+      // 1. Save message to database
+      await pool.query(
+        `
+        INSERT INTO messages (sender_id, receiver_id, message)
+        VALUES ($1, $2, $3)
+        `,
+        [senderId, receiverId, message]
+      )
+
+      console.log(`💬 Message saved: ${senderId} → ${receiverId}`)
+
+      // 2. Send message to receiver in real-time
+      io.to(receiverId).emit('receive_message', {
+        senderId,
+        message
+      })
+
+      console.log(`📨 Message delivered to room: ${receiverId}`)
+    } catch (err) {
+      console.error('❌ Message send error:', err)
+      socket.emit('message_error', { error: 'Failed to send message' })
+    }
+  })
 
   // Handle finding partner
   socket.on('find_partner', async (userData) => {

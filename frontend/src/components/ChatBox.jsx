@@ -1,14 +1,40 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import socket from '../services/socketService';
 
 const ChatBox = ({ friend, onBack }) => {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
+  
+  // Get current user ID from localStorage
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const myUserId = currentUser.id || currentUser.publicId;
 
   const send = () => {
     if (!text.trim()) return;
-    setMessages([...messages, { me: true, text }]);
+
+    // ✅ SEND MESSAGE VIA SOCKET AND SAVE TO DB
+    socket.emit('send_message', {
+      senderId: myUserId,
+      receiverId: friend.id,
+      message: text
+    });
+
+    // Add to local messages immediately
+    setMessages(prev => [...prev, { me: true, text }]);
     setText('');
   };
+
+  // ✅ RECEIVE MESSAGES FROM SOCKET
+  useEffect(() => {
+    socket.on('receive_message', (data) => {
+      setMessages(prev => [
+        ...prev,
+        { me: false, text: data.message }
+      ]);
+    });
+
+    return () => socket.off('receive_message');
+  }, []);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

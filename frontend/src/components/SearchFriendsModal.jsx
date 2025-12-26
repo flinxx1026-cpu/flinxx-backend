@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './SearchFriendsModal.css';
 import { getFriends } from '../services/api';
 import ChatBox from './ChatBox';
+import { joinUserRoom } from '../services/socketService';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
   const [search, setSearch] = useState('');
@@ -136,6 +137,14 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
   // Open chat handler
   const openChat = (friend) => {
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const myUserId = currentUser.id || currentUser.publicId;
+    
+    // Join socket room when opening chat
+    if (myUserId) {
+      joinUserRoom(myUserId);
+    }
+    
     setActiveChat(friend);
   };
 

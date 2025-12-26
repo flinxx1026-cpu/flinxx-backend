@@ -13,14 +13,11 @@ const socket = io(SOCKET_URL, {
   secure: false,
   rejectUnauthorized: false,
   forceNew: false,
-  withCredentials: true,  // ✅ Enable credentials (cookies)
-  // Add these to ensure proper connection
+  withCredentials: true,
   upgrade: true,
   rememberUpgrade: false,
   multiplex: true,
-  // Increase timeout
   timeout: 60000,
-  // Add headers if needed
   extraHeaders: {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Credentials': 'true'
@@ -35,7 +32,6 @@ socket.on('connect', () => {
 socket.on('connect_error', (error) => {
   console.error('❌ Socket connection error:', error.message || error)
   console.error('📍 Error details:', error)
-  // Try websocket if polling fails
   if (socket.io.engine.transport.name === 'polling') {
     console.log('🔄 Retrying with websocket...')
   }
@@ -53,5 +49,11 @@ socket.on('disconnect', (reason) => {
 socket.on('connect_timeout', () => {
   console.error('⏱️ Socket connection timeout')
 })
+
+// ✅ JOIN USER ROOM (Call this when user is authenticated)
+export const joinUserRoom = (userId) => {
+  console.log(`📍 Joining room for user: ${userId}`)
+  socket.emit('join', userId)
+}
 
 export default socket
