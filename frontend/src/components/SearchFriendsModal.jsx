@@ -298,12 +298,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         )}
 
         {/* Results Container - Search Mode */}
-        {!isNotificationMode && (
+        {!isNotificationMode && !isMessageMode && (
           <div className="search-results">
             {results.length === 0 ? (
               <div className="search-empty-state">
                 <p style={{ textAlign: 'center', color: 'rgba(255, 255, 255, 0.6)', marginTop: '40px' }}>
-                  {search ? 'No users found' : 'Start typing to search'}
+                  {search ? 'No users found' : ''}
                 </p>
               </div>
             ) : (
