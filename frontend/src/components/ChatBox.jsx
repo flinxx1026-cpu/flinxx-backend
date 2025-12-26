@@ -13,7 +13,16 @@ const ChatBox = ({ friend, onBack }) => {
   useEffect(() => {
     if (!myUserId || !friend) return;
 
-    console.log(`📍 Joining chat room: ${myUserId} ↔ ${friend.id}`);
+    // Create deterministic room ID (same for both users)
+    const friendUUID = friend.id;
+    const roomId = myUserId < friendUUID 
+      ? `${myUserId}_${friendUUID}` 
+      : `${friendUUID}_${myUserId}`;
+
+    console.log(`📍 Joining chat room: ${roomId}`);
+    console.log(`   My UUID: ${myUserId}`);
+    console.log(`   Friend UUID: ${friendUUID}`);
+    
     socket.emit('join_chat', {
       senderId: myUserId,
       receiverId: friend.id
