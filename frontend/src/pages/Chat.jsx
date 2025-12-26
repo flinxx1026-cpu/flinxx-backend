@@ -1565,8 +1565,7 @@ const Chat = () => {
         onPremiumClick={() => setIsPremiumOpen(true)}
         onMatchHistoryClick={() => setIsMatchHistoryOpen(true)}
         onSearchClick={() => setIsSearchOpen(true)}
-        onRequestsMouseEnter={() => setShowRequests(true)}
-        onRequestsMouseLeave={() => setShowRequests(false)}
+        onRequestsClick={() => setShowRequests(prev => !prev)}
         isFixedPosition={true}
       />
 
