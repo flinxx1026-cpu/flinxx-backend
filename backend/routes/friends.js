@@ -5,52 +5,40 @@ const router = express.Router();
 
 router.get('/friends', async (req, res) => {
   try {
-    const { userId } = req.query; // THIS IS public_id (8-digit)
+    const userId = req.query.userId;
 
-    if (!userId) {
-      return res.status(400).json({ error: 'userId required' });
+    // 1️⃣ Validate UUID format (UUIDs are ~36 chars with hyphens)
+    if (!userId || userId.length < 30) {
+      return res.status(400).json({ error: 'Invalid userId' });
     }
 
-    console.log('👥 Fetching friends for PUBLIC ID:', userId);
+    console.log('👥 Fetching friends for userId:', userId);
 
-    // 🔴 STEP 1: Convert public_id → UUID
-    const userResult = await db.query(
-      'SELECT id FROM users WHERE public_id = $1',
-      [userId]
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const userUUID = userResult.rows[0].id;
-
-    console.log('✅ UUID resolved:', userUUID);
-
-    // 🔴 STEP 2: Use UUID in friend query
-    const friendsQuery = `
+    // 2️⃣ Query using correct SQL with CASE statement
+    const query = `
       SELECT 
-        u.public_id,
+        u.id,
         u.display_name,
         u.photo_url
-      FROM friend_requests fr
-      JOIN users u
-        ON (
-          (fr.sender_id = $1 AND fr.receiver_id = u.id)
-          OR
-          (fr.receiver_id = $1 AND fr.sender_id = u.id)
-        )
-      WHERE fr.status = 'accepted'
+      FROM friend_requests f
+      JOIN users u 
+        ON u.id = CASE 
+          WHEN f.sender_id = $1 THEN f.receiver_id
+          ELSE f.sender_id
+        END
+      WHERE 
+        (f.sender_id = $1 OR f.receiver_id = $1)
+        AND f.status = 'accepted'
     `;
 
-    const { rows } = await db.query(friendsQuery, [userUUID]);
+    const { rows } = await db.query(query, [userId]);
 
-    console.log('✅ Found', rows.length, 'friends');
+    console.log('✅ Found', rows.length, 'friends for userId:', userId);
     res.json(rows);
 
   } catch (err) {
     console.error('❌ Friends API error:', err);
-    res.status(500).json({ error: 'Failed to fetch friends' });
+    res.status(500).json({ error: err.message });
   }
 });
 
