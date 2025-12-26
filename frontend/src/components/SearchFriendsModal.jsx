@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './SearchFriendsModal.css';
+import { getFriends } from '../services/api';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
   const [search, setSearch] = useState('');
@@ -9,6 +10,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [pendingRequests, setPendingRequests] = useState([]); // For notifications mode
   const [sendingRequest, setSendingRequest] = useState(null); // Track which request is being sent
   const [currentUser, setCurrentUser] = useState(null); // Load once when modal opens
+  const [friends, setFriends] = useState([]); // For message mode
   
   const isNotificationMode = mode === 'notifications';
   const isMessageMode = mode === 'message';
@@ -122,6 +124,13 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       fetchPendingRequests();
     }
   }, [isOpen, isNotificationMode]);
+
+  // Load friends when switching to message mode
+  useEffect(() => {
+    if (isOpen && isMessageMode) {
+      getFriends().then(data => setFriends(data));
+    }
+  }, [isOpen, isMessageMode]);
 
   if (!isOpen) return null;
 
@@ -413,15 +422,51 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         {/* Message Container - Message Mode */}
         {isMessageMode && (
           <div className="search-results">
-            <p
-              style={{
-                textAlign: 'center',
-                color: 'rgba(255,255,255,0.6)',
-                marginTop: '40px'
-              }}
-            >
-              No messages yet
-            </p>
+            {friends.length === 0 ? (
+              <p
+                style={{
+                  textAlign: 'center',
+                  color: 'rgba(255,255,255,0.6)',
+                  marginTop: '40px'
+                }}
+              >
+                No friends yet
+              </p>
+            ) : (
+              friends.map(friend => (
+                <div 
+                  key={friend.id}
+                  className="search-result-item"
+                  onClick={() => {
+                    // Navigate to chat with friend
+                    console.log('Opening chat with friend:', friend.id);
+                    onClose();
+                  }}
+                >
+                  <div className="result-avatar">
+                    {friend.photo_url ? (
+                      <img 
+                        src={friend.photo_url} 
+                        alt={friend.display_name}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          borderRadius: '50%',
+                          objectFit: 'cover'
+                        }}
+                      />
+                    ) : (
+                      '👤'
+                    )}
+                  </div>
+
+                  <div className="result-info">
+                    <p className="result-name">{friend.display_name}</p>
+                    <p className="result-id">ID: {friend.public_id}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>

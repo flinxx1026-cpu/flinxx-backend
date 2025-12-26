@@ -1409,6 +1409,43 @@ app.get('/api/friends/requests', authMiddleware, async (req, res) => {
   }
 })
 
+// Fetch accepted friends for message panel
+app.get('/api/friends', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id // UUID from authMiddleware
+    const publicId = req.user.publicId
+
+    console.log('👥 Fetching accepted friends for user:', { userId, publicId })
+
+    // Query for all accepted friendships (bidirectional)
+    const result = await pool.query(
+      `
+      SELECT
+        u.id,
+        u.public_id,
+        u.display_name,
+        u.photo_url
+      FROM users u
+      JOIN friend_requests fr
+        ON (
+          (fr.sender_id = $1 AND fr.receiver_id = u.id)
+          OR
+          (fr.receiver_id = $1 AND fr.sender_id = u.id)
+        )
+      WHERE fr.status = 'accepted'
+      ORDER BY u.display_name ASC
+      `,
+      [userId]
+    )
+
+    console.log('✅ Found', result.rows.length, 'accepted friends for user', publicId)
+    res.json(result.rows)
+  } catch (err) {
+    console.error('❌ Friends fetch error:', err)
+    res.status(500).json({ error: 'Failed to fetch friends' })
+  }
+})
+
 // Step 1: Redirect to Google OAuth consent screen
 app.get('/auth/google', (req, res) => {
   try {
