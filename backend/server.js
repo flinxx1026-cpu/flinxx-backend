@@ -1265,21 +1265,21 @@ app.post('/api/friends/reject', async (req, res) => {
 })
 
 // Get friend request status between two users
-app.post('/api/friends/status', async (req, res) => {
+app.get('/api/friends/status', async (req, res) => {
   try {
-    const { currentPublicId, targetPublicId } = req.body
+    const { senderPublicId, receiverPublicId } = req.query
 
-    if (!currentPublicId || !targetPublicId) {
+    if (!senderPublicId || !receiverPublicId) {
       return res.status(400).json({ message: 'Missing user IDs' })
     }
 
     // Fetch user IDs from database
-    const [currentUser, targetUser] = await Promise.all([
-      prisma.users.findUnique({ where: { public_id: currentPublicId } }),
-      prisma.users.findUnique({ where: { public_id: targetPublicId } })
+    const [sender, receiver] = await Promise.all([
+      prisma.users.findUnique({ where: { public_id: senderPublicId } }),
+      prisma.users.findUnique({ where: { public_id: receiverPublicId } })
     ])
 
-    if (!currentUser || !targetUser) {
+    if (!sender || !receiver) {
       return res.status(404).json({ error: 'User not found' })
     }
 
@@ -1289,7 +1289,7 @@ app.post('/api/friends/status', async (req, res) => {
        WHERE (sender_id = $1 AND receiver_id = $2) 
           OR (sender_id = $2 AND receiver_id = $1)
        LIMIT 1`,
-      [currentUser.id, targetUser.id]
+      [sender.id, receiver.id]
     )
 
     if (friendRequest.rows.length > 0) {
