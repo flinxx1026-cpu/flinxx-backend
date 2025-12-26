@@ -93,7 +93,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // Fetch pending friend requests for notifications
   const fetchPendingRequests = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/friends/requests/incoming`, {
+      const response = await fetch(`${BACKEND_URL}/api/friends/requests`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

@@ -1374,6 +1374,39 @@ app.get('/api/friends/requests/incoming', authMiddleware, async (req, res) => {
   }
 })
 
+// Get friend requests (alias for /incoming - for notifications modal)
+app.get('/api/friends/requests', authMiddleware, async (req, res) => {
+  try {
+    const receiverId = req.user.id // UUID from authMiddleware
+    
+    console.log('📬 Fetching friend requests for user:', receiverId)
+    
+    const result = await pool.query(
+      `
+      SELECT
+        fr.id,
+        fr.status,
+        fr.created_at,
+        u.public_id AS sender_public_id,
+        u.display_name AS sender_name,
+        u.photo_url AS sender_avatar
+      FROM friend_requests fr
+      JOIN users u ON u.id = fr.sender_id
+      WHERE fr.receiver_id = $1
+        AND fr.status = 'pending'
+      ORDER BY fr.created_at DESC
+      `,
+      [receiverId]
+    )
+
+    console.log('✅ Found', result.rows.length, 'friend requests')
+    res.json(result.rows)
+  } catch (err) {
+    console.error('❌ Friend requests error:', err)
+    res.status(500).json({ error: 'Failed to fetch requests' })
+  }
+})
+
 // Step 1: Redirect to Google OAuth consent screen
 app.get('/auth/google', (req, res) => {
   try {
