@@ -174,14 +174,16 @@ export const markMessagesAsRead = async (senderId, receiverId) => {
       return { success: false };
     }
 
+    const token = localStorage.getItem('token');
     const response = await fetch(
       `${BACKEND_URL}/api/messages/mark-read`,
       {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ senderId, receiverId })
+        body: JSON.stringify({ senderId })
       }
     );
 

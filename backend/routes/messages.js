@@ -1,34 +1,40 @@
 import express from 'express';
 import db from '../db.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// GET unread message count
-router.get('/unread-count/:userId', async (req, res) => {
+// POST mark ALL messages as read (when message panel opens)
+router.post('/mark-all-read', authMiddleware, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user?.id; // UUID from auth middleware
 
-    const result = await db.query(
-      `SELECT COUNT(*)::int AS unread_count
-       FROM messages
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    await db.query(
+      `UPDATE messages
+       SET is_read = true
        WHERE receiver_id = $1
        AND is_read = false`,
       [userId]
     );
 
-    res.json({ unreadCount: result.rows[0].unread_count });
+    res.json({ success: true, message: 'All messages marked as read' });
   } catch (error) {
-    console.error('❌ Error fetching unread count:', error);
+    console.error('❌ Error marking all messages as read:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// POST mark messages as read
-router.post('/mark-read', async (req, res) => {
+// POST mark messages as read (from specific sender when chat opens)
+router.post('/mark-read', authMiddleware, async (req, res) => {
   try {
-    const { senderId, receiverId } = req.body;
+    const receiverId = req.user?.id; // UUID from auth middleware
+    const { senderId } = req.body;
 
-    if (!senderId || !receiverId) {
+    if (!receiverId || !senderId) {
       return res.status(400).json({ error: 'senderId and receiverId required' });
     }
 
@@ -41,7 +47,7 @@ router.post('/mark-read', async (req, res) => {
       [senderId, receiverId]
     );
 
-    res.json({ success: true });
+    res.json({ success: true, message: 'Messages marked as read' });
   } catch (error) {
     console.error('❌ Error marking messages as read:', error);
     res.status(500).json({ error: 'Server error' });

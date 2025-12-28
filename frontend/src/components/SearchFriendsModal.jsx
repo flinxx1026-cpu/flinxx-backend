@@ -168,8 +168,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // Open chat handler
   const openChat = async (friend) => {
     // Mark this friend's messages as read in database
-    if (currentUser?.id && friend.id) {
-      await markMessagesAsRead(friend.id, currentUser.id);
+    if (friend?.id) {
+      await markMessagesAsRead(friend.id);
     }
     
     // Mark this friend's messages as read in local context
