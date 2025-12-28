@@ -393,7 +393,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       <span className="friend-text">{getButtonText(user.publicId)}</span>
                     </button>
                   </div>
-                  <p className="result-id">ID: {user.publicId}</p>
+                  <p className="tap-to-chat">Tap to chat</p>
                 </div>
               </div>
               ))
@@ -505,7 +505,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
                       <div className="result-info">
                         <p className="result-name">{friend.display_name}</p>
-                        <p className="result-id">ID: {friend.public_id}</p>
+                        <p className="tap-to-chat">Tap to chat</p>
                       </div>
                     </div>
                   ))
