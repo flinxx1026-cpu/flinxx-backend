@@ -31,6 +31,7 @@ router.get('/notifications', async (req, res) => {
         f.receiver_id,
         f.status,
         f.created_at,
+        u.id as user_id,
         u.public_id,
         u.display_name,
         u.photo_url

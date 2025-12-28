@@ -443,7 +443,13 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       className="message-btn"
                       onClick={() => {
                         // Open chat with this user
-                        setActiveChat(req);
+                        // Ensure friend object has 'id' field for ChatBox
+                        const chatUser = {
+                          ...req,
+                          id: req.user_id // Map user_id to id for ChatBox
+                        };
+                        console.log('Opening chat from notification:', chatUser);
+                        setActiveChat(chatUser);
                       }}
                     >
                       Message

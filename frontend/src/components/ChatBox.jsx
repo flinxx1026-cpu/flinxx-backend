@@ -31,7 +31,12 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
 
   // ✅ LOAD CHAT HISTORY when chat opens
   useEffect(() => {
-    if (!myUserId || !friend?.id) return;
+    if (!myUserId || !friend?.id) {
+      console.log('⏳ ChatBox: Waiting for myUserId or friend.id', { myUserId, friendId: friend?.id });
+      return;
+    }
+
+    console.log('📨 ChatBox: Loading messages for friend:', { myUserId, friendId: friend.id, friendName: friend.display_name });
 
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
     const messagesUrl = `${BACKEND_URL}/api/messages?user1=${myUserId}&user2=${friend.id}`;
@@ -47,7 +52,7 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
         return res.json();
       })
       .then(data => {
-        console.log("📨 Messages loaded:", data);
+        console.log("📨 Messages loaded:", data.length, 'messages');
         if (Array.isArray(data)) {
           setMessages(
             data.map(m => ({
