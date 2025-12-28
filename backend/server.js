@@ -1693,7 +1693,8 @@ app.get('/api/profile', async (req, res) => {
     res.json({
       success: true,
       user: {
-        id: user.id,
+        id: user.public_id,
+        publicId: user.public_id,
         uuid: user.id,
         email: user.email,
         name: user.display_name,
