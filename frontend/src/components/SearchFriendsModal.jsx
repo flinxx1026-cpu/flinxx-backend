@@ -404,7 +404,14 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         {/* Notifications Container - Notifications Mode */}
         {isNotificationMode && (
           <div className="search-results">
-            {pendingRequests.length === 0 ? (
+            {activeChat ? (
+              // CHAT VIEW in notifications mode
+              <ChatBox
+                friend={activeChat}
+                onBack={() => setActiveChat(null)}
+                onMessageSent={updateChatListOnMessage}
+              />
+            ) : pendingRequests.length === 0 ? (
               <p
                 style={{
                   textAlign: 'center',
