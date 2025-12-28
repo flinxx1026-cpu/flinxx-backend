@@ -79,7 +79,12 @@ export const AuthProvider = ({ children }) => {
                 const userWithPublicId = {
                   ...data.user,
                   publicId: data.user.public_id || data.user.publicId,
-                  uuid: data.user.id // Map database 'id' to 'uuid' for consistency
+                  uuid: data.user.uuid // ✅ Use UUID from backend, never fallback to public_id
+                }
+                
+                // Validate UUID
+                if (!userWithPublicId.uuid || userWithPublicId.uuid.length !== 36) {
+                  console.error('❌ Invalid UUID from backend:', userWithPublicId.uuid);
                 }
                 
                 console.log('🔵 [AuthContext] Setting user state with:', { email: userWithPublicId.email, profileCompleted: userWithPublicId.profileCompleted, publicId: userWithPublicId.publicId })
@@ -111,12 +116,13 @@ export const AuthProvider = ({ children }) => {
             console.log('\n🔵 [AuthContext] STEP 3: Restore from localStorage (no token validation)');
             const user = JSON.parse(storedUser)
             
-            // Ensure publicId and uuid exist (convert from public_id if needed)
+            // Ensure publicId exists (convert from public_id if needed)
             if (!user.publicId && user.public_id) {
               user.publicId = user.public_id
             }
-            if (!user.uuid && user.id) {
-              user.uuid = user.id
+            // ✅ Do NOT auto-fill UUID from public_id - only use UUID from backend
+            if (!user.uuid) {
+              console.warn('⚠️ UUID missing from localStorage user object');
             }
             
             console.log('🔵 [AuthContext]   - Email:', user.email)
@@ -194,7 +200,12 @@ export const AuthProvider = ({ children }) => {
                   const userWithIds = {
                     ...profileData.user,
                     publicId: profileData.user.public_id || profileData.user.publicId,
-                    uuid: profileData.user.id // Map database 'id' to 'uuid' for consistency
+                    uuid: profileData.user.uuid // ✅ Use UUID from backend, never fallback to public_id
+                  }
+                  
+                  // Validate UUID
+                  if (!userWithIds.uuid || userWithIds.uuid.length !== 36) {
+                    console.error('❌ Invalid UUID from backend:', userWithIds.uuid);
                   }
                   
                   setUser(userWithIds)

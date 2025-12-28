@@ -147,8 +147,13 @@ const Chat = () => {
     setCurrentUser(userToUse);
     
     if (!userIdRef.current) {
-      userIdRef.current = userToUse.googleId || userToUse.id;
-      console.log('🔐 USER ID INITIALIZED (ONE TIME):', userIdRef.current);
+      // ✅ Use UUID only - never fallback to public_id
+      userIdRef.current = userToUse.uuid || userToUse.googleId;
+      if (!userIdRef.current || userIdRef.current.length !== 36) {
+        console.warn('⚠️ WARNING: Invalid or missing UUID. Using guest mode.', userIdRef.current);
+      } else {
+        console.log('🔐 USER UUID INITIALIZED (ONE TIME):', userIdRef.current);
+      }
     }
     if (!currentUserRef.current) {
       currentUserRef.current = userToUse;
