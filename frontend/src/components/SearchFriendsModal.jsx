@@ -137,6 +137,25 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   }, [isOpen, isMessageMode]);
 
+  // ✅ Update chat list when message is sent or received
+  const updateChatListOnMessage = (friendId, messageTime) => {
+    setFriends(prevFriends => {
+      // Find the friend and update their last_message_at
+      const updatedFriends = prevFriends.map(friend =>
+        friend.id === friendId
+          ? { ...friend, last_message_at: messageTime }
+          : friend
+      );
+
+      // Re-sort by last message time (newest first)
+      return updatedFriends.sort((a, b) => {
+        const timeA = a.last_message_at ? new Date(a.last_message_at) : new Date(0);
+        const timeB = b.last_message_at ? new Date(b.last_message_at) : new Date(0);
+        return timeB - timeA;
+      });
+    });
+  };
+
   // Open chat handler
   const openChat = (friend) => {
     // Just set the active chat - ChatBox component will handle socket room joining
@@ -503,6 +522,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
               <ChatBox
                 friend={activeChat}
                 onBack={() => setActiveChat(null)}
+                onMessageSent={updateChatListOnMessage}
               />
             )}
           </div>

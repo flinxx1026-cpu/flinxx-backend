@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import socket from '../services/socketService';
 
-const ChatBox = ({ friend, onBack }) => {
+const ChatBox = ({ friend, onBack, onMessageSent }) => {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   
@@ -65,15 +65,23 @@ const ChatBox = ({ friend, onBack }) => {
   const send = () => {
     if (!text.trim()) return;
 
+    const now = new Date().toISOString();
+
     // ✅ SEND MESSAGE VIA SOCKET AND SAVE TO DB
     socket.emit('send_message', {
       senderId: myUserId,
       receiverId: friend.id, // UUID from friend object
-      message: text
+      message: text,
+      created_at: now
     });
 
     // ✅ Clear input (message will be added by socket receive_message event)
     setText('');
+
+    // ✅ Update chat list to move this friend to top
+    if (onMessageSent) {
+      onMessageSent(friend.id, now);
+    }
   };
 
   // ✅ RECEIVE MESSAGES FROM SOCKET (from shared room)
@@ -83,12 +91,18 @@ const ChatBox = ({ friend, onBack }) => {
         ...prev,
         { me: data.senderId === myUserId, text: data.message }
       ]);
+
+      // ✅ Update chat list to move this friend to top when receiving message
+      if (onMessageSent && data.senderId !== myUserId) {
+        const messageTime = data.created_at || new Date().toISOString();
+        onMessageSent(friend.id, messageTime);
+      }
     };
 
     socket.on('receive_message', handleReceiveMessage);
 
     return () => socket.off('receive_message', handleReceiveMessage);
-  }, [myUserId]);
+  }, [myUserId, friend, onMessageSent]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
