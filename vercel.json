@@ -3,7 +3,7 @@
   "outputDirectory": "frontend/dist2",
   "framework": "vite",
   "env": {
-    "VERCEL_FORCE_REBUILD": "2025-12-08-tdz-fix-final"
+    "VERCEL_FORCE_REBUILD": "2025-12-28-instagram-style-notifications-final"
   },
   "headers": [
     {
