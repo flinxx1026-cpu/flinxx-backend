@@ -227,7 +227,7 @@ app.options('*', cors())
 app.use(express.json())
 
 // ===== AUTH MIDDLEWARE =====
-const authMiddleware = async (req, res, next) => {
+export const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization
     

@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../db.js';
 import { validate as isUUID } from 'uuid';
+import { authMiddleware } from '../server.js';
 
 const router = express.Router();
 
@@ -50,7 +51,7 @@ router.get('/friends', async (req, res) => {
 });
 
 // ✅ Unfriend a user
-router.post('/unfriend', async (req, res) => {
+router.post('/unfriend', authMiddleware, async (req, res) => {
   try {
     const { friendId } = req.body;
     const userId = req.user?.id; // From auth middleware
