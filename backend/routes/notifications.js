@@ -26,23 +26,29 @@ router.get('/notifications', async (req, res) => {
 
     const query = `
       SELECT 
-        fr.id,
-        fr.sender_id,
-        fr.receiver_id,
-        fr.status,
-        fr.created_at,
-        u.public_id AS sender_public_id,
-        u.display_name AS sender_name,
-        u.photo_url AS sender_avatar
-      FROM friend_requests fr
-      JOIN users u ON u.id = fr.sender_id
-      WHERE fr.receiver_id = $1
-      ORDER BY fr.created_at DESC
+        f.id,
+        f.sender_id,
+        f.receiver_id,
+        f.status,
+        f.created_at,
+        u.public_id,
+        u.display_name,
+        u.photo_url
+      FROM friend_requests f
+      JOIN users u
+        ON u.id = CASE
+          WHEN f.sender_id = $1 THEN f.receiver_id
+          ELSE f.sender_id
+        END
+      WHERE 
+        f.sender_id = $1
+        OR f.receiver_id = $1
+      ORDER BY f.created_at DESC
     `;
 
     const { rows } = await pool.query(query, [userId]);
     
-    console.log('[NOTIFICATIONS API] ✅ Found', rows.length, 'notifications');
+    console.log('[NOTIFICATIONS API] ✅ Found', rows.length, 'notifications (sent + received + accepted)');
     res.json(rows);
 
   } catch (err) {

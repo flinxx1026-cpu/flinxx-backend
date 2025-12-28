@@ -391,23 +391,23 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
               pendingRequests.map(req => (
                 <div key={req.id} className="search-result-item">
                   <div className="result-avatar">
-                    {req.sender_avatar ? (
-                      <img src={req.sender_avatar} alt="avatar" />
+                    {req.photo_url ? (
+                      <img src={req.photo_url} alt="avatar" />
                     ) : (
                       '👤'
                     )}
                   </div>
 
                   <div className="result-info">
-                    <p className="result-name">{req.sender_name}</p>
-                    <p className="result-id">ID: {req.sender_public_id}</p>
+                    <p className="result-name">{req.display_name}</p>
+                    <p className="result-id">ID: {req.public_id}</p>
 
                     {req.status === 'pending' ? (
                       <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
                         <button
                           className="friend-badge-btn"
                           onClick={() =>
-                            handleAcceptRequest(req.id, req.sender_public_id)
+                            handleAcceptRequest(req.id, req.public_id)
                           }
                         >
                           ✅ Accept
