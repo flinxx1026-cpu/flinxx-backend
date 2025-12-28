@@ -859,15 +859,6 @@
   position: relative;
 }
 
-/* Green online dot */
-.online-dot {
-  width: 8px;
-  height: 8px;
-  background: #22c55e;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
 /* Three dots button */
 .more-btn {
   background: transparent;

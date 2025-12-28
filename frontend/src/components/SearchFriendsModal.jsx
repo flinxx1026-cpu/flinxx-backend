@@ -441,8 +441,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
                   {req.status === 'accepted' && (
                     <div className="message-actions">
-                      <span className="online-dot"></span>
-
                       <button
                         className="message-btn"
                         onClick={() => {
