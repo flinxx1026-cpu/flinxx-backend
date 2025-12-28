@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useContext } from 'react';
+import { MessageContext } from '../context/MessageContext';
 
 const TopActions = ({ 
   currentUser, 
@@ -10,6 +11,8 @@ const TopActions = ({
   onMessageClick,
   isFixedPosition = false 
 }) => {
+  const { unreadCount } = useContext(MessageContext) || { unreadCount: 0 };
+
   const containerStyle = isFixedPosition 
     ? { position: 'fixed', top: '12px', right: '24px', zIndex: 999999 }
     : {};
@@ -54,14 +57,19 @@ const TopActions = ({
         ❤️
       </div>
 
-      {/* Messages Icon */}
+      {/* Messages Icon with Badge */}
       <div 
-        className="icon-circle" 
+        className="icon-wrapper" 
         title="Messages"
         onClick={onMessageClick}
-        style={{ cursor: 'pointer' }}
+        style={{ cursor: 'pointer', position: 'relative' }}
       >
-        💬
+        <div className="icon-circle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          💬
+        </div>
+        {unreadCount > 0 && (
+          <span className="badge">{unreadCount}</span>
+        )}
       </div>
 
       {/* Flinx Premium Icon */}

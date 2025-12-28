@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import './SearchFriendsModal.css';
 import { getFriends, getNotifications } from '../services/api';
+import { MessageContext } from '../context/MessageContext';
 import ChatBox from './ChatBox';
 import { joinUserRoom } from '../services/socketService';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
+  const { markAsRead } = useContext(MessageContext) || {};
+  
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -162,9 +165,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       });
     });
   };
-
   // Open chat handler
   const openChat = (friend) => {
+    // Mark this friend's messages as read
+    if (markAsRead && friend.id) {
+      markAsRead(friend.id);
+    }
     // Just set the active chat - ChatBox component will handle socket room joining
     setActiveChat(friend);
   };
@@ -460,6 +466,10 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       <button
                         className="message-btn"
                         onClick={() => {
+                          // Mark as read
+                          if (markAsRead && req.user_id) {
+                            markAsRead(req.user_id);
+                          }
                           // Open chat with this user
                           // Ensure friend object has 'id' field for ChatBox
                           const chatUser = {
