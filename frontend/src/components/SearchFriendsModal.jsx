@@ -8,6 +8,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsCached, setNotificationsCached] = useState(false);
   const [friendRequestStates, setFriendRequestStates] = useState({}); // Track request status by userId
   const [pendingRequests, setPendingRequests] = useState([]); // For notifications mode
   const [sendingRequest, setSendingRequest] = useState(null); // Track which request is being sent
@@ -100,11 +102,15 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const fetchPendingRequests = async () => {
     try {
       console.log('📬 Fetching notifications...');
+      setNotificationsLoading(true);
       const data = await getNotifications();
       setPendingRequests(Array.isArray(data) ? data : []);
+      setNotificationsCached(true); // Mark as cached for next time
       console.log('✅ Notifications updated:', data.length, 'items');
     } catch (error) {
       console.error('Error fetching notifications:', error);
+    } finally {
+      setNotificationsLoading(false);
     }
   };
 
@@ -117,7 +123,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
   // Load pending requests when switching to notifications mode
   useEffect(() => {
-    if (isOpen && isNotificationMode) {
+    if (isOpen && isNotificationMode && !notificationsCached) {
+      // Fetch in background, don't block modal open
       fetchPendingRequests();
     }
   }, [isOpen, isNotificationMode]);
@@ -411,6 +418,16 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                 onBack={() => setActiveChat(null)}
                 onMessageSent={updateChatListOnMessage}
               />
+            ) : notificationsLoading ? (
+              <p
+                style={{
+                  textAlign: 'center',
+                  color: '#9ca3af',
+                  marginTop: '40px'
+                }}
+              >
+                Loading notifications...
+              </p>
             ) : pendingRequests.length === 0 ? (
               <p
                 style={{
