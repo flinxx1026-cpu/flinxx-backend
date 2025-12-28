@@ -612,7 +612,7 @@ app.post('/api/users/save', async (req, res) => {
     res.json({
       success: true,
       user: {
-        id: user.id,
+        id: user.public_id,
         uuid: user.id,
         email: user.email,
         displayName: user.display_name,

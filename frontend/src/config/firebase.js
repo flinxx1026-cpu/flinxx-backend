@@ -166,6 +166,7 @@ const handleLoginSuccess = async (user, provider) => {
       userInfo.profileCompleted = dbResponse.user.profileCompleted
       userInfo.isProfileCompleted = dbResponse.user.profileCompleted
       userInfo.id = dbResponse.user.id
+      userInfo.uuid = dbResponse.user.uuid
       console.log('[FIREBASE] 🎯 Updated userInfo with profileCompleted:', dbResponse.user.profileCompleted)
     }
     
@@ -197,6 +198,7 @@ const handleLoginSuccess = async (user, provider) => {
   
   const userToStore = {
     id: userInfo.id,
+    uuid: userInfo.uuid,
     uid: userInfo.uid,
     name: user.displayName,
     email: user.email,

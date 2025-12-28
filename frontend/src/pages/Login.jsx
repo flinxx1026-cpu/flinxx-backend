@@ -198,12 +198,15 @@ const Login = () => {
             ...googleUser,
             ...dbResponse.user,
             // Ensure both field names are present for compatibility
+            id: dbResponse.user.id,
+            uuid: dbResponse.user.uuid,
             profileCompleted: dbResponse.user.profileCompleted,
             isProfileCompleted: dbResponse.user.profileCompleted
           }
           console.log('[LOGIN] 🎯 Merged user data with profile status:', {
             profileCompleted: userDataToStore.profileCompleted,
-            isProfileCompleted: userDataToStore.isProfileCompleted
+            isProfileCompleted: userDataToStore.isProfileCompleted,
+            uuid: userDataToStore.uuid
           })
         }
       } catch (dbError) {

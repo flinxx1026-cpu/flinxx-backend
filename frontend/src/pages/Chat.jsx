@@ -147,10 +147,10 @@ const Chat = () => {
     setCurrentUser(userToUse);
     
     if (!userIdRef.current) {
-      // ✅ Use UUID only - never fallback to public_id
-      userIdRef.current = userToUse.uuid || userToUse.googleId;
+      // ✅ Use UUID only - NEVER fallback to googleId or any other field
+      userIdRef.current = userToUse.uuid;
       if (!userIdRef.current || userIdRef.current.length !== 36) {
-        console.warn('⚠️ WARNING: Invalid or missing UUID. Using guest mode.', userIdRef.current);
+        console.error('❌ CRITICAL: Invalid or missing UUID from localStorage:', userIdRef.current);
       } else {
         console.log('🔐 USER UUID INITIALIZED (ONE TIME):', userIdRef.current);
       }
