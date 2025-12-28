@@ -9,6 +9,7 @@ import { createClient } from 'redis'
 import fetch from 'node-fetch'
 import { PrismaClient } from '@prisma/client'
 import friendsRoutes from './routes/friends.js'
+import notificationsRoutes, { setPool as setNotificationsPool } from './routes/notifications.js'
 
 dotenv.config()
 
@@ -261,6 +262,8 @@ const authMiddleware = async (req, res, next) => {
 
 // ===== MOUNT ROUTES =====
 app.use('/api', friendsRoutes)
+setNotificationsPool(pool)
+app.use('/api', notificationsRoutes)
 
 // User Management (now using Redis for online presence)
 // In-memory maps kept for socket connections during session

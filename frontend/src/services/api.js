@@ -39,3 +39,44 @@ export const getFriends = async () => {
     return [];
   }
 };
+
+/**
+ * Fetch all friend request notifications (pending + accepted)
+ */
+export const getNotifications = async () => {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = currentUser.uuid || currentUser.id; // UUID from backend
+
+    // ✅ UUID validation (must be 36 chars with hyphens)
+    if (!userId || userId.length !== 36) {
+      console.error('❌ Invalid UUID in notifications:', userId);
+      return [];
+    }
+
+    console.log('📬 Fetching notifications for user:', userId);
+
+    const response = await fetch(
+      `${BACKEND_URL}/api/notifications?userId=${userId}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('❌ Notifications API error:', response.status, response.statusText);
+      return [];
+    }
+
+    const data = await response.json();
+    console.log('✅ Notifications loaded:', data.length, 'items');
+    return data;
+  } catch (err) {
+    console.error('❌ Error fetching notifications:', err);
+    return [];
+  }
+};

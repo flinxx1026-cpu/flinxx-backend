@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './SearchFriendsModal.css';
-import { getFriends } from '../services/api';
+import { getFriends, getNotifications } from '../services/api';
 import ChatBox from './ChatBox';
 import { joinUserRoom } from '../services/socketService';
 
@@ -99,18 +99,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // Fetch pending friend requests for notifications
   const fetchPendingRequests = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/friends/requests`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPendingRequests(Array.isArray(data) ? data : []);
-      }
+      console.log('📬 Fetching notifications...');
+      const data = await getNotifications();
+      setPendingRequests(Array.isArray(data) ? data : []);
+      console.log('✅ Notifications updated:', data.length, 'items');
     } catch (error) {
-      console.error('Error fetching pending requests:', error);
+      console.error('Error fetching notifications:', error);
     }
   };
 
