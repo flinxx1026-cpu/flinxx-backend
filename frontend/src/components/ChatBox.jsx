@@ -29,6 +29,27 @@ const ChatBox = ({ friend, onBack }) => {
     });
   }, [friend, myUserId]);
 
+  // ✅ LOAD CHAT HISTORY when chat opens
+  useEffect(() => {
+    if (!myUserId || !friend?.id) return;
+
+    fetch(`/api/messages?user1=${myUserId}&user2=${friend.id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setMessages(
+            data.map(m => ({
+              me: m.sender_id === myUserId,
+              text: m.message
+            }))
+          );
+        }
+      })
+      .catch(err => {
+        console.error("Failed to load chat history", err);
+      });
+  }, [myUserId, friend]);
+
   const send = () => {
     if (!text.trim()) return;
 

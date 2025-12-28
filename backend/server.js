@@ -1719,6 +1719,35 @@ app.get('/api/profile', async (req, res) => {
   }
 })
 
+// ✅ GET CHAT HISTORY between two users
+app.get('/api/messages', async (req, res) => {
+  const { user1, user2 } = req.query;
+
+  if (!user1 || !user2) {
+    return res.status(400).json({ error: 'Missing user IDs' });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT sender_id, receiver_id, message, created_at
+      FROM messages
+      WHERE
+        (sender_id = $1 AND receiver_id = $2)
+        OR
+        (sender_id = $2 AND receiver_id = $1)
+      ORDER BY created_at ASC
+      `,
+      [user1, user2]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching messages:', error.message);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
 // WebSocket Events
 io.on('connection', (socket) => {
   console.log(`✅ User connected: ${socket.id}`)
