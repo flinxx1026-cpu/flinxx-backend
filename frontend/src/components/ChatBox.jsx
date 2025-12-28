@@ -74,6 +74,15 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     console.log('📨 ChatBox: Loading messages for friend:', { myUserId, friendId: friend.id, friendName: friend.display_name });
 
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    const messagesUrl = `${BACKEND_URL}/api/messages?user1=${myUserId}&user2=${friend.id}`;
+    
+    console.log("📨 Fetching chat history from:", messagesUrl);
+    
+    fetch(messagesUrl)
+      .then(res => {
+        console.log("📨 Response status:", res.status);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
         }
         return res.json();
       })
