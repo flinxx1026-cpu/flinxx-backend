@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import './SearchFriendsModal.css';
-import { getFriends, getNotifications } from '../services/api';
+import { getFriends, getNotifications, markMessagesAsRead } from '../services/api';
 import { MessageContext } from '../context/MessageContext';
 import ChatBox from './ChatBox';
 import { joinUserRoom } from '../services/socketService';
@@ -166,11 +166,17 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     });
   };
   // Open chat handler
-  const openChat = (friend) => {
-    // Mark this friend's messages as read
+  const openChat = async (friend) => {
+    // Mark this friend's messages as read in database
+    if (currentUser?.id && friend.id) {
+      await markMessagesAsRead(friend.id, currentUser.id);
+    }
+    
+    // Mark this friend's messages as read in local context
     if (markAsRead && friend.id) {
       markAsRead(friend.id);
     }
+    
     // Just set the active chat - ChatBox component will handle socket room joining
     setActiveChat(friend);
   };
@@ -465,8 +471,13 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     <div className="message-actions">
                       <button
                         className="message-btn"
-                        onClick={() => {
-                          // Mark as read
+                        onClick={async () => {
+                          // Mark as read in database
+                          if (currentUser?.id && req.user_id) {
+                            await markMessagesAsRead(req.user_id, currentUser.id);
+                          }
+                          
+                          // Mark as read in context
                           if (markAsRead && req.user_id) {
                             markAsRead(req.user_id);
                           }

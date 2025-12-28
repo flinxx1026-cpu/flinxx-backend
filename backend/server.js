@@ -11,6 +11,7 @@ import { PrismaClient } from '@prisma/client'
 import { authMiddleware } from './middleware/auth.js'
 import friendsRoutes from './routes/friends.js'
 import notificationsRoutes, { setPool as setNotificationsPool } from './routes/notifications.js'
+import messagesRoutes from './routes/messages.js'
 
 dotenv.config()
 
@@ -231,6 +232,7 @@ app.use(express.json())
 app.use('/api', friendsRoutes)
 setNotificationsPool(pool)
 app.use('/api', notificationsRoutes)
+app.use('/api/messages', messagesRoutes)
 
 // User Management (now using Redis for online presence)
 // In-memory maps kept for socket connections during session

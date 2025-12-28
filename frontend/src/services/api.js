@@ -125,3 +125,72 @@ export const unfriendUser = async (friendId) => {
     return { success: false, error: err.message };
   }
 };
+
+/**
+ * Get unread message count for a user
+ */
+export const getUnreadCount = async (userId) => {
+  try {
+    if (!userId || userId.length !== 36) {
+      console.error('❌ Invalid UUID in getUnreadCount:', userId);
+      return 0;
+    }
+
+    const response = await fetch(
+      `${BACKEND_URL}/api/messages/unread-count/${userId}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('❌ Unread count API error:', response.status, response.statusText);
+      return 0;
+    }
+
+    const data = await response.json();
+    console.log('✅ Unread count:', data.unreadCount);
+    return data.unreadCount;
+  } catch (err) {
+    console.error('Error fetching unread count:', err);
+    return 0;
+  }
+};
+
+/**
+ * Mark messages as read between two users
+ */
+export const markMessagesAsRead = async (senderId, receiverId) => {
+  try {
+    if (!senderId || senderId.length !== 36 || !receiverId || receiverId.length !== 36) {
+      console.error('❌ Invalid UUIDs in markMessagesAsRead');
+      return { success: false };
+    }
+
+    const response = await fetch(
+      `${BACKEND_URL}/api/messages/mark-read`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ senderId, receiverId })
+      }
+    );
+
+    if (!response.ok) {
+      console.error('❌ Mark read API error:', response.status, response.statusText);
+      return { success: false };
+    }
+
+    const data = await response.json();
+    console.log('✅ Messages marked as read');
+    return data;
+  } catch (err) {
+    console.error('Error marking messages as read:', err);
+    return { success: false };
+  }
+};

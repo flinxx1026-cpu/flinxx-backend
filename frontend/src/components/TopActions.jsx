@@ -1,5 +1,6 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { MessageContext } from '../context/MessageContext';
+import { getUnreadCount } from '../services/api';
 
 const TopActions = ({ 
   currentUser, 
@@ -12,6 +13,28 @@ const TopActions = ({
   isFixedPosition = false 
 }) => {
   const { unreadCount } = useContext(MessageContext) || { unreadCount: 0 };
+  const [dbUnreadCount, setDbUnreadCount] = useState(0);
+
+  // Fetch unread count from database
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!currentUser?.id) return;
+      
+      const count = await getUnreadCount(currentUser.id);
+      setDbUnreadCount(count);
+    };
+
+    // Fetch immediately
+    fetchUnreadCount();
+
+    // Poll every 5 seconds for new messages
+    const interval = setInterval(fetchUnreadCount, 5000);
+
+    return () => clearInterval(interval);
+  }, [currentUser?.id]);
+
+  // Use database count as source of truth
+  const displayUnreadCount = dbUnreadCount > 0 ? dbUnreadCount : unreadCount;
 
   const containerStyle = isFixedPosition 
     ? { position: 'fixed', top: '12px', right: '24px', zIndex: 999999 }
@@ -67,8 +90,8 @@ const TopActions = ({
         <div className="icon-circle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           💬
         </div>
-        {unreadCount > 0 && (
-          <span className="badge">{unreadCount}</span>
+        {displayUnreadCount > 0 && (
+          <span className="badge">{displayUnreadCount}</span>
         )}
       </div>
 
