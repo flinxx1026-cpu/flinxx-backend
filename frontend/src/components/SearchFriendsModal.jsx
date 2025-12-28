@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './SearchFriendsModal.css';
-import { getFriends, getNotifications, unfriendUser } from '../services/api';
+import { getFriends, getNotifications } from '../services/api';
 import ChatBox from './ChatBox';
 import { joinUserRoom } from '../services/socketService';
 
@@ -14,7 +14,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [currentUser, setCurrentUser] = useState(null); // Load once when modal opens
   const [friends, setFriends] = useState([]); // For message mode
   const [activeChat, setActiveChat] = useState(null); // null = friends list, object = open chat
-  const [openMenuId, setOpenMenuId] = useState(null); // Track which notification's menu is open
   
   const isNotificationMode = mode === 'notifications';
   const isMessageMode = mode === 'message';
@@ -317,31 +316,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   };
 
-  // ✅ Handle unfriend action
-  const handleUnfriend = async (friendId) => {
-    try {
-      console.log('🔄 Unfriending user:', friendId);
-      
-      const result = await unfriendUser(friendId);
-      
-      if (result.success) {
-        // Remove from notifications list
-        setPendingRequests(prev => 
-          prev.filter(req => req.user_id !== friendId)
-        );
-        
-        // Close the menu
-        setOpenMenuId(null);
-        
-        console.log('✅ User unfriended successfully');
-      } else {
-        console.error('❌ Unfriend failed:', result.error);
-      }
-    } catch (error) {
-      console.error('❌ Error unfriending user:', error);
-    }
-  };
-
   return (
     <div className="search-friends-overlay" onClick={onClose}>
       <div className="search-friends-modal" onClick={(e) => e.stopPropagation()}>
@@ -481,27 +455,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       >
                         Message
                       </button>
-
-                      <div className="more-wrapper">
-                        <button
-                          className="more-btn"
-                          onClick={() => setOpenMenuId(openMenuId === req.id ? null : req.id)}
-                        >
-                          ⋮
-                        </button>
-
-                        {openMenuId === req.id && (
-                          <div className="more-menu">
-                            <div 
-                              className="menu-item"
-                              onClick={() => handleUnfriend(req.user_id)}
-                            >
-                              Unfriend
-                            </div>
-                            <div className="menu-item danger">Block</div>
-                          </div>
-                        )}
-                      </div>
                     </div>
                   )}
                 </div>
