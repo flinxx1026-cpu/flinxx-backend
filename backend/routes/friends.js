@@ -49,4 +49,47 @@ router.get('/friends', async (req, res) => {
   }
 });
 
+// ✅ Unfriend a user
+router.post('/friends/unfriend', async (req, res) => {
+  try {
+    const { friendId } = req.body;
+    const userId = req.user?.id; // From auth middleware
+
+    // Validate UUIDs
+    if (!userId || !isUUID(userId)) {
+      return res.status(400).json({ error: 'Invalid current user ID' });
+    }
+
+    if (!friendId || !isUUID(friendId)) {
+      return res.status(400).json({ error: 'Invalid friendId: must be valid UUID' });
+    }
+
+    if (userId === friendId) {
+      return res.status(400).json({ error: 'Cannot unfriend yourself' });
+    }
+
+    console.log('🔄 Unfriending:', { userId, friendId });
+
+    // Delete the friend request (works both ways)
+    const result = await db.query(
+      `DELETE FROM friend_requests
+       WHERE (sender_id = $1 AND receiver_id = $2)
+          OR (sender_id = $2 AND receiver_id = $1)
+       RETURNING id`,
+      [userId, friendId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Friendship not found' });
+    }
+
+    console.log('✅ Unfriended successfully');
+    res.json({ success: true, message: 'Unfriended successfully' });
+
+  } catch (err) {
+    console.error('❌ Unfriend error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

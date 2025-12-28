@@ -80,3 +80,48 @@ export const getNotifications = async () => {
     return [];
   }
 };
+
+/**
+ * Unfriend a user (remove from friends)
+ */
+export const unfriendUser = async (friendId) => {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = currentUser.uuid || currentUser.id; // UUID from backend
+
+    // ✅ UUID validation
+    if (!userId || userId.length !== 36) {
+      console.error('❌ Invalid UUID in unfriend:', userId);
+      return { success: false, error: 'Invalid user' };
+    }
+
+    if (!friendId || friendId.length !== 36) {
+      console.error('❌ Invalid friend UUID:', friendId);
+      return { success: false, error: 'Invalid friend ID' };
+    }
+
+    const response = await fetch(
+      `${BACKEND_URL}/api/friends/unfriend`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ friendId })
+      }
+    );
+
+    if (!response.ok) {
+      console.error('❌ Unfriend error:', response.status, response.statusText);
+      return { success: false, error: 'Failed to unfriend user' };
+    }
+
+    const data = await response.json();
+    console.log('✅ Unfriended user:', friendId);
+    return { success: true, data };
+  } catch (err) {
+    console.error('❌ Error unfriending user:', err);
+    return { success: false, error: err.message };
+  }
+};
