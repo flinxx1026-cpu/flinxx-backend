@@ -75,10 +75,11 @@ export const AuthProvider = ({ children }) => {
                   gender: data.user.gender
                 })
                 
-                // Ensure publicId is included in user object
+                // Ensure publicId and uuid are included in user object
                 const userWithPublicId = {
                   ...data.user,
-                  publicId: data.user.public_id || data.user.publicId
+                  publicId: data.user.public_id || data.user.publicId,
+                  uuid: data.user.id // Map database 'id' to 'uuid' for consistency
                 }
                 
                 console.log('🔵 [AuthContext] Setting user state with:', { email: userWithPublicId.email, profileCompleted: userWithPublicId.profileCompleted, publicId: userWithPublicId.publicId })
@@ -110,9 +111,12 @@ export const AuthProvider = ({ children }) => {
             console.log('\n🔵 [AuthContext] STEP 3: Restore from localStorage (no token validation)');
             const user = JSON.parse(storedUser)
             
-            // Ensure publicId exists (convert from public_id if needed)
+            // Ensure publicId and uuid exist (convert from public_id if needed)
             if (!user.publicId && user.public_id) {
               user.publicId = user.public_id
+            }
+            if (!user.uuid && user.id) {
+              user.uuid = user.id
             }
             
             console.log('🔵 [AuthContext]   - Email:', user.email)
@@ -186,13 +190,14 @@ export const AuthProvider = ({ children }) => {
                   })
                   console.log('🔵 [AuthContext] Setting user state with profileCompleted:', profileData.user.profileCompleted);
                   
-                  // Ensure publicId is included in user object
-                  const userWithPublicId = {
+                  // Ensure publicId and uuid are included in user object
+                  const userWithIds = {
                     ...profileData.user,
-                    publicId: profileData.user.public_id || profileData.user.publicId
+                    publicId: profileData.user.public_id || profileData.user.publicId,
+                    uuid: profileData.user.id // Map database 'id' to 'uuid' for consistency
                   }
                   
-                  setUser(userWithPublicId)
+                  setUser(userWithIds)
                   setIsAuthenticated(true)
                   setIsLoading(false)
                   return

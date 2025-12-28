@@ -18,9 +18,9 @@ const TopActions = ({
   // Fetch unread count from database
   useEffect(() => {
     const fetchUnreadCount = async () => {
-      if (!currentUser?.id) return;
+      if (!currentUser?.uuid) return;
       
-      const count = await getUnreadCount(currentUser.id);
+      const count = await getUnreadCount(currentUser.uuid);
       setDbUnreadCount(count);
     };
 
@@ -31,7 +31,7 @@ const TopActions = ({
     const interval = setInterval(fetchUnreadCount, 5000);
 
     return () => clearInterval(interval);
-  }, [currentUser?.id]);
+  }, [currentUser?.uuid]);
 
   // Use database count as source of truth
   const displayUnreadCount = dbUnreadCount > 0 ? dbUnreadCount : unreadCount;
