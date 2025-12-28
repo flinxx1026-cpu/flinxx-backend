@@ -1,5 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 
+/**
+ * DUMMY SUPPORT WIDGET
+ * ⚠️ This is a local-only component for support chat
+ * Messages are NOT saved to database
+ * Unread message badge will NOT appear
+ * 
+ * For real unread badges, use socket-based friend chats
+ * See TopActions.jsx for badge polling logic
+ */
 const ContactChat = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState([
     {
