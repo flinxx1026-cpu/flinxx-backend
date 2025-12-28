@@ -14,6 +14,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [currentUser, setCurrentUser] = useState(null); // Load once when modal opens
   const [friends, setFriends] = useState([]); // For message mode
   const [activeChat, setActiveChat] = useState(null); // null = friends list, object = open chat
+  const [openMenuId, setOpenMenuId] = useState(null); // Track which notification's menu is open
   
   const isNotificationMode = mode === 'notifications';
   const isMessageMode = mode === 'message';
@@ -439,21 +440,41 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   </div>
 
                   {req.status === 'accepted' && (
-                    <button
-                      className="message-btn"
-                      onClick={() => {
-                        // Open chat with this user
-                        // Ensure friend object has 'id' field for ChatBox
-                        const chatUser = {
-                          ...req,
-                          id: req.user_id // Map user_id to id for ChatBox
-                        };
-                        console.log('Opening chat from notification:', chatUser);
-                        setActiveChat(chatUser);
-                      }}
-                    >
-                      Message
-                    </button>
+                    <div className="message-actions">
+                      <span className="online-dot"></span>
+
+                      <button
+                        className="message-btn"
+                        onClick={() => {
+                          // Open chat with this user
+                          // Ensure friend object has 'id' field for ChatBox
+                          const chatUser = {
+                            ...req,
+                            id: req.user_id // Map user_id to id for ChatBox
+                          };
+                          console.log('Opening chat from notification:', chatUser);
+                          setActiveChat(chatUser);
+                        }}
+                      >
+                        Message
+                      </button>
+
+                      <div className="more-wrapper">
+                        <button
+                          className="more-btn"
+                          onClick={() => setOpenMenuId(openMenuId === req.id ? null : req.id)}
+                        >
+                          ⋮
+                        </button>
+
+                        {openMenuId === req.id && (
+                          <div className="more-menu">
+                            <div className="menu-item">Unfriend</div>
+                            <div className="menu-item danger">Block</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               ))
