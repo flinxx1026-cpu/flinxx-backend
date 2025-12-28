@@ -79,12 +79,12 @@ export const AuthProvider = ({ children }) => {
                 const userWithPublicId = {
                   ...data.user,
                   publicId: data.user.public_id || data.user.publicId,
-                  uuid: data.user.uuid // ✅ Use UUID from backend, never fallback to public_id
+                  uuid: data.user.uuid // ✅ Use UUID from backend ONLY
                 }
                 
-                // Validate UUID
-                if (!userWithPublicId.uuid || userWithPublicId.uuid.length !== 36) {
-                  console.error('❌ Invalid UUID from backend:', userWithPublicId.uuid);
+                // Safe error check - DO NOT auto-fill
+                if (!userWithPublicId.uuid) {
+                  console.error('❌ UUID missing from backend user object');
                 }
                 
                 console.log('🔵 [AuthContext] Setting user state with:', { email: userWithPublicId.email, profileCompleted: userWithPublicId.profileCompleted, publicId: userWithPublicId.publicId })
@@ -120,9 +120,9 @@ export const AuthProvider = ({ children }) => {
             if (!user.publicId && user.public_id) {
               user.publicId = user.public_id
             }
-            // ✅ Do NOT auto-fill UUID from public_id - only use UUID from backend
+            // Safe error check - DO NOT auto-fill UUID from public_id
             if (!user.uuid) {
-              console.warn('⚠️ UUID missing from localStorage user object');
+              console.error('❌ UUID missing from localStorage user object');
             }
             
             console.log('🔵 [AuthContext]   - Email:', user.email)
@@ -200,12 +200,12 @@ export const AuthProvider = ({ children }) => {
                   const userWithIds = {
                     ...profileData.user,
                     publicId: profileData.user.public_id || profileData.user.publicId,
-                    uuid: profileData.user.uuid // ✅ Use UUID from backend, never fallback to public_id
+                    uuid: profileData.user.uuid // ✅ Use UUID from backend ONLY
                   }
                   
-                  // Validate UUID
-                  if (!userWithIds.uuid || userWithIds.uuid.length !== 36) {
-                    console.error('❌ Invalid UUID from backend:', userWithIds.uuid);
+                  // Safe error check - DO NOT auto-fill
+                  if (!userWithIds.uuid) {
+                    console.error('❌ UUID missing from backend user object');
                   }
                   
                   setUser(userWithIds)
@@ -295,10 +295,16 @@ export const AuthProvider = ({ children }) => {
   const setAuthToken = (token, userData) => {
     console.log('[AuthContext] Storing token and user data:', userData?.email)
     
-    // Ensure publicId is included
+    // Ensure publicId is included (NOT as fallback for uuid)
     const userDataWithPublicId = {
       ...userData,
-      publicId: userData?.public_id || userData?.publicId || userData?.id
+      publicId: userData?.public_id || userData?.publicId || userData?.id,
+      uuid: userData?.uuid // ✅ UUID must come from backend
+    }
+    
+    // Safe error check
+    if (!userDataWithPublicId.uuid) {
+      console.error('❌ UUID missing from userData in setAuthToken');
     }
     
     localStorage.setItem('token', token)
