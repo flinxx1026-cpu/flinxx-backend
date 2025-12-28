@@ -50,7 +50,7 @@ router.get('/friends', async (req, res) => {
 });
 
 // ✅ Unfriend a user
-router.post('/friends/unfriend', async (req, res) => {
+router.post('/unfriend', async (req, res) => {
   try {
     const { friendId } = req.body;
     const userId = req.user?.id; // From auth middleware
