@@ -128,9 +128,13 @@ export const unfriendUser = async (friendId) => {
 
 /**
  * Get unread message count for a user
+ * ✅ Reads UUID directly from localStorage to prevent public ID mix-ups
  */
-export const getUnreadCount = async (userId) => {
+export const getUnreadCount = async () => {
   try {
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = currentUser.uuid; // ✅ ONLY UUID
+
     if (!userId || userId.length !== 36) {
       console.error('❌ Invalid UUID in getUnreadCount:', userId);
       return 0;
@@ -153,7 +157,7 @@ export const getUnreadCount = async (userId) => {
 
     const data = await response.json();
     console.log('✅ Unread count:', data.unreadCount);
-    return data.unreadCount;
+    return data.unreadCount || 0;
   } catch (err) {
     console.error('Error fetching unread count:', err);
     return 0;
