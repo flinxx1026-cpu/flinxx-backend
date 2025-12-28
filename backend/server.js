@@ -8,6 +8,7 @@ import pg from 'pg'
 import { createClient } from 'redis'
 import fetch from 'node-fetch'
 import { PrismaClient } from '@prisma/client'
+import { authMiddleware } from './middleware/auth.js'
 import friendsRoutes from './routes/friends.js'
 import notificationsRoutes, { setPool as setNotificationsPool } from './routes/notifications.js'
 
@@ -225,40 +226,6 @@ app.use(cors({
 app.options('*', cors())
 
 app.use(express.json())
-
-// ===== AUTH MIDDLEWARE =====
-export const authMiddleware = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Missing or invalid authorization header' })
-    }
-    
-    const token = authHeader.substring(7) // Remove 'Bearer ' prefix
-    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
-    
-    // Fetch user from database
-    const user = await prisma.users.findUnique({
-      where: { id: decoded.userId }
-    })
-    
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' })
-    }
-    
-    // Set req.user with UUID and publicId
-    req.user = {
-      id: user.id,
-      publicId: user.public_id
-    }
-    
-    next()
-  } catch (error) {
-    console.error('❌ Auth middleware error:', error)
-    res.status(401).json({ error: 'Invalid token' })
-  }
-}
 
 // ===== MOUNT ROUTES =====
 app.use('/api', friendsRoutes)
