@@ -1238,16 +1238,6 @@ const Chat = () => {
       }
     });
 
-    // Receive message
-    socket.on('receive_message', (data) => {
-      setMessages(prev => [...prev, {
-        id: Date.now(),
-        sender: 'partner',
-        text: data.message,
-        timestamp: new Date()
-      }]);
-    });
-
     // ✅ CRITICAL: Partner disconnected handler
     socket.on('partner_disconnected', (data) => {
       console.log('\n\n🔴🔴🔴🔴🔴 ===== PARTNER DISCONNECTED EVENT RECEIVED ===== 🔴🔴🔴🔴🔴');
@@ -1292,7 +1282,6 @@ const Chat = () => {
     console.log('🔌 ✅ webrtc_offer listener active');
     console.log('🔌 ✅ webrtc_answer listener active');
     console.log('🔌 ✅ ice_candidate listener active');
-    console.log('🔌 ✅ receive_message listener active');
     console.log('🔌 ✅ partner_disconnected listener active (CRITICAL FOR DISCONNECT)');
     console.log('🔌 ✅ disconnect listener active');
     console.log('🔌 Ready to receive WebRTC signaling messages\n\n');
@@ -1304,7 +1293,6 @@ const Chat = () => {
       socket.off('webrtc_offer');
       socket.off('webrtc_answer');
       socket.off('ice_candidate');
-      socket.off('receive_message');
       socket.off('partner_disconnected');
       socket.off('disconnect');
     };
