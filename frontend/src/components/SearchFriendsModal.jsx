@@ -412,57 +412,39 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   marginTop: '40px'
                 }}
               >
-                No friend requests
+                No notifications
               </p>
             ) : (
               pendingRequests.map(req => (
-                <div key={req.id} className="search-result-item">
-                  <div className="result-avatar">
+                <div key={req.id} className="notification-item">
+                  <div className="notification-avatar">
                     {req.photo_url ? (
-                      <img src={req.photo_url} alt="avatar" />
+                      <img src={req.photo_url} alt={req.display_name} />
                     ) : (
                       '👤'
                     )}
                   </div>
 
-                  <div className="result-info">
-                    <p className="result-name">{req.display_name}</p>
-                    <p className="result-id">ID: {req.public_id}</p>
-
-                    {req.status === 'pending' ? (
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                        <button
-                          className="friend-badge-btn"
-                          onClick={() =>
-                            handleAcceptRequest(req.id, req.public_id)
-                          }
-                        >
-                          ✅ Accept
-                        </button>
-
-                        <button
-                          className="friend-badge-btn"
-                          onClick={() => handleRejectRequest(req.id)}
-                        >
-                          ❌ Reject
-                        </button>
-                      </div>
-                    ) : req.status === 'accepted' ? (
-                      <div style={{ marginTop: '6px' }}>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 8px',
-                          backgroundColor: '#4ade80',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: 'bold'
-                        }}>
-                          ✅ Accepted
-                        </span>
-                      </div>
-                    ) : null}
+                  <div className="notification-text">
+                    <strong>{req.display_name}</strong>
+                    {req.status === 'accepted' && (
+                      <>
+                        <span> accepted your follow request</span>
+                      </>
+                    )}
                   </div>
+
+                  {req.status === 'accepted' && (
+                    <button
+                      className="message-btn"
+                      onClick={() => {
+                        // Open chat with this user
+                        setActiveChat(req);
+                      }}
+                    >
+                      Message
+                    </button>
+                  )}
                 </div>
               ))
             )}
