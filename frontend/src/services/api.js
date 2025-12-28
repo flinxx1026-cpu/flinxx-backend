@@ -8,7 +8,7 @@ const getToken = () => localStorage.getItem('token');
 export const getFriends = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = currentUser.uuid || currentUser.id; // UUID from backend
+    const userId = currentUser.uuid; // ✅ ONLY UUID - no fallback
 
     // ✅ UUID validation (must be 36 chars with hyphens)
     if (!userId || userId.length !== 36) {
@@ -46,7 +46,7 @@ export const getFriends = async () => {
 export const getNotifications = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = currentUser.uuid || currentUser.id; // UUID from backend
+    const userId = currentUser.uuid; // ✅ ONLY UUID - no fallback
 
     // ✅ UUID validation (must be 36 chars with hyphens)
     if (!userId || userId.length !== 36) {
@@ -87,7 +87,7 @@ export const getNotifications = async () => {
 export const unfriendUser = async (friendId) => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = currentUser.uuid || currentUser.id; // UUID from backend
+    const userId = currentUser.uuid; // ✅ ONLY UUID - no fallback
 
     // ✅ UUID validation
     if (!userId || userId.length !== 36) {

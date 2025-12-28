@@ -49,9 +49,11 @@ export default function AuthSuccess() {
         if (data.success && data.user) {
           const user = data.user;
 
-          // Normalize publicId from all possible sources
+          // Normalize publicId and uuid
           const normalizedUser = {
             ...user,
+            id: user.id,              // ✅ 8-digit public ID (for UI)
+            uuid: user.uuid,          // ✅ 36-char UUID (for messages & unread count)
             publicId: user.publicId || user.public_id || user.id
           };
           
@@ -69,7 +71,11 @@ export default function AuthSuccess() {
             localStorage.setItem("userInfo", JSON.stringify(normalizedUser));
           }
 
-          console.log("✅ User data saved");
+          console.log("✅ User data saved:", { 
+            id: normalizedUser.id, 
+            uuid: normalizedUser.uuid,
+            email: normalizedUser.email 
+          });
           setUserData(user);
 
           // ✅ UNIFIED ROUTING: All users go to /chat (new unified dashboard)

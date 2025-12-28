@@ -1556,7 +1556,8 @@ app.get('/auth-success', async (req, res) => {
       success: true,
       token: token,
       user: {
-        id: user.public_id,
+        id: user.public_id,        // ✅ 8-digit public ID (for UI display)
+        uuid: user.id,              // ✅ 36-char UUID (for messages & unread count)
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
