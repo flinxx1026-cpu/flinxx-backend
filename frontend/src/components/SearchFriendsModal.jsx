@@ -427,11 +427,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
                   <div className="notification-text">
                     <strong>{req.display_name}</strong>
-                    {req.status === 'accepted' && (
-                      <>
-                        <span> accepted your follow request</span>
-                      </>
-                    )}
                   </div>
 
                   {req.status === 'accepted' && (
