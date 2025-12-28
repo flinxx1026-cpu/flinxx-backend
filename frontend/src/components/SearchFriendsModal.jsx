@@ -421,7 +421,9 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     {req.photo_url ? (
                       <img src={req.photo_url} alt={req.display_name} />
                     ) : (
-                      '👤'
+                      <div className="text-avatar">
+                        {req.display_name.charAt(0).toUpperCase()}
+                      </div>
                     )}
                   </div>
 
