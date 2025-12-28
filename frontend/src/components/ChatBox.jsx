@@ -72,8 +72,7 @@ const ChatBox = ({ friend, onBack }) => {
       message: text
     });
 
-    // Add to local messages immediately
-    setMessages(prev => [...prev, { me: true, text }]);
+    // ✅ Clear input (message will be added by socket receive_message event)
     setText('');
   };
 
