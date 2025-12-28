@@ -258,12 +258,16 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       });
 
       if (response.ok) {
-        // Update states
+        // Update states - update status instead of filtering out
         setFriendRequestStates(prev => ({
           ...prev,
           [senderId]: 'accepted'
         }));
-        setPendingRequests(prev => prev.filter(req => req.id !== requestId));
+        setPendingRequests(prev =>
+          prev.map(req =>
+            req.id === requestId ? { ...req, status: 'accepted' } : req
+          )
+        );
         console.log('Friend request accepted');
       }
     } catch (error) {
@@ -404,23 +408,39 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     <p className="result-name">{req.sender_name}</p>
                     <p className="result-id">ID: {req.sender_public_id}</p>
 
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                      <button
-                        className="friend-badge-btn"
-                        onClick={() =>
-                          handleAcceptRequest(req.id, req.sender_public_id)
-                        }
-                      >
-                        ✅ Accept
-                      </button>
+                    {req.status === 'pending' ? (
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                        <button
+                          className="friend-badge-btn"
+                          onClick={() =>
+                            handleAcceptRequest(req.id, req.sender_public_id)
+                          }
+                        >
+                          ✅ Accept
+                        </button>
 
-                      <button
-                        className="friend-badge-btn"
-                        onClick={() => handleRejectRequest(req.id)}
-                      >
-                        ❌ Reject
-                      </button>
-                    </div>
+                        <button
+                          className="friend-badge-btn"
+                          onClick={() => handleRejectRequest(req.id)}
+                        >
+                          ❌ Reject
+                        </button>
+                      </div>
+                    ) : req.status === 'accepted' ? (
+                      <div style={{ marginTop: '6px' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '4px 8px',
+                          backgroundColor: '#4ade80',
+                          color: 'white',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 'bold'
+                        }}>
+                          ✅ Accepted
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))

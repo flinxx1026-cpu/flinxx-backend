@@ -1381,7 +1381,6 @@ app.get('/api/friends/requests/incoming', authMiddleware, async (req, res) => {
       FROM friend_requests fr
       JOIN users u ON u.id = fr.sender_id
       WHERE fr.receiver_id = $1
-        AND fr.status = 'pending'
       ORDER BY fr.created_at DESC
       `,
       [receiverId]
@@ -1403,7 +1402,7 @@ app.get('/api/friends/requests', authMiddleware, async (req, res) => {
     
     console.log('📬 Fetching friend requests for user:', { receiverId, publicId })
     
-    // Query for pending friend requests where this user is the receiver
+    // Query for all friend requests where this user is the receiver
     const result = await pool.query(
       `
       SELECT
@@ -1416,7 +1415,6 @@ app.get('/api/friends/requests', authMiddleware, async (req, res) => {
       FROM friend_requests fr
       JOIN users u ON u.id = fr.sender_id
       WHERE fr.receiver_id = $1
-        AND fr.status = 'pending'
       ORDER BY fr.created_at DESC
       `,
       [receiverId]
