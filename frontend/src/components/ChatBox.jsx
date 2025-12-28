@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import socket from '../services/socketService';
+import { markMessagesAsRead, getUnreadCount } from '../services/api';
 
 const ChatBox = ({ friend, onBack, onMessageSent }) => {
   const [messages, setMessages] = useState([]);
@@ -33,35 +34,26 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
   useEffect(() => {
     if (!myUserId || !friend?.id) return;
 
-    const markMessagesAsRead = async () => {
+    const markRead = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.warn('No auth token, skipping mark-read');
-          return;
+        // Build deterministic chatId same way roomId is built
+        const friendUUID = friend.id;
+        const roomId = myUserId < friendUUID ? `${myUserId}_${friendUUID}` : `${friendUUID}_${myUserId}`;
+
+        const result = await markMessagesAsRead(roomId);
+        if (result?.success) {
+          console.log('✅ Messages from', friend.display_name, 'marked as read (chatId)', roomId);
         }
 
-        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-        const response = await fetch(`${BACKEND_URL}/api/messages/mark-read`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            senderId: friend.id, // Friend's UUID
-          }),
-        });
-
-        if (response.ok) {
-          console.log('✅ Messages from', friend.display_name, 'marked as read');
-        }
+        // Refresh unread count in background (TopActions polls, but fetch once immediately)
+        const count = await getUnreadCount();
+        console.log('📬 Unread count after mark-read:', count);
       } catch (error) {
         console.error('❌ Error marking messages as read:', error);
       }
     };
 
-    markMessagesAsRead();
+    markRead();
   }, [friend?.id, myUserId]);
 
   // ✅ LOAD CHAT HISTORY when chat opens

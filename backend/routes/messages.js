@@ -53,6 +53,7 @@ router.post('/mark-all-read', authMiddleware, async (req, res) => {
 });
 
 // POST mark messages as read (from specific sender when chat opens)
+// Kept for backward compatibility but return updated unreadCount
 router.post('/mark-read', authMiddleware, async (req, res) => {
   try {
     const receiverId = req.user?.id; // UUID from auth middleware
@@ -71,9 +72,65 @@ router.post('/mark-read', authMiddleware, async (req, res) => {
       [senderId, receiverId]
     );
 
-    res.json({ success: true, message: 'Messages marked as read' });
+    const result = await db.query(
+      `SELECT COUNT(*)::int AS count
+       FROM messages
+       WHERE receiver_id = $1
+       AND is_read = false`,
+      [receiverId]
+    );
+
+    res.json({ success: true, unreadCount: result.rows[0].count || 0 });
   } catch (error) {
     console.error('❌ Error marking messages as read:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PUT mark messages as read by chatId (recommended)
+router.put('/mark-read/:chatId', authMiddleware, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const userId = req.user?.id;
+
+    if (!chatId || !userId) {
+      return res.status(400).json({ error: 'chatId and authenticated user required' });
+    }
+
+    // chatId format: '{uuid1}_{uuid2}' (deterministic ordering)
+    const parts = chatId.split('_');
+    if (parts.length !== 2) {
+      return res.status(400).json({ error: 'Invalid chatId format' });
+    }
+
+    const otherId = parts[0] === userId ? parts[1] : parts[1] === userId ? parts[0] : (parts.includes(userId) ? parts.find(p => p !== userId) : null);
+
+    if (!otherId) {
+      return res.status(400).json({ error: 'Authenticated user not part of chatId' });
+    }
+
+    // Mark messages sent by the other user to the authenticated user as read
+    await db.query(
+      `UPDATE messages
+       SET is_read = true
+       WHERE sender_id = $1
+       AND receiver_id = $2
+       AND is_read = false`,
+      [otherId, userId]
+    );
+
+    // Return updated unread count for this user
+    const result = await db.query(
+      `SELECT COUNT(*)::int AS count
+       FROM messages
+       WHERE receiver_id = $1
+       AND is_read = false`,
+      [userId]
+    );
+
+    res.json({ success: true, unreadCount: result.rows[0].count || 0 });
+  } catch (error) {
+    console.error('❌ Error marking messages by chatId as read:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });

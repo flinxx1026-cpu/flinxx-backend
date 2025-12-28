@@ -167,25 +167,45 @@ export const getUnreadCount = async () => {
 /**
  * Mark messages as read between two users
  */
-export const markMessagesAsRead = async (senderId, receiverId) => {
+/**
+ * Mark messages as read.
+ * Accepts either a `chatId` ("uuid1_uuid2") as first arg, or (senderId, receiverId).
+ * Calls new PUT /api/messages/mark-read/:chatId endpoint and returns { success, unreadCount }.
+ */
+export const markMessagesAsRead = async (senderOrChatId, receiverId) => {
   try {
-    if (!senderId || senderId.length !== 36 || !receiverId || receiverId.length !== 36) {
-      console.error('❌ Invalid UUIDs in markMessagesAsRead');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No auth token in markMessagesAsRead');
       return { success: false };
     }
 
-    const token = localStorage.getItem('token');
-    const response = await fetch(
-      `${BACKEND_URL}/api/messages/mark-read`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ senderId })
+    let chatId = null;
+
+    // If caller provided already a chatId like 'uuid1_uuid2'
+    if (typeof senderOrChatId === 'string' && senderOrChatId.includes('_')) {
+      chatId = senderOrChatId;
+    } else {
+      // Try to build chatId from senderId + receiverId
+      const otherId = senderOrChatId;
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const myId = currentUser.uuid || currentUser.id;
+
+      if (!myId || !otherId) {
+        console.error('❌ Invalid args for markMessagesAsRead');
+        return { success: false };
       }
-    );
+
+      chatId = myId < otherId ? `${myId}_${otherId}` : `${otherId}_${myId}`;
+    }
+
+    const response = await fetch(`${BACKEND_URL}/api/messages/mark-read/${encodeURIComponent(chatId)}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      }
+    });
 
     if (!response.ok) {
       console.error('❌ Mark read API error:', response.status, response.statusText);
@@ -193,7 +213,7 @@ export const markMessagesAsRead = async (senderId, receiverId) => {
     }
 
     const data = await response.json();
-    console.log('✅ Messages marked as read');
+    console.log('✅ Messages marked as read', data);
     return data;
   } catch (err) {
     console.error('Error marking messages as read:', err);
