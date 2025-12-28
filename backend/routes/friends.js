@@ -15,21 +15,27 @@ router.get('/friends', async (req, res) => {
 
     console.log('👥 Fetching friends for userId:', userId);
 
-    // 2️⃣ Query using correct SQL with CASE statement
+    // 2️⃣ Query using correct SQL with CASE statement and last message time
     const query = `
       SELECT 
         u.id,
         u.display_name,
-        u.photo_url
+        u.photo_url,
+        MAX(m.created_at) AS last_message_at
       FROM friend_requests f
       JOIN users u 
         ON u.id = CASE 
           WHEN f.sender_id = $1 THEN f.receiver_id
           ELSE f.sender_id
         END
+      LEFT JOIN messages m 
+        ON (m.sender_id = $1 AND m.receiver_id = u.id)
+        OR (m.sender_id = u.id AND m.receiver_id = $1)
       WHERE 
         (f.sender_id = $1 OR f.receiver_id = $1)
         AND f.status = 'accepted'
+      GROUP BY u.id, u.display_name, u.photo_url
+      ORDER BY last_message_at DESC NULLS LAST
     `;
 
     const { rows } = await db.query(query, [userId]);

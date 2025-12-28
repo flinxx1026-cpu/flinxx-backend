@@ -125,7 +125,15 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // Load friends when switching to message mode
   useEffect(() => {
     if (isOpen && isMessageMode) {
-      getFriends().then(data => setFriends(data));
+      getFriends().then(data => {
+        // Sort friends by last message time (newest first)
+        const sorted = Array.isArray(data) ? data.sort((a, b) => {
+          const timeA = a.last_message_at ? new Date(a.last_message_at) : new Date(0);
+          const timeB = b.last_message_at ? new Date(b.last_message_at) : new Date(0);
+          return timeB - timeA;
+        }) : [];
+        setFriends(sorted);
+      });
     }
   }, [isOpen, isMessageMode]);
 
