@@ -33,9 +33,21 @@ const ChatBox = ({ friend, onBack }) => {
   useEffect(() => {
     if (!myUserId || !friend?.id) return;
 
-    fetch(`/api/messages?user1=${myUserId}&user2=${friend.id}`)
-      .then(res => res.json())
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    const messagesUrl = `${BACKEND_URL}/api/messages?user1=${myUserId}&user2=${friend.id}`;
+    
+    console.log("📨 Fetching chat history from:", messagesUrl);
+    
+    fetch(messagesUrl)
+      .then(res => {
+        console.log("📨 Response status:", res.status);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
+        console.log("📨 Messages loaded:", data);
         if (Array.isArray(data)) {
           setMessages(
             data.map(m => ({
@@ -46,7 +58,7 @@ const ChatBox = ({ friend, onBack }) => {
         }
       })
       .catch(err => {
-        console.error("Failed to load chat history", err);
+        console.error("❌ Failed to load chat history:", err);
       });
   }, [myUserId, friend]);
 
