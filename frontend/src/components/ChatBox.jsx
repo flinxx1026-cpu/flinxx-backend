@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import socket from '../services/socketService';
 import { markMessagesAsRead, getUnreadCount } from '../services/api';
+import { AuthContext } from '../context/AuthContext';
 
 const ChatBox = ({ friend, onBack, onMessageSent }) => {
+  const { user } = useContext(AuthContext) || {};
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   
-  // Get current user UUID from localStorage
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-  const myUserId = currentUser.uuid || currentUser.id; // UUID only
+  // Get current user UUID from AuthContext (source of truth)
+  const myUserId = user?.uuid;
 
   // ✅ JOIN CHAT ROOM when component opens
   useEffect(() => {

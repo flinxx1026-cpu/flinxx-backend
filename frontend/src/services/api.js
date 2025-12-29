@@ -4,15 +4,15 @@ const getToken = () => localStorage.getItem('token');
 
 /**
  * Fetch accepted friends for the message panel
+ * ✅ Accept UUID as parameter from AuthContext
  */
-export const getFriends = async () => {
+export const getFriends = async (userUUID) => {
   try {
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = currentUser.uuid; // ✅ ONLY UUID - NO FALLBACK
+    const userId = userUUID; // ✅ ONLY UUID - NO FALLBACK, NO localStorage
 
     // ✅ STRICT validation (must be 36 chars with hyphens)
     if (!userId || userId.length !== 36) {
-      console.error('❌ Invalid UUID in localStorage:', userId);
+      console.error('❌ Invalid UUID in getFriends:', userId);
       console.error('   Expected 36-char UUID, got:', userId?.length || 'undefined');
       return [];
     }
@@ -42,15 +42,15 @@ export const getFriends = async () => {
 
 /**
  * Fetch all friend request notifications (pending + accepted)
+ * ✅ Accept UUID as parameter from AuthContext
  */
-export const getNotifications = async () => {
+export const getNotifications = async (userUUID) => {
   try {
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = currentUser.uuid; // ✅ ONLY UUID - NO FALLBACK
+    const userId = userUUID; // ✅ ONLY UUID - NO FALLBACK, NO localStorage
 
     // ✅ STRICT validation (must be 36 chars with hyphens)
     if (!userId || userId.length !== 36) {
-      console.error('❌ Invalid UUID in notifications:', userId);
+      console.error('❌ Invalid UUID in getNotifications:', userId);
       return [];
     }
 
@@ -83,15 +83,15 @@ export const getNotifications = async () => {
 
 /**
  * Unfriend a user (remove from friends)
+ * ✅ Accept UUID as parameter from AuthContext
  */
-export const unfriendUser = async (friendId) => {
+export const unfriendUser = async (userUUID, friendId) => {
   try {
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = currentUser.uuid; // ✅ ONLY UUID - NO FALLBACK
+    const userId = userUUID; // ✅ ONLY UUID - NO FALLBACK, NO localStorage
 
     // ✅ STRICT validation
     if (!userId || userId.length !== 36) {
-      console.error('❌ Invalid UUID in unfriend:', userId);
+      console.error('❌ Invalid UUID in unfriendUser:', userId);
       return { success: false, error: 'Invalid user' };
     }
 
@@ -164,14 +164,12 @@ export const getUnreadCount = async (userUUID) => {
 };
 
 /**
- * Mark messages as read between two users
- */
-/**
  * Mark messages as read.
- * Accepts either a `chatId` ("uuid1_uuid2") as first arg, or (senderId, receiverId).
+ * Accepts either a `chatId` ("uuid1_uuid2") as second arg, or builds from userUUID + otherId.
+ * ✅ Accept userUUID as parameter from AuthContext
  * Calls new PUT /api/messages/mark-read/:chatId endpoint and returns { success, unreadCount }.
  */
-export const markMessagesAsRead = async (senderOrChatId, receiverId) => {
+export const markMessagesAsRead = async (userUUID, senderOrChatId, receiverId) => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -185,13 +183,17 @@ export const markMessagesAsRead = async (senderOrChatId, receiverId) => {
     if (typeof senderOrChatId === 'string' && senderOrChatId.includes('_')) {
       chatId = senderOrChatId;
     } else {
-      // Try to build chatId from senderId + receiverId
+      // Build chatId from userUUID + senderOrChatId
       const otherId = senderOrChatId;
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const myId = currentUser.uuid || currentUser.id;
+      const myId = userUUID; // ✅ ONLY UUID - NO FALLBACK, NO localStorage
 
-      if (!myId || !otherId) {
-        console.error('❌ Invalid args for markMessagesAsRead');
+      if (!myId || myId.length !== 36) {
+        console.error('❌ Invalid UUID in markMessagesAsRead:', myId);
+        return { success: false };
+      }
+
+      if (!otherId || otherId.length !== 36) {
+        console.error('❌ Invalid other user UUID in markMessagesAsRead:', otherId);
         return { success: false };
       }
 

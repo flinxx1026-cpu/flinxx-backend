@@ -2,11 +2,13 @@ import React, { useState, useEffect, useContext } from 'react';
 import './SearchFriendsModal.css';
 import { getFriends, getNotifications, markMessagesAsRead } from '../services/api';
 import { MessageContext } from '../context/MessageContext';
+import { AuthContext } from '../context/AuthContext';
 import ChatBox from './ChatBox';
 import { joinUserRoom } from '../services/socketService';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
   const { markAsRead } = useContext(MessageContext) || {};
+  const { user } = useContext(AuthContext) || {};
   
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
@@ -106,7 +108,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     try {
       console.log('📬 Fetching notifications...');
       setNotificationsLoading(true);
-      const data = await getNotifications();
+      if (!user?.uuid || user.uuid.length !== 36) {
+        console.warn('UUID not ready for notifications');
+        return;
+      }
+      const data = await getNotifications(user.uuid);
       setPendingRequests(Array.isArray(data) ? data : []);
       setNotificationsCached(true); // Mark as cached for next time
       console.log('✅ Notifications updated:', data.length, 'items');
@@ -135,7 +141,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // Load friends when switching to message mode
   useEffect(() => {
     if (isOpen && isMessageMode) {
-      getFriends().then(data => {
+      if (!user?.uuid || user.uuid.length !== 36) {
+        console.warn('UUID not ready for friends');
+        return;
+      }
+      getFriends(user.uuid).then(data => {
         // Sort friends by last message time (newest first)
         const sorted = Array.isArray(data) ? data.sort((a, b) => {
           const timeA = a.last_message_at ? new Date(a.last_message_at) : new Date(0);
@@ -145,7 +155,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         setFriends(sorted);
       });
     }
-  }, [isOpen, isMessageMode]);
+  }, [isOpen, isMessageMode, user?.uuid]);
 
   // ✅ Update chat list when message is sent or received
   const updateChatListOnMessage = (friendId, messageTime) => {
@@ -168,8 +178,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // Open chat handler
   const openChat = async (friend) => {
     // Mark this friend's messages as read in database
-    if (friend?.id) {
-      await markMessagesAsRead(friend.id);
+    if (friend?.id && user?.uuid && user.uuid.length === 36) {
+      await markMessagesAsRead(user.uuid, friend.id);
     }
     
     // Mark this friend's messages as read in local context
@@ -473,8 +483,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                         className="message-btn"
                         onClick={async () => {
                           // Mark as read in database
-                          if (currentUser?.id && req.user_id) {
-                            await markMessagesAsRead(req.user_id, currentUser.id);
+                          if (user?.uuid && user.uuid.length === 36 && req.user_id) {
+                            await markMessagesAsRead(user.uuid, req.user_id);
                           }
                           
                           // Mark as read in context
