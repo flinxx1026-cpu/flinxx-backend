@@ -1763,13 +1763,13 @@ io.on('connection', (socket) => {
       // 1. Save message to database
       await pool.query(
         `
-        INSERT INTO messages (sender_id, receiver_id, message)
-        VALUES ($1, $2, $3)
+        INSERT INTO messages (sender_id, receiver_id, message, is_read)
+        VALUES ($1, $2, $3, false)
         `,
         [senderId, receiverId, message]
       )
 
-      console.log(`💬 Message saved: ${senderId} → ${receiverId}`)
+      console.log(`💬 Message sent with is_read = false: ${senderId} → ${receiverId}`)
 
       // 2. Send message to BOTH users in shared room
       io.to(roomId).emit('receive_message', {

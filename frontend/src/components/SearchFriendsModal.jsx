@@ -167,6 +167,13 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     // Mark this friend's messages as read in database
     if (friend?.id && user?.uuid && user.uuid.length === 36) {
       await markMessagesAsRead(user.uuid, friend.id);
+      
+      // Update local state to clear the unread badge
+      setFriends(prevFriends =>
+        prevFriends.map(f =>
+          f.id === friend.id ? { ...f, unreadCount: 0 } : f
+        )
+      );
     }
     
     // Mark this friend's messages as read in local context

@@ -50,6 +50,8 @@ router.get('/friends', async (req, res) => {
       [userId]
     );
 
+    console.log('📬 Unread message counts:', unreadCountsResult.rows);
+
     // Build unread count map
     const unreadMap = {};
     unreadCountsResult.rows.forEach(row => {
@@ -61,6 +63,12 @@ router.get('/friends', async (req, res) => {
       ...friend,
       unreadCount: unreadMap[friend.id] || 0
     }));
+
+    console.log('✅ Friends list with unread counts:', friendsWithUnread.map(f => ({
+      id: f.id.substring(0, 8) + '...',
+      display_name: f.display_name,
+      unreadCount: f.unreadCount
+    })));
 
     console.log('✅ Found', friendsWithUnread.length, 'friends for userId:', userId);
     res.json(friendsWithUnread);
