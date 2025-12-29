@@ -146,7 +146,13 @@ export const AuthProvider = ({ children }) => {
         if (storedUser) {
           try {
             console.log('\n🔵 [AuthContext] STEP 3: Restore from localStorage (no token validation)');
+            console.log('🔵 [AuthContext] Raw stored user string:', storedUser);
             const user = JSON.parse(storedUser);
+            console.log('🔵 [AuthContext] Parsed user object:', user);
+            console.log('🔵 [AuthContext] User keys:', Object.keys(user));
+            console.log('🔵 [AuthContext] user.uuid value:', user.uuid);
+            console.log('🔵 [AuthContext] user.uuid type:', typeof user.uuid);
+            console.log('🔵 [AuthContext] user.uuid length:', user.uuid?.length);
             
             // ✅ STRICT VALIDATION: UUID must be 36-char string
             if (!user.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
@@ -160,9 +166,7 @@ export const AuthProvider = ({ children }) => {
             console.log('🔵 [AuthContext]   - Email:', user.email);
             console.log('🔵 [AuthContext]   - UUID:', user.uuid.substring(0, 8) + '...');
             console.log('🔵 [AuthContext] ✅ User loaded from localStorage (UUID valid):', user.email);
-            console.log('🔵 [AuthContext] Complete user object keys:', Object.keys(user));
             setUser(user)
-            localStorage.setItem('user', JSON.stringify(user))
             setIsAuthenticated(true)
             setIsLoading(false)
             console.log('🔵 [AuthContext] ✅ COMPLETE - Returning from localStorage fallback path')
