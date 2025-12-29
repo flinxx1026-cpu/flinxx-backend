@@ -41,8 +41,29 @@ router.get('/friends', async (req, res) => {
 
     const { rows } = await db.query(query, [userId]);
 
-    console.log('✅ Found', rows.length, 'friends for userId:', userId);
-    res.json(rows);
+    // 3️⃣ Get unread message counts for each friend
+    const unreadCountsResult = await db.query(
+      `SELECT sender_id, COUNT(*)::int AS unread_count
+       FROM messages
+       WHERE receiver_id = $1 AND is_read = false
+       GROUP BY sender_id`,
+      [userId]
+    );
+
+    // Build unread count map
+    const unreadMap = {};
+    unreadCountsResult.rows.forEach(row => {
+      unreadMap[row.sender_id] = row.unread_count;
+    });
+
+    // 4️⃣ Add unreadCount to each friend
+    const friendsWithUnread = rows.map(friend => ({
+      ...friend,
+      unreadCount: unreadMap[friend.id] || 0
+    }));
+
+    console.log('✅ Found', friendsWithUnread.length, 'friends for userId:', userId);
+    res.json(friendsWithUnread);
 
   } catch (err) {
     console.error('❌ Friends API error:', err);

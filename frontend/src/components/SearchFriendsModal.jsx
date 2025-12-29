@@ -412,7 +412,9 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       <span className="friend-text">{getButtonText(user.publicId)}</span>
                     </button>
                   </div>
-                  <p className="tap-to-chat">Tap to chat</p>
+                  <p className="tap-to-chat">
+                    {friendRequestStates[user.publicId] === 'accepted' && user.unreadCount > 0 ? 'New message' : 'Tap to chat'}
+                  </p>
                 </div>
               </div>
               ))
@@ -543,7 +545,9 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
                       <div className="result-info">
                         <p className="result-name">{friend.display_name}</p>
-                        <p className="tap-to-chat">Tap to chat</p>
+                        <p className="tap-to-chat">
+                          {friend.unreadCount > 0 ? 'New message' : 'Tap to chat'}
+                        </p>
                       </div>
                     </div>
                   ))
