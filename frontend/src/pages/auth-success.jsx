@@ -49,19 +49,42 @@ export default function AuthSuccess() {
         if (data.success && data.user) {
           const user = data.user;
 
-          // ✅ CRITICAL: Store ONLY UUID (36-char), remove numeric id
+          // ✅ CRITICAL: Extract ONLY valid 36-char UUID for localStorage
+          // Backend returns: { id: "8-digit", uuid: "36-char-uuid", ... }
+          let validUUID = null;
+          
+          // Check for valid UUID (36 chars with hyphens)
+          if (user.uuid && typeof user.uuid === 'string' && user.uuid.length === 36) {
+            validUUID = user.uuid;
+            console.log('✅ Valid UUID found in user.uuid:', validUUID.substring(0, 8) + '...');
+          } else if (user.id && typeof user.id === 'string' && user.id.length === 36) {
+            // Fallback: if uuid is missing, try id (may contain UUID from some endpoints)
+            validUUID = user.id;
+            console.log('✅ Valid UUID found in user.id (fallback):', validUUID.substring(0, 8) + '...');
+          } else {
+            console.error('❌ CRITICAL: No valid 36-char UUID found in backend response');
+            console.error('   user.uuid:', user.uuid, '(type:', typeof user.uuid + ', length:', user.uuid?.length + ')');
+            console.error('   user.id:', user.id, '(type:', typeof user.id + ', length:', user.id?.length + ')');
+            console.error('   Full response:', user);
+            setError('Authentication failed: Invalid UUID from server');
+            setLoading(false);
+            return;
+          }
+          
+          // ✅ Store ONLY UUID - NO numeric id at all
           const normalizedUser = {
-            ...user,
-            uuid: user.uuid,          // ✅ 36-char UUID (for messages & unread count) - ONLY THIS
-            publicId: user.publicId || user.public_id || user.id
-            // ❌ DO NOT store numeric id in localStorage
+            uuid: validUUID,           // ✅ ONLY the 36-char UUID
+            name: user.name || user.display_name || 'User',
+            email: user.email,
+            picture: user.picture || user.photo_url,
+            googleId: user.googleId || user.google_id,
+            profileCompleted: user.profileCompleted || false,
+            // ❌ DO NOT include numeric id
+            // ❌ DO NOT include other fields
           };
           
-          // ❌ Remove numeric id completely to prevent confusion
-          delete normalizedUser.id;
-          
-          console.log('✅ User data normalized for storage:', { 
-            uuid: normalizedUser.uuid,
+          console.log('✅ User data normalized for storage (UUID ONLY):', { 
+            uuid: normalizedUser.uuid.substring(0, 8) + '...',
             email: normalizedUser.email 
           });
           
@@ -76,13 +99,17 @@ export default function AuthSuccess() {
             localStorage.setItem("authToken", token);
             localStorage.setItem("user", JSON.stringify(normalizedUser));
             localStorage.setItem("authProvider", "google");
-            localStorage.setItem("userInfo", JSON.stringify(normalizedUser));
           }
 
-          console.log("✅ User data saved:", { 
-            uuid: normalizedUser.uuid,
-            email: normalizedUser.email 
+          // ✅ VERIFY: Confirm what was stored in localStorage
+          const stored = JSON.parse(localStorage.getItem('user') || '{}');
+          console.log('✅ VERIFICATION - localStorage.user contents:', {
+            has_uuid: !!stored.uuid,
+            uuid_length: stored.uuid?.length,
+            has_id: !!stored.id,
+            has_email: !!stored.email
           });
+
           setUserData(user);
 
           // ✅ UNIFIED ROUTING: All users go to /chat (new unified dashboard)
