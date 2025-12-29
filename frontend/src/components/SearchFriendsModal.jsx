@@ -130,32 +130,40 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     ensureCurrentUser();
   }, [isOpen]);
 
-  // Load pending requests when switching to notifications mode
+  // ✅ ALWAYS load friends AND notifications when modal opens (regardless of mode)
   useEffect(() => {
-    if (isOpen && isNotificationMode && !notificationsCached) {
-      // Fetch in background, don't block modal open
-      fetchPendingRequests();
-    }
-  }, [isOpen, isNotificationMode]);
-
-  // Load friends when switching to message mode
-  useEffect(() => {
-    if (isOpen && isMessageMode) {
-      if (!user?.uuid || user.uuid.length !== 36) {
-        console.warn('UUID not ready for friends');
-        return;
-      }
+    if (!isOpen) return;
+    
+    // ✅ Load friends whenever modal opens
+    if (user?.uuid && user.uuid.length === 36) {
+      console.log('📨 Loading friends for message mode');
       getFriends(user.uuid).then(data => {
-        // Sort friends by last message time (newest first)
         const sorted = Array.isArray(data) ? data.sort((a, b) => {
           const timeA = a.last_message_at ? new Date(a.last_message_at) : new Date(0);
           const timeB = b.last_message_at ? new Date(b.last_message_at) : new Date(0);
           return timeB - timeA;
         }) : [];
         setFriends(sorted);
+      }).catch(err => {
+        console.error('❌ Error loading friends:', err);
+        setFriends([]);
       });
+    } else {
+      console.warn('⛔ UUID not ready for friends');
     }
-  }, [isOpen, isMessageMode, user?.uuid]);
+  }, [isOpen, user?.uuid]);
+
+  // ✅ Load notifications whenever modal opens in notification mode
+  useEffect(() => {
+    if (isOpen && isNotificationMode) {
+      console.log('🔔 Loading notifications for notification mode');
+      if (user?.uuid && user.uuid.length === 36) {
+        fetchPendingRequests();
+      } else {
+        console.warn('⛔ UUID not ready for notifications');
+      }
+    }
+  }, [isOpen, isNotificationMode, user?.uuid]);
 
   // ✅ Update chat list when message is sent or received
   const updateChatListOnMessage = (friendId, messageTime) => {
