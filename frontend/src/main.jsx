@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { AuthProvider } from './context/AuthContext'
 import { MessageProvider } from './context/MessageContext'
+import { UnreadProvider } from './context/UnreadContext'
 import App from './App'
 import './index.css'
 
@@ -17,9 +18,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       }}
     >
       <AuthProvider>
-        <MessageProvider>
-          <App />
-        </MessageProvider>
+        <UnreadProvider>
+          <MessageProvider>
+            <App />
+          </MessageProvider>
+        </UnreadProvider>
       </AuthProvider>
     </GoogleOAuthProvider>
   </React.StrictMode>,

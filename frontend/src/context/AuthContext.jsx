@@ -1,11 +1,20 @@
-import React, { createContext, useState, useEffect } from 'react'
+import React, { createContext, useState, useEffect, useContext } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../config/firebase'
 import { checkRedirectResult } from '../config/firebase'
-import { getUnreadCount, getNotifications } from '../services/api'
+import { getNotifications } from '../services/api'
 
 // Create Auth Context
 export const AuthContext = createContext()
+
+// ✅ Custom hook to use AuthContext
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider")
+  }
+  return context
+}
 
 // Auth Provider Component
 export const AuthProvider = ({ children }) => {
@@ -14,21 +23,10 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authPending, setAuthPending] = useState(false)
   
-  // ✅ CENTRALIZED STATE (SINGLE SOURCE OF TRUTH)
-  const [unreadCount, setUnreadCount] = useState(0)
+  // ✅ KEEP NOTIFICATIONS in AuthContext (needed for SearchFriendsModal)
   const [notifications, setNotifications] = useState([])
-  const [isReady, setIsReady] = useState(false)
 
-  // ✅ CENTRALIZED REFRESH FUNCTIONS
-  const refreshUnread = async () => {
-    if (!user?.uuid || user.uuid.length !== 36) {
-      console.warn('⏸ refreshUnread skipped: user UUID not ready');
-      return;
-    }
-    const count = await getUnreadCount(user.uuid);
-    setUnreadCount(count);
-  };
-
+  // ✅ REFRESH NOTIFICATIONS (unread moved to UnreadContext)
   const refreshNotifications = async () => {
     if (!user?.uuid || user.uuid.length !== 36) {
       console.warn('⏸ refreshNotifications skipped: user UUID not ready');
@@ -38,26 +36,23 @@ export const AuthProvider = ({ children }) => {
     setNotifications(Array.isArray(data) ? data : []);
   };
 
-  // ✅ CRITICAL: Only fetch unread/notifications when USER UUID is ready
+  // ✅ CRITICAL: Only fetch notifications when USER UUID is ready
   // This dependency ensures we NEVER call APIs before user is loaded
   useEffect(() => {
     if (!user?.uuid || user.uuid.length !== 36) {
-      console.log('⏸ Skipping unread fetch – user UUID not ready');
+      console.log('⏸ Skipping notifications fetch – user UUID not ready');
       return;
     }
 
-    console.log('✅ User ready, fetching unread count:', user.uuid.substring(0, 8) + '...');
+    console.log('✅ User ready, fetching notifications:', user.uuid.substring(0, 8) + '...');
     
     // Fetch immediately
-    refreshUnread();
     refreshNotifications();
 
     // Poll every 5 seconds
-    const unreadInterval = setInterval(refreshUnread, 5000);
     const notifInterval = setInterval(refreshNotifications, 5000);
 
     return () => {
-      clearInterval(unreadInterval);
       clearInterval(notifInterval);
     };
   }, [user?.uuid]);
@@ -415,10 +410,8 @@ export const AuthProvider = ({ children }) => {
       authPending, 
       setAuthPending, 
       setAuthToken,
-      // ✅ CENTRALIZED STATE
-      unreadCount,
+      // ✅ NOTIFICATIONS (unread moved to UnreadContext)
       notifications,
-      refreshUnread,
       refreshNotifications
     }}>
       {children}

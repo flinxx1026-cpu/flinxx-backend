@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { useUnread } from '../context/UnreadContext';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
@@ -13,7 +13,7 @@ const TopActions = ({
   onMessageClick,
   isFixedPosition = false 
 }) => {
-  const { unreadCount } = useContext(AuthContext) || { unreadCount: 0 };
+  const { unreadCount } = useUnread();
 
   // Handle message panel open - mark all messages as read
   const handleMessageClick = async () => {
