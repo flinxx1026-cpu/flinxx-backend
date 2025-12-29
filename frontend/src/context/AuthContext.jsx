@@ -19,34 +19,34 @@ export const AuthProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([])
   const [isReady, setIsReady] = useState(false)
 
-  // ✅ STEP 1: Ensure UUID readiness FIRST
-  useEffect(() => {
-    if (user?.uuid && user.uuid.length === 36) {
-      console.log('✅ AuthContext: UUID ready, enabling data sync');
-      setIsReady(true);
-    } else {
-      setIsReady(false);
-    }
-  }, [user?.uuid]);
-
   // ✅ CENTRALIZED REFRESH FUNCTIONS
   const refreshUnread = async () => {
-    if (!user?.uuid || user.uuid.length !== 36) return;
+    if (!user?.uuid || user.uuid.length !== 36) {
+      console.warn('⏸ refreshUnread skipped: user UUID not ready');
+      return;
+    }
     const count = await getUnreadCount(user.uuid);
     setUnreadCount(count);
   };
 
   const refreshNotifications = async () => {
-    if (!user?.uuid || user.uuid.length !== 36) return;
+    if (!user?.uuid || user.uuid.length !== 36) {
+      console.warn('⏸ refreshNotifications skipped: user UUID not ready');
+      return;
+    }
     const data = await getNotifications(user.uuid);
     setNotifications(Array.isArray(data) ? data : []);
   };
 
-  // ✅ STEP 2: Central fetch logic (ONLY HERE, not in components)
+  // ✅ CRITICAL: Only fetch unread/notifications when USER UUID is ready
+  // This dependency ensures we NEVER call APIs before user is loaded
   useEffect(() => {
-    if (!isReady) return;
+    if (!user?.uuid || user.uuid.length !== 36) {
+      console.log('⏸ Skipping unread fetch – user UUID not ready');
+      return;
+    }
 
-    console.log('🔄 AuthContext: Starting centralized data sync');
+    console.log('✅ User ready, fetching unread count:', user.uuid.substring(0, 8) + '...');
     
     // Fetch immediately
     refreshUnread();
@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }) => {
       clearInterval(unreadInterval);
       clearInterval(notifInterval);
     };
-  }, [isReady, user?.uuid]);
+  }, [user?.uuid]);
 
   useEffect(() => {
     const initializeAuth = async () => {
