@@ -24,6 +24,13 @@ const TopActions = ({
       setDbUnreadCount(count);
     };
 
+    // ✅ CRITICAL: Wait for valid UUID before calling API
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user?.uuid || user.uuid.length !== 36) {
+      console.warn('⏳ UUID not ready yet, skipping unread count fetch');
+      return;
+    }
+
     // Fetch immediately
     fetchUnreadCount();
 
