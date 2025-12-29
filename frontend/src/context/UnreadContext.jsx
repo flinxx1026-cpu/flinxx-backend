@@ -28,7 +28,8 @@ export const UnreadProvider = ({ children }) => {
     const fetchUnread = async () => {
       console.log('✅ UnreadContext: Auth ready, user valid, fetching unread count');
       try {
-        const count = await getUnreadCount(user.uuid);
+        const result = await getUnreadCount(user.uuid);
+        const count = typeof result === 'number' ? result : result?.unreadCount || 0;
         setUnreadCount(count);
       } catch (err) {
         console.error('❌ UnreadContext: Error fetching unread count:', err);
@@ -53,7 +54,8 @@ export const UnreadProvider = ({ children }) => {
     const handleNewMessage = async () => {
       console.log('📬 UnreadContext: New message received, refreshing count');
       try {
-        const count = await getUnreadCount(user.uuid);
+        const result = await getUnreadCount(user.uuid);
+        const count = typeof result === 'number' ? result : result?.unreadCount || 0;
         setUnreadCount(count);
       } catch (err) {
         console.error('❌ UnreadContext: Error updating unread count:', err);
