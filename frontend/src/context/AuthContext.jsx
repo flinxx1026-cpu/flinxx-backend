@@ -20,6 +20,28 @@ export const AuthProvider = ({ children }) => {
         console.log('🔵 [AuthContext] INITIALIZATION STARTED');
         console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
         
+        // ✅ CLEANUP STEP: Remove invalid users from old builds (numeric IDs)
+        const storedUserRaw = localStorage.getItem('user');
+        if (storedUserRaw) {
+          try {
+            const parsed = JSON.parse(storedUserRaw);
+            
+            // ❌ Remove if UUID is invalid or numeric
+            if (!parsed.uuid || (typeof parsed.uuid === 'string' && parsed.uuid.length !== 36)) {
+              console.warn('🧹 [AuthContext] Removing invalid user from localStorage:', {
+                uuid: parsed.uuid,
+                id: parsed.id,
+                email: parsed.email
+              });
+              localStorage.removeItem('user');
+              localStorage.removeItem('token');
+            }
+          } catch (e) {
+            console.warn('🧹 [AuthContext] Invalid JSON in localStorage user, removing');
+            localStorage.removeItem('user');
+          }
+        }
+        
         // Check for stored JWT token from Google OAuth
         const storedToken = localStorage.getItem('token')
         const storedUser = localStorage.getItem('user')

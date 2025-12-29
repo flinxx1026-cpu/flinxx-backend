@@ -11,6 +11,17 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
   // Get current user UUID from AuthContext (source of truth)
   const myUserId = user?.uuid;
 
+  // ✅ STRICT VALIDATION: Block everything until valid UUID exists
+  if (!myUserId || typeof myUserId !== 'string' || myUserId.length !== 36) {
+    console.log('⏳ ChatBox: Waiting for valid UUID from AuthContext');
+    return null;
+  }
+
+  if (!friend?.id || typeof friend.id !== 'string' || friend.id.length !== 36) {
+    console.error('❌ ChatBox: Invalid friend UUID:', friend?.id);
+    return null;
+  }
+
   // ✅ JOIN CHAT ROOM when component opens
   useEffect(() => {
     if (!myUserId || !friend) return;
