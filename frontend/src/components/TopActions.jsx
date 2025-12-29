@@ -68,8 +68,10 @@ const TopActions = ({
       if (response.ok) {
         console.log('✅ All messages marked as read');
         // Refresh unread count immediately
-        const count = await getUnreadCount();
-        setDbUnreadCount(count);
+        if (user?.uuid && user.uuid.length === 36) {
+          const count = await getUnreadCount(user.uuid);
+          setDbUnreadCount(count);
+        }
       }
     } catch (error) {
       console.error('❌ Error marking messages as read:', error);

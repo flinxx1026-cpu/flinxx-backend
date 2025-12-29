@@ -46,7 +46,7 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
         }
 
         // Refresh unread count in background (TopActions polls, but fetch once immediately)
-        const count = await getUnreadCount();
+        const count = await getUnreadCount(myUserId);
         console.log('📬 Unread count after mark-read:', count);
       } catch (error) {
         console.error('❌ Error marking messages as read:', error);
