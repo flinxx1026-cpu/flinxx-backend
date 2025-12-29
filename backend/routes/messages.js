@@ -4,7 +4,7 @@ import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// GET unread message count for a user
+// GET unread message count for a user (count of UNIQUE senders with unread messages)
 router.get('/unread-count/:userId', async (req, res) => {
   const { userId } = req.params;
 
@@ -14,13 +14,14 @@ router.get('/unread-count/:userId', async (req, res) => {
     }
 
     const result = await db.query(
-      `SELECT COUNT(*)::int AS count
+      `SELECT COUNT(DISTINCT sender_id)::int AS count
        FROM messages
        WHERE receiver_id = $1
        AND is_read = false`,
       [userId]
     );
 
+    console.log('📬 Unread users count:', result.rows[0].count, 'for user:', userId.substring(0, 8) + '...');
     res.json({ unreadCount: result.rows[0].count || 0 });
   } catch (error) {
     console.error('❌ Unread count error:', error);
