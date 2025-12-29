@@ -128,26 +128,17 @@ export const unfriendUser = async (friendId) => {
 
 /**
  * Get unread message count for a user
- * ✅ Reads UUID directly from localStorage to prevent public ID mix-ups
- * ❌ NO FALLBACK - uuid MUST be 36 chars
+ * ✅ Accept UUID as parameter (from AuthContext, not localStorage)
+ * ✅ AuthContext is the source of truth for user UUID
  */
-export const getUnreadCount = async () => {
-  try {
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    const userUUID = currentUser.uuid;
-    
-    // ❌ STRICT VALIDATION: UUID must be exactly 36 characters - NO FALLBACK
-    if (!userUUID || typeof userUUID !== 'string' || userUUID.length !== 36) {
-      console.error('❌ Invalid UUID in localStorage.user');
-      console.error('   Expected 36-char UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)');
-      console.error('   Got:', userUUID);
-      console.error('   Length:', userUUID?.length || 'undefined');
-      console.error('   Type:', typeof userUUID);
-      console.error('   Full user object:', currentUser);
-      console.error('   📝 TIP: Run in browser console: localStorage.removeItem("user"); localStorage.removeItem("token"); location.reload();');
-      return 0;
-    }
+export const getUnreadCount = async (userUUID) => {
+  // ✅ UUID must be passed from AuthContext
+  if (!userUUID || userUUID.length !== 36) {
+    console.warn('⏳ Skipping unread count, UUID not ready:', userUUID);
+    return 0;
+  }
 
+  try {
     const response = await fetch(
       `${BACKEND_URL}/api/messages/unread-count/${userUUID}`,
       {

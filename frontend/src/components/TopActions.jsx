@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { MessageContext } from '../context/MessageContext';
+import { AuthContext } from '../context/AuthContext';
 import { getUnreadCount } from '../services/api';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
@@ -15,21 +16,23 @@ const TopActions = ({
   isFixedPosition = false 
 }) => {
   const { unreadCount } = useContext(MessageContext) || { unreadCount: 0 };
+  const { user } = useContext(AuthContext) || {};
   const [dbUnreadCount, setDbUnreadCount] = useState(0);
 
-  // Fetch unread count from database
+  // ✅ Fetch unread count from database - ONLY when user UUID is available from AuthContext
   useEffect(() => {
-    const fetchUnreadCount = async () => {
-      const count = await getUnreadCount(); // ✅ No arguments, reads UUID from localStorage
-      setDbUnreadCount(count);
-    };
-
-    // ✅ CRITICAL: Wait for valid UUID before calling API
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    // ✅ Check if user UUID exists in AuthContext (source of truth)
     if (!user?.uuid || user.uuid.length !== 36) {
-      console.warn('⏳ UUID not ready yet, skipping unread count fetch');
+      console.log('⏳ TopActions: Waiting for user UUID from AuthContext...');
       return;
     }
+
+    console.log('✅ TopActions: User UUID available, fetching unread count:', user.uuid.substring(0, 8) + '...');
+
+    const fetchUnreadCount = async () => {
+      const count = await getUnreadCount(user.uuid); // ✅ Pass UUID from AuthContext
+      setDbUnreadCount(count);
+    };
 
     // Fetch immediately
     fetchUnreadCount();
@@ -38,7 +41,7 @@ const TopActions = ({
     const interval = setInterval(fetchUnreadCount, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.uuid]);
 
   // Use database count as source of truth
   const displayUnreadCount = dbUnreadCount > 0 ? dbUnreadCount : unreadCount;
