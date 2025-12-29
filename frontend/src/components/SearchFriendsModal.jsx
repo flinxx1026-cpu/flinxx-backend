@@ -8,7 +8,7 @@ import { joinUserRoom } from '../services/socketService';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
   const { markAsRead } = useContext(MessageContext) || {};
-  const { user, notifications, refreshNotifications } = useContext(AuthContext) || {};
+  const { user, notifications, refreshNotifications, refreshUnread } = useContext(AuthContext) || {};
   
   const [search, setSearch] = useState('');
   const [results, setResults] = useState('');
@@ -127,6 +127,14 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   }, [isOpen, user?.uuid]);
 
+  // ✅ When message panel opens, refresh unread count
+  useEffect(() => {
+    if (isOpen && isMessageMode && refreshUnread) {
+      console.log('💬 Message panel opened - refreshing unread count');
+      refreshUnread();
+    }
+  }, [isOpen, isMessageMode, refreshUnread]);
+
   // ✅ Notifications come from centralized AuthContext (single source of truth)
   // No need to fetch here - AuthContext manages it
   const pendingRequests = notifications || [];
@@ -159,6 +167,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     // Mark this friend's messages as read in local context
     if (markAsRead && friend.id) {
       markAsRead(friend.id);
+    }
+    
+    // Refresh unread count after marking as read
+    if (refreshUnread) {
+      refreshUnread();
     }
     
     // Just set the active chat - ChatBox component will handle socket room joining
