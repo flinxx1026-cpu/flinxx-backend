@@ -121,6 +121,9 @@ export const unfriendUser = async (userUUID, friendId) => {
  * ✅ Accept UUID as parameter from AuthContext (source of truth)
  * ✅ NEVER read from localStorage – use only the UUID parameter
  * ⚠️  SAFETY: Returns 0 silently if UUID not available
+ * 
+ * THIS FUNCTION MUST ALWAYS RECEIVE userId AS PARAMETER
+ * DO NOT READ FROM localStorage INSIDE THIS FUNCTION
  */
 export const getUnreadCount = async (userUUID) => {
   // ✅ CRITICAL: STRICT VALIDATION – UUID must be 36 chars
