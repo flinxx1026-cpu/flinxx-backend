@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 import { getUnreadCount } from "../services/api";
+import socket from "../services/socketService";
 
 const UnreadContext = createContext();
 
@@ -27,6 +28,25 @@ export const UnreadProvider = ({ children }) => {
     const interval = setInterval(fetchUnread, 5000);
 
     return () => clearInterval(interval);
+  }, [user?.uuid]);
+
+  // ✅ SOCKET EVENT: Update unread count when new message arrives
+  useEffect(() => {
+    if (!user?.uuid || user.uuid.length !== 36) {
+      return;
+    }
+
+    const handleNewMessage = async () => {
+      console.log('📬 New message received via socket, refreshing unread count');
+      const count = await getUnreadCount(user.uuid);
+      setUnreadCount(count);
+    };
+
+    socket.on('receive_message', handleNewMessage);
+
+    return () => {
+      socket.off('receive_message', handleNewMessage);
+    };
   }, [user?.uuid]);
 
   return (
