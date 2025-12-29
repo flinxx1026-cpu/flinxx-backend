@@ -2,9 +2,11 @@ import { useState, useEffect, useContext } from 'react';
 import socket from '../services/socketService';
 import { markMessagesAsRead } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import { useUnread } from '../context/UnreadContext';
 
 const ChatBox = ({ friend, onBack, onMessageSent }) => {
   const { user } = useContext(AuthContext) || {};
+  const { refetchUnreadCount } = useUnread();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   
@@ -55,6 +57,10 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
         const result = await markMessagesAsRead(roomId);
         if (result?.success) {
           console.log('✅ Messages from', friend.display_name, 'marked as read (chatId)', roomId);
+          
+          // 🔥 CRITICAL FIX: Refetch global unread count after marking as read
+          // This ensures badge resets when user opens a chat
+          await refetchUnreadCount();
         }
       } catch (error) {
         console.error('❌ Error marking messages as read:', error);
@@ -62,7 +68,7 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     };
 
     markRead();
-  }, [friend?.id, myUserId]);
+  }, [friend?.id, myUserId, refetchUnreadCount]);
 
   // ✅ LOAD CHAT HISTORY when chat opens
   useEffect(() => {

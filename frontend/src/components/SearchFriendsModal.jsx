@@ -10,7 +10,7 @@ import { joinUserRoom } from '../services/socketService';
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
   const { markAsRead } = useContext(MessageContext) || {};
   const { user, notifications, refreshNotifications } = useContext(AuthContext) || {};
-  const { setUnreadCount } = useUnread();
+  const { setUnreadCount, refetchUnreadCount } = useUnread();
   
   const [search, setSearch] = useState('');
   const [results, setResults] = useState('');
@@ -168,12 +168,16 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     if (friend?.id && user?.uuid && user.uuid.length === 36) {
       await markMessagesAsRead(user.uuid, friend.id);
       
-      // Update local state to clear the unread badge
+      // Update local state to clear the unread badge for this friend
       setFriends(prevFriends =>
         prevFriends.map(f =>
           f.id === friend.id ? { ...f, unreadCount: 0 } : f
         )
       );
+      
+      // 🔥 CRITICAL FIX: Refetch global unread count after marking as read
+      // This ensures badge resets to 0 when all chats are opened
+      await refetchUnreadCount();
     }
     
     // Mark this friend's messages as read in local context

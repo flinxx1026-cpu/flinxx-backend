@@ -76,8 +76,26 @@ export const UnreadProvider = ({ children }) => {
     };
   }, [authLoading, user?.uuid]);
 
+  // ✅ REFETCH FUNCTION: Manually refresh unread count (called after marking messages as read)
+  const refetchUnreadCount = async () => {
+    if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
+      console.warn('⛔ refetchUnreadCount: Invalid user UUID');
+      return;
+    }
+
+    try {
+      console.log('🔄 Refetching unread count after mark-read');
+      const result = await getUnreadCount(user.uuid);
+      const count = typeof result === 'number' ? result : result?.unreadCount || 0;
+      setUnreadCount(count);
+      console.log('✅ Unread count refetched:', count);
+    } catch (err) {
+      console.error('❌ Error refetching unread count:', err);
+    }
+  };
+
   return (
-    <UnreadContext.Provider value={{ unreadCount, setUnreadCount }}>
+    <UnreadContext.Provider value={{ unreadCount, setUnreadCount, refetchUnreadCount }}>
       {children}
     </UnreadContext.Provider>
   );
