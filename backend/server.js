@@ -1549,6 +1549,11 @@ app.get('/auth-success', async (req, res) => {
     }
     
     // Return user data with profileCompleted and termsAccepted flags
+    console.log('[AUTH-SUCCESS] About to return user with:', {
+      id_type: typeof user.id,
+      id_length: user.id?.length,
+      id_value: user.id?.substring(0, 8) + '...'
+    })
     res.json({
       success: true,
       token: token,
@@ -1655,7 +1660,12 @@ app.get('/api/profile', async (req, res) => {
     
     console.log('[PROFILE API] ✅ User found, returning profile')
     // ✅ CRITICAL: Return ONLY uuid (the 36-char ID), never numeric id
-    // user.id is the numeric database ID, this must NOT be sent to frontend
+    // user.id is the UUID from database, NOT numeric
+    console.log('[PROFILE API] About to return user with:', {
+      id_type: typeof user.id,
+      id_length: user.id?.length,
+      id_value: user.id?.substring(0, 8) + '...'
+    })
     res.json({
       success: true,
       user: {
