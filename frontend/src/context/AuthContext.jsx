@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../config/firebase'
 import { checkRedirectResult } from '../config/firebase'
-import { getUnreadCount } from '../services/api'
+import { getUnreadCount, getNotifications } from '../services/api'
 
 // Create Auth Context
 export const AuthContext = createContext()
@@ -12,27 +12,55 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [authPending, setAuthPending] = useState(false) // Flag to prevent interruptions during Firebase login
-  const [unreadCount, setUnreadCount] = useState(0) // ✅ Unread message count
+  const [authPending, setAuthPending] = useState(false)
+  
+  // ✅ CENTRALIZED STATE (SINGLE SOURCE OF TRUTH)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [notifications, setNotifications] = useState([])
+  const [isReady, setIsReady] = useState(false)
 
-  // ✅ Load unread count whenever user UUID changes
+  // ✅ STEP 1: Ensure UUID readiness FIRST
   useEffect(() => {
-    if (!user?.uuid) {
-      setUnreadCount(0)
-      return
+    if (user?.uuid && user.uuid.length === 36) {
+      console.log('✅ AuthContext: UUID ready, enabling data sync');
+      setIsReady(true);
+    } else {
+      setIsReady(false);
     }
+  }, [user?.uuid]);
 
-    const loadUnreadCount = async () => {
-      const count = await getUnreadCount(user.uuid)
-      setUnreadCount(count)
-    }
+  // ✅ CENTRALIZED REFRESH FUNCTIONS
+  const refreshUnread = async () => {
+    if (!user?.uuid || user.uuid.length !== 36) return;
+    const count = await getUnreadCount(user.uuid);
+    setUnreadCount(count);
+  };
 
-    loadUnreadCount()
+  const refreshNotifications = async () => {
+    if (!user?.uuid || user.uuid.length !== 36) return;
+    const data = await getNotifications(user.uuid);
+    setNotifications(Array.isArray(data) ? data : []);
+  };
+
+  // ✅ STEP 2: Central fetch logic (ONLY HERE, not in components)
+  useEffect(() => {
+    if (!isReady) return;
+
+    console.log('🔄 AuthContext: Starting centralized data sync');
+    
+    // Fetch immediately
+    refreshUnread();
+    refreshNotifications();
 
     // Poll every 5 seconds
-    const interval = setInterval(loadUnreadCount, 5000)
-    return () => clearInterval(interval)
-  }, [user?.uuid])
+    const unreadInterval = setInterval(refreshUnread, 5000);
+    const notifInterval = setInterval(refreshNotifications, 5000);
+
+    return () => {
+      clearInterval(unreadInterval);
+      clearInterval(notifInterval);
+    };
+  }, [isReady, user?.uuid]);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -379,7 +407,20 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, logout, authPending, setAuthPending, setAuthToken, unreadCount }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isAuthenticated, 
+      isLoading, 
+      logout, 
+      authPending, 
+      setAuthPending, 
+      setAuthToken,
+      // ✅ CENTRALIZED STATE
+      unreadCount,
+      notifications,
+      refreshUnread,
+      refreshNotifications
+    }}>
       {children}
     </AuthContext.Provider>
   )

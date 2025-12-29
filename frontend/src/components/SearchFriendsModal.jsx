@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import './SearchFriendsModal.css';
-import { getFriends, getNotifications, markMessagesAsRead } from '../services/api';
+import { getFriends, markMessagesAsRead } from '../services/api';
 import { MessageContext } from '../context/MessageContext';
 import { AuthContext } from '../context/AuthContext';
 import ChatBox from './ChatBox';
@@ -8,19 +8,16 @@ import { joinUserRoom } from '../services/socketService';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
   const { markAsRead } = useContext(MessageContext) || {};
-  const { user } = useContext(AuthContext) || {};
+  const { user, notifications, refreshNotifications } = useContext(AuthContext) || {};
   
   const [search, setSearch] = useState('');
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [notificationsCached, setNotificationsCached] = useState(false);
-  const [friendRequestStates, setFriendRequestStates] = useState({}); // Track request status by userId
-  const [pendingRequests, setPendingRequests] = useState([]); // For notifications mode
-  const [sendingRequest, setSendingRequest] = useState(null); // Track which request is being sent
-  const [currentUser, setCurrentUser] = useState(null); // Load once when modal opens
-  const [friends, setFriends] = useState([]); // For message mode
-  const [activeChat, setActiveChat] = useState(null); // null = friends list, object = open chat
+  const [friendRequestStates, setFriendRequestStates] = useState({});
+  const [sendingRequest, setSendingRequest] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [friends, setFriends] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
   
   const isNotificationMode = mode === 'notifications';
   const isMessageMode = mode === 'message';
@@ -103,26 +100,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   };
 
-  // Fetch pending friend requests for notifications
-  const fetchPendingRequests = async (userUUID) => {
-    try {
-      console.log('📬 Fetching notifications...');
-      setNotificationsLoading(true);
-      if (!userUUID || userUUID.length !== 36) {
-        console.warn('⛔ UUID not ready for notifications:', userUUID?.length);
-        return;
-      }
-      const data = await getNotifications(userUUID);
-      setPendingRequests(Array.isArray(data) ? data : []);
-      setNotificationsCached(true); // Mark as cached for next time
-      console.log('✅ Notifications updated:', data.length, 'items');
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    } finally {
-      setNotificationsLoading(false);
-    }
-  };
-
   // Ensure current user is in localStorage when modal opens
   useEffect(() => {
     if (!isOpen) return;
@@ -130,11 +107,10 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     ensureCurrentUser();
   }, [isOpen]);
 
-  // ✅ ALWAYS load friends AND notifications when modal opens (regardless of mode)
+  // ✅ ALWAYS load friends when modal opens
   useEffect(() => {
     if (!isOpen) return;
     
-    // ✅ Load friends whenever modal opens
     if (user?.uuid && user.uuid.length === 36) {
       console.log('📨 Loading friends for message mode');
       getFriends(user.uuid).then(data => {
@@ -148,22 +124,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         console.error('❌ Error loading friends:', err);
         setFriends([]);
       });
-    } else {
-      console.warn('⛔ UUID not ready for friends');
     }
   }, [isOpen, user?.uuid]);
 
-  // ✅ Load notifications whenever modal opens in notification mode
-  useEffect(() => {
-    if (isOpen && isNotificationMode) {
-      console.log('🔔 Loading notifications for notification mode');
-      if (user?.uuid && user.uuid.length === 36) {
-        fetchPendingRequests(user.uuid);
-      } else {
-        console.warn('⛔ UUID not ready for notifications');
-      }
-    }
-  }, [isOpen, isNotificationMode, user?.uuid]);
+  // ✅ Notifications come from centralized AuthContext (single source of truth)
+  // No need to fetch here - AuthContext manages it
+  const pendingRequests = notifications || [];
 
   // ✅ Update chat list when message is sent or received
   const updateChatListOnMessage = (friendId, messageTime) => {
