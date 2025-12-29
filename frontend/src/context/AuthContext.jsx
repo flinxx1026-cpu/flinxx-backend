@@ -97,28 +97,31 @@ export const AuthProvider = ({ children }) => {
                   gender: data.user.gender
                 })
                 
-                // ✅ CRITICAL: Store ONLY UUID, never numeric IDs
-                const userWithIds = {
-                  ...data.user,
-                  uuid: data.user.uuid,           // ✅ ONLY UUID (36-char)
-                  publicId: data.user.public_id || null
+                // ✅ CRITICAL: Create CLEAN user object with ONLY needed fields
+                // ❌ DO NOT spread data.user (it contains numeric id)
+                const normalizedUser = {
+                  uuid: data.user.uuid,           // ✅ ONLY 36-char UUID
+                  name: data.user.name || 'User',
+                  email: data.user.email,
+                  picture: data.user.picture,
+                  profileCompleted: data.user.profileCompleted || false
                 };
                 
-                // ✅ STRICT VALIDATION: UUID must be 36 chars
-                if (!userWithIds.uuid || userWithIds.uuid.length !== 36) {
-                  console.error('❌ INVALID UUID FROM BACKEND:', userWithIds.uuid);
-                  console.error('   Expected 36-char UUID, got:', userWithIds.uuid?.length || 'undefined');
+                // ✅ STRICT VALIDATION: UUID must be exactly 36 chars
+                if (!normalizedUser.uuid || typeof normalizedUser.uuid !== 'string' || normalizedUser.uuid.length !== 36) {
+                  console.error('❌ INVALID UUID FROM BACKEND:', normalizedUser.uuid);
+                  console.error('   Expected 36-char UUID, got:', normalizedUser.uuid?.length || 'undefined');
                   // Don't set user if UUID is invalid
                   setIsLoading(false);
                   return;
                 }
                 
                 console.log('🔵 [AuthContext] Setting user state with UUID-only:', { 
-                  uuid: userWithIds.uuid.substring(0, 8) + '...', 
-                  email: userWithIds.email 
+                  uuid: normalizedUser.uuid.substring(0, 8) + '...', 
+                  email: normalizedUser.email 
                 });
-                setUser(userWithIds);
-                localStorage.setItem('user', JSON.stringify(userWithIds));
+                setUser(normalizedUser);
+                localStorage.setItem('user', JSON.stringify(normalizedUser));
                 setIsAuthenticated(true);
                 setIsLoading(false);
                 console.log('🔵 [AuthContext] ✅ COMPLETE - UUID-only user set');
@@ -157,14 +160,7 @@ export const AuthProvider = ({ children }) => {
             console.log('🔵 [AuthContext]   - Email:', user.email);
             console.log('🔵 [AuthContext]   - UUID:', user.uuid.substring(0, 8) + '...');
             console.log('🔵 [AuthContext] ✅ User loaded from localStorage (UUID valid):', user.email);
-            console.log('🔵 [AuthContext] User data from localStorage:', {
-              id: user.id,
-              email: user.email,
-              publicId: user.publicId,
-              profileCompleted: user.profileCompleted,
-              isProfileCompleted: user.isProfileCompleted
-            })
-            console.log('🔵 [AuthContext] Setting user state with profileCompleted:', user.profileCompleted)
+            console.log('🔵 [AuthContext] Complete user object keys:', Object.keys(user));
             setUser(user)
             localStorage.setItem('user', JSON.stringify(user))
             setIsAuthenticated(true)
@@ -323,22 +319,26 @@ export const AuthProvider = ({ children }) => {
   const setAuthToken = (token, userData) => {
     console.log('[AuthContext] Storing token and user data:', userData?.email)
     
-    // Ensure publicId is included (NOT as fallback for uuid)
-    const userDataWithPublicId = {
-      ...userData,
-      publicId: userData?.public_id || userData?.publicId || userData?.id,
-      uuid: userData?.uuid // ✅ UUID must come from backend
+    // ✅ CRITICAL: Create CLEAN user object with ONLY needed fields
+    // ❌ DO NOT spread userData (it contains numeric id)
+    const normalizedUserData = {
+      uuid: userData?.uuid,
+      name: userData?.name || 'User',
+      email: userData?.email,
+      picture: userData?.picture,
+      profileCompleted: userData?.profileCompleted || false
     }
     
-    // Safe error check
-    if (!userDataWithPublicId.uuid) {
-      console.error('❌ UUID missing from userData in setAuthToken');
+    // Safe error check: UUID must be exactly 36 chars
+    if (!normalizedUserData.uuid || typeof normalizedUserData.uuid !== 'string' || normalizedUserData.uuid.length !== 36) {
+      console.error('❌ Invalid or missing UUID in setAuthToken')
+      return
     }
     
     localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(userDataWithPublicId))
+    localStorage.setItem('user', JSON.stringify(normalizedUserData))
     localStorage.setItem('authProvider', 'google')
-    setUser(userDataWithPublicId)
+    setUser(normalizedUserData)
     setIsAuthenticated(true)
   }
 
