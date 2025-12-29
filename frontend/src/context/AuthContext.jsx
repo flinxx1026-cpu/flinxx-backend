@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../config/firebase'
 import { checkRedirectResult } from '../config/firebase'
+import { getUnreadCount } from '../services/api'
 
 // Create Auth Context
 export const AuthContext = createContext()
@@ -12,6 +13,26 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authPending, setAuthPending] = useState(false) // Flag to prevent interruptions during Firebase login
+  const [unreadCount, setUnreadCount] = useState(0) // ✅ Unread message count
+
+  // ✅ Load unread count whenever user UUID changes
+  useEffect(() => {
+    if (!user?.uuid) {
+      setUnreadCount(0)
+      return
+    }
+
+    const loadUnreadCount = async () => {
+      const count = await getUnreadCount(user.uuid)
+      setUnreadCount(count)
+    }
+
+    loadUnreadCount()
+
+    // Poll every 5 seconds
+    const interval = setInterval(loadUnreadCount, 5000)
+    return () => clearInterval(interval)
+  }, [user?.uuid])
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -358,7 +379,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, logout, authPending, setAuthPending, setAuthToken }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, logout, authPending, setAuthPending, setAuthToken, unreadCount }}>
       {children}
     </AuthContext.Provider>
   )

@@ -1,7 +1,5 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { MessageContext } from '../context/MessageContext';
+import React, { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { getUnreadCount } from '../services/api';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
@@ -15,36 +13,7 @@ const TopActions = ({
   onMessageClick,
   isFixedPosition = false 
 }) => {
-  const { unreadCount } = useContext(MessageContext) || { unreadCount: 0 };
-  const { user } = useContext(AuthContext) || {};
-  const [dbUnreadCount, setDbUnreadCount] = useState(0);
-
-  // ✅ Fetch unread count from database - ONLY when user UUID is available from AuthContext
-  useEffect(() => {
-    // ✅ STRICT VALIDATION: Check if user UUID exists and is valid
-    if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
-      console.warn('⛔ TopActions: Invalid UUID, blocking unread count fetch');
-      return;
-    }
-
-    console.log('✅ TopActions: Valid UUID available, fetching unread count:', user.uuid.substring(0, 8) + '...');
-
-    const fetchUnreadCount = async () => {
-      const count = await getUnreadCount(user.uuid); // ✅ Pass UUID from AuthContext
-      setDbUnreadCount(count);
-    };
-
-    // Fetch immediately
-    fetchUnreadCount();
-
-    // Poll every 5 seconds for new messages
-    const interval = setInterval(fetchUnreadCount, 5000);
-
-    return () => clearInterval(interval);
-  }, [user?.uuid]);
-
-  // Use database count as source of truth
-  const displayUnreadCount = dbUnreadCount > 0 ? dbUnreadCount : unreadCount;
+  const { unreadCount } = useContext(AuthContext) || { unreadCount: 0 };
 
   // Handle message panel open - mark all messages as read
   const handleMessageClick = async () => {
@@ -67,11 +36,6 @@ const TopActions = ({
 
       if (response.ok) {
         console.log('✅ All messages marked as read');
-        // Refresh unread count immediately
-        if (user?.uuid && user.uuid.length === 36) {
-          const count = await getUnreadCount(user.uuid);
-          setDbUnreadCount(count);
-        }
       }
     } catch (error) {
       console.error('❌ Error marking messages as read:', error);
@@ -135,8 +99,8 @@ const TopActions = ({
         <div className="icon-circle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           💬
         </div>
-        {displayUnreadCount > 0 && (
-          <span className="badge">{displayUnreadCount}</span>
+        {unreadCount > 0 && (
+          <span className="badge">{unreadCount}</span>
         )}
       </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
 import socket from '../services/socketService';
-import { markMessagesAsRead, getUnreadCount } from '../services/api';
+import { markMessagesAsRead } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 
 const ChatBox = ({ friend, onBack, onMessageSent }) => {
@@ -56,10 +56,6 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
         if (result?.success) {
           console.log('✅ Messages from', friend.display_name, 'marked as read (chatId)', roomId);
         }
-
-        // Refresh unread count in background (TopActions polls, but fetch once immediately)
-        const count = await getUnreadCount(myUserId);
-        console.log('📬 Unread count after mark-read:', count);
       } catch (error) {
         console.error('❌ Error marking messages as read:', error);
       }
