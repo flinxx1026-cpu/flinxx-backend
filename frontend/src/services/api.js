@@ -8,15 +8,9 @@ const getToken = () => localStorage.getItem('token');
 export const getFriends = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    let userId = currentUser.uuid; // ✅ ONLY UUID - no fallback
-    
-    // ✅ Fallback: if uuid is missing, try id field (may contain UUID from some endpoints)
-    if (!userId && currentUser.id && typeof currentUser.id === 'string' && currentUser.id.length === 36) {
-      userId = currentUser.id;
-      console.log('✅ UUID found in id field (fallback)');
-    }
+    const userId = currentUser.uuid; // ✅ ONLY UUID - NO FALLBACK
 
-    // ✅ UUID validation (must be 36 chars with hyphens)
+    // ✅ STRICT validation (must be 36 chars with hyphens)
     if (!userId || userId.length !== 36) {
       console.error('❌ Invalid UUID in localStorage:', userId);
       console.error('   Expected 36-char UUID, got:', userId?.length || 'undefined');
@@ -52,15 +46,9 @@ export const getFriends = async () => {
 export const getNotifications = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    let userId = currentUser.uuid; // ✅ ONLY UUID - no fallback
-    
-    // ✅ Fallback: if uuid is missing, try id field (may contain UUID from some endpoints)
-    if (!userId && currentUser.id && typeof currentUser.id === 'string' && currentUser.id.length === 36) {
-      userId = currentUser.id;
-      console.log('✅ UUID found in id field (fallback)');
-    }
+    const userId = currentUser.uuid; // ✅ ONLY UUID - NO FALLBACK
 
-    // ✅ UUID validation (must be 36 chars with hyphens)
+    // ✅ STRICT validation (must be 36 chars with hyphens)
     if (!userId || userId.length !== 36) {
       console.error('❌ Invalid UUID in notifications:', userId);
       return [];
@@ -99,15 +87,9 @@ export const getNotifications = async () => {
 export const unfriendUser = async (friendId) => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-    let userId = currentUser.uuid; // ✅ ONLY UUID - no fallback
-    
-    // ✅ Fallback: if uuid is missing, try id field (may contain UUID from some endpoints)
-    if (!userId && currentUser.id && typeof currentUser.id === 'string' && currentUser.id.length === 36) {
-      userId = currentUser.id;
-      console.log('✅ UUID found in id field (fallback)');
-    }
+    const userId = currentUser.uuid; // ✅ ONLY UUID - NO FALLBACK
 
-    // ✅ UUID validation
+    // ✅ STRICT validation
     if (!userId || userId.length !== 36) {
       console.error('❌ Invalid UUID in unfriend:', userId);
       return { success: false, error: 'Invalid user' };
@@ -147,34 +129,22 @@ export const unfriendUser = async (friendId) => {
 /**
  * Get unread message count for a user
  * ✅ Reads UUID directly from localStorage to prevent public ID mix-ups
- * ✅ Includes fallback validation for missing or incorrect UUIDs
+ * ❌ NO FALLBACK - uuid MUST be 36 chars
  */
 export const getUnreadCount = async () => {
   try {
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const userUUID = currentUser.uuid;
     
-    // ✅ TRY TO GET UUID - check multiple possible field names
-    let userUUID = currentUser.uuid;
-    
-    // Fallback 1: If uuid is missing, try to get it from alternative field names
-    if (!userUUID) {
-      console.warn('⚠️  UUID not found in currentUser.uuid, checking alternative fields...');
-      // Sometimes backend returns user.id as UUID in different endpoints
-      // Check if current id field contains a 36-char value
-      if (currentUser.id && typeof currentUser.id === 'string' && currentUser.id.length === 36) {
-        userUUID = currentUser.id;
-        console.log('✅ Found 36-char UUID in id field, using that (fallback)');
-      }
-    }
-    
-    // Validation: UUID must be exactly 36 characters
+    // ❌ STRICT VALIDATION: UUID must be exactly 36 characters - NO FALLBACK
     if (!userUUID || typeof userUUID !== 'string' || userUUID.length !== 36) {
-      console.error('❌ Invalid UUID in getUnreadCount:', userUUID);
-      console.error('   Expected 36-char UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)');
+      console.error('❌ Invalid UUID in localStorage.user');
+      console.error('   Expected 36-char UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)');
       console.error('   Got:', userUUID);
       console.error('   Length:', userUUID?.length || 'undefined');
       console.error('   Type:', typeof userUUID);
       console.error('   Full user object:', currentUser);
+      console.error('   📝 TIP: Run in browser console: localStorage.removeItem("user"); localStorage.removeItem("token"); location.reload();');
       return 0;
     }
 

@@ -49,13 +49,21 @@ export default function AuthSuccess() {
         if (data.success && data.user) {
           const user = data.user;
 
-          // Normalize publicId and uuid
+          // ✅ CRITICAL: Store ONLY UUID (36-char), remove numeric id
           const normalizedUser = {
             ...user,
-            id: user.id,              // ✅ 8-digit public ID (for UI)
-            uuid: user.uuid,          // ✅ 36-char UUID (for messages & unread count)
+            uuid: user.uuid,          // ✅ 36-char UUID (for messages & unread count) - ONLY THIS
             publicId: user.publicId || user.public_id || user.id
+            // ❌ DO NOT store numeric id in localStorage
           };
+          
+          // ❌ Remove numeric id completely to prevent confusion
+          delete normalizedUser.id;
+          
+          console.log('✅ User data normalized for storage:', { 
+            uuid: normalizedUser.uuid,
+            email: normalizedUser.email 
+          });
           
           // Store user data and token
           if (setAuthToken) {
@@ -72,7 +80,6 @@ export default function AuthSuccess() {
           }
 
           console.log("✅ User data saved:", { 
-            id: normalizedUser.id, 
             uuid: normalizedUser.uuid,
             email: normalizedUser.email 
           });
