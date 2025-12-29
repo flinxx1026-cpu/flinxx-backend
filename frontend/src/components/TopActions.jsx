@@ -30,7 +30,7 @@ const TopActions = ({
     console.log('✅ TopActions: Valid UUID available, fetching unread count:', user.uuid.substring(0, 8) + '...');
 
     const fetchUnreadCount = async () => {
-      const count = await getUnreadCount(user.uuid); // ✅ Pass UUID from AuthContext
+      const count = await getUnreadCount(); // ✅ getUnreadCount reads from localStorage
       setDbUnreadCount(count);
     };
 
@@ -69,7 +69,7 @@ const TopActions = ({
         console.log('✅ All messages marked as read');
         // Refresh unread count immediately
         if (user?.uuid && user.uuid.length === 36) {
-          const count = await getUnreadCount(user.uuid);
+          const count = await getUnreadCount();
           setDbUnreadCount(count);
         }
       }

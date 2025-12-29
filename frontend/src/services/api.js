@@ -118,19 +118,22 @@ export const unfriendUser = async (userUUID, friendId) => {
 
 /**
  * Get unread message count for a user
- * ✅ Accept UUID as parameter (from AuthContext, not localStorage)
+ * ✅ Read UUID from localStorage (after AuthContext has set it)
  * ✅ AuthContext is the source of truth for user UUID
  */
-export const getUnreadCount = async (userUUID) => {
-  // ✅ STRICT VALIDATION: UUID must be 36-char string
-  if (!userUUID || typeof userUUID !== 'string' || userUUID.length !== 36) {
-    console.warn('⛔ getUnreadCount blocked – invalid UUID:', userUUID);
-    return 0;
-  }
-
+export const getUnreadCount = async () => {
   try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const uuid = user.uuid;
+
+    // ✅ STRICT VALIDATION: UUID must be 36-char string
+    if (!uuid || typeof uuid !== 'string' || uuid.length !== 36) {
+      console.warn('⛔ getUnreadCount blocked – invalid UUID from localStorage:', uuid?.length);
+      return 0;
+    }
+
     const response = await fetch(
-      `${BACKEND_URL}/api/messages/unread-count/${userUUID}`,
+      `${BACKEND_URL}/api/messages/unread-count/${uuid}`,
       {
         method: 'GET',
         headers: {

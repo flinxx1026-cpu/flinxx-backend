@@ -97,25 +97,32 @@ export const AuthProvider = ({ children }) => {
                   gender: data.user.gender
                 })
                 
-                // Ensure publicId and uuid are included in user object
-                const userWithPublicId = {
+                // ✅ CRITICAL: Store ONLY UUID, never numeric IDs
+                const userWithIds = {
                   ...data.user,
-                  publicId: data.user.public_id || data.user.publicId,
-                  uuid: data.user.uuid // ✅ Use UUID from backend ONLY
+                  uuid: data.user.uuid,           // ✅ ONLY UUID (36-char)
+                  publicId: data.user.public_id || null
+                };
+                
+                // ✅ STRICT VALIDATION: UUID must be 36 chars
+                if (!userWithIds.uuid || userWithIds.uuid.length !== 36) {
+                  console.error('❌ INVALID UUID FROM BACKEND:', userWithIds.uuid);
+                  console.error('   Expected 36-char UUID, got:', userWithIds.uuid?.length || 'undefined');
+                  // Don't set user if UUID is invalid
+                  setIsLoading(false);
+                  return;
                 }
                 
-                // Safe error check - DO NOT auto-fill
-                if (!userWithPublicId.uuid) {
-                  console.error('❌ UUID missing from backend user object');
-                }
-                
-                console.log('🔵 [AuthContext] Setting user state with:', { email: userWithPublicId.email, profileCompleted: userWithPublicId.profileCompleted, publicId: userWithPublicId.publicId })
-                setUser(userWithPublicId)
-                localStorage.setItem('user', JSON.stringify(userWithPublicId))
-                setIsAuthenticated(true)
-                setIsLoading(false)
-                console.log('🔵 [AuthContext] ✅ COMPLETE - Returning from token validation path')
-                return
+                console.log('🔵 [AuthContext] Setting user state with UUID-only:', { 
+                  uuid: userWithIds.uuid.substring(0, 8) + '...', 
+                  email: userWithIds.email 
+                });
+                setUser(userWithIds);
+                localStorage.setItem('user', JSON.stringify(userWithIds));
+                setIsAuthenticated(true);
+                setIsLoading(false);
+                console.log('🔵 [AuthContext] ✅ COMPLETE - UUID-only user set');
+                return;
               } else {
                 console.log('🔵 [AuthContext] ⚠️  Response OK but data.success or data.user missing')
               }
@@ -136,21 +143,20 @@ export const AuthProvider = ({ children }) => {
         if (storedUser) {
           try {
             console.log('\n🔵 [AuthContext] STEP 3: Restore from localStorage (no token validation)');
-            const user = JSON.parse(storedUser)
+            const user = JSON.parse(storedUser);
             
-            // Ensure publicId exists (convert from public_id if needed)
-            if (!user.publicId && user.public_id) {
-              user.publicId = user.public_id
-            }
-            // Safe error check - DO NOT auto-fill UUID from public_id
-            if (!user.uuid) {
-              console.error('❌ UUID missing from localStorage user object');
+            // ✅ STRICT VALIDATION: UUID must be 36-char string
+            if (!user.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
+              console.warn('🧹 [AuthContext] Invalid UUID in localStorage, removing:', user.uuid?.length);
+              localStorage.removeItem('user');
+              localStorage.removeItem('token');
+              setIsLoading(false);
+              return;
             }
             
-            console.log('🔵 [AuthContext]   - Email:', user.email)
-            console.log('🔵 [AuthContext]   - publicId:', user.publicId)
-            console.log('🔵 [AuthContext]   - profileCompleted:', user.profileCompleted, '(type:', typeof user.profileCompleted + ')')
-            console.log('🔵 [AuthContext] ✅ User loaded from localStorage (no token validation):', user.email)
+            console.log('🔵 [AuthContext]   - Email:', user.email);
+            console.log('🔵 [AuthContext]   - UUID:', user.uuid.substring(0, 8) + '...');
+            console.log('🔵 [AuthContext] ✅ User loaded from localStorage (UUID valid):', user.email);
             console.log('🔵 [AuthContext] User data from localStorage:', {
               id: user.id,
               email: user.email,
