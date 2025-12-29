@@ -18,6 +18,12 @@ export const UnreadProvider = ({ children }) => {
       return;
     }
 
+    // Step 1.5: Extra guard - user must exist
+    if (!user) {
+      console.log('⏸ UnreadContext: Skipping fetch – user is null');
+      return;
+    }
+
     // Step 2: Check if user is ready (not just loading state)
     if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
       console.log('⏸ UnreadContext: Skipping fetch – user UUID not valid:', user?.uuid?.length);
@@ -49,6 +55,7 @@ export const UnreadProvider = ({ children }) => {
   // Only attach listener when user is fully ready
   useEffect(() => {
     if (authLoading === true) return;
+    if (!user) return;
     if (!user?.uuid || user.uuid.length !== 36) return;
 
     const handleNewMessage = async () => {
