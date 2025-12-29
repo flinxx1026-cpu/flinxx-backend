@@ -8,17 +8,14 @@ const getToken = () => localStorage.getItem('token');
  */
 export const getFriends = async (userUUID) => {
   try {
-    const userId = userUUID; // ✅ ONLY UUID - NO FALLBACK, NO localStorage
-
-    // ✅ STRICT validation (must be 36 chars with hyphens)
-    if (!userId || userId.length !== 36) {
-      console.error('❌ Invalid UUID in getFriends:', userId);
-      console.error('   Expected 36-char UUID, got:', userId?.length || 'undefined');
+    // ✅ STRICT VALIDATION: UUID must be 36-char string
+    if (!userUUID || typeof userUUID !== 'string' || userUUID.length !== 36) {
+      console.warn('⛔ getFriends blocked – invalid UUID:', userUUID);
       return [];
     }
 
     const response = await fetch(
-      `${BACKEND_URL}/api/friends?userId=${userId}`,
+      `${BACKEND_URL}/api/friends?userId=${userUUID}`,
       {
         method: 'GET',
         headers: {
@@ -29,7 +26,6 @@ export const getFriends = async (userUUID) => {
     );
 
     if (!response.ok) {
-      console.error('❌ Friends API error:', response.status, response.statusText);
       return [];
     }
 
@@ -46,18 +42,16 @@ export const getFriends = async (userUUID) => {
  */
 export const getNotifications = async (userUUID) => {
   try {
-    const userId = userUUID; // ✅ ONLY UUID - NO FALLBACK, NO localStorage
-
-    // ✅ STRICT validation (must be 36 chars with hyphens)
-    if (!userId || userId.length !== 36) {
-      console.error('❌ Invalid UUID in getNotifications:', userId);
+    // ✅ STRICT VALIDATION: UUID must be 36-char string
+    if (!userUUID || typeof userUUID !== 'string' || userUUID.length !== 36) {
+      console.warn('⛔ getNotifications blocked – invalid UUID:', userUUID);
       return [];
     }
 
-    console.log('📬 Fetching notifications for user:', userId);
+    console.log('📬 Fetching notifications for user');
 
     const response = await fetch(
-      `${BACKEND_URL}/api/notifications?userId=${userId}`,
+      `${BACKEND_URL}/api/notifications?userId=${userUUID}`,
       {
         method: 'GET',
         headers: {
@@ -68,7 +62,6 @@ export const getNotifications = async (userUUID) => {
     );
 
     if (!response.ok) {
-      console.error('❌ Notifications API error:', response.status, response.statusText);
       return [];
     }
 
@@ -87,16 +80,14 @@ export const getNotifications = async (userUUID) => {
  */
 export const unfriendUser = async (userUUID, friendId) => {
   try {
-    const userId = userUUID; // ✅ ONLY UUID - NO FALLBACK, NO localStorage
-
-    // ✅ STRICT validation
-    if (!userId || userId.length !== 36) {
-      console.error('❌ Invalid UUID in unfriendUser:', userId);
+    // ✅ STRICT VALIDATION: Both UUIDs must be 36-char strings
+    if (!userUUID || typeof userUUID !== 'string' || userUUID.length !== 36) {
+      console.warn('⛔ unfriendUser blocked – invalid user UUID:', userUUID);
       return { success: false, error: 'Invalid user' };
     }
 
-    if (!friendId || friendId.length !== 36) {
-      console.error('❌ Invalid friend UUID:', friendId);
+    if (!friendId || typeof friendId !== 'string' || friendId.length !== 36) {
+      console.warn('⛔ unfriendUser blocked – invalid friend UUID:', friendId);
       return { success: false, error: 'Invalid friend ID' };
     }
 
@@ -113,12 +104,11 @@ export const unfriendUser = async (userUUID, friendId) => {
     );
 
     if (!response.ok) {
-      console.error('❌ Unfriend error:', response.status, response.statusText);
       return { success: false, error: 'Failed to unfriend user' };
     }
 
     const data = await response.json();
-    console.log('✅ Unfriended user:', friendId);
+    console.log('✅ Unfriended user');
     return { success: true, data };
   } catch (err) {
     console.error('❌ Error unfriending user:', err);
@@ -132,9 +122,9 @@ export const unfriendUser = async (userUUID, friendId) => {
  * ✅ AuthContext is the source of truth for user UUID
  */
 export const getUnreadCount = async (userUUID) => {
-  // ✅ UUID must be passed from AuthContext
-  if (!userUUID || userUUID.length !== 36) {
-    console.warn('⏳ Skipping unread count, UUID not ready:', userUUID);
+  // ✅ STRICT VALIDATION: UUID must be 36-char string
+  if (!userUUID || typeof userUUID !== 'string' || userUUID.length !== 36) {
+    console.warn('⛔ getUnreadCount blocked – invalid UUID:', userUUID);
     return 0;
   }
 
@@ -150,15 +140,13 @@ export const getUnreadCount = async (userUUID) => {
     );
 
     if (!response.ok) {
-      console.error('❌ Unread count API error:', response.status, response.statusText);
       return 0;
     }
 
     const data = await response.json();
-    console.log('✅ Unread count:', data.unreadCount);
     return data.unreadCount || 0;
   } catch (err) {
-    console.error('Error fetching unread count:', err);
+    console.error('Unread count fetch failed:', err);
     return 0;
   }
 };

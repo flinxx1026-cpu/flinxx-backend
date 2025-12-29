@@ -21,13 +21,13 @@ const TopActions = ({
 
   // ✅ Fetch unread count from database - ONLY when user UUID is available from AuthContext
   useEffect(() => {
-    // ✅ Check if user UUID exists in AuthContext (source of truth)
-    if (!user?.uuid || user.uuid.length !== 36) {
-      console.log('⏳ TopActions: Waiting for user UUID from AuthContext...');
+    // ✅ STRICT VALIDATION: Check if user UUID exists and is valid
+    if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
+      console.warn('⛔ TopActions: Invalid UUID, blocking unread count fetch');
       return;
     }
 
-    console.log('✅ TopActions: User UUID available, fetching unread count:', user.uuid.substring(0, 8) + '...');
+    console.log('✅ TopActions: Valid UUID available, fetching unread count:', user.uuid.substring(0, 8) + '...');
 
     const fetchUnreadCount = async () => {
       const count = await getUnreadCount(user.uuid); // ✅ Pass UUID from AuthContext

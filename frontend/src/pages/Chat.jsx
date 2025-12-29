@@ -82,6 +82,12 @@ const Chat = () => {
   // 🧪 DEBUG TEST - Check if both "RENDER START" and "HOOKS DONE" appear in console
   console.log("HOOKS DONE");
 
+  // ✅ HARD BLOCK: Don't render anything until auth is ready
+  if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
+    console.log('⏳ Chat: Waiting for valid user UUID from AuthContext...');
+    return null;
+  }
+
   // ✅ NOW CONSOLE LOG AND LOGIC AFTER ALL HOOKS
   console.log('🎯 CHAT COMPONENT LOADED - BUILD: 895cedd (temporal deadzone fix - move hooks to top)');
 

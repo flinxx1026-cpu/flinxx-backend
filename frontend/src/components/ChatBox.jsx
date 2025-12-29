@@ -11,14 +11,14 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
   // Get current user UUID from AuthContext (source of truth)
   const myUserId = user?.uuid;
 
-  // ✅ STRICT VALIDATION: Block everything until valid UUID exists
+  // ✅ STRICT VALIDATION: Block everything until valid UUIDs exist
   if (!myUserId || typeof myUserId !== 'string' || myUserId.length !== 36) {
-    console.log('⏳ ChatBox: Waiting for valid UUID from AuthContext');
+    console.warn('⛔ ChatBox: Invalid my UUID, blocking render:', myUserId?.length);
     return null;
   }
 
   if (!friend?.id || typeof friend.id !== 'string' || friend.id.length !== 36) {
-    console.error('❌ ChatBox: Invalid friend UUID:', friend?.id);
+    console.warn('⛔ ChatBox: Invalid friend UUID, blocking render:', friend?.id?.length);
     return null;
   }
 
