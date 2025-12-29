@@ -39,6 +39,12 @@ export const AuthProvider = ({ children }) => {
   // ✅ CRITICAL: Only fetch notifications when USER UUID is ready
   // This dependency ensures we NEVER call APIs before user is loaded
   useEffect(() => {
+    // MUST wait for authLoading to be FALSE first
+    if (isLoading === true) {
+      console.log('⏸ Skipping notifications fetch – authLoading is true');
+      return;
+    }
+
     if (!user?.uuid || user.uuid.length !== 36) {
       console.log('⏸ Skipping notifications fetch – user UUID not ready');
       return;
@@ -55,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       clearInterval(notifInterval);
     };
-  }, [user?.uuid]);
+  }, [isLoading, user?.uuid]);
 
   useEffect(() => {
     const initializeAuth = async () => {
