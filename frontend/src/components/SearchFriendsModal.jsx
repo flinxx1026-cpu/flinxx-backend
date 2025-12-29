@@ -104,15 +104,15 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   };
 
   // Fetch pending friend requests for notifications
-  const fetchPendingRequests = async () => {
+  const fetchPendingRequests = async (userUUID) => {
     try {
       console.log('📬 Fetching notifications...');
       setNotificationsLoading(true);
-      if (!user?.uuid || user.uuid.length !== 36) {
-        console.warn('UUID not ready for notifications');
+      if (!userUUID || userUUID.length !== 36) {
+        console.warn('⛔ UUID not ready for notifications:', userUUID?.length);
         return;
       }
-      const data = await getNotifications(user.uuid);
+      const data = await getNotifications(userUUID);
       setPendingRequests(Array.isArray(data) ? data : []);
       setNotificationsCached(true); // Mark as cached for next time
       console.log('✅ Notifications updated:', data.length, 'items');
@@ -158,7 +158,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     if (isOpen && isNotificationMode) {
       console.log('🔔 Loading notifications for notification mode');
       if (user?.uuid && user.uuid.length === 36) {
-        fetchPendingRequests();
+        fetchPendingRequests(user.uuid);
       } else {
         console.warn('⛔ UUID not ready for notifications');
       }
