@@ -612,20 +612,15 @@ app.post('/api/users/save', async (req, res) => {
     res.json({
       success: true,
       user: {
-        id: user.public_id,
         uuid: user.id,
         email: user.email,
-        displayName: user.display_name,
-        photoURL: user.photo_url,
+        name: user.display_name,
+        picture: user.photo_url,
         authProvider: user.auth_provider,
-        googleId: user.google_id,
         profileCompleted: user.profileCompleted,
-        isProfileCompleted: user.profileCompleted,
         birthday: user.birthday,
         gender: user.gender,
-        age: user.age,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at
+        age: user.age
       }
     })
   } catch (error) {
@@ -924,7 +919,7 @@ app.post('/api/users/accept-terms', async (req, res) => {
       success: true,
       message: 'Terms accepted successfully',
       user: {
-        id: updatedUser.id,
+        uuid: updatedUser.id,
         email: updatedUser.email,
         termsAccepted: updatedUser.termsAccepted
       }
@@ -1502,8 +1497,10 @@ app.get('/auth/google/callback', async (req, res) => {
       isNewUser: isNewUser,
       profileCompleted: user.profileCompleted || false,
       user: {
-        id: user.public_id,
-        email: user.email
+        uuid: user.id,
+        email: user.email,
+        name: user.display_name,
+        picture: user.photo_url
       }
     }
     
@@ -1556,12 +1553,10 @@ app.get('/auth-success', async (req, res) => {
       success: true,
       token: token,
       user: {
-        id: user.public_id,        // ✅ 8-digit public ID (for UI display)
         uuid: user.id,              // ✅ 36-char UUID (for messages & unread count)
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
-        googleId: user.google_id,
         profileCompleted: user.profileCompleted,
         termsAccepted: user.termsAccepted
       }
@@ -1595,9 +1590,8 @@ app.get('/auth/google/success', (req, res) => {
       success: true,
       token: token,
       user: {
-        id: decoded.userId,
-        email: decoded.email,
-        googleId: decoded.googleId
+        uuid: decoded.userId,
+        email: decoded.email
       }
     })
   } catch (error) {
@@ -1660,23 +1654,19 @@ app.get('/api/profile', async (req, res) => {
     }
     
     console.log('[PROFILE API] ✅ User found, returning profile')
-    // Return complete user profile
+    // ✅ CRITICAL: Return ONLY uuid (the 36-char ID), never numeric id
+    // user.id is the numeric database ID, this must NOT be sent to frontend
     res.json({
       success: true,
       user: {
-        id: user.public_id,
-        publicId: user.public_id,
-        uuid: user.id,
+        uuid: user.id,                    // ✅ 36-char UUID from users.id
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
         gender: user.gender,
         birthday: user.birthday,
         profileCompleted: user.profileCompleted,
-        authProvider: user.auth_provider,
-        userId: user.id,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at
+        authProvider: user.auth_provider
       }
     })
   } catch (error) {
