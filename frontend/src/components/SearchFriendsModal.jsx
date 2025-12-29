@@ -129,6 +129,17 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   }, [isOpen, user?.uuid]);
 
+  // ✅ REFRESH notifications when panel opens (not just on mount)
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!isNotificationMode) return;
+    
+    if (user?.uuid && user.uuid.length === 36 && refreshNotifications) {
+      console.log('🔄 Refreshing notifications when panel opens');
+      refreshNotifications();
+    }
+  }, [isOpen, isNotificationMode, user?.uuid, refreshNotifications]);
+
   // ✅ Notifications come from centralized AuthContext (single source of truth)
   // No need to fetch here - AuthContext manages it
   const pendingRequests = notifications || [];
