@@ -148,7 +148,7 @@ export const getUnreadCount = async (userUUID) => {
     }
 
     const data = await response.json();
-    return data.unreadCount || 0;
+    return data.unreadCount ?? 0;
   } catch (err) {
     console.error('❌ Unread count fetch failed:', err);
     return 0;
