@@ -317,7 +317,13 @@ export const AuthProvider = ({ children }) => {
   }
 
   const setAuthToken = (token, userData) => {
-    console.log('[AuthContext] Storing token and user data:', userData?.email)
+    console.log('[AuthContext] ⚠️ setAuthToken called with userData:', {
+      email: userData?.email,
+      has_uuid: !!userData?.uuid,
+      uuid: userData?.uuid,
+      uuid_length: userData?.uuid?.length,
+      all_keys: Object.keys(userData || {})
+    })
     
     // ✅ CRITICAL: Create CLEAN user object with ONLY needed fields
     // ❌ DO NOT spread userData (it contains numeric id)
@@ -331,10 +337,15 @@ export const AuthProvider = ({ children }) => {
     
     // Safe error check: UUID must be exactly 36 chars
     if (!normalizedUserData.uuid || typeof normalizedUserData.uuid !== 'string' || normalizedUserData.uuid.length !== 36) {
-      console.error('❌ Invalid or missing UUID in setAuthToken')
+      console.error('❌ Invalid or missing UUID in setAuthToken:', {
+        uuid_received: userData?.uuid,
+        uuid_type: typeof userData?.uuid,
+        uuid_length: userData?.uuid?.length
+      })
       return
     }
     
+    console.log('[AuthContext] ✅ setAuthToken storing user with UUID:', normalizedUserData.uuid.substring(0, 8) + '...')
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(normalizedUserData))
     localStorage.setItem('authProvider', 'google')

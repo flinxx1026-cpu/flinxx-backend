@@ -77,10 +77,7 @@ export default function AuthSuccess() {
             name: user.name || user.display_name || 'User',
             email: user.email,
             picture: user.picture || user.photo_url,
-            googleId: user.googleId || user.google_id,
-            profileCompleted: user.profileCompleted || false,
-            // ❌ DO NOT include numeric id
-            // ❌ DO NOT include other fields
+            profileCompleted: user.profileCompleted || false
           };
           
           console.log('✅ User data normalized for storage (UUID ONLY):', { 
