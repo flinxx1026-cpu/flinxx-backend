@@ -19,7 +19,7 @@
   align-items: stretch;
   padding: 12px;
   margin: 0;
-  gap: 12px;
+  gap: 0;
 }
 
 /* Common panel styling */
@@ -45,6 +45,7 @@
   box-sizing: border-box;
   gap: 16px;
   position: relative;
+  margin-right: 6px;
 }
 
 .left-panel::after {
@@ -147,6 +148,7 @@
   display: block !important;
   height: 100%;
   box-sizing: border-box;
+  margin-left: 6px;
 }
 
 .right-panel::before {
