@@ -25,12 +25,13 @@
 .dashboard::after {
   content: "";
   position: absolute;
-  top: 12px;
-  bottom: 12px;
+  top: 16px;
+  bottom: 16px;
   left: 50%;
-  width: 1px;
+  width: 2px;
   background: #d4af37;
-  transform: translateX(-0.5px);
+  border-radius: 10px;
+  transform: translateX(-1px);
   pointer-events: none;
   z-index: 5;
 }
