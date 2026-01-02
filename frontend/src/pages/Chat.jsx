@@ -1566,8 +1566,8 @@ const Chat = () => {
 
   // Intro Screen Component
   const IntroScreen = () => (
-    <div className="intro-screen-container w-full min-h-screen flex flex-col items-center justify-center px-4 py-12" style={{ backgroundColor: '#0f0f0f' }}>
-      {/* Top Icons Bar - Only render when UUID is ready */}
+    <div className="intro-screen-container w-full min-h-screen flex flex-row items-stretch overflow-visible" style={{ backgroundColor: '#0f0f0f' }}>
+      {/* Top Icons Bar */}
       {currentUser?.uuid && (
         <TopActions
           currentUser={currentUser}
@@ -1581,134 +1581,108 @@ const Chat = () => {
         />
       )}
 
-      {/* Main Center Container - Vertical Layout */}
-      <div className="w-full max-w-md flex flex-col items-center gap-8">
+      {/* LEFT PANEL - Matching Info & Controls */}
+      <div className="flex-1 flex flex-col items-center justify-center px-10 py-20 gap-8" style={{ backgroundColor: '#0f0f0f' }}>
+        {/* Flinxx Logo */}
+        <img src={logo} alt="Flinxx" className="w-24 h-24 mb-4" />
         
-        {/* Center Video Preview */}
-        <div className="w-full aspect-square rounded-2xl shadow-2xl overflow-hidden" style={{ height: '300px', backgroundColor: 'transparent', border: '2px solid #d9b85f', position: 'relative' }}>
-          {/* ✅ This is the video container. The persistent video element overlays it from root level */}
-          <div className="you-badge">You</div>
+        {/* ∞ Unlimited Badge */}
+        <div className="text-center">
+          <p className="text-lg font-bold" style={{ color: '#d9b85f' }}>∞ Unlimited</p>
         </div>
 
-        {/* Headline & Subtitle */}
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-black" style={{ color: '#d9b85f' }}>Real conversations. No filters.</h1>
-          <p className="text-sm" style={{ color: '#a0a0a0' }}>Talk to people around the world in real time</p>
+        {/* Large Flinxx Text */}
+        <div className="text-center">
+          <h1 className="text-7xl font-black" style={{ color: '#d9b85f' }}>Flinxx</h1>
         </div>
 
-        {/* Solo / Duo Cards */}
-        <div className="w-full grid grid-cols-2 gap-4">
-          {/* Solo Card */}
-          <button
-            onClick={() => {
-              console.log("Solo clicked");
-              handleModeChange('solo');
-            }}
-            className="p-4 rounded-xl transition-all duration-300 transform text-center"
-            style={{
-              backgroundColor: activeMode === 'solo' ? 'rgba(217, 184, 95, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-              border: activeMode === 'solo' ? '2px solid #d9b85f' : '1px solid #444',
-              color: '#fff',
-              boxShadow: activeMode === 'solo' ? '0 0 20px rgba(217, 184, 95, 0.3)' : 'none',
-              transform: activeMode === 'solo' ? 'scale(1.03)' : 'scale(1)',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => {
-              if (activeMode !== 'solo') {
-                e.currentTarget.style.boxShadow = '0 0 15px rgba(217, 184, 95, 0.2)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeMode !== 'solo') {
-                e.currentTarget.style.boxShadow = 'none';
-              }
-            }}
-          >
-            <div className="text-2xl mb-2">👤</div>
-            <h3 className="text-sm font-bold" style={{ color: '#d9b85f' }}>Solo Chat</h3>
-            <p className="text-xs mt-1" style={{ color: '#888' }}>One-on-one conversation</p>
-          </button>
-
-          {/* Duo Card */}
-          <button
-            onClick={() => {
-              console.log("Duo clicked");
-              handleModeChange('duo');
-            }}
-            className="p-4 rounded-xl transition-all duration-300 transform text-center"
-            style={{
-              backgroundColor: activeMode === 'duo' ? 'rgba(217, 184, 95, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-              border: activeMode === 'duo' ? '2px solid #d9b85f' : '1px solid #444',
-              color: '#fff',
-              boxShadow: activeMode === 'duo' ? '0 0 20px rgba(217, 184, 95, 0.3)' : 'none',
-              transform: activeMode === 'duo' ? 'scale(1.03)' : 'scale(1)',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => {
-              if (activeMode !== 'duo') {
-                e.currentTarget.style.boxShadow = '0 0 15px rgba(217, 184, 95, 0.2)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeMode !== 'duo') {
-                e.currentTarget.style.boxShadow = 'none';
-              }
-            }}
-          >
-            <div className="text-2xl mb-2">👥</div>
-            <h3 className="text-sm font-bold" style={{ color: '#d9b85f' }}>Duo Chat</h3>
-            <p className="text-xs mt-1" style={{ color: '#888' }}>Join with a friend</p>
-          </button>
+        {/* Matching Stats */}
+        <div className="text-center">
+          <p className="text-xl font-bold" style={{ color: '#d9b85f' }}>• 23,796 are matching now!</p>
         </div>
 
-        {/* Preference Badge - BOTH button hidden */}
+        {/* Choose Who to Meet Button */}
+        <button
+          onClick={() => handleModeChange('duo')}
+          className="px-8 py-3 rounded-full font-bold transition-all text-sm flex items-center gap-2"
+          style={{
+            backgroundColor: 'transparent',
+            border: '2px solid #d9b85f',
+            color: '#d9b85f',
+            cursor: 'pointer'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.boxShadow = '0 0 20px rgba(217, 184, 95, 0.3)';
+            e.currentTarget.style.transform = 'scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+        >
+          <span>👥</span> Choose who to meet
+        </button>
+
+        {/* Preference Badge */}
         {!(selectedGender === 'both') && (
           <button 
             onClick={() => setIsGenderFilterOpen(true)}
-            className="rounded-full px-4 py-2 transition-all cursor-pointer text-xs"
+            className="rounded-full px-6 py-2 transition-all cursor-pointer text-sm font-semibold"
             style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
           >
-            <span className="font-semibold">👥 {selectedGender === 'girls' ? 'Girls Only' : selectedGender === 'guys' ? 'Guys Only' : 'Both'}</span>
+            👥 {selectedGender === 'girls' ? 'Girls Only' : selectedGender === 'guys' ? 'Guys Only' : 'Both'}
           </button>
         )}
 
-        {/* Connect Now Button */}
+        {/* Start Video Chat Button - Full Width Yellow */}
         <button
           onClick={startVideoChat}
           disabled={isLoading}
-          className="w-full font-bold py-3 px-6 rounded-xl transition-all duration-300 text-sm"
+          className="w-full px-8 py-4 rounded-full font-bold transition-all text-lg mt-6"
           style={{
-            background: isLoading ? '#666' : 'linear-gradient(135deg, #d9b85f 0%, #e5c878 100%)',
+            backgroundColor: isLoading ? '#666' : '#d9b85f',
             color: isLoading ? '#aaa' : '#000',
             border: 'none',
-            boxShadow: isLoading ? 'none' : '0 0 20px rgba(217, 184, 95, 0.3)',
             cursor: isLoading ? 'not-allowed' : 'pointer',
-            opacity: isLoading ? 0.7 : 1
+            opacity: isLoading ? 0.7 : 1,
+            maxWidth: '400px'
           }}
           onMouseEnter={(e) => {
             if (!isLoading) {
               e.currentTarget.style.boxShadow = '0 0 30px rgba(217, 184, 95, 0.5)';
+              e.currentTarget.style.transform = 'scale(1.02)';
             }
           }}
           onMouseLeave={(e) => {
             if (!isLoading) {
-              e.currentTarget.style.boxShadow = '0 0 20px rgba(217, 184, 95, 0.3)';
+              e.currentTarget.style.boxShadow = 'none';
+              e.currentTarget.style.transform = 'scale(1)';
             }
           }}
         >
           {isLoading ? (
             <>
-              <span className="animate-spin inline-block mr-2">⟳</span> {cameraStarted ? 'Starting Match...' : 'Requesting Access...'}
+              <span className="animate-spin inline-block mr-2">⟳</span>
+              {cameraStarted ? 'Starting Match...' : 'Requesting Access...'}
             </>
           ) : (
-            cameraStarted ? 'Connect Now' : 'Allow Camera & Continue'
+            <>🎬 Start Video Chat</>
           )}
         </button>
 
         {/* Trust Text */}
-        <p className="text-xs text-center" style={{ color: '#666' }}>
+        <p className="text-xs text-center mt-4" style={{ color: '#666', maxWidth: '300px' }}>
           Anonymous by default • No recordings • Skip anytime
         </p>
+      </div>
+
+      {/* RIGHT PANEL - Video Preview */}
+      <div className="flex-1 rounded-2xl shadow-2xl overflow-hidden relative mx-6 my-6" style={{ backgroundColor: '#000', border: '1px solid #d9b85f', minHeight: '90vh' }}>
+        {/* Video container */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'hidden', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* You badge */}
+          <div className="you-badge" style={{ zIndex: 2 }}>You</div>
+        </div>
       </div>
     </div>
   );
