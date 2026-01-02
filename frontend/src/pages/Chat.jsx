@@ -1952,30 +1952,6 @@ const Chat = () => {
       ) : (
         <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
           
-          {/* ✅ CRITICAL: PERSISTENT LOCAL VIDEO ELEMENT - ALWAYS MOUNTED, NEVER UNMOUNTED
-              This element survives all screen transitions (IntroScreen → WaitingScreen → VideoChatScreen)
-              The stream is obtained once and persists across the entire app lifecycle
-              Initially hidden at root level, shown when positioned inside left-panel by useEffect
-          */}
-          <video
-            ref={localVideoRef}
-            id="local-video-singleton"
-            className="local-video"
-            autoPlay={true}
-            playsInline={true}
-            muted={true}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              backgroundColor: '#000',
-              display: cameraStarted ? 'block' : 'none',
-              zIndex: 1
-            }}
-          />
-          
           {/* Main content - Show correct screen based on state */}
           {hasPartner ? (
             // Partner found: Show video chat (includes remote video inside)
