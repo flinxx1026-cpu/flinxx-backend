@@ -51,12 +51,12 @@
 .left-panel::after {
   content: "";
   position: absolute;
-  top: 14px;
-  bottom: 14px;
+  top: 20px;
+  bottom: 20px;
   right: 0;
-  width: 2px;
+  width: 1.5px;
   background: #d4af37;
-  border-radius: 12px;
+  border-radius: 999px;
   pointer-events: none;
 }
 
@@ -154,12 +154,12 @@
 .right-panel::before {
   content: "";
   position: absolute;
-  top: 14px;
-  bottom: 14px;
+  top: 20px;
+  bottom: 20px;
   left: 0;
-  width: 2px;
+  width: 1.5px;
   background: #d4af37;
-  border-radius: 12px;
+  border-radius: 999px;
   pointer-events: none;
   z-index: 10;
 }
