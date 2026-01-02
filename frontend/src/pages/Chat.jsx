@@ -1565,7 +1565,10 @@ const Chat = () => {
   };
 
   // Intro Screen Component
-  const IntroScreen = () => (
+  const IntroScreen = () => {
+    console.log("Dashboard render");
+    
+    return (
     <div className="dashboard">
       {/* LEFT PANEL - Text and Button */}
       <div className="left-panel">
@@ -1581,83 +1584,106 @@ const Chat = () => {
 
       {/* RIGHT PANEL - Camera Feed */}
       <div className="right-panel">
-        {/* Camera Video Element */}
-        <video
-          ref={localVideoRef}
-          autoPlay
-          muted
-          playsInline
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            borderRadius: '14px'
-          }}
-        />
-
-        {/* Top Icons */}
-        {currentUser?.uuid && (
-          <div className="top-icons">
-            {/* Profile Icon */}
-            <button
-              onClick={() => setIsProfileOpen(true)}
-              className="icon"
-              title="Profile"
-            >
-              👤
-            </button>
-
-            {/* Search Icon */}
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="icon"
-              title="Search"
-            >
-              🔍
-            </button>
-
-            {/* Heart Icon */}
-            <button
-              className="icon"
-              title="Likes"
-            >
-              ❤️
-            </button>
-
-            {/* Chat Icon */}
-            <button
-              onClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
-              className="icon"
-              title="Messages"
-            >
-              💬
-            </button>
-
-            {/* Premium Icon */}
-            <button
-              onClick={() => setIsPremiumOpen(true)}
-              className="icon"
-              title="Premium"
-            >
-              👑
-            </button>
-
-            {/* History Icon */}
-            <button
-              onClick={() => setIsMatchHistoryOpen(true)}
-              className="icon"
-              title="History"
-            >
-              ⏱️
-            </button>
-          </div>
+        {/* Camera Video Element with Placeholder */}
+        {localVideoRef && (
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            playsInline
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              borderRadius: '14px',
+              display: 'block'
+            }}
+          />
         )}
+        
+        {/* Camera Placeholder - Always visible */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#000',
+          borderRadius: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#666',
+          fontSize: '12px',
+          zIndex: 0
+        }}>
+          Camera loading...
+        </div>
 
-        {/* "You" Badge - Bottom Left */}
+        {/* Top Icons - Always render */}
+        <div className="top-icons">
+          {/* Profile Icon */}
+          <button
+            onClick={() => setIsProfileOpen(true)}
+            className="icon"
+            title="Profile"
+          >
+            👤
+          </button>
+
+          {/* Search Icon */}
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="icon"
+            title="Search"
+          >
+            🔍
+          </button>
+
+          {/* Heart Icon */}
+          <button
+            className="icon"
+            title="Likes"
+          >
+            ❤️
+          </button>
+
+          {/* Chat Icon */}
+          <button
+            onClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
+            className="icon"
+            title="Messages"
+          >
+            💬
+          </button>
+
+          {/* Premium Icon */}
+          <button
+            onClick={() => setIsPremiumOpen(true)}
+            className="icon"
+            title="Premium"
+          >
+            👑
+          </button>
+
+          {/* History Icon */}
+          <button
+            onClick={() => setIsMatchHistoryOpen(true)}
+            className="icon"
+            title="History"
+          >
+            ⏱️
+          </button>
+        </div>
+
+        {/* "You" Badge - Always render */}
         <div className="you-label">You</div>
       </div>
     </div>
-  );
+    );
+  };
 
   // Waiting Screen Component - Shows when matching is in progress
   const WaitingScreen = () => {
