@@ -1826,183 +1826,168 @@ const Chat = () => {
     });
     
     return (
-    <div className="video-chat-container flex flex-col md:flex-row w-full h-full gap-6 items-start overflow-visible" style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+    <div className="video-chat-container flex flex-col w-full h-full items-center justify-center gap-8 px-6 py-6 overflow-visible" style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
         
-        {/* LEFT - Chat panel with proper 3-section layout */}
-        <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0, overflow: 'visible' }}>
-          <div className="w-full h-full bg-black rounded-3xl shadow-2xl flex flex-col overflow-visible" style={{ backgroundColor: '#131313', overflow: 'visible' }}>
-            
-            {/* SECTION 1: TOP - Header with partner info */}
-            <div className="px-4 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ height: '56px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: 'rgba(19, 19, 19, 0.8)', borderBottom: '1px solid #d9b85f' }}>
-              {/* Left: Partner Profile */}
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg flex-shrink-0 overflow-hidden">
-                  {hasPartner && partnerInfo && partnerInfo.picture ? (
-                    <img src={partnerInfo.picture} alt="Partner" className="w-full h-full object-cover" />
-                  ) : (
-                    '👤'
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm leading-tight truncate" style={{ color: '#d9b85f' }}>
-                    {hasPartner && partnerInfo ? partnerInfo.userName : 'Waiting...'}
-                  </p>
-                  <p className="text-xs truncate" style={{ color: '#d9b85f' }}>
-                    {hasPartner && partnerInfo ? partnerInfo.userLocation : 'for a partner'}
-                  </p>
-                </div>
-              </div>
+        {/* DUAL CAMERA LAYOUT - Side by Side */}
+        <div className="w-full max-w-5xl flex gap-6 flex-1">
+          
+          {/* LEFT CAMERA - Remote Video */}
+          <div className="flex-1 rounded-2xl shadow-2xl overflow-hidden relative" style={{ backgroundColor: '#000', border: '1px solid #d9b85f', minHeight: '400px', aspectRatio: '16/9' }}>
+            {/* Remote video wrapper */}
+            <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'hidden', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               
-              {/* Right: Action Icons */}
-              <div className="flex gap-2 flex-shrink-0">
-                <button className="w-8 h-8 rounded-full flex items-center justify-center text-lg transition-all" style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}>
-                  ❤️
-                </button>
-                <button className="w-8 h-8 rounded-full flex items-center justify-center text-lg transition-all" style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}>
-                  🎁
-                </button>
-              </div>
-            </div>
-
-            {/* SECTION 2: MIDDLE - Messages area with remote video */}
-            <div id="main-container" className="overflow-visible flex flex-col w-full flex-1" style={{ zIndex: 1, backgroundColor: 'transparent', padding: 0, overflow: 'visible' }}>
+              {/* Remote video element */}
+              <video
+                id="remote-video-singleton"
+                ref={remoteVideoRef}
+                autoPlay={true}
+                playsInline={true}
+                muted={true}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  backgroundColor: 'black',
+                  display: hasPartner ? 'block' : 'none',
+                  zIndex: 10
+                }}
+              />
               
-              {/* Remote video wrapper - CONTAINS the persistent remote video element
-                  The <video ref={remoteVideoRef} /> lives here, inside the layout
-                  NOT using position: fixed (that broke the entire UI)
-                  Using display: none to hide when !hasPartner
-              */}
-              <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'visible', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                
-                {/* 🔥 CRITICAL: Remote video element - ALWAYS mounted, NEVER unmounted
-                    Hidden with display: none when !hasPartner (not with position: fixed!)
-                    This keeps layout normal, ref stable, and allows ontrack to attach stream
-                */}
-                <video
-                  id="remote-video-singleton"
-                  ref={remoteVideoRef}
-                  autoPlay={true}
-                  playsInline={true}
-                  muted={true}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    backgroundColor: 'black',
-                    display: hasPartner ? 'block' : 'none',
-                    zIndex: 10
-                  }}
-                />
-                
-                {/* NO video element here - using persistent one above! */}
-                
-                {/* Placeholder shown when no partner */}
-                {!hasPartner && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    backgroundColor: '#000000',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1
-                  }}>
-                    <p style={{ color: '#d9b85f', fontSize: '14px' }}>Waiting for partner video...</p>
-                  </div>
-                )}
-
-                {/* Connection status overlay - Top Right */}
-                {isConnected && hasPartner && (
-                  <div className="absolute top-3 right-3 flex items-center gap-2 text-xs font-semibold z-50 shadow-lg px-2 py-1 rounded-full" style={{ backgroundColor: 'rgba(217, 184, 95, 0.9)', color: '#0f0f0f' }}>
-                    <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#0f0f0f' }}></span>
-                    {formatTime(connectionTime)}
-                  </div>
-                )}
-              </div>
-
-              {/* Waiting for partner - show ONLY when no partner */}
+              {/* Placeholder shown when no partner */}
               {!hasPartner && (
-                <div className="flex-1 w-full flex items-center justify-center flex-col bg-black rounded-2xl" style={{ zIndex: 1 }}>
-                  <div className="text-center">
-                    <div className="animate-spin mb-4 text-5xl inline-block">⟳</div>
-                    <p className="font-semibold text-base" style={{ color: '#d9b85f' }}>Looking for a partner...</p>
-                    <p className="text-xs mt-2" style={{ color: '#d9b85f' }}>This won't take long</p>
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: '#000000',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1
+                }}>
+                  <p style={{ color: '#d9b85f', fontSize: '14px' }}>Waiting for partner video...</p>
+                </div>
+              )}
+
+              {/* Partner info overlay - Top Left */}
+              {hasPartner && (
+                <div className="absolute top-4 left-4 flex items-center gap-3 z-50 backdrop-blur-sm px-3 py-2 rounded-xl" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg flex-shrink-0 overflow-hidden">
+                    {partnerInfo && partnerInfo.picture ? (
+                      <img src={partnerInfo.picture} alt="Partner" className="w-full h-full object-cover" />
+                    ) : (
+                      '👤'
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>
+                      {partnerInfo ? partnerInfo.userName : 'Partner'}
+                    </p>
+                    <p className="text-xs" style={{ color: '#d9b85f' }}>
+                      {partnerInfo ? partnerInfo.userLocation : 'Online'}
+                    </p>
                   </div>
                 </div>
               )}
 
-              {/* Chat messages - Display below video when they exist */}
-              {messages.length > 0 && hasPartner && (
-                <div className="space-y-2 mt-3 px-4" style={{ zIndex: 10 }}>
-                  {messages.map(msg => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-xs px-3 py-2 rounded-2xl text-xs ${
-                          msg.sender === 'user'
-                            ? 'text-white'
-                            : 'text-white'
-                        }`}
-                        style={{
-                          backgroundColor: msg.sender === 'user' ? '#d9b85f' : 'rgba(217, 184, 95, 0.6)',
-                          color: msg.sender === 'user' ? '#0f0f0f' : '#d9b85f'
-                        }}
-                      >
-                        {msg.text}
-                      </div>
-                    </div>
-                  ))}
+              {/* Connection status overlay - Top Right */}
+              {isConnected && hasPartner && (
+                <div className="absolute top-4 right-4 flex items-center gap-2 text-xs font-semibold z-50 shadow-lg px-3 py-2 rounded-full" style={{ backgroundColor: 'rgba(217, 184, 95, 0.9)', color: '#0f0f0f' }}>
+                  <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#0f0f0f' }}></span>
+                  {formatTime(connectionTime)}
                 </div>
               )}
             </div>
-
           </div>
 
-          {/* SECTION 3: BOTTOM - Message input box */}
-          <div className="px-4 flex items-center justify-between backdrop-blur-sm flex-shrink-0" style={{ height: '56px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: 'rgba(19, 19, 19, 0.8)', borderTop: '1px solid #d9b85f' }}>
-            {/* Left: Username avatar */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                M
+          {/* RIGHT CAMERA - Local Video */}
+          <div className="flex-1 rounded-2xl shadow-2xl overflow-hidden relative" style={{ backgroundColor: '#000', border: '1px solid #d9b85f', minHeight: '400px', aspectRatio: '16/9' }}>
+            {/* Local video container */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'hidden', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {/* Local video is positioned absolutely at root level, but shows here */}
+              <div style={{ width: '100%', height: '100%' }}>
+                {/* You badge */}
+                <div className="you-badge" style={{ zIndex: 2 }}>You</div>
               </div>
-            </div>
-
-            {/* Right: Message input and button */}
-            <div className="flex items-center gap-2 flex-1 ml-2 flex-shrink-0">
-              <input
-                type="text"
-                value={messageInput}
-                onChange={e => setMessageInput(e.target.value)}
-                onKeyPress={e => e.key === 'Enter' && sendMessage()}
-                placeholder="Send Message"
-                disabled={!hasPartner}
-                className="flex-1 px-3 py-2 rounded-lg focus:outline-none disabled:bg-gray-500/20 text-xs font-medium"
-                style={{ backgroundColor: 'rgba(217, 184, 95, 0.1)', borderColor: '#d9b85f', border: '1px solid #d9b85f', color: '#d9b85f' }}
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!hasPartner || messageInput.trim() === ''}
-                className="w-8 h-8 font-bold rounded-lg transition-all disabled:cursor-not-allowed flex items-center justify-center text-sm shadow-md flex-shrink-0"
-                style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
-              >
-                💰
-              </button>
             </div>
           </div>
         </div>
 
-        {/* RIGHT - Local camera video panel */}
-        <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden', position: 'relative' }}>
-          {/* ✅ This panel is a visual container. The persistent video element overlays it from root level */}
-          <div className="you-badge">You</div>
+        {/* BOTTOM CONTROLS - Center aligned */}
+        <div className="w-full max-w-5xl flex items-center justify-center gap-4 pb-4" style={{ backgroundColor: 'transparent' }}>
+          {/* Skip Button */}
+          <button
+            onClick={() => {
+              console.log('Skip pressed');
+              // Skip logic handled by parent
+            }}
+            className="px-6 py-3 rounded-xl font-bold transition-all text-sm"
+            style={{
+              backgroundColor: 'transparent',
+              border: '1px solid #d9b85f',
+              color: '#d9b85f',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 20px rgba(217, 184, 95, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            ⏭ Skip
+          </button>
+
+          {/* Next Button */}
+          <button
+            onClick={() => {
+              console.log('Next pressed');
+              // Next logic handled by parent
+            }}
+            className="px-6 py-3 rounded-xl font-bold transition-all text-sm"
+            style={{
+              backgroundColor: 'transparent',
+              border: '1px solid #d9b85f',
+              color: '#d9b85f',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 20px rgba(217, 184, 95, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            ⏭ Next
+          </button>
+
+          {/* Report Button */}
+          <button
+            onClick={() => {
+              console.log('Report pressed');
+              // Report logic handled by parent
+            }}
+            className="px-6 py-3 rounded-xl font-bold transition-all text-sm"
+            style={{
+              backgroundColor: 'transparent',
+              border: '1px solid #d9b85f',
+              color: '#d9b85f',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 20px rgba(217, 184, 95, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            ⚠️ Report
+          </button>
         </div>
     </div>
     );
