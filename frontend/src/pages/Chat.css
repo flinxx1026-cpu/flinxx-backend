@@ -13,10 +13,12 @@
   width: 100vw;
   height: 100vh;
   display: flex;
-  background: #0b0b0b;
+  background: #000;
   overflow: hidden;
   position: relative;
   align-items: stretch;
+  padding: 0;
+  margin: 0;
 }
 
 .left-panel {
@@ -107,14 +109,15 @@
 
 .right-panel {
   width: 55%;
-  margin: 40px;
-  border: 2px solid #d9b55d;
-  border-radius: 16px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
   position: relative;
   background: #000;
   overflow: hidden;
   display: block !important;
-  height: calc(100vh - 80px);
+  height: 100vh;
 }
 
 .right-panel video {
@@ -135,9 +138,12 @@
   position: absolute;
   top: 12px;
   left: 20px;
+  right: 12px;
   display: flex;
-  gap: 14px;
+  gap: 10px;
   z-index: 10;
+  padding: 0;
+  margin: 0;
 }
 
 .icon {
@@ -1003,18 +1009,21 @@ video {
 }
 
 /* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS */
-/* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS */
+/* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS - EDGE TO EDGE */
 .global-local-video {
   position: fixed;
-  top: 40px;
-  right: 40px;
-  width: calc(55% - 80px);
-  height: calc(100vh - 160px);
+  top: 0;
+  right: 0;
+  width: 55%;
+  height: 100vh;
   object-fit: cover;
-  border-radius: 14px;
   z-index: 5;
   background: black;
   display: block !important;
   opacity: 1 !important;
   visibility: visible !important;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
 }
