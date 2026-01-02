@@ -1581,7 +1581,15 @@ const Chat = () => {
         />
       )}
 
-      {/* LEFT PANEL - Branding & CTA */}
+      {/* LEFT PANEL - Video Preview (Light Background) */}
+      <div className="flex-1 rounded-2xl shadow-2xl overflow-hidden relative mx-6 my-6" style={{ backgroundColor: '#e8e8e8', border: 'none', minHeight: '90vh' }}>
+        {/* Video container */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'hidden', backgroundColor: '#e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Light background video preview */}
+        </div>
+      </div>
+
+      {/* RIGHT PANEL - Branding & CTA */}
       <div className="flex-1 flex flex-col items-center justify-center px-10 py-20 gap-12" style={{ backgroundColor: '#0f0f0f' }}>
         {/* Large Flinxx Text */}
         <div className="text-center">
@@ -1623,15 +1631,6 @@ const Chat = () => {
             <>🎬 Start Video Chat</>
           )}
         </button>
-      </div>
-
-      {/* RIGHT PANEL - Video Preview */}
-      <div className="flex-1 rounded-2xl shadow-2xl overflow-hidden relative mx-6 my-6" style={{ backgroundColor: '#000', border: '1px solid #d9b85f', minHeight: '90vh' }}>
-        {/* Video container */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'hidden', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {/* You badge */}
-          <div className="you-badge" style={{ zIndex: 2 }}>You</div>
-        </div>
       </div>
     </div>
   );
