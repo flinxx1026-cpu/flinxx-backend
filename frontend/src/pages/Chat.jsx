@@ -1598,22 +1598,6 @@ const Chat = () => {
             Camera loading...
           </div>
         )}
-        
-        {/* Camera Video Element */}
-        <video
-          ref={localVideoRef}
-          autoPlay
-          muted
-          playsInline
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            zIndex: 2
-          }}
-        />
 
         {/* Top Icons - Always render */}
         <div className="top-icons">
@@ -1799,6 +1783,20 @@ const Chat = () => {
   };
 
   // Video Chat Screen Component
+  // 🔥 GLOBAL LOCAL VIDEO - NEVER UNMOUNTS
+  // Persistent video element that stays mounted across all screens
+  const GlobalLocalVideo = () => {
+    return (
+      <video
+        ref={localVideoRef}
+        autoPlay
+        muted
+        playsInline
+        className="global-local-video"
+      />
+    );
+  };
+
   const VideoChatScreen = () => {
     // CRITICAL DEBUG: Log partnerInfo to diagnose display issue
     console.log('🎬 VideoChatScreen rendering - partnerInfo:', {
@@ -2016,7 +2014,10 @@ const Chat = () => {
       ) : (
         <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible', position: 'relative' }}>
           
-          {/* Main content - Show correct screen based on state */}
+          {/* 🔥 GLOBAL LOCAL VIDEO (NEVER UNMOUNTS) */}
+          <GlobalLocalVideo />
+
+          {/* Screens */}
           {hasPartner ? (
             // Partner found: Show video chat (includes remote video inside)
             <VideoChatScreen />

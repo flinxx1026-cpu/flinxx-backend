@@ -966,3 +966,21 @@ video {
   font-weight: 600;
   border: 1px solid #d4af37;
 }
+
+/* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS */
+.global-local-video {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 55%;
+  height: calc(100vh - 80px);
+  margin: 40px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 2px solid #d9b55d;
+  z-index: 5;
+  background: black;
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
