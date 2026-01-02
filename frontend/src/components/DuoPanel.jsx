@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import './DuoPanel.css';
 import { getFriends, markMessagesAsRead } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
@@ -11,16 +11,17 @@ const DuoPanel = ({ onClose }) => {
   const { markAsRead } = useContext(MessageContext) || {};
   const { refetchUnreadCount } = useUnread() || {};
   const [friends, setFriends] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start as true on mount
   const [activeChat, setActiveChat] = useState(null);
+  const fetchedRef = useRef(false); // Track if we've already fetched
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-  // Fetch accepted friends list when panel opens
+  // Fetch accepted friends list only once when panel opens
   useEffect(() => {
+    // Only fetch if we haven't already fetched and user is ready
+    if (fetchedRef.current || !user?.uuid) return;
+    
     const fetchFriendsList = async () => {
-      if (!user?.uuid) return;
-      
-      setIsLoading(true);
       try {
         // getFriends returns only ACCEPTED friends from the API
         const friendsData = await getFriends(user.uuid);
@@ -37,12 +38,15 @@ const DuoPanel = ({ onClose }) => {
         console.error('❌ Failed to fetch accepted friends:', error);
         setFriends([]);
       } finally {
+        // Only set loading to false once, never show loading flicker again
         setIsLoading(false);
       }
     };
 
+    // Mark as fetched to prevent re-fetches
+    fetchedRef.current = true;
     fetchFriendsList();
-  }, [user?.uuid]);
+  }, [user?.uuid]); // Only depend on user?.uuid
 
   // Update friends list when message is sent
   const updateChatListOnMessage = (friendId, messageTime) => {
