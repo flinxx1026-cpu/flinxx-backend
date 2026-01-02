@@ -1566,41 +1566,19 @@ const Chat = () => {
 
   // Intro Screen Component
   const IntroScreen = () => (
-    <div className="intro-screen-container w-full min-h-screen flex flex-row items-stretch overflow-visible" style={{ backgroundColor: '#0f0f0f' }}>
-      {/* Top Icons Bar */}
-      {currentUser?.uuid && (
-        <TopActions
-          currentUser={currentUser}
-          onProfileClick={() => setIsProfileOpen(true)}
-          onPremiumClick={() => setIsPremiumOpen(true)}
-          onMatchHistoryClick={() => setIsMatchHistoryOpen(true)}
-          onSearchClick={() => setIsSearchOpen(true)}
-          onRequestsClick={() => setActivePanel(activePanel === 'notification' ? null : 'notification')}
-          onMessageClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
-          isFixedPosition={true}
-        />
-      )}
-
-      {/* LEFT PANEL - Video Preview (Light Background) */}
-      <div className="flex-1 rounded-2xl shadow-2xl overflow-hidden relative mx-6 my-6" style={{ backgroundColor: '#e8e8e8', border: 'none', minHeight: '90vh' }}>
-        {/* Video container */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'hidden', backgroundColor: '#e8e8e8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {/* Light background video preview */}
-        </div>
-      </div>
-
-      {/* RIGHT PANEL - Branding & CTA */}
-      <div className="flex-1 flex flex-col items-center justify-center px-10 py-20 gap-12" style={{ backgroundColor: '#0f0f0f' }}>
+    <div className="intro-screen-container w-full min-h-screen" style={{ backgroundColor: '#0f0f0f', position: 'relative' }}>
+      {/* LEFT PANEL - Branding & CTA */}
+      <div className="flex flex-col items-center justify-center h-screen" style={{ width: '40%', backgroundColor: '#0f0f0f' }}>
         {/* Large Flinxx Text */}
         <div className="text-center">
           <h1 className="text-7xl font-black" style={{ color: '#d9b85f' }}>Flinxx</h1>
         </div>
 
-        {/* Start Video Chat Button - Full Width Yellow */}
+        {/* Start Video Chat Button */}
         <button
           onClick={startVideoChat}
           disabled={isLoading}
-          className="w-full px-8 py-4 rounded-full font-bold transition-all text-lg"
+          className="mt-12 px-8 py-4 rounded-full font-bold transition-all text-lg"
           style={{
             backgroundColor: isLoading ? '#666' : '#d9b85f',
             color: isLoading ? '#aaa' : '#000',
@@ -1631,6 +1609,224 @@ const Chat = () => {
             <>🎬 Start Video Chat</>
           )}
         </button>
+      </div>
+
+      {/* RIGHT PANEL - Fixed Camera Panel */}
+      <div style={{
+        position: 'fixed',
+        right: '20px',
+        top: '20px',
+        width: '60%',
+        height: 'calc(100vh - 40px)',
+        border: '1px solid #d6b15e',
+        borderRadius: '20px',
+        backgroundColor: '#000',
+        overflow: 'hidden',
+        zIndex: 10
+      }}>
+        {/* Camera Video Element */}
+        <video
+          ref={localVideoRef}
+          autoPlay
+          muted
+          playsInline
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            borderRadius: '20px'
+          }}
+        />
+
+        {/* Top Icons */}
+        {currentUser?.uuid && (
+          <div style={{
+            position: 'absolute',
+            top: '12px',
+            right: '16px',
+            display: 'flex',
+            gap: '12px',
+            zIndex: 20
+          }}>
+            {/* Profile Icon */}
+            <button
+              onClick={() => setIsProfileOpen(true)}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                border: '1px solid #d6b15e',
+                backgroundColor: 'transparent',
+                color: '#d6b15e',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                transition: 'all 0.3s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              👤
+            </button>
+
+            {/* Search Icon */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                border: '1px solid #d6b15e',
+                backgroundColor: 'transparent',
+                color: '#d6b15e',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                transition: 'all 0.3s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              🔍
+            </button>
+
+            {/* Heart Icon */}
+            <button
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                border: '1px solid #d6b15e',
+                backgroundColor: 'transparent',
+                color: '#d6b15e',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                transition: 'all 0.3s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              ❤️
+            </button>
+
+            {/* Chat Icon */}
+            <button
+              onClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                border: '1px solid #d6b15e',
+                backgroundColor: 'transparent',
+                color: '#d6b15e',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                transition: 'all 0.3s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              💬
+            </button>
+
+            {/* Premium Icon */}
+            <button
+              onClick={() => setIsPremiumOpen(true)}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                border: '1px solid #d6b15e',
+                backgroundColor: 'transparent',
+                color: '#d6b15e',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                transition: 'all 0.3s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              👑
+            </button>
+
+            {/* Match History Icon */}
+            <button
+              onClick={() => setIsMatchHistoryOpen(true)}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                border: '1px solid #d6b15e',
+                backgroundColor: 'transparent',
+                color: '#d6b15e',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                transition: 'all 0.3s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              ⏱️
+            </button>
+          </div>
+        )}
+
+        {/* "You" Badge - Bottom Left */}
+        <div style={{
+          position: 'absolute',
+          bottom: '14px',
+          left: '14px',
+          background: '#111',
+          border: '1px solid #d6b15e',
+          color: '#d6b15e',
+          padding: '6px 12px',
+          borderRadius: '20px',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          zIndex: 20
+        }}>
+          You
+        </div>
       </div>
     </div>
   );
