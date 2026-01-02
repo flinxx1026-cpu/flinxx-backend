@@ -128,7 +128,6 @@ export const unfriendUser = async (userUUID, friendId) => {
 export const getUnreadCount = async (userUUID) => {
   // ✅ CRITICAL: STRICT VALIDATION – UUID must be 36 chars
   if (!userUUID || typeof userUUID !== 'string' || userUUID.length !== 36) {
-    console.warn('⛔ getUnreadCount blocked – invalid UUID:', userUUID);
     return 0;
   }
 
@@ -150,7 +149,6 @@ export const getUnreadCount = async (userUUID) => {
     const data = await response.json();
     return data.unreadCount ?? 0;
   } catch (err) {
-    console.error('❌ Unread count fetch failed:', err);
     return 0;
   }
 };

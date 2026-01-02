@@ -14,41 +14,40 @@ export const UnreadProvider = ({ children }) => {
   useEffect(() => {
     // Step 1: Wait for AuthContext to finish loading
     if (authLoading === true) {
-      console.log('⏸ UnreadContext: Waiting for AuthContext to load...');
       return;
     }
 
     // Step 1.5: Extra guard - user must exist
     if (!user) {
-      console.log('⏸ UnreadContext: Skipping fetch – user is null');
       return;
     }
 
     // Step 2: Check if user is ready (not just loading state)
     if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
-      console.log('⏸ UnreadContext: Skipping fetch – user UUID not valid:', user?.uuid?.length);
       return;
     }
 
     // Step 3: Now we can safely fetch unread count
+    let cancelled = false;
+
     const fetchUnread = async () => {
-      console.log('✅ UnreadContext: Auth ready, user valid, fetching unread count');
-      try {
-        const result = await getUnreadCount(user.uuid);
+      const result = await getUnreadCount(user.uuid);
+      if (!cancelled) {
         const count = typeof result === 'number' ? result : result?.unreadCount || 0;
         setUnreadCount(count);
-      } catch (err) {
-        console.error('❌ UnreadContext: Error fetching unread count:', err);
-        setUnreadCount(0);
       }
     };
 
+    // Initial fetch
     fetchUnread();
 
     // Poll every 5 seconds for updates
     const interval = setInterval(fetchUnread, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [authLoading, user?.uuid]);
 
   // ✅ SOCKET EVENT: Update unread count when new message arrives
@@ -59,14 +58,9 @@ export const UnreadProvider = ({ children }) => {
     if (!user?.uuid || user.uuid.length !== 36) return;
 
     const handleNewMessage = async () => {
-      console.log('📬 UnreadContext: New message received, refreshing count');
-      try {
-        const result = await getUnreadCount(user.uuid);
-        const count = typeof result === 'number' ? result : result?.unreadCount || 0;
-        setUnreadCount(count);
-      } catch (err) {
-        console.error('❌ UnreadContext: Error updating unread count:', err);
-      }
+      const result = await getUnreadCount(user.uuid);
+      const count = typeof result === 'number' ? result : result?.unreadCount || 0;
+      setUnreadCount(count);
     };
 
     socket.on('receive_message', handleNewMessage);
@@ -79,19 +73,12 @@ export const UnreadProvider = ({ children }) => {
   // ✅ REFETCH FUNCTION: Manually refresh unread count (called after marking messages as read)
   const refetchUnreadCount = async () => {
     if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
-      console.warn('⛔ refetchUnreadCount: Invalid user UUID');
       return;
     }
 
-    try {
-      console.log('🔄 Refetching unread count after mark-read');
-      const result = await getUnreadCount(user.uuid);
-      const count = typeof result === 'number' ? result : result?.unreadCount || 0;
-      setUnreadCount(count);
-      console.log('✅ Unread count refetched:', count);
-    } catch (err) {
-      console.error('❌ Error refetching unread count:', err);
-    }
+    const result = await getUnreadCount(user.uuid);
+    const count = typeof result === 'number' ? result : result?.unreadCount || 0;
+    setUnreadCount(count);
   };
 
   return (
