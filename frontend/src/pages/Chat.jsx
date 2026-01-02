@@ -328,12 +328,17 @@ const Chat = () => {
   const startCamera = async () => {
     try {
       console.log('📹 [START CAMERA] User clicked to start camera');
+      console.log('📹 [START CAMERA] Checking DOM state...');
+      console.log('   localVideoRef.current:', !!localVideoRef.current);
+      console.log('   localVideoRef.current in DOM:', localVideoRef.current?.parentElement ? 'YES' : 'NO');
+      console.log('   All videos in DOM:', document.querySelectorAll('video').length);
       
       if (!localVideoRef.current) {
-        console.error('📹 [START CAMERA] ❌ Video element not in DOM');
+        console.error('📹 [START CAMERA] ❌ Video element not in DOM - cannot proceed');
         return;
       }
       
+      console.log('📹 [START CAMERA] Requesting camera from browser...');
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: false,
@@ -342,26 +347,35 @@ const Chat = () => {
       streamRef.current = stream;
       localStreamRef.current = stream;
       console.log('📹 [START CAMERA] ✅ Stream obtained:', stream);
+      console.log('📹 [START CAMERA] Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, id: t.id })));
 
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
-        console.log('📹 [START CAMERA] Stream attached to video element');
+        console.log('📹 [START CAMERA] ✅ Stream attached to video element');
         
         try {
-          await localVideoRef.current.play();
-          console.log('📹 [START CAMERA] ✅ Video playing');
+          const playPromise = await localVideoRef.current.play();
+          console.log('📹 [START CAMERA] ✅ Video playing, playPromise:', playPromise);
           setIsLocalCameraReady(true);  // ✅ IMPORTANT - Local camera is ready
         } catch (playErr) {
-          console.warn('📹 [START CAMERA] Play warning:', playErr);
+          console.warn('📹 [START CAMERA] ⚠️ Play warning (stream may still work):', playErr.message);
           setIsLocalCameraReady(true);  // ✅ Set ready even if play has issues
         }
       }
     } catch (error) {
-      console.error('📹 [START CAMERA] ❌ Camera access failed:', error);
+      console.error('📹 [START CAMERA] ❌ CRITICAL ERROR:', error);
+      console.error('   Error name:', error.name);
+      console.error('   Error message:', error.message);
+      
+      // Handle specific error types
       if (error.name === 'NotAllowedError') {
-        console.warn('⚠️ Camera permission denied by user');
+        console.error('❌ Camera permission DENIED by user - User clicked deny in browser prompt');
       } else if (error.name === 'NotFoundError') {
-        console.warn('⚠️ No camera device found');
+        console.error('❌ No camera device found - Check if device has a camera');
+      } else if (error.name === 'NotReadableError') {
+        console.error('❌ Camera is already in use by another app - Close other apps using camera');
+      } else if (error.name === 'SecurityError') {
+        console.error('❌ Camera access blocked by security policy - Must use HTTPS');
       }
     }
   };
