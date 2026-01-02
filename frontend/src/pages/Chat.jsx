@@ -196,27 +196,6 @@ const Chat = () => {
     console.log('   localStreamRef.current exists:', !!localStreamRef.current);
   }, []);
 
-  // 🔥 CRITICAL: Monitor remoteVideoRef availability for debugging
-  useEffect(() => {
-    const remoteRefCheckInterval = setInterval(() => {
-      const remoteExists = !!remoteVideoRef.current;
-      const remoteInDOM = remoteVideoRef.current?.parentElement ? true : false;
-      const remoteSrcObject = !!remoteVideoRef.current?.srcObject;
-      
-      if (remoteExists && remoteInDOM) {
-        console.log('✅ remoteVideoRef is AVAILABLE in DOM and ready for ontrack');
-      } else if (remoteExists && !remoteInDOM) {
-        console.warn('⚠️ remoteVideoRef exists but NOT in DOM - ontrack may fail!');
-      } else {
-        console.log('⏳ Waiting for remoteVideoRef to be mounted...');
-      }
-    }, 2000);
-    
-    return () => clearInterval(remoteRefCheckInterval);
-  }, []);
-
-
-
   // ========================================
   // CRITICAL: Camera attachment happens ONLY in startPreview() useEffect
   // Do NOT re-attach in hasPartner useEffect - causes DOM thrashing
