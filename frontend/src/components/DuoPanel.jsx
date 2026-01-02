@@ -10,8 +10,7 @@ const DuoPanel = ({ isOpen = true, onClose }) => {
   const { user } = useContext(AuthContext) || {};
   const { markAsRead } = useContext(MessageContext) || {};
   const { refetchUnreadCount } = useUnread() || {};
-  const [friends, setFriends] = useState([]);
-  const [isLoading, setIsLoading] = useState(true); // Start as true on mount
+  const [friends, setFriends] = useState(null); // null = loading, array = loaded (never reset)
   const [activeChat, setActiveChat] = useState(null);
   const fetchedRef = useRef(false); // Track if we've already fetched
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
@@ -34,13 +33,12 @@ const DuoPanel = ({ isOpen = true, onClose }) => {
               return timeB - timeA;
             })
           : [];
+        // Set friends - once set, never reset to null again
         setFriends(sortedFriends);
       } catch (error) {
         console.error('❌ Failed to fetch accepted friends:', error);
+        // Set to empty array on error - never goes back to null
         setFriends([]);
-      } finally {
-        // Only set loading to false once, never show loading flicker again
-        setIsLoading(false);
       }
     };
 
@@ -122,7 +120,7 @@ const DuoPanel = ({ isOpen = true, onClose }) => {
             onBack={() => setActiveChat(null)}
             onMessageSent={updateChatListOnMessage}
           />
-        ) : isLoading ? (
+        ) : friends === null ? (
           <p style={{ textAlign: 'center', color: '#9ca3af', marginTop: '20px' }}>
             Loading squad...
           </p>
