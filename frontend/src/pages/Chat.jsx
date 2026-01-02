@@ -1597,33 +1597,8 @@ const Chat = () => {
         >
           {isLoading ? '⟳ Loading...' : '🎬 Start Video Chat'}
         </button>
-      </div>
 
-      {/* RIGHT PANEL - Camera Feed + Icons + You Badge */}
-      <div className="right-panel">
-        {/* Inner Camera Wrapper */}
-        <div className="camera-inner">
-          {/* Camera Placeholder - Rendered BEFORE video so it sits below */}
-          {!isLocalCameraReady && (
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundColor: '#000',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#666',
-              fontSize: '12px',
-              zIndex: 1,
-              pointerEvents: 'none'
-            }}>
-              Camera loading...
-            </div>
-          )}
-        </div>
-
-        {/* Top Icons - Always render */}
+        {/* Top Icons - Header Bar */}
         <div className="top-icons">
           {/* Profile Icon */}
           <button
@@ -1677,6 +1652,31 @@ const Chat = () => {
           >
             ⏱️
           </button>
+        </div>
+      </div>
+
+      {/* RIGHT PANEL - Camera Feed + Icons + You Badge */}
+      <div className="right-panel">
+        {/* Inner Camera Wrapper */}
+        <div className="camera-inner">
+          {/* Camera Placeholder - Rendered BEFORE video so it sits below */}
+          {!isLocalCameraReady && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundColor: '#000',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#666',
+              fontSize: '12px',
+              zIndex: 1,
+              pointerEvents: 'none'
+            }}>
+              Camera loading...
+            </div>
+          )}
         </div>
 
         {/* "You" Badge - Always render */}
