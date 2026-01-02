@@ -1588,17 +1588,6 @@ const Chat = () => {
           <h1 className="text-7xl font-black" style={{ color: '#d9b85f' }}>Flinxx</h1>
         </div>
 
-        {/* Preference Badge */}
-        {!(selectedGender === 'both') && (
-          <button 
-            onClick={() => setIsGenderFilterOpen(true)}
-            className="rounded-full px-6 py-2 transition-all cursor-pointer text-sm font-semibold"
-            style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
-          >
-            👥 {selectedGender === 'girls' ? 'Girls Only' : selectedGender === 'guys' ? 'Guys Only' : 'Both'}
-          </button>
-        )}
-
         {/* Start Video Chat Button - Full Width Yellow */}
         <button
           onClick={startVideoChat}
