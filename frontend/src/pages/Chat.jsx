@@ -1566,9 +1566,9 @@ const Chat = () => {
 
   // Intro Screen Component
   const IntroScreen = () => (
-    <div className="intro-screen-container w-full min-h-screen" style={{ backgroundColor: '#0f0f0f', position: 'relative' }}>
+    <div className="intro-screen-container w-full min-h-screen hero" style={{ backgroundColor: '#0f0f0f', position: 'relative' }}>
       {/* LEFT PANEL - Branding & CTA */}
-      <div className="flex flex-col items-center justify-center h-screen" style={{ width: '40%', backgroundColor: '#0f0f0f' }}>
+      <div className="slide-left flex flex-col items-center justify-center h-screen" style={{ width: '40%', backgroundColor: '#0f0f0f' }}>
         {/* Large Flinxx Text */}
         <div className="text-center">
           <h1 className="text-7xl font-black" style={{ color: '#d9b85f' }}>Flinxx</h1>
@@ -1578,7 +1578,7 @@ const Chat = () => {
         <button
           onClick={startVideoChat}
           disabled={isLoading}
-          className="mt-12 px-8 py-4 rounded-full font-bold transition-all text-lg"
+          className="fade-up-delay mt-12 px-8 py-4 rounded-full font-bold transition-all text-lg"
           style={{
             backgroundColor: isLoading ? '#666' : '#d9b85f',
             color: isLoading ? '#aaa' : '#000',
@@ -1612,7 +1612,7 @@ const Chat = () => {
       </div>
 
       {/* RIGHT PANEL - Fixed Camera Panel */}
-      <div style={{
+      <div className="slide-right" style={{
         position: 'fixed',
         right: '20px',
         top: '20px',
@@ -1651,6 +1651,7 @@ const Chat = () => {
             {/* Profile Icon */}
             <button
               onClick={() => setIsProfileOpen(true)}
+              className="top-icon"
               style={{
                 width: '40px',
                 height: '40px',
@@ -1678,6 +1679,7 @@ const Chat = () => {
             {/* Search Icon */}
             <button
               onClick={() => setIsSearchOpen(true)}
+              className="top-icon"
               style={{
                 width: '40px',
                 height: '40px',
@@ -1704,6 +1706,7 @@ const Chat = () => {
 
             {/* Heart Icon */}
             <button
+              className="top-icon"
               style={{
                 width: '40px',
                 height: '40px',
@@ -1731,6 +1734,7 @@ const Chat = () => {
             {/* Chat Icon */}
             <button
               onClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
+              className="top-icon"
               style={{
                 width: '40px',
                 height: '40px',
@@ -1758,6 +1762,7 @@ const Chat = () => {
             {/* Premium Icon */}
             <button
               onClick={() => setIsPremiumOpen(true)}
+              className="top-icon"
               style={{
                 width: '40px',
                 height: '40px',
@@ -1785,6 +1790,7 @@ const Chat = () => {
             {/* Match History Icon */}
             <button
               onClick={() => setIsMatchHistoryOpen(true)}
+              className="top-icon"
               style={{
                 width: '40px',
                 height: '40px',
