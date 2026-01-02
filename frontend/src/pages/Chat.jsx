@@ -1882,7 +1882,7 @@ const Chat = () => {
     }, [isMatchingStarted]);
 
     return (
-    <div className="flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+    <div className="no-animation flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       {/* Left - Live camera preview box (visual container for persistent video overlay) */}
       <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden', position: 'relative' }}>
         {/* ✅ This panel is a visual container. The persistent video element overlays it from root level */}
@@ -1950,7 +1950,7 @@ const Chat = () => {
     });
     
     return (
-    <div className="video-chat-container flex flex-col w-full h-full items-center justify-center gap-8 px-6 py-6 overflow-visible" style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+    <div className="no-animation video-chat-container flex flex-col w-full h-full items-center justify-center gap-8 px-6 py-6 overflow-visible" style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
         
         {/* DUAL CAMERA LAYOUT - Side by Side */}
         <div className="w-full max-w-5xl flex gap-6 flex-1">

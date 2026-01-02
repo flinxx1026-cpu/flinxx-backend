@@ -108,6 +108,26 @@
   overflow: hidden;
 }
 
+/* ========== DISABLE ANIMATIONS IN DASHBOARD ========== */
+.no-animation,
+.no-animation *,
+.no-animation *::before,
+.no-animation *::after {
+  animation: none !important;
+  transition: none !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}
+
+.dashboard {
+  animation: none !important;
+}
+
+.dashboard * {
+  animation: none !important;
+  transition: none !important;
+}
+
 /* Dark theme with golden accents */
 body,
 html {
