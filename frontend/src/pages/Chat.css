@@ -14,11 +14,20 @@
   height: 100vh;
   display: flex;
   background: #000;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
   align-items: stretch;
-  padding: 0;
+  padding: 12px;
   margin: 0;
+  gap: 12px;
+}
+
+/* Common panel styling */
+.panel {
+  border: 1.5px solid #d4af37;
+  border-radius: 16px;
+  box-sizing: border-box;
+  background: #000;
 }
 
 .left-panel {
@@ -27,9 +36,12 @@
   flex-direction: column;
   justify-content: center;
   padding-left: 80px;
-  background: #0b0b0b;
+  background: #000;
   overflow: hidden;
   height: 100%;
+  border: 1.5px solid #d4af37;
+  border-radius: 16px;
+  box-sizing: border-box;
 }
 
 .logo-text {
@@ -111,13 +123,14 @@
   width: 55%;
   padding: 0;
   margin: 0;
-  border: none;
-  border-radius: 0;
+  border: 1.5px solid #d4af37;
+  border-radius: 16px;
   position: relative;
   background: #000;
   overflow: hidden;
   display: block !important;
-  height: 100vh;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .right-panel video {
@@ -142,7 +155,7 @@
   display: flex;
   gap: 10px;
   z-index: 10;
-  padding: 0;
+  padding: 8px;
   margin: 0;
 }
 
@@ -1009,13 +1022,13 @@ video {
 }
 
 /* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS */
-/* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS - EDGE TO EDGE */
+/* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS - FITS IN BORDERED PANEL */
 .global-local-video {
   position: fixed;
-  top: 0;
-  right: 0;
-  width: 55%;
-  height: 100vh;
+  top: 12px;
+  right: 12px;
+  width: calc(55% - 24px);
+  height: calc(100vh - 24px);
   object-fit: cover;
   z-index: 5;
   background: black;
@@ -1025,5 +1038,5 @@ video {
   padding: 0;
   margin: 0;
   border: none;
-  border-radius: 0;
+  border-radius: 16px;
 }
