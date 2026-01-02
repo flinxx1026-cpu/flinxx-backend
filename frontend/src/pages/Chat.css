@@ -16,6 +16,7 @@
   background: #0b0b0b;
   overflow: hidden;
   position: relative;
+  align-items: stretch;
 }
 
 .left-panel {
@@ -26,6 +27,7 @@
   padding-left: 80px;
   background: #0b0b0b;
   overflow: hidden;
+  height: 100%;
 }
 
 .logo-text {
@@ -77,7 +79,7 @@
   background: #000;
   overflow: hidden;
   display: block !important;
-  min-height: 500px;
+  height: calc(100vh - 80px);
 }
 
 .right-panel video {

@@ -1673,20 +1673,27 @@ const Chat = () => {
     <div className="dashboard flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
       {/* Left - Live camera preview box */}
       <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden', position: 'relative' }}>
-        {/* Camera Video Element */}
-        <video
-          ref={localVideoRef}
-          autoPlay
-          muted
-          playsInline
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            borderRadius: '14px',
-            display: 'block'
-          }}
-        />
+        {/* Camera Placeholder - Shows while loading */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#000',
+          borderRadius: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#666',
+          fontSize: '12px',
+          zIndex: 0,
+          pointerEvents: 'none'
+        }}>
+          Camera loading...
+        </div>
         
         {/* You Badge */}
         <div className="you-badge">You</div>
@@ -1832,22 +1839,25 @@ const Chat = () => {
             </div>
           </div>
 
-          {/* RIGHT CAMERA - Local Video */}
+          {/* RIGHT CAMERA - Local Video Placeholder */}
           <div className="flex-1 rounded-2xl shadow-2xl overflow-hidden relative" style={{ backgroundColor: '#000', border: '1px solid #d9b85f', minHeight: '400px', aspectRatio: '16/9' }}>
-            {/* Local video element */}
-            <video
-              ref={localVideoRef}
-              autoPlay
-              muted
-              playsInline
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                borderRadius: '14px',
-                display: 'block'
-              }}
-            />
+            {/* Placeholder - actual video element is in root */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              backgroundColor: '#000',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#666',
+              fontSize: '12px',
+              zIndex: 0
+            }}>
+              Camera loading...
+            </div>
             
             {/* You badge */}
             <div className="you-badge" style={{ zIndex: 2 }}>You</div>
@@ -1947,7 +1957,28 @@ const Chat = () => {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+        <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible', position: 'relative' }}>
+          
+          {/* PERSISTENT LOCAL VIDEO ELEMENT - Renders in IntroScreen's right-panel via ref */}
+          <video
+            ref={localVideoRef}
+            id="persistent-local-video"
+            autoPlay
+            muted
+            playsInline
+            style={{
+              position: 'fixed',
+              top: 'calc(50% - 260px)',
+              right: '40px',
+              width: 'calc(55vw - 80px)',
+              height: 'calc(100vh - 80px)',
+              objectFit: 'cover',
+              borderRadius: '14px',
+              display: 'block',
+              zIndex: 10,
+              pointerEvents: 'none'
+            }}
+          />
           
           {/* Main content - Show correct screen based on state */}
           {hasPartner ? (
