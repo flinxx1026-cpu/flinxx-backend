@@ -1586,7 +1586,11 @@ const Chat = () => {
             position: 'absolute',
             top: 0,
             left: 0,
-            zIndex: 10
+            zIndex: 9999,
+            opacity: 1,
+            visibility: 'visible',
+            background: 'red',  // DEBUG - shows if video is rendering
+            backgroundColor: '#000'
           }}
         />
         
@@ -1607,7 +1611,7 @@ const Chat = () => {
             justifyContent: 'center',
             color: '#666',
             fontSize: '12px',
-            zIndex: 5,
+            zIndex: 1,
             pointerEvents: 'none'
           }}>
             Camera loading...
@@ -2014,27 +2018,6 @@ const Chat = () => {
         </div>
       ) : (
         <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible', position: 'relative' }}>
-          
-          {/* PERSISTENT LOCAL VIDEO ELEMENT - Renders in IntroScreen's right-panel via ref */}
-          <video
-            ref={localVideoRef}
-            id="persistent-local-video"
-            autoPlay
-            muted
-            playsInline
-            style={{
-              position: 'fixed',
-              top: 'calc(50% - 260px)',
-              right: '40px',
-              width: 'calc(55vw - 80px)',
-              height: 'calc(100vh - 80px)',
-              objectFit: 'cover',
-              borderRadius: '14px',
-              display: 'block',
-              zIndex: 10,
-              pointerEvents: 'none'
-            }}
-          />
           
           {/* Main content - Show correct screen based on state */}
           {hasPartner ? (
