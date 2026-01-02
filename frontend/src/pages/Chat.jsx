@@ -77,6 +77,7 @@ const Chat = () => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
+  const streamRef = useRef(null);  // 🔥 Keep track of stream for cleanup
   const partnerSocketIdRef = useRef(null);  // CRITICAL: Store partner socket ID for sending offers/answers
 
   // Monitor guest session timeout
@@ -343,6 +344,60 @@ const Chat = () => {
     }
   }, [hasPartner, cameraStarted]);
 
+  // 🔥 Camera start function - ONLY called on button click, NOT auto-called
+  const startCamera = async () => {
+    try {
+      console.log('📹 [START CAMERA] User clicked to start camera');
+      
+      if (!localVideoRef.current) {
+        console.error('📹 [START CAMERA] ❌ Video element not in DOM');
+        return;
+      }
+      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false,
+      });
+
+      streamRef.current = stream;
+      localStreamRef.current = stream;
+      console.log('📹 [START CAMERA] ✅ Stream obtained:', stream);
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        console.log('📹 [START CAMERA] Stream attached to video element');
+        
+        try {
+          await localVideoRef.current.play();
+          console.log('📹 [START CAMERA] ✅ Video playing');
+        } catch (playErr) {
+          console.warn('📹 [START CAMERA] Play warning:', playErr);
+        }
+      }
+    } catch (error) {
+      console.error('📹 [START CAMERA] ❌ Camera access failed:', error);
+      if (error.name === 'NotAllowedError') {
+        console.warn('⚠️ Camera permission denied by user');
+      } else if (error.name === 'NotFoundError') {
+        console.warn('⚠️ No camera device found');
+      }
+    }
+  };
+  
+  // 🔥 Cleanup: Stop camera on unmount
+  useEffect(() => {
+    return () => {
+      console.log('📹 [CLEANUP] Component unmounting - stopping camera');
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => {
+          console.log('📹 [CLEANUP] Stopping track:', track.kind);
+          track.stop();
+        });
+        streamRef.current = null;
+      }
+    };
+  }, []);
+
   // Auto-start camera preview on page load (lobby screen)
   // CRITICAL: Delayed initialization - only start after a short delay to ensure DOM is ready
   // IMPORTANT: Skip if coming from profile completion (view=home) - camera starts when user clicks "Start Video Chat"
@@ -374,6 +429,7 @@ const Chat = () => {
         
         // Store the stream for later use in chat
         localStreamRef.current = previewStream;
+        streamRef.current = previewStream;
         console.log('[Camera] ✅ Camera stream obtained');
         console.log('[Camera] Stream tracks:', previewStream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
         
@@ -1356,31 +1412,8 @@ const Chat = () => {
         setIsRequestingCamera(true);
         setIsLoading(true);
 
-        console.log('📹 [INIT] Requesting camera permission from browser...');
-        
-        // First time: Request camera permission and get stream
-        const previewStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: true
-        });
-        
-        // Store the stream for later use
-        localStreamRef.current = previewStream;
-        console.log('[Camera] ✅ Camera stream obtained');
-        console.log('[Camera] Stream tracks:', previewStream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
-        
-        // Attach stream to video element
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = previewStream;
-          localVideoRef.current.muted = true;
-          
-          try {
-            await localVideoRef.current.play();
-            console.log('✅ Camera preview playing successfully');
-          } catch (err) {
-            console.error('❌ Play error:', err);
-          }
-        }
+        // Call the new startCamera function
+        await startCamera();
 
         // Set camera started flag - shows preview on home screen
         console.log('🎬 [START] Setting cameraStarted = true (camera preview now showing)');
