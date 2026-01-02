@@ -369,7 +369,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
           </div>
         </div>
 
-        {/* Monkey Plus Section */}
+        {/* Premium Section */}
         <div 
           className="profile-premium-section" 
           onClick={onOpenPremium}
