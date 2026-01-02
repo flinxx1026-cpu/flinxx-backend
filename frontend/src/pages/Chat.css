@@ -1003,16 +1003,15 @@ video {
 }
 
 /* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS */
+/* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS */
 .global-local-video {
   position: fixed;
-  top: 0;
-  right: 0;
-  width: 55%;
-  height: calc(100vh - 80px);
-  margin: 40px;
+  top: 40px;
+  right: 40px;
+  width: calc(55% - 80px);
+  height: calc(100vh - 160px);
   object-fit: cover;
-  border-radius: 16px;
-  border: 2px solid #d9b55d;
+  border-radius: 14px;
   z-index: 5;
   background: black;
   display: block !important;
