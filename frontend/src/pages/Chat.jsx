@@ -1540,7 +1540,7 @@ const Chat = () => {
           }}
         />
         
-        {/* Camera Placeholder - Below video */}
+        {/* Camera Placeholder - Always rendered, but hidden when video has stream */}
         <div style={{
           position: 'absolute',
           top: 0,
