@@ -445,9 +445,13 @@ const Chat = () => {
           }
         }
       } catch (err) {
-        console.log('📷 Camera preview error (this is OK, user may deny permission):', err.message);
-        console.log('📷 Error name:', err.name);
-        console.log('📷 Error code:', err.code);
+        console.error('📷 Camera preview error during auto-start:', err.message);
+        console.error('📷 Error name:', err.name);
+        console.error('📷 Error code:', err.code);
+        
+        // CRITICAL: Always hide loading placeholder even on error
+        // User will need to click button manually if auto-start fails
+        setIsLocalCameraReady(true);
       }
     }
 
@@ -1568,7 +1572,11 @@ const Chat = () => {
             height: '100%',
             objectFit: 'cover',
             borderRadius: '14px',
-            display: 'block'
+            display: 'block',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            zIndex: 10
           }}
         />
         
@@ -1589,7 +1597,7 @@ const Chat = () => {
             justifyContent: 'center',
             color: '#666',
             fontSize: '12px',
-            zIndex: 0,
+            zIndex: 5,
             pointerEvents: 'none'
           }}>
             Camera loading...
