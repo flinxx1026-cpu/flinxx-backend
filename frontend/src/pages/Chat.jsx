@@ -1597,7 +1597,7 @@ const Chat = () => {
       <div className="right-panel flex-1 rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: '#131313', border: '1px solid #d9b85f' }}>
         {activeMode === 'duo' ? (
           // Show DuoPanel when in Duo mode
-          <DuoPanel />
+          <DuoPanel onClose={() => handleModeChange('solo')} />
         ) : (
           // Show Solo content when in Solo mode
           <div className="w-full h-full rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-between text-center">
