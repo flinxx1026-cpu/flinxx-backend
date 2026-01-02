@@ -1566,64 +1566,21 @@ const Chat = () => {
 
   // Intro Screen Component
   const IntroScreen = () => (
-    <div className="landing intro-screen-container w-full min-h-screen hero" style={{ backgroundColor: '#0f0f0f', position: 'relative' }}>
-      {/* LEFT PANEL - Branding & CTA */}
-      <div className="slide-left flex flex-col items-center justify-center h-screen" style={{ width: '40%', backgroundColor: '#0f0f0f' }}>
-        {/* Large Flinxx Text */}
-        <div className="text-center">
-          <h1 className="text-7xl font-black" style={{ color: '#d9b85f' }}>Flinxx</h1>
-        </div>
-
-        {/* Start Video Chat Button */}
+    <div className="dashboard">
+      {/* LEFT PANEL - Text and Button */}
+      <div className="left-panel">
+        <h1 className="logo-text">Flinxx</h1>
         <button
           onClick={startVideoChat}
           disabled={isLoading}
-          className="fade-up-delay mt-12 px-8 py-4 rounded-full font-bold transition-all text-lg"
-          style={{
-            backgroundColor: isLoading ? '#666' : '#d9b85f',
-            color: isLoading ? '#aaa' : '#000',
-            border: 'none',
-            cursor: isLoading ? 'not-allowed' : 'pointer',
-            opacity: isLoading ? 0.7 : 1,
-            maxWidth: '400px'
-          }}
-          onMouseEnter={(e) => {
-            if (!isLoading) {
-              e.currentTarget.style.boxShadow = '0 0 30px rgba(217, 184, 95, 0.5)';
-              e.currentTarget.style.transform = 'scale(1.02)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isLoading) {
-              e.currentTarget.style.boxShadow = 'none';
-              e.currentTarget.style.transform = 'scale(1)';
-            }
-          }}
+          className="start-btn"
         >
-          {isLoading ? (
-            <>
-              <span className="animate-spin inline-block mr-2">⟳</span>
-              {cameraStarted ? 'Starting Match...' : 'Requesting Access...'}
-            </>
-          ) : (
-            <>🎬 Start Video Chat</>
-          )}
+          {isLoading ? '⟳ Loading...' : '🎬 Start Video Chat'}
         </button>
       </div>
 
-      {/* RIGHT PANEL - Fixed Camera Panel */}
-      <div className="slide-right" style={{
-        position: 'fixed',
-        right: '20px',
-        top: '20px',
-        width: '60%',
-        height: 'calc(100vh - 40px)',
-        border: '1px solid #d6b15e',
-        borderRadius: '20px',
-        backgroundColor: '#000',
-        overflow: 'hidden',
-        zIndex: 10
-      }}>
+      {/* RIGHT PANEL - Camera Feed */}
+      <div className="right-panel">
         {/* Camera Video Element */}
         <video
           ref={localVideoRef}
@@ -1634,44 +1591,18 @@ const Chat = () => {
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            borderRadius: '20px'
+            borderRadius: '14px'
           }}
         />
 
         {/* Top Icons */}
         {currentUser?.uuid && (
-          <div style={{
-            position: 'absolute',
-            top: '12px',
-            right: '16px',
-            display: 'flex',
-            gap: '12px',
-            zIndex: 20
-          }}>
+          <div className="top-icons">
             {/* Profile Icon */}
             <button
               onClick={() => setIsProfileOpen(true)}
-              className="top-icon"
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                border: '1px solid #d6b15e',
-                backgroundColor: 'transparent',
-                color: '#d6b15e',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                transition: 'all 0.3s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="icon"
+              title="Profile"
             >
               👤
             </button>
@@ -1679,54 +1610,16 @@ const Chat = () => {
             {/* Search Icon */}
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="top-icon"
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                border: '1px solid #d6b15e',
-                backgroundColor: 'transparent',
-                color: '#d6b15e',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                transition: 'all 0.3s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="icon"
+              title="Search"
             >
               🔍
             </button>
 
             {/* Heart Icon */}
             <button
-              className="top-icon"
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                border: '1px solid #d6b15e',
-                backgroundColor: 'transparent',
-                color: '#d6b15e',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                transition: 'all 0.3s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="icon"
+              title="Likes"
             >
               ❤️
             </button>
@@ -1734,27 +1627,8 @@ const Chat = () => {
             {/* Chat Icon */}
             <button
               onClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
-              className="top-icon"
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                border: '1px solid #d6b15e',
-                backgroundColor: 'transparent',
-                color: '#d6b15e',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                transition: 'all 0.3s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="icon"
+              title="Messages"
             >
               💬
             </button>
@@ -1762,55 +1636,17 @@ const Chat = () => {
             {/* Premium Icon */}
             <button
               onClick={() => setIsPremiumOpen(true)}
-              className="top-icon"
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                border: '1px solid #d6b15e',
-                backgroundColor: 'transparent',
-                color: '#d6b15e',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                transition: 'all 0.3s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="icon"
+              title="Premium"
             >
               👑
             </button>
 
-            {/* Match History Icon */}
+            {/* History Icon */}
             <button
               onClick={() => setIsMatchHistoryOpen(true)}
-              className="top-icon"
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                border: '1px solid #d6b15e',
-                backgroundColor: 'transparent',
-                color: '#d6b15e',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                transition: 'all 0.3s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 0 15px rgba(214, 177, 94, 0.5)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="icon"
+              title="History"
             >
               ⏱️
             </button>
@@ -1818,21 +1654,7 @@ const Chat = () => {
         )}
 
         {/* "You" Badge - Bottom Left */}
-        <div style={{
-          position: 'absolute',
-          bottom: '14px',
-          left: '14px',
-          background: '#111',
-          border: '1px solid #d6b15e',
-          color: '#d6b15e',
-          padding: '6px 12px',
-          borderRadius: '20px',
-          fontSize: '12px',
-          fontWeight: 'bold',
-          zIndex: 20
-        }}>
-          You
-        </div>
+        <div className="you-label">You</div>
       </div>
     </div>
   );
