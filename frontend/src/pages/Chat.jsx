@@ -1511,8 +1511,20 @@ const Chat = () => {
     
     return (
     <div className="dashboard">
-      {/* LEFT PANEL - Video Feed */}
+      {/* LEFT PANEL - Flinxx Heading + Button */}
       <div className="left-panel">
+        <h1 className="logo-text">Flinxx</h1>
+        <button
+          onClick={startVideoChat}
+          disabled={isLoading}
+          className="start-btn"
+        >
+          {isLoading ? '⟳ Loading...' : '🎬 Start Video Chat'}
+        </button>
+      </div>
+
+      {/* RIGHT PANEL - Camera Feed + Icons + You Badge */}
+      <div className="right-panel">
         {/* Camera Video Element */}
         <video
           ref={localVideoRef}
@@ -1524,7 +1536,11 @@ const Chat = () => {
             height: '100%',
             objectFit: 'cover',
             borderRadius: '14px',
-            display: 'block'
+            display: 'block',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            zIndex: 1
           }}
         />
         
@@ -1548,18 +1564,6 @@ const Chat = () => {
         }}>
           Camera loading...
         </div>
-      </div>
-
-      {/* RIGHT PANEL - Text and Button */}
-      <div className="right-panel">
-        <h1 className="logo-text">Flinxx</h1>
-        <button
-          onClick={startVideoChat}
-          disabled={isLoading}
-          className="start-btn"
-        >
-          {isLoading ? '⟳ Loading...' : '🎬 Start Video Chat'}
-        </button>
 
         {/* Top Icons - Always render */}
         <div className="top-icons">
