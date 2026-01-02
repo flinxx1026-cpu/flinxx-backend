@@ -2093,6 +2093,26 @@ const Chat = () => {
           )}
         </div>
       )}
+      
+      {/* 🧪 TEST VIDEO - Forces camera outside normal layout */}
+      <video
+        ref={localVideoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          width: '240px',
+          height: '240px',
+          background: 'black',
+          zIndex: 999999,
+          objectFit: 'cover',
+          border: '2px solid red'
+        }}
+      />
+      
     </>
   );
 };
