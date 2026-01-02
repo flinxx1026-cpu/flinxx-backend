@@ -398,25 +398,28 @@ const Chat = () => {
   // CRITICAL: Delayed initialization - only start after a short delay to ensure DOM is ready
   // IMPORTANT: Skip if coming from profile completion (view=home) - camera starts when user clicks "Start Video Chat"
   useEffect(() => {
+    console.log('[Camera] ⏳ Auto-start useEffect triggered, shouldStartAsIntro:', shouldStartAsIntro);
+    
     // Skip camera initialization if user just completed profile
     if (shouldStartAsIntro) {
       console.log('[Camera] ⏭️ Skipping auto camera init - user just completed profile (view=home)');
       console.log('[Camera] Camera will start when user clicks "Start Video Chat" button');
+      console.log('[Camera] User must click button to start camera manually');
       return;
     }
 
     async function startPreview() {
       try {
-        console.log('📹 Starting camera preview...');
-        console.log('📹 [INIT] Chat component mounted, attempting to initialize camera');
+        console.log('📹 [AUTO-START] Starting camera preview automatically...');
+        console.log('📹 [AUTO-START] Chat component mounted, attempting to initialize camera');
         
         // Verify video element exists in DOM
         if (!localVideoRef.current) {
-          console.error('📹 [INIT] ❌ Video element not in DOM yet, cannot initialize camera');
+          console.error('📹 [AUTO-START] ❌ Video element not in DOM yet, cannot initialize camera');
           return;
         }
         
-        console.log('📹 [INIT] ✓ Video element found in DOM, requesting camera permissions');
+        console.log('📹 [AUTO-START] ✓ Video element found in DOM, requesting camera permissions');
         
         const previewStream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 } },
@@ -426,8 +429,8 @@ const Chat = () => {
         // Store the stream for later use in chat
         localStreamRef.current = previewStream;
         streamRef.current = previewStream;
-        console.log('[Camera] ✅ Camera stream obtained');
-        console.log('[Camera] Stream tracks:', previewStream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
+        console.log('📹 [AUTO-START] ✅ Camera stream obtained:', previewStream);
+        console.log('📹 [AUTO-START] Stream tracks:', previewStream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
         
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = previewStream;
@@ -436,18 +439,18 @@ const Chat = () => {
           // Attempt to play video
           try {
             await localVideoRef.current.play();
-            console.log('✅ Camera preview playing successfully');
+            console.log('📹 [AUTO-START] ✅ Camera preview playing successfully');
             setCameraStarted(true);
             setIsLocalCameraReady(true);  // ✅ Mark local camera as ready
           } catch (err) {
-            console.error('❌ Preview play error:', err);
+            console.error('📹 [AUTO-START] ❌ Preview play error:', err);
             setIsLocalCameraReady(true);  // ✅ Set ready even if play has issues
           }
         }
       } catch (err) {
-        console.error('📷 Camera preview error during auto-start:', err.message);
-        console.error('📷 Error name:', err.name);
-        console.error('📷 Error code:', err.code);
+        console.error('📹 [AUTO-START] ❌ Camera error:', err.message);
+        console.error('📹 [AUTO-START] Error name:', err.name);
+        console.error('📹 [AUTO-START] Error code:', err.code);
         
         // CRITICAL: Always hide loading placeholder even on error
         // User will need to click button manually if auto-start fails
@@ -1400,9 +1403,13 @@ const Chat = () => {
   };
 
   const startVideoChat = async () => {
+    console.log('🎬 [BUTTON CLICK] "Start Video Chat" button clicked');
+    console.log('🎬 [BUTTON CLICK] Current state - cameraStarted:', cameraStarted, 'isMatchingStarted:', isMatchingStarted);
+    
     // First click: Initialize camera only (no matching yet)
     if (!cameraStarted) {
-      console.log('🎬 [START] User clicked "Allow Camera & Continue" - requesting camera permission');
+      console.log('🎬 [BUTTON CLICK] First click - initializing camera');
+      console.log('🎬 [BUTTON CLICK] Checking if camera request already in progress...');
       
       // Prevent multiple simultaneous requests
       if (isRequestingCamera) {
@@ -1413,9 +1420,12 @@ const Chat = () => {
       try {
         setIsRequestingCamera(true);
         setIsLoading(true);
+        console.log('🎬 [BUTTON CLICK] isRequestingCamera=true, isLoading=true, calling startCamera()...');
 
         // Call the new startCamera function
         await startCamera();
+        console.log('🎬 [BUTTON CLICK] startCamera() completed successfully');
+
 
         // Set camera started flag - shows preview on home screen
         console.log('🎬 [START] Setting cameraStarted = true (camera preview now showing)');
