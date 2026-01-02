@@ -53,7 +53,7 @@
   position: absolute;
   top: 20px;
   bottom: 20px;
-  right: 0;
+  right: -1px;
   width: 1.5px;
   background: #d4af37;
   border-radius: 999px;
@@ -156,7 +156,7 @@
   position: absolute;
   top: 20px;
   bottom: 20px;
-  left: 0;
+  left: -1px;
   width: 1.5px;
   background: #d4af37;
   border-radius: 999px;
