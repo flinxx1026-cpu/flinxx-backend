@@ -38,6 +38,41 @@
   letter-spacing: -1px;
 }
 
+/* Mode Toggle Buttons - SoloX / DuoX */
+.mode-switch {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+  transition: none !important;
+  animation: none !important;
+}
+
+.mode-btn {
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: 1px solid #d6b25e;
+  background: transparent;
+  color: #d6b25e;
+  font-weight: 600;
+  cursor: pointer;
+  transition: none !important;
+  animation: none !important;
+}
+
+.mode-btn.active {
+  background: #d6b25e;
+  color: #000;
+  transition: none !important;
+  animation: none !important;
+}
+
+.mode-btn:hover {
+  background: inherit;
+  transform: none !important;
+  transition: none !important;
+}
+
 .start-btn {
   width: 260px;
   height: 54px;

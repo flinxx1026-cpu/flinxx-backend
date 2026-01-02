@@ -1569,6 +1569,24 @@ const Chat = () => {
       {/* LEFT PANEL - Flinxx Heading + Button */}
       <div className="left-panel">
         <h1 className="logo-text">Flinxx</h1>
+
+        {/* Mode Toggle Buttons - SoloX / DuoX */}
+        <div className="mode-switch">
+          <button
+            className={`mode-btn ${activeMode === 'solo' ? 'active' : ''}`}
+            onClick={() => setActiveMode('solo')}
+          >
+            SoloX
+          </button>
+
+          <button
+            className={`mode-btn ${activeMode === 'duo' ? 'active' : ''}`}
+            onClick={() => setActiveMode('duo')}
+          >
+            DuoX
+          </button>
+        </div>
+
         <button
           onClick={startVideoChat}
           disabled={isLoading}
