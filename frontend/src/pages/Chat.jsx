@@ -1583,9 +1583,6 @@ const Chat = () => {
 
       {/* LEFT PANEL - Branding & CTA */}
       <div className="flex-1 flex flex-col items-center justify-center px-10 py-20 gap-12" style={{ backgroundColor: '#0f0f0f' }}>
-        {/* Flinxx Logo */}
-        <img src={logo} alt="Flinxx" className="w-24 h-24" />
-        
         {/* Large Flinxx Text */}
         <div className="text-center">
           <h1 className="text-7xl font-black" style={{ color: '#d9b85f' }}>Flinxx</h1>
