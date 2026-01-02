@@ -4,7 +4,7 @@
 /* Note: These custom sizes must be present in JSX to prevent purging */
 /* max-w-[700px] max-w-[550px] aspect-[4/3] */
 
-/* ========== ANIMATIONS ========== */
+/* ========== LANDING PAGE ANIMATIONS (SCOPED TO .landing) ========== */
 
 /* Left section slide-in animation */
 @keyframes slideLeft {
@@ -18,7 +18,7 @@
   }
 }
 
-.slide-left {
+.landing .slide-left {
   opacity: 0;
   transform: translateX(-60px);
   animation: slideLeft 0.8s ease-out forwards;
@@ -36,7 +36,7 @@
   }
 }
 
-.slide-right {
+.landing .slide-right {
   opacity: 0;
   transform: translateX(80px);
   animation: slideRight 0.9s ease-out forwards;
@@ -55,7 +55,7 @@
   }
 }
 
-.fade-up-delay {
+.landing .fade-up-delay {
   opacity: 0;
   transform: translateY(20px);
   animation: fadeUp 0.6s ease-out forwards;
@@ -72,60 +72,71 @@
   }
 }
 
-.top-icon {
+.landing .top-icon {
   opacity: 0;
   animation: iconFade 0.4s ease forwards;
 }
 
-.top-icon:nth-child(1) {
+.landing .top-icon:nth-child(1) {
   animation-delay: 0.2s;
 }
 
-.top-icon:nth-child(2) {
+.landing .top-icon:nth-child(2) {
   animation-delay: 0.3s;
 }
 
-.top-icon:nth-child(3) {
+.landing .top-icon:nth-child(3) {
   animation-delay: 0.4s;
 }
 
-.top-icon:nth-child(4) {
+.landing .top-icon:nth-child(4) {
   animation-delay: 0.5s;
 }
 
-.top-icon:nth-child(5) {
+.landing .top-icon:nth-child(5) {
   animation-delay: 0.6s;
 }
 
-.top-icon:nth-child(6) {
+.landing .top-icon:nth-child(6) {
   animation-delay: 0.7s;
 }
 
-/* Hero container overflow hidden */
-.hero {
+/* Landing hero container */
+.landing .hero {
   display: flex;
   align-items: center;
   overflow: hidden;
 }
 
-/* ========== DISABLE ANIMATIONS IN DASHBOARD ========== */
-.no-animation,
-.no-animation *,
-.no-animation *::before,
-.no-animation *::after {
-  animation: none !important;
-  transition: none !important;
-  animation-duration: 0s !important;
-  animation-delay: 0s !important;
-}
+/* ========== DASHBOARD HARD-STOP (MOST IMPORTANT) ========== */
 
-.dashboard {
-  animation: none !important;
-}
-
+/* Master dashboard lock - disable ALL motion */
+.dashboard,
 .dashboard * {
   animation: none !important;
   transition: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+.dashboard *::before,
+.dashboard *::after {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+}
+
+/* Prevent layout shift */
+.dashboard {
+  overflow: hidden;
+  position: relative;
+}
+
+/* Disable hero animations in dashboard */
+.dashboard .hero {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
 }
 
 /* Dark theme with golden accents */
