@@ -121,7 +121,7 @@
 
 .right-panel {
   width: 55%;
-  padding: 0;
+  padding: 6px;
   margin: 0;
   border: 1.5px solid #d4af37;
   border-radius: 16px;
@@ -131,6 +131,33 @@
   display: block !important;
   height: 100%;
   box-sizing: border-box;
+}
+
+/* Alias for right-panel as camera-panel */
+.camera-panel {
+  flex: 1;
+  height: 100vh;
+  border: 1.5px solid #d4af37;
+  border-radius: 16px;
+  padding: 6px;
+  box-sizing: border-box;
+  background: #000;
+}
+
+/* Inner camera wrapper with rounded corners and overflow control */
+.camera-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
+.camera-inner video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .right-panel video {
@@ -1022,13 +1049,13 @@ video {
 }
 
 /* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS */
-/* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS - FITS IN BORDERED PANEL */
+/* 🔥 GLOBAL LOCAL VIDEO - PERSISTENT ACROSS ALL SCREENS - FITS IN BORDERED PANEL WITH PADDING */
 .global-local-video {
   position: fixed;
-  top: 12px;
-  right: 12px;
-  width: calc(55% - 24px);
-  height: calc(100vh - 24px);
+  top: 18px;
+  right: 18px;
+  width: calc(55% - 36px);
+  height: calc(100vh - 36px);
   object-fit: cover;
   z-index: 5;
   background: black;
@@ -1038,5 +1065,5 @@ video {
   padding: 0;
   margin: 0;
   border: none;
-  border-radius: 16px;
+  border-radius: 12px;
 }

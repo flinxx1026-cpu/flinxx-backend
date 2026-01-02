@@ -1601,24 +1601,27 @@ const Chat = () => {
 
       {/* RIGHT PANEL - Camera Feed + Icons + You Badge */}
       <div className="right-panel">
-        {/* Camera Placeholder - Rendered BEFORE video so it sits below */}
-        {!isLocalCameraReady && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundColor: '#000',
-            borderRadius: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#666',
-            fontSize: '12px',
-            zIndex: 1,
-            pointerEvents: 'none'
-          }}>
-            Camera loading...
-          </div>
-        )}
+        {/* Inner Camera Wrapper */}
+        <div className="camera-inner">
+          {/* Camera Placeholder - Rendered BEFORE video so it sits below */}
+          {!isLocalCameraReady && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundColor: '#000',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#666',
+              fontSize: '12px',
+              zIndex: 1,
+              pointerEvents: 'none'
+            }}>
+              Camera loading...
+            </div>
+          )}
+        </div>
 
         {/* Top Icons - Always render */}
         <div className="top-icons">
