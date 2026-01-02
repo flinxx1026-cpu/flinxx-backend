@@ -1581,47 +1581,15 @@ const Chat = () => {
         />
       )}
 
-      {/* LEFT PANEL - Matching Info & Controls */}
-      <div className="flex-1 flex flex-col items-center justify-center px-10 py-20 gap-8" style={{ backgroundColor: '#0f0f0f' }}>
+      {/* LEFT PANEL - Branding & CTA */}
+      <div className="flex-1 flex flex-col items-center justify-center px-10 py-20 gap-12" style={{ backgroundColor: '#0f0f0f' }}>
         {/* Flinxx Logo */}
-        <img src={logo} alt="Flinxx" className="w-24 h-24 mb-4" />
+        <img src={logo} alt="Flinxx" className="w-24 h-24" />
         
-        {/* ∞ Unlimited Badge */}
-        <div className="text-center">
-          <p className="text-lg font-bold" style={{ color: '#d9b85f' }}>∞ Unlimited</p>
-        </div>
-
         {/* Large Flinxx Text */}
         <div className="text-center">
           <h1 className="text-7xl font-black" style={{ color: '#d9b85f' }}>Flinxx</h1>
         </div>
-
-        {/* Matching Stats */}
-        <div className="text-center">
-          <p className="text-xl font-bold" style={{ color: '#d9b85f' }}>• 23,796 are matching now!</p>
-        </div>
-
-        {/* Choose Who to Meet Button */}
-        <button
-          onClick={() => handleModeChange('duo')}
-          className="px-8 py-3 rounded-full font-bold transition-all text-sm flex items-center gap-2"
-          style={{
-            backgroundColor: 'transparent',
-            border: '2px solid #d9b85f',
-            color: '#d9b85f',
-            cursor: 'pointer'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.boxShadow = '0 0 20px rgba(217, 184, 95, 0.3)';
-            e.currentTarget.style.transform = 'scale(1.05)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.boxShadow = 'none';
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
-        >
-          <span>👥</span> Choose who to meet
-        </button>
 
         {/* Preference Badge */}
         {!(selectedGender === 'both') && (
@@ -1638,7 +1606,7 @@ const Chat = () => {
         <button
           onClick={startVideoChat}
           disabled={isLoading}
-          className="w-full px-8 py-4 rounded-full font-bold transition-all text-lg mt-6"
+          className="w-full px-8 py-4 rounded-full font-bold transition-all text-lg"
           style={{
             backgroundColor: isLoading ? '#666' : '#d9b85f',
             color: isLoading ? '#aaa' : '#000',
@@ -1669,11 +1637,6 @@ const Chat = () => {
             <>🎬 Start Video Chat</>
           )}
         </button>
-
-        {/* Trust Text */}
-        <p className="text-xs text-center mt-4" style={{ color: '#666', maxWidth: '300px' }}>
-          Anonymous by default • No recordings • Skip anytime
-        </p>
       </div>
 
       {/* RIGHT PANEL - Video Preview */}
