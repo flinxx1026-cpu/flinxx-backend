@@ -188,8 +188,8 @@
 }
 
 .icon {
-  width: 34px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   border: 1px solid #d9b55d;
   background: transparent;
@@ -197,11 +197,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 18px;
   cursor: pointer;
   padding: 0;
   transition: none !important;
   animation: none !important;
+}
+
+.icon svg {
+  width: 20px;
+  height: 20px;
+  font-size: 18px;
+}
+
+.icon img {
+  width: 20px;
+  height: 20px;
 }
 
 .icon:hover {
