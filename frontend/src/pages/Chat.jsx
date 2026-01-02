@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect, useContext } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { useDuoSquad } from '../context/DuoSquadContext';
 import socket from '../services/socketService';
 import { getIceServers, getMediaConstraints, formatTime, logIceServers } from '../utils/webrtcUtils';
 import PremiumModal from '../components/PremiumModal';
@@ -15,14 +16,16 @@ import MatchHistory from '../components/MatchHistory';
 import SearchFriendsModal from '../components/SearchFriendsModal';
 import TopActions from '../components/TopActions';
 import TermsConfirmationModal from '../components/TermsConfirmationModal';
-import DuoPanel from '../components/DuoPanel';
 import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
 const Chat = () => {
   // 🧪 DEBUG TEST - Check if this log appears first
   console.log("RENDER START");
-  
+
+  // ✅ Get DuoSquad context (manages state at Layout level to prevent remounting)
+  const { activeMode, setActiveMode, handleModeChange, openDuoSquad } = useDuoSquad();
+
   // ✅ ALL HOOKS FIRST - BEFORE ANY LOGIC OR RETURNS
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,7 +56,6 @@ const Chat = () => {
   const [activePanel, setActivePanel] = useState(null); // 'notification' | 'message' | null
   const [selectedGender, setSelectedGender] = useState('both');
   const [isRequestingCamera, setIsRequestingCamera] = useState(false);
-  const [activeMode, setActiveMode] = useState('solo'); // 'solo' | 'duo'
 
   // Chat state
   const [messages, setMessages] = useState([]);
@@ -1398,14 +1400,6 @@ const Chat = () => {
     }
   };
 
-  // Handle mode switching (Solo vs Duo)
-  const handleModeChange = (mode) => {
-    console.log(`🔄 [MODE CHANGE] Switching to ${mode} mode`);
-    console.log(`   Current activeMode before: ${activeMode}`);
-    setActiveMode(mode);
-    console.log(`   activeMode will update to: ${mode}`);
-  };
-
   const startVideoChat = async () => {
     // First click: Initialize camera only (no matching yet)
     if (!cameraStarted) {
@@ -1595,77 +1589,70 @@ const Chat = () => {
 
       {/* Right - Welcome panel with dark theme */}
       <div className="right-panel flex-1 rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: '#131313', border: '1px solid #d9b85f' }}>
-        {/* Keep DuoPanel mounted, control visibility with isOpen prop to prevent unmount/remount flicker */}
-        <div style={{ display: activeMode === 'duo' ? 'block' : 'none', width: '100%', height: '100%' }}>
-          <DuoPanel isOpen={activeMode === 'duo'} onClose={() => handleModeChange('solo')} />
-        </div>
-        
-        {/* Show Solo content when in Solo mode */}
-        {activeMode === 'solo' && (
-          <div className="w-full h-full rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-between text-center">
-            {/* Top Section - Toggle Buttons */}
-            <div className="flex gap-3 justify-center">
-              <button 
-                onClick={() => handleModeChange('solo')}
-                className="text-white font-bold py-2 px-6 rounded-lg transition-all text-sm shadow-md hover:shadow-lg"
-                style={{ 
-                  backgroundColor: activeMode === 'solo' ? '#d9b85f' : 'transparent',
-                  border: '1px solid #d9b85f',
-                  color: activeMode === 'solo' ? '#000' : '#d9b85f'
-                }}
-              >
-                SoloX
-              </button>
-              <button 
-                onClick={() => handleModeChange('duo')}
-                className="text-white font-bold py-2 px-6 rounded-lg transition-all text-sm"
-                style={{
-                  backgroundColor: activeMode === 'duo' ? '#d9b85f' : 'transparent',
-                  border: '1px solid #d9b85f',
-                  color: activeMode === 'duo' ? '#000' : '#d9b85f'
-                }}
-              >
-                DuoX
-              </button>
-            </div>
-
-            {/* Middle Section - Welcome Content */}
-            <div className="flex flex-col items-center gap-4">
-              <img src={logo} alt="Flinxx" className="w-16 h-16" />
-              <div>
-                <h1 className="text-3xl font-black mb-2" style={{ color: '#d9b85f' }}>Flinxx</h1>
-                <p className="text-sm" style={{ color: '#d9b85f' }}>Meet new people in real time.</p>
-              </div>
-
-              {/* Preference Badge - BOTH button hidden */}
-              {!(selectedGender === 'both') && (
-                <button 
-                  onClick={() => setIsGenderFilterOpen(true)}
-                  className="rounded-full px-4 py-1 transition-all cursor-pointer text-xs"
-                  style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
-                >
-                  <span className="font-semibold">👥 {selectedGender === 'girls' ? 'Girls Only' : selectedGender === 'guys' ? 'Guys Only' : 'Both'}</span>
-                </button>
-              )}
-            </div>
-
-            {/* Bottom Section - Start Button */}
-            <button
-              onClick={startVideoChat}
-              disabled={isLoading}
-              className="w-full font-bold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 text-sm shadow-lg"
-              style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
+        {/* Show Solo/Duo content - DuoPanel moved to Layout for stability */}
+        <div className="w-full h-full rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-between text-center">
+          {/* Top Section - Toggle Buttons */}
+          <div className="flex gap-3 justify-center">
+            <button 
+              onClick={() => handleModeChange('solo')}
+              className="text-white font-bold py-2 px-6 rounded-lg transition-all text-sm shadow-md hover:shadow-lg"
+              style={{ 
+                backgroundColor: activeMode === 'solo' ? '#d9b85f' : 'transparent',
+                border: '1px solid #d9b85f',
+                color: activeMode === 'solo' ? '#000' : '#d9b85f'
+              }}
             >
-              {isLoading ? (
-                <>
-                  <span className="animate-spin inline-block mr-2">⟳</span> {cameraStarted ? 'Starting Match...' : 'Requesting Access...'}
-                </>
-              ) : (
-                cameraStarted ? 'Start Video Chat' : 'Allow Camera & Continue'
-              )}
+              SoloX
+            </button>
+            <button 
+              onClick={() => handleModeChange('duo')}
+              className="text-white font-bold py-2 px-6 rounded-lg transition-all text-sm"
+              style={{
+                backgroundColor: activeMode === 'duo' ? '#d9b85f' : 'transparent',
+                border: '1px solid #d9b85f',
+                color: activeMode === 'duo' ? '#000' : '#d9b85f'
+              }}
+            >
+              DuoX
             </button>
           </div>
-        )}
+
+          {/* Middle Section - Welcome Content */}
+          <div className="flex flex-col items-center gap-4">
+            <img src={logo} alt="Flinxx" className="w-16 h-16" />
+            <div>
+              <h1 className="text-3xl font-black mb-2" style={{ color: '#d9b85f' }}>Flinxx</h1>
+              <p className="text-sm" style={{ color: '#d9b85f' }}>Meet new people in real time.</p>
+            </div>
+
+            {/* Preference Badge - BOTH button hidden */}
+            {!(selectedGender === 'both') && (
+              <button 
+                onClick={() => setIsGenderFilterOpen(true)}
+                className="rounded-full px-4 py-1 transition-all cursor-pointer text-xs"
+                style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
+              >
+                <span className="font-semibold">👥 {selectedGender === 'girls' ? 'Girls Only' : selectedGender === 'guys' ? 'Guys Only' : 'Both'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Section - Start Button */}
+          <button
+            onClick={startVideoChat}
+            disabled={isLoading}
+            className="w-full font-bold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 text-sm shadow-lg"
+            style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
+          >
+            {isLoading ? (
+              <>
+                <span className="animate-spin inline-block mr-2">⟳</span> {cameraStarted ? 'Starting Match...' : 'Requesting Access...'}
+              </>
+            ) : (
+              cameraStarted ? 'Start Video Chat' : 'Allow Camera & Continue'
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

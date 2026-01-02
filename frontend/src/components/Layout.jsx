@@ -11,28 +11,60 @@ import AuthSuccess from '../pages/auth-success'
 import Terms from '../pages/Terms'
 import PrivacyPolicy from '../pages/PrivacyPolicy'
 import ProtectedChatRoute from './ProtectedChatRoute'
+import DuoPanel from './DuoPanel'
+import { DuoSquadProvider, useDuoSquad } from '../context/DuoSquadContext'
 import './Layout.css'
+
+function LayoutContent() {
+  const { isDuoSquadOpen, closeDuoSquad } = useDuoSquad();
+
+  return (
+    <>
+      {/* DuoSquad Modal - Fixed positioning at Layout level to prevent remounting */}
+      {isDuoSquadOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999
+          }}
+        >
+          <DuoPanel isOpen={isDuoSquadOpen} onClose={closeDuoSquad} />
+        </div>
+      )}
+
+      {/* Main Router */}
+      <div style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/terms-and-conditions" element={<Terms />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/callback" element={<Callback />} />
+          <Route path="/auth-success" element={<AuthSuccess />} />
+          <Route path="/chat" element={<ProtectedChatRoute><Chat /></ProtectedChatRoute>} />
+          <Route path="/matching" element={<Matching />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </div>
+    </>
+  );
+}
 
 function Layout() {
   return (
     <ErrorBoundary>
-      <Router>
-        <div style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/terms-and-conditions" element={<Terms />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/callback" element={<Callback />} />
-            <Route path="/auth-success" element={<AuthSuccess />} />
-            <Route path="/chat" element={<ProtectedChatRoute><Chat /></ProtectedChatRoute>} />
-            <Route path="/matching" element={<Matching />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </div>
-      </Router>
+      <DuoSquadProvider>
+        <Router>
+          <LayoutContent />
+        </Router>
+      </DuoSquadProvider>
     </ErrorBoundary>
   )
 }
