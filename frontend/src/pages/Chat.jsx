@@ -1581,7 +1581,10 @@ const Chat = () => {
 
           <button
             className={`mode-btn ${activeMode === 'duo' ? 'active' : ''}`}
-            onClick={() => setActiveMode('duo')}
+            onClick={() => {
+              setActiveMode('duo');
+              openDuoSquad();
+            }}
           >
             DuoX
           </button>
