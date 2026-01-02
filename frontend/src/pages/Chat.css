@@ -51,8 +51,8 @@
 .left-panel::after {
   content: "";
   position: absolute;
-  top: 16px;
-  bottom: 16px;
+  top: 14px;
+  bottom: 14px;
   right: 0;
   width: 2px;
   background: #d4af37;
@@ -154,8 +154,8 @@
 .right-panel::before {
   content: "";
   position: absolute;
-  top: 16px;
-  bottom: 16px;
+  top: 14px;
+  bottom: 14px;
   left: 0;
   width: 2px;
   background: #d4af37;
