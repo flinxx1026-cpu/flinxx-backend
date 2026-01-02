@@ -56,6 +56,7 @@ const Chat = () => {
   const [activePanel, setActivePanel] = useState(null); // 'notification' | 'message' | null
   const [selectedGender, setSelectedGender] = useState('both');
   const [isRequestingCamera, setIsRequestingCamera] = useState(false);
+  const [isLocalCameraReady, setIsLocalCameraReady] = useState(false);
 
   // Chat state
   const [messages, setMessages] = useState([]);
@@ -370,8 +371,10 @@ const Chat = () => {
         try {
           await localVideoRef.current.play();
           console.log('📹 [START CAMERA] ✅ Video playing');
+          setIsLocalCameraReady(true);  // ✅ IMPORTANT - Local camera is ready
         } catch (playErr) {
           console.warn('📹 [START CAMERA] Play warning:', playErr);
+          setIsLocalCameraReady(true);  // ✅ Set ready even if play has issues
         }
       }
     } catch (error) {
@@ -442,8 +445,10 @@ const Chat = () => {
             await localVideoRef.current.play();
             console.log('✅ Camera preview playing successfully');
             setCameraStarted(true);
+            setIsLocalCameraReady(true);  // ✅ Mark local camera as ready
           } catch (err) {
             console.error('❌ Preview play error:', err);
+            setIsLocalCameraReady(true);  // ✅ Set ready even if play has issues
           }
         }
       } catch (err) {
@@ -1519,6 +1524,7 @@ const Chat = () => {
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = null;
     }
+    setIsLocalCameraReady(false);  // Reset camera ready state
   };
 
   const cleanup = () => {
@@ -1574,26 +1580,28 @@ const Chat = () => {
         />
         
         {/* Camera Placeholder - Always rendered, but hidden when video has stream */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: '#000',
-          borderRadius: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#666',
-          fontSize: '12px',
-          zIndex: 0,
-          pointerEvents: 'none'
-        }}>
-          Camera loading...
-        </div>
+        {!isLocalCameraReady && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: '#000',
+            borderRadius: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#666',
+            fontSize: '12px',
+            zIndex: 0,
+            pointerEvents: 'none'
+          }}>
+            Camera loading...
+          </div>
+        )}
 
         {/* Top Icons - Always render */}
         <div className="top-icons">
@@ -1707,26 +1715,28 @@ const Chat = () => {
       {/* Left - Live camera preview box */}
       <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden', position: 'relative' }}>
         {/* Camera Placeholder - Shows while loading */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: '#000',
-          borderRadius: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#666',
-          fontSize: '12px',
-          zIndex: 0,
-          pointerEvents: 'none'
-        }}>
-          Camera loading...
-        </div>
+        {!isLocalCameraReady && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: '#000',
+            borderRadius: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#666',
+            fontSize: '12px',
+            zIndex: 0,
+            pointerEvents: 'none'
+          }}>
+            Camera loading...
+          </div>
+        )}
         
         {/* You Badge */}
         <div className="you-badge">You</div>
@@ -1875,22 +1885,24 @@ const Chat = () => {
           {/* RIGHT CAMERA - Local Video Placeholder */}
           <div className="flex-1 rounded-2xl shadow-2xl overflow-hidden relative" style={{ backgroundColor: '#000', border: '1px solid #d9b85f', minHeight: '400px', aspectRatio: '16/9' }}>
             {/* Placeholder - actual video element is in root */}
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              backgroundColor: '#000',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#666',
-              fontSize: '12px',
-              zIndex: 0
-            }}>
-              Camera loading...
-            </div>
+            {!isLocalCameraReady && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: '#000',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#666',
+                fontSize: '12px',
+                zIndex: 0
+              }}>
+                Camera loading...
+              </div>
+            )}
             
             {/* You badge */}
             <div className="you-badge" style={{ zIndex: 2 }}>You</div>
