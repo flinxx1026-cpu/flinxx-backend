@@ -31,6 +31,8 @@ export const UnreadProvider = ({ children }) => {
     let cancelled = false;
 
     const fetchUnread = async () => {
+      // ✅ CRITICAL DEBUG: Log UUID before calling getUnreadCount
+      console.log('📊 UnreadContext: Calling getUnreadCount with UUID:', user.uuid?.substring(0, 8) + '...');
       const result = await getUnreadCount(user.uuid);
       if (!cancelled) {
         const count = typeof result === 'number' ? result : result?.unreadCount || 0;
@@ -58,6 +60,7 @@ export const UnreadProvider = ({ children }) => {
     if (!user?.uuid || user.uuid.length !== 36) return;
 
     const handleNewMessage = async () => {
+      console.log('📬 New message received, fetching updated count for UUID:', user.uuid?.substring(0, 8) + '...');
       const result = await getUnreadCount(user.uuid);
       const count = typeof result === 'number' ? result : result?.unreadCount || 0;
       setUnreadCount(count);
