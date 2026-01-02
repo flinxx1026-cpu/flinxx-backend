@@ -353,14 +353,19 @@ const Chat = () => {
         localVideoRef.current.srcObject = stream;
         console.log('📹 [START CAMERA] ✅ Stream attached to video element');
         
-        try {
-          const playPromise = await localVideoRef.current.play();
-          console.log('📹 [START CAMERA] ✅ Video playing, playPromise:', playPromise);
-          setIsLocalCameraReady(true);  // ✅ IMPORTANT - Local camera is ready
-        } catch (playErr) {
-          console.warn('📹 [START CAMERA] ⚠️ Play warning (stream may still work):', playErr.message);
-          setIsLocalCameraReady(true);  // ✅ Set ready even if play has issues
-        }
+        // 🔥 CRITICAL: Wait for video to actually start playing before marking ready
+        localVideoRef.current.onloadedmetadata = () => {
+          console.log('📹 [START CAMERA] ✅ Video metadata loaded, calling play()');
+          
+          localVideoRef.current.play().then(() => {
+            console.log('📹 [START CAMERA] ✅ Video playing - setting isLocalCameraReady=true');
+            setIsLocalCameraReady(true);
+          }).catch((playErr) => {
+            console.warn('📹 [START CAMERA] ⚠️ Play warning (but video loaded):', playErr.message);
+            // Still mark as ready since video loaded successfully
+            setIsLocalCameraReady(true);
+          });
+        };
       }
     } catch (error) {
       console.error('📹 [START CAMERA] ❌ CRITICAL ERROR:', error);
@@ -436,16 +441,20 @@ const Chat = () => {
           localVideoRef.current.srcObject = previewStream;
           localVideoRef.current.muted = true;
           
-          // Attempt to play video
-          try {
-            await localVideoRef.current.play();
-            console.log('📹 [AUTO-START] ✅ Camera preview playing successfully');
-            setCameraStarted(true);
-            setIsLocalCameraReady(true);  // ✅ Mark local camera as ready
-          } catch (err) {
-            console.error('📹 [AUTO-START] ❌ Preview play error:', err);
-            setIsLocalCameraReady(true);  // ✅ Set ready even if play has issues
-          }
+          // 🔥 CRITICAL: Wait for video to actually render frames before hiding loading
+          localVideoRef.current.onloadedmetadata = () => {
+            console.log('📹 [AUTO-START] ✅ Video metadata loaded, calling play()');
+            
+            localVideoRef.current.play().then(() => {
+              console.log('📹 [AUTO-START] ✅ Video playing - setting isLocalCameraReady=true');
+              setCameraStarted(true);
+              setIsLocalCameraReady(true);
+            }).catch((playErr) => {
+              console.warn('📹 [AUTO-START] ⚠️ Play warning (but video loaded):', playErr.message);
+              setCameraStarted(true);
+              setIsLocalCameraReady(true);
+            });
+          };
         }
       } catch (err) {
         console.error('📹 [AUTO-START] ❌ Camera error:', err.message);
@@ -1571,39 +1580,11 @@ const Chat = () => {
 
       {/* RIGHT PANEL - Camera Feed + Icons + You Badge */}
       <div className="right-panel">
-        {/* Camera Video Element */}
-        <video
-          ref={localVideoRef}
-          autoPlay
-          muted
-          playsInline
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            borderRadius: '14px',
-            display: 'block',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            zIndex: 9999,
-            opacity: 1,
-            visibility: 'visible',
-            background: 'red',  // DEBUG - shows if video is rendering
-            backgroundColor: '#000'
-          }}
-        />
-        
-        {/* Camera Placeholder - Always rendered, but hidden when video has stream */}
+        {/* Camera Placeholder - Rendered BEFORE video so it sits below */}
         {!isLocalCameraReady && (
           <div style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100%',
-            height: '100%',
+            inset: 0,
             backgroundColor: '#000',
             borderRadius: '14px',
             display: 'flex',
@@ -1617,6 +1598,22 @@ const Chat = () => {
             Camera loading...
           </div>
         )}
+        
+        {/* Camera Video Element */}
+        <video
+          ref={localVideoRef}
+          autoPlay
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            zIndex: 2
+          }}
+        />
 
         {/* Top Icons - Always render */}
         <div className="top-icons">
@@ -2093,26 +2090,6 @@ const Chat = () => {
           )}
         </div>
       )}
-      
-      {/* 🧪 TEST VIDEO - Forces camera outside normal layout */}
-      <video
-        ref={localVideoRef}
-        autoPlay
-        playsInline
-        muted
-        style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          width: '240px',
-          height: '240px',
-          background: 'black',
-          zIndex: 999999,
-          objectFit: 'cover',
-          border: '2px solid red'
-        }}
-      />
-      
     </>
   );
 };
