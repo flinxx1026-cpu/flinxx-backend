@@ -215,65 +215,6 @@ const Chat = () => {
 
 
 
-  // ✅ CRITICAL: Handle persistent local video element positioning
-  // The video element is at root level but needs to be positioned inside the correct left-panel
-  // This effect ensures the video moves with screen transitions
-  // NOTE: Must come AFTER state declarations to avoid TDZ (temporal dead zone)
-  // CRITICAL: Must watch cameraStarted so effect runs on Intro/Waiting screens
-  useEffect(() => {
-    console.log('\n🎥 [POSITIONING] Local video positioning effect triggered');
-    console.log('   cameraStarted:', cameraStarted);
-    console.log('   hasPartner:', hasPartner);
-    console.log('   isMatchingStarted:', isMatchingStarted);
-    
-    // CRITICAL: Guard - only position video if camera is actually started
-    if (!cameraStarted) {
-      console.log('   [POSITIONING] Camera not started yet, skipping positioning');
-      return;
-    }
-    
-    // ✅ Use the ref directly instead of searching DOM - ref is always available after render
-    const persistentVideo = localVideoRef.current;
-    
-    if (!persistentVideo) {
-      console.warn('⚠️ [POSITIONING] Persistent video ref is null - element not yet rendered');
-      return;
-    }
-    
-    console.log('✅ [POSITIONING] Video element ref found:', persistentVideo);
-    
-    // Find all left-panel containers on the page
-    const leftPanels = document.querySelectorAll('.left-panel');
-    console.log(`   Found ${leftPanels.length} left-panel containers`);
-    
-    // Find the visible left-panel and append video to it
-    for (let i = 0; i < leftPanels.length; i++) {
-      const panel = leftPanels[i];
-      const isVisible = panel.offsetParent !== null; // Check if element is visible
-      
-      if (isVisible) {
-        console.log(`   [POSITIONING] Visible left-panel found at index ${i}`);
-        
-        // Check if video is already in this panel
-        if (persistentVideo.parentElement !== panel) {
-          console.log(`   [POSITIONING] Moving video into left-panel ${i}`);
-          
-          // Insert video at the beginning of the panel (before the you-badge)
-          panel.insertBefore(persistentVideo, panel.firstChild);
-          
-          // Show the video
-          persistentVideo.style.display = 'block';
-          console.log(`   ✅ [POSITIONING] Video positioned in left-panel ${i}`);
-        } else {
-          console.log(`   ℹ️ [POSITIONING] Video already in correct panel`);
-          persistentVideo.style.display = 'block';
-        }
-        
-        return;
-      }
-    }
-  }, [cameraStarted, hasPartner, isMatchingStarted]);
-
   // ========================================
   // CRITICAL: Camera attachment happens ONLY in startPreview() useEffect
   // Do NOT re-attach in hasPartner useEffect - causes DOM thrashing
@@ -1570,36 +1511,22 @@ const Chat = () => {
     
     return (
     <div className="dashboard">
-      {/* LEFT PANEL - Text and Button */}
+      {/* LEFT PANEL - Video Feed */}
       <div className="left-panel">
-        <h1 className="logo-text">Flinxx</h1>
-        <button
-          onClick={startVideoChat}
-          disabled={isLoading}
-          className="start-btn"
-        >
-          {isLoading ? '⟳ Loading...' : '🎬 Start Video Chat'}
-        </button>
-      </div>
-
-      {/* RIGHT PANEL - Camera Feed */}
-      <div className="right-panel">
-        {/* Camera Video Element with Placeholder */}
-        {localVideoRef && (
-          <video
-            ref={localVideoRef}
-            autoPlay
-            muted
-            playsInline
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              borderRadius: '14px',
-              display: 'block'
-            }}
-          />
-        )}
+        {/* Camera Video Element */}
+        <video
+          ref={localVideoRef}
+          autoPlay
+          muted
+          playsInline
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            borderRadius: '14px',
+            display: 'block'
+          }}
+        />
         
         {/* Camera Placeholder - Always visible */}
         <div style={{
@@ -1621,6 +1548,18 @@ const Chat = () => {
         }}>
           Camera loading...
         </div>
+      </div>
+
+      {/* RIGHT PANEL - Text and Button */}
+      <div className="right-panel">
+        <h1 className="logo-text">Flinxx</h1>
+        <button
+          onClick={startVideoChat}
+          disabled={isLoading}
+          className="start-btn"
+        >
+          {isLoading ? '⟳ Loading...' : '🎬 Start Video Chat'}
+        </button>
 
         {/* Top Icons - Always render */}
         <div className="top-icons">
@@ -1731,9 +1670,24 @@ const Chat = () => {
 
     return (
     <div className="dashboard flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
-      {/* Left - Live camera preview box (visual container for persistent video overlay) */}
+      {/* Left - Live camera preview box */}
       <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden', position: 'relative' }}>
-        {/* ✅ This panel is a visual container. The persistent video element overlays it from root level */}
+        {/* Camera Video Element */}
+        <video
+          ref={localVideoRef}
+          autoPlay
+          muted
+          playsInline
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            borderRadius: '14px',
+            display: 'block'
+          }}
+        />
+        
+        {/* You Badge */}
         <div className="you-badge">You</div>
       </div>
 
@@ -1879,14 +1833,23 @@ const Chat = () => {
 
           {/* RIGHT CAMERA - Local Video */}
           <div className="flex-1 rounded-2xl shadow-2xl overflow-hidden relative" style={{ backgroundColor: '#000', border: '1px solid #d9b85f', minHeight: '400px', aspectRatio: '16/9' }}>
-            {/* Local video container */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'hidden', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {/* Local video is positioned absolutely at root level, but shows here */}
-              <div style={{ width: '100%', height: '100%' }}>
-                {/* You badge */}
-                <div className="you-badge" style={{ zIndex: 2 }}>You</div>
-              </div>
-            </div>
+            {/* Local video element */}
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: '14px',
+                display: 'block'
+              }}
+            />
+            
+            {/* You badge */}
+            <div className="you-badge" style={{ zIndex: 2 }}>You</div>
           </div>
         </div>
 
