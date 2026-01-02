@@ -12,14 +12,19 @@ const DuoPanel = ({ isOpen = true, onClose }) => {
   const { refetchUnreadCount } = useUnread() || {};
   const [friends, setFriends] = useState(null); // null = loading, array = loaded (never reset)
   const [activeChat, setActiveChat] = useState(null);
-  const fetchedRef = useRef(false); // Track if we've already fetched
+  const hasFetchedRef = useRef(false); // Track if data has been fetched in this render lifecycle
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-  // Fetch accepted friends list only once when modal opens
-  // This effect will only run once on mount due to fetchedRef guard
+  // Fetch accepted friends list only once
   useEffect(() => {
-    // Only fetch if we haven't already fetched, modal is open, and user is ready
-    if (fetchedRef.current || !isOpen || !user?.uuid) return;
+    // If friends are already loaded (not null), don't fetch again
+    if (friends !== null) return;
+    
+    // If already fetching, don't fetch again
+    if (hasFetchedRef.current) return;
+    
+    // Only fetch if modal is open and user is ready
+    if (!isOpen || !user?.uuid) return;
     
     const fetchFriendsList = async () => {
       try {
@@ -35,17 +40,17 @@ const DuoPanel = ({ isOpen = true, onClose }) => {
           : [];
         // Set friends - once set, never reset to null again
         setFriends(sortedFriends);
+        hasFetchedRef.current = true;
       } catch (error) {
         console.error('❌ Failed to fetch accepted friends:', error);
         // Set to empty array on error - never goes back to null
         setFriends([]);
+        hasFetchedRef.current = true;
       }
     };
 
-    // Mark as fetched to prevent re-fetches
-    fetchedRef.current = true;
     fetchFriendsList();
-  }, [isOpen, user?.uuid]); // Depend on isOpen and user?.uuid
+  }, [friends, isOpen, user?.uuid]); // Check if friends is null first
 
   // Update friends list when message is sent
   const updateChatListOnMessage = (friendId, messageTime) => {
