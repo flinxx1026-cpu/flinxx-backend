@@ -20,6 +20,17 @@ export const DuoSquadProvider = ({ children }) => {
     console.log(`🔄 [MODE CHANGE] Switching to ${mode} mode`);
     console.log(`   Current activeMode before: ${activeMode}`);
     setActiveMode(mode);
+    
+    // If switching to 'duo', open the modal
+    if (mode === 'duo') {
+      console.log("Opening Duo Squad modal");
+      setIsDuoSquadOpen(true);
+    } else if (mode === 'solo') {
+      // If switching to 'solo', close the modal
+      console.log("Closing Duo Squad modal");
+      setIsDuoSquadOpen(false);
+    }
+    
     console.log(`   activeMode will update to: ${mode}`);
   };
 

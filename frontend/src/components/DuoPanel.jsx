@@ -15,6 +15,11 @@ const DuoPanel = ({ isOpen = true, onClose }) => {
   const hasFetchedRef = useRef(false); // Track if data has been fetched in this render lifecycle
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
+  // Debug: Log when DuoPanel mounts
+  useEffect(() => {
+    console.log("🎯 MyDuoSquad mounted");
+  }, []);
+
   // Fetch accepted friends list only once
   useEffect(() => {
     // If friends are already loaded (not null), don't fetch again

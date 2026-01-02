@@ -1594,7 +1594,10 @@ const Chat = () => {
           {/* Top Section - Toggle Buttons */}
           <div className="flex gap-3 justify-center">
             <button 
-              onClick={() => handleModeChange('solo')}
+              onClick={() => {
+                console.log("Solo clicked");
+                handleModeChange('solo');
+              }}
               className="text-white font-bold py-2 px-6 rounded-lg transition-all text-sm shadow-md hover:shadow-lg"
               style={{ 
                 backgroundColor: activeMode === 'solo' ? '#d9b85f' : 'transparent',
@@ -1605,7 +1608,10 @@ const Chat = () => {
               SoloX
             </button>
             <button 
-              onClick={() => handleModeChange('duo')}
+              onClick={() => {
+                console.log("Duo clicked");
+                handleModeChange('duo');
+              }}
               className="text-white font-bold py-2 px-6 rounded-lg transition-all text-sm"
               style={{
                 backgroundColor: activeMode === 'duo' ? '#d9b85f' : 'transparent',
