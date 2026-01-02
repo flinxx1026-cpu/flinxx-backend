@@ -6,7 +6,7 @@ import { MessageContext } from '../context/MessageContext';
 import { useUnread } from '../context/UnreadContext';
 import ChatBox from './ChatBox';
 
-const DuoPanel = ({ onClose }) => {
+const DuoPanel = ({ isOpen = true, onClose }) => {
   const { user } = useContext(AuthContext) || {};
   const { markAsRead } = useContext(MessageContext) || {};
   const { refetchUnreadCount } = useUnread() || {};
@@ -16,10 +16,11 @@ const DuoPanel = ({ onClose }) => {
   const fetchedRef = useRef(false); // Track if we've already fetched
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-  // Fetch accepted friends list only once when panel opens
+  // Fetch accepted friends list only once when modal opens
+  // This effect will only run once on mount due to fetchedRef guard
   useEffect(() => {
-    // Only fetch if we haven't already fetched and user is ready
-    if (fetchedRef.current || !user?.uuid) return;
+    // Only fetch if we haven't already fetched, modal is open, and user is ready
+    if (fetchedRef.current || !isOpen || !user?.uuid) return;
     
     const fetchFriendsList = async () => {
       try {
@@ -46,7 +47,7 @@ const DuoPanel = ({ onClose }) => {
     // Mark as fetched to prevent re-fetches
     fetchedRef.current = true;
     fetchFriendsList();
-  }, [user?.uuid]); // Only depend on user?.uuid
+  }, [isOpen, user?.uuid]); // Depend on isOpen and user?.uuid
 
   // Update friends list when message is sent
   const updateChatListOnMessage = (friendId, messageTime) => {

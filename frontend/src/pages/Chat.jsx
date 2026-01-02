@@ -1595,11 +1595,13 @@ const Chat = () => {
 
       {/* Right - Welcome panel with dark theme */}
       <div className="right-panel flex-1 rounded-3xl shadow-xl p-12 pb-16 space-y-6 flex items-center justify-center" style={{ height: '520px', minHeight: '520px', backgroundColor: '#131313', border: '1px solid #d9b85f' }}>
-        {activeMode === 'duo' ? (
-          // Show DuoPanel when in Duo mode
-          <DuoPanel onClose={() => handleModeChange('solo')} />
-        ) : (
-          // Show Solo content when in Solo mode
+        {/* Keep DuoPanel mounted, control visibility with isOpen prop to prevent unmount/remount flicker */}
+        <div style={{ display: activeMode === 'duo' ? 'block' : 'none', width: '100%', height: '100%' }}>
+          <DuoPanel isOpen={activeMode === 'duo'} onClose={() => handleModeChange('solo')} />
+        </div>
+        
+        {/* Show Solo content when in Solo mode */}
+        {activeMode === 'solo' && (
           <div className="w-full h-full rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-between text-center">
             {/* Top Section - Toggle Buttons */}
             <div className="flex gap-3 justify-center">
@@ -1664,6 +1666,7 @@ const Chat = () => {
             </button>
           </div>
         )}
+      </div>}
       </div>
     </div>
   );
