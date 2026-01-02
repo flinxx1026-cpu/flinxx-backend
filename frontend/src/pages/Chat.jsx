@@ -1536,15 +1536,11 @@ const Chat = () => {
             height: '100%',
             objectFit: 'cover',
             borderRadius: '14px',
-            display: 'block',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            zIndex: 1
+            display: 'block'
           }}
         />
         
-        {/* Camera Placeholder - Always visible */}
+        {/* Camera Placeholder - Below video */}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -1560,7 +1556,8 @@ const Chat = () => {
           justifyContent: 'center',
           color: '#666',
           fontSize: '12px',
-          zIndex: 0
+          zIndex: 0,
+          pointerEvents: 'none'
         }}>
           Camera loading...
         </div>
