@@ -15,6 +15,12 @@ const TopActions = ({
 }) => {
   const { unreadCount } = useUnread();
 
+  // Safety guard - ensure UUID is ready
+  if (!currentUser?.uuid) {
+    console.warn("⚠️ TopActions: UUID not ready, skipping render");
+    return null;
+  }
+
   // Handle message panel open - mark all messages as read
   const handleMessageClick = async () => {
     try {

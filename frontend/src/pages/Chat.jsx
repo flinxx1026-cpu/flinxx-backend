@@ -1573,17 +1573,19 @@ const Chat = () => {
   // Intro Screen Component
   const IntroScreen = () => (
     <div className="intro-screen-container flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
-      {/* Top Icons Bar */}
-      <TopActions
-        currentUser={currentUser}
-        onProfileClick={() => setIsProfileOpen(true)}
-        onPremiumClick={() => setIsPremiumOpen(true)}
-        onMatchHistoryClick={() => setIsMatchHistoryOpen(true)}
-        onSearchClick={() => setIsSearchOpen(true)}
-        onRequestsClick={() => setActivePanel(activePanel === 'notification' ? null : 'notification')}
-        onMessageClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
-        isFixedPosition={true}
-      />
+      {/* Top Icons Bar - Only render when UUID is ready */}
+      {currentUser?.uuid && (
+        <TopActions
+          currentUser={currentUser}
+          onProfileClick={() => setIsProfileOpen(true)}
+          onPremiumClick={() => setIsPremiumOpen(true)}
+          onMatchHistoryClick={() => setIsMatchHistoryOpen(true)}
+          onSearchClick={() => setIsSearchOpen(true)}
+          onRequestsClick={() => setActivePanel(activePanel === 'notification' ? null : 'notification')}
+          onMessageClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
+          isFixedPosition={true}
+        />
+      )}
 
       {/* Right - Welcome panel with dark theme */}
       <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden', position: 'relative' }}>
