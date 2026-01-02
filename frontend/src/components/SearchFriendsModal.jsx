@@ -443,7 +443,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                 onBack={() => setActiveChat(null)}
                 onMessageSent={updateChatListOnMessage}
               />
-            ) : notificationsLoading ? (
+            ) : !notifications ? (
               <p
                 style={{
                   textAlign: 'center',
