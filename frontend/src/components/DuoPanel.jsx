@@ -50,7 +50,7 @@ const DuoPanel = ({ isOpen = true, onClose }) => {
     };
 
     fetchFriendsList();
-  }, [friends, isOpen, user?.uuid]); // Check if friends is null first
+  }, [isOpen, user?.uuid]); // Only depend on isOpen and user?.uuid, NOT friends
 
   // Update friends list when message is sent
   const updateChatListOnMessage = (friendId, messageTime) => {
