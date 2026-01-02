@@ -22,6 +22,19 @@
   gap: 12px;
 }
 
+.dashboard::after {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 50%;
+  width: 1px;
+  background: #d4af37;
+  transform: translateX(-0.5px);
+  pointer-events: none;
+  z-index: 5;
+}
+
 /* Common panel styling */
 .panel {
   border: 1.5px solid #d4af37;
