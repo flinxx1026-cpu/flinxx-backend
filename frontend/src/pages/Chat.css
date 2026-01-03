@@ -148,19 +148,25 @@ body {
   display: flex;
 }
 
-/* 🔥 RIGHT PANEL INNER WRAPPER - REAL FIX FOR GOLDEN BORDER */
-.right-panel-inner {
-  flex: 1;
+/* 🔥 GOLDEN BORDER FRAME - THIS FIXES IT */
+.camera-frame {
   width: 100%;
   height: 100%;
   border: 2px solid #d4af37;
   border-radius: 28px;
   position: relative;
-  background: #000;
   overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* CAMERA / VIDEO LAYER */
+.camera-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
 }
 
 /* Alias for right-panel as camera-panel */

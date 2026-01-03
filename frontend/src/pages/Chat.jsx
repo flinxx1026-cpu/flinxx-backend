@@ -1657,32 +1657,35 @@ const Chat = () => {
 
       {/* RIGHT PANEL - Camera Feed + Icons + You Badge */}
       <div className="right-panel">
-        {/* RIGHT PANEL INNER WRAPPER - This is where the border goes */}
-        <div className="right-panel-inner">
-          {/* Inner Camera Wrapper */}
-          <div className="camera-inner">
-            {/* Camera Placeholder - Rendered BEFORE video so it sits below */}
-            {!isLocalCameraReady && (
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundColor: '#000',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#666',
-                fontSize: '12px',
-                zIndex: 1,
-                pointerEvents: 'none'
-              }}>
-                Camera loading...
-              </div>
-            )}
-          </div>
+        {/* CAMERA FRAME - Golden border wrapper */}
+        <div className="camera-frame">
+          {/* CAMERA CONTAINER - Contains all camera/video content */}
+          <div className="camera-container">
+            {/* Inner Camera Wrapper */}
+            <div className="camera-inner">
+              {/* Camera Placeholder - Rendered BEFORE video so it sits below */}
+              {!isLocalCameraReady && (
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: '#000',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#666',
+                  fontSize: '12px',
+                  zIndex: 1,
+                  pointerEvents: 'none'
+                }}>
+                  Camera loading...
+                </div>
+              )}
+            </div>
 
-          {/* "You" Badge - Always render */}
-          <div className="you-label">You</div>
+            {/* "You" Badge - Always render */}
+            <div className="you-label">You</div>
+          </div>
         </div>
       </div>
     </div>
