@@ -1734,9 +1734,9 @@ const Chat = () => {
     }, [isMatchingStarted]);
 
     return (
-    <div className="dashboard flex flex-row w-full max-w-[1500px] mx-auto gap-12 px-10 mt-20 items-start overflow-visible" style={{ minHeight: '100vh', height: 'auto', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+    <div className="dashboard">
       {/* Left - Live camera preview box */}
-      <div className="left-panel flex-1 rounded-3xl shadow-xl" style={{ height: '520px', minHeight: '520px', backgroundColor: 'transparent', border: '1px solid #d9b85f', overflow: 'hidden', position: 'relative' }}>
+      <div className="left-panel">
         {/* Camera Placeholder - Shows while loading */}
         {!isLocalCameraReady && (
           <div style={{
@@ -1766,7 +1766,7 @@ const Chat = () => {
       </div>
 
       {/* Right - Dark Waiting Panel with golden accents */}
-      <div className="right-panel flex-1 rounded-3xl shadow-xl flex flex-col" style={{ height: '520px', minHeight: '520px', backgroundColor: '#131313', border: '1px solid #d9b85f', padding: 0, overflow: 'visible', position: 'relative', zIndex: 5 }}>
+      <div className="right-panel">
         <div className="flex flex-col items-center justify-center text-center gap-8 py-20">
           {/* Animated Waiting Icon */}
           <div className="animate-pulse text-6xl">
@@ -1840,7 +1840,7 @@ const Chat = () => {
     });
     
     return (
-    <div className="dashboard video-chat-container flex flex-col w-full h-full items-center justify-center gap-8 px-6 py-6 overflow-visible" style={{ minHeight: '100vh', backgroundColor: '#0f0f0f', overflow: 'visible' }}>
+    <div className="dashboard">
         
         {/* DUAL CAMERA LAYOUT - Side by Side */}
         <div className="w-full max-w-5xl flex gap-6 flex-1">
