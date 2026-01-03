@@ -303,15 +303,6 @@ video {
   zoom: 1 !important;
 }
 
-/* Right panel - fixed dimensions and styling */
-.right-panel {
-  min-height: 480px;
-  background: #131313;
-  border: 1px solid #d9b85f;
-  border-radius: 28px;
-  padding: 40px;
-}
-
 /* Remote video element - FORCE VISIBILITY */
 #remote-video {
   display: block !important;
