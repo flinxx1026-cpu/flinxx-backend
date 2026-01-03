@@ -1014,16 +1014,6 @@ video {
   }
 }
 
-/* ✅ LOCAL VIDEO PANEL - CONSTRAINED POSITIONING */
-.left-panel {
-  position: relative;          /* CRITICAL: Creates positioning context */
-  background: #000;
-  overflow: hidden;            /* Clips video inside panel */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 /* LOCAL VIDEO ELEMENT - PERSISTENT, ALWAYS IN DOM */
 .local-video {
   /* ✅ CRITICAL: Persistent video element
