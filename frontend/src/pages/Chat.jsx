@@ -1567,7 +1567,7 @@ const Chat = () => {
     return (
     <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
       {/* LEFT PANEL - Flinxx Heading + Buttons */}
-      <aside className="w-full lg:flex-1 flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300">
+      <aside className="w-full lg:flex-1 h-full flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300">
         {/* Top Icons Header - Circular icon buttons */}
         <div className="icon-row p-6 sm:p-8">
           {/* Profile Icon */}
@@ -1622,7 +1622,7 @@ const Chat = () => {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col items-center justify-center pb-20 space-y-12 relative z-10">
+        <div className="flex-1 flex flex-col items-center justify-center space-y-12 relative z-10">
           {/* Flinxx Title */}
           <h1 className="font-display text-5xl sm:text-6xl font-bold text-primary tracking-tight drop-shadow-sm select-none">
             Flinxx
@@ -1662,7 +1662,7 @@ const Chat = () => {
         </div>
 
         {/* Footer */}
-        <div className="absolute bottom-6 w-full text-center z-10">
+        <div className="w-full text-center py-4 z-10 mt-auto">
           <p className="text-xs text-gray-500 dark:text-gray-600 font-medium">Premium Video Experience</p>
         </div>
       </aside>
