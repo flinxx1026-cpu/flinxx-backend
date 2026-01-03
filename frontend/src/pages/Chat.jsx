@@ -1762,7 +1762,7 @@ const Chat = () => {
           <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-yellow-400/5 rounded-full blur-[120px] animate-pulse"></div>
             <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-yellow-400/5 rounded-full blur-[80px]" style={{ animation: 'float 15s infinite linear' }}></div>
-            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-yellow-400/5 rounded-full blur-[90px]' style={{ animation: 'float 15s infinite linear', animationDelay: '-5s' }}></div>
+            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-yellow-400/5 rounded-full blur-[90px]" style={{ animation: 'float 15s infinite linear', animationDelay: '-5s' }}></div>
             <div className="absolute top-1/3 right-1/3 w-40 h-40 bg-yellow-400/5 rounded-full blur-[60px]" style={{ animation: 'float 15s infinite linear', animationDelay: '-10s' }}></div>
           </div>
 
