@@ -42,53 +42,39 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="relative z-10 min-h-[500px] flex items-center justify-center px-4 py-12">
-        <div className="text-center max-w-3xl">
-          {/* Main Headline */}
-          <h1 className="text-6xl md:text-7xl font-black text-white mb-6 leading-tight">
-            Meet New People<br />Around the World
-          </h1>
+      {/* Main Content - 2 Panel Layout */}
+      <div className="relative z-10 h-[calc(100vh-80px)] px-3 pb-3">
+        <div className="flex h-full gap-4">
+          
+          {/* LEFT PANEL */}
+          <div className="flex-1 rounded-2xl border border-[#d4af37] bg-black flex flex-col items-center justify-center">
+            <h1 className="text-5xl font-bold text-[#d4af37] mb-6">Flinxx</h1>
 
-          {/* Subtitle */}
-          <p className="text-xl text-white/90 mb-10">
-            Connect instantly with strangers through video chat
-          </p>
+            <div className="flex gap-3 mb-6">
+              <button className="px-6 py-2 rounded-lg bg-[#d4af37] text-black font-semibold hover:opacity-90 transition">
+                SoloX
+              </button>
+              <button className="px-6 py-2 rounded-lg border border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10 transition">
+                DuoX
+              </button>
+            </div>
 
-          {/* CTA Buttons - Horizontal Layout */}
-          <div className="flex items-center justify-center gap-4 mb-12">
-            {/* Start Chatting Now Button */}
-            <button
+            <button 
               onClick={handleStartChat}
               disabled={isLoading}
-              className={`inline-flex items-center gap-2 px-8 py-4 text-lg font-bold rounded-lg transition-all transform hover:scale-105 ${
-                isLoading
-                  ? 'cursor-not-allowed text-gray-700'
-                  : 'text-white'
-              }`}
-              style={isLoading ? { backgroundColor: '#9CA3AF' } : {
-                background: 'linear-gradient(90deg, #FFB31A, #FF8A00)',
-                boxShadow: '0 0 30px rgba(255, 139, 0, 0.4)'
-              }}
-              onMouseEnter={(e) => !isLoading && (e.target.style.background = 'linear-gradient(90deg, #FF9900, #FF6A00)')}
-              onMouseLeave={(e) => !isLoading && (e.target.style.background = 'linear-gradient(90deg, #FFB31A, #FF8A00)')}
+              className="px-10 py-4 rounded-full bg-[#d4af37] text-black font-semibold hover:opacity-90 transition disabled:opacity-50"
             >
-              {isLoading ? (
-                <>
-                  <span className="animate-spin">⟳</span> Starting Chat...
-                </>
-              ) : (
-                <>
-                  <span>⚡</span> Start Chatting Now
-                </>
-              )}
+              {isLoading ? '⟳ Loading...' : '🎁 Start Video Chat'}
             </button>
           </div>
 
-          {/* Info Text */}
-          <p className="text-white/80 text-sm">
-            Fast, simple video chats • Real users, real time
-          </p>
+          {/* RIGHT PANEL */}
+          <div className="flex-1 rounded-2xl border border-[#d4af37] bg-black relative">
+            <span className="absolute bottom-4 left-4 text-xs border border-[#d4af37] px-3 py-1 rounded-full text-[#d4af37]">
+              You
+            </span>
+          </div>
+
         </div>
       </div>
 
