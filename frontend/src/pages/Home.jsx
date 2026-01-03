@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import flinxxPremiumLogo from '../assets/flinxx-premium-logo.svg'
 
+// VERCEL DEPLOYMENT: 2026-01-03 final home page update
 const Home = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
