@@ -1755,19 +1755,26 @@ const Chat = () => {
             0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
             40% { transform: scale(1); opacity: 1; }
           }
+          .search-icon-wrapper {
+            position: relative;
+            display: inline-block;
+            width: fit-content;
+            height: fit-content;
+          }
           @keyframes searchFloat {
             0% {
-              transform: translateY(0) rotate(0deg);
+              transform: translateY(0);
             }
             50% {
-              transform: translateY(-10px) rotate(5deg);
+              transform: translateY(-6px);
             }
             100% {
-              transform: translateY(0) rotate(0deg);
+              transform: translateY(0);
             }
           }
           .search-icon {
-            animation: searchFloat 2.5s ease-in-out infinite;
+            animation: searchFloat 2s ease-in-out infinite;
+            display: block;
           }
           @keyframes dotPulse {
             0% { opacity: 0.2; }
@@ -1819,7 +1826,7 @@ const Chat = () => {
                 {/* Animated search icon */}
                 <div className="relative mb-4">
                   <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full animate-pulse"></div>
-                  <div className="relative z-10 transform transition-transform duration-700 hover:scale-110">
+                  <div className="search-icon-wrapper">
                     <div className="text-6xl md:text-8xl filter drop-shadow-lg search-icon">
                       🔍
                     </div>
