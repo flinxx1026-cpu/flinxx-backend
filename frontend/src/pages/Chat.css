@@ -269,8 +269,7 @@ video {
 
 .video-wrapper,
 .video-container,
-.video-box,
-.right-panel {
+.video-box {
   flex-shrink: 0 !important;
   min-width: 0 !important;
   min-height: 0 !important;
