@@ -413,101 +413,68 @@ const Chat = () => {
     };
   }, []);
 
-  // 🔒 BIND CAMERA TO isSearching STATE - Only start when user initiates search
+  // ✅ AUTO-START CAMERA ON DASHBOARD MOUNT - Always ON
+  // Camera starts once when component mounts and runs continuously
+  // User can interact with it (search, connect, disconnect)
+  // Camera only stops on page unload/logout
   useEffect(() => {
-    console.log('📹 [CAMERA BINDING] isSearching changed:', isSearching);
+    console.log('📹 [AUTO-START] Dashboard mounted - starting camera for preview');
     
-    // GUARD: Only start camera if user initiated search
-    if (!isSearching) {
-      console.log('📹 [CAMERA BINDING] isSearching=false - NOT starting camera on dashboard load');
-      return;
-    }
-
-    console.log('📹 [CAMERA BINDING] isSearching=true - Starting camera NOW');
-    
-    const startLocalCamera = async () => {
-      // 🔒 CRITICAL GUARD: Double-check isSearching before proceeding
-      if (!isSearching) {
-        console.log('📹 [START LOCAL] Guard: isSearching is false, aborting camera start');
-        return;
-      }
-
+    const startDashboardCamera = async () => {
       try {
-        console.log('📹 [START LOCAL] Starting local camera stream for searching...');
+        console.log('📹 [AUTO-START] Requesting camera for dashboard preview...');
         
         // Verify video element exists in DOM
         if (!localVideoRef.current) {
-          console.error('📹 [START LOCAL] ❌ Video element not in DOM, cannot initialize camera');
+          console.error('📹 [AUTO-START] ❌ Video element not in DOM, cannot initialize camera');
           return;
         }
         
-        console.log('📹 [START LOCAL] ✓ Video element found in DOM, requesting camera permissions');
+        console.log('📹 [AUTO-START] ✓ Video element found in DOM, requesting camera permissions');
         
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 } },
           audio: true
         });
         
-        // Store the stream for later use in chat
+        // Store the stream for reuse in WebRTC
         localStreamRef.current = stream;
         streamRef.current = stream;
-        console.log('📹 [START LOCAL] ✅ Camera stream obtained:', stream);
-        console.log('📹 [START LOCAL] Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
+        console.log('📹 [AUTO-START] ✅ Camera stream obtained:', stream);
+        console.log('📹 [AUTO-START] Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
         
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
           localVideoRef.current.muted = true;
           
-          // 🔥 CRITICAL: Wait for video to actually render frames before marking ready
+          // 🔥 CRITICAL: Wait for video to actually render frames
           localVideoRef.current.onloadedmetadata = () => {
-            console.log('📹 [START LOCAL] ✅ Video metadata loaded, calling play()');
+            console.log('📹 [AUTO-START] ✅ Video metadata loaded, calling play()');
             
             localVideoRef.current.play().then(() => {
-              console.log('📹 [START LOCAL] ✅ Video playing - camera ready');
+              console.log('📹 [AUTO-START] ✅ Video playing - camera ready on dashboard');
               setCameraStarted(true);
               setIsLocalCameraReady(true);
             }).catch((playErr) => {
-              console.warn('📹 [START LOCAL] ⚠️ Play warning (but video loaded):', playErr.message);
+              console.warn('📹 [AUTO-START] ⚠️ Play warning (but video loaded):', playErr.message);
               setCameraStarted(true);
               setIsLocalCameraReady(true);
             });
           };
         }
       } catch (err) {
-        console.error('📹 [START LOCAL] ❌ Camera error:', err.message);
-        console.error('📹 [START LOCAL] Error name:', err.name);
+        console.error('📹 [AUTO-START] ❌ Camera error:', err.message);
+        console.error('📹 [AUTO-START] Error name:', err.name);
         setIsLocalCameraReady(true);
       }
     };
 
-    startLocalCamera();
+    // Start camera immediately on mount
+    startDashboardCamera();
 
-    // Cleanup: Stop camera when search ends or component unmounts
-    return () => {
-      console.log('📹 [CAMERA CLEANUP] Search ended or component unmounting - stopping camera');
-      stopLocalCamera();
-    };
-  }, [isSearching]);
-
-  // 🔒 STOP CAMERA FUNCTION - Cleanup when search ends or dashboard reloads
-  const stopLocalCamera = () => {
-    console.log('📹 [STOP LOCAL] Stopping camera stream...');
-    if (localVideoRef.current?.srcObject) {
-      const tracks = localVideoRef.current.srcObject.getTracks();
-      console.log('📹 [STOP LOCAL] Stopping', tracks.length, 'tracks');
-      tracks.forEach(track => {
-        console.log('📹 [STOP LOCAL] Stopping track:', track.kind);
-        track.stop();
-      });
-      localVideoRef.current.srcObject = null;
-    }
-    if (localStreamRef.current) {
-      const tracks = localStreamRef.current.getTracks();
-      tracks.forEach(track => track.stop());
-      localStreamRef.current = null;
-    }
-    console.log('📹 [STOP LOCAL] ✅ Camera stopped');
-  };
+    // No cleanup - camera stays ON
+    return undefined;
+  }, []); // ✅ Empty dependency array - runs ONCE on mount
 
   // ========================================
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
@@ -1515,21 +1482,19 @@ const Chat = () => {
 
   const cancelSearch = () => {
     console.log('🛑 [CANCEL] User cancelled search');
-    console.log('🛑 [CANCEL] Stopping camera stream - resetting to dashboard');
+    console.log('🛑 [CANCEL] ❌ NOT stopping camera - keep running on dashboard');
     
-    // Stop camera when cancelling search - useEffect will handle cleanup via isSearching=false
+    // Reset search state but KEEP camera running
     setIsSearching(false);
     setPartnerFound(false);
     setIsLoading(false);
-    setCameraStarted(false);
-    setIsLocalCameraReady(false);
     
     socket.emit('cancel_search', {
       userId: userIdRef.current,
       timestamp: new Date().toISOString()
     });
     
-    console.log('🛑 [CANCEL] ✅ Search cancelled - camera stopped - returned to dashboard');
+    console.log('🛑 [CANCEL] ✅ Search cancelled - camera still ON - back to dashboard');
   };
 
   const sendMessage = () => {
@@ -1719,36 +1684,31 @@ const Chat = () => {
         </div>
       </aside>
 
-      {/* RIGHT PANEL - Camera Feed (only show when searching or connected) */}
-      {(isSearching || partnerFound) ? (
-        <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
-          {/* Camera Frame with Video */}
-          <div className="camera-frame w-full h-full">
-            {/* Camera Video */}
-            <video
-              ref={localVideoRef}
-              className="camera-video"
-              autoPlay
-              muted
-              playsInline
-            />
-          </div>
+      {/* RIGHT PANEL - Camera Feed (always visible) */}
+      <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
+        {/* Camera Frame with Video */}
+        <div className="camera-frame w-full h-full">
+          {/* Camera Video */}
+          <video
+            ref={localVideoRef}
+            className="camera-video"
+            autoPlay
+            muted
+            playsInline
+          />
+        </div>
 
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
 
-          {/* You Badge */}
-          <div className="absolute bottom-6 left-6 z-30 pointer-events-none">
-            <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
-              <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></span>
-              <span className="text-xs font-semibold tracking-wider text-white/90 uppercase">You</span>
-            </div>
+        {/* You Badge */}
+        <div className="absolute bottom-6 left-6 z-30 pointer-events-none">
+          <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
+            <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></span>
+            <span className="text-xs font-semibold tracking-wider text-white/90 uppercase">You</span>
           </div>
-        </main>
-      ) : (
-        // Dashboard state - no camera panel
-        null
-      )}
+        </div>
+      </main>
     </div>
     );
   };
