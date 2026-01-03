@@ -35,13 +35,13 @@ export default function AuthSuccess() {
           }
         }
 
-        // Fetch user data from backend using token
+        // Token contains all user data (encoded by backend)
+        // Decode the token to get user info
+        const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
+        
+        // Fetch full user data from backend using the decoded token
         const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-        const response = await fetch(`${BACKEND_URL}/api/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(`${BACKEND_URL}/auth-success?token=${token}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch user data: ${response.statusText}`);
