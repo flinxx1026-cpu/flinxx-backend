@@ -37,7 +37,11 @@ export default function AuthSuccess() {
 
         // Fetch user data from backend using token
         const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-        const response = await fetch(`${BACKEND_URL}/auth-success?token=${token}`);
+        const response = await fetch(`${BACKEND_URL}/api/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         
         if (!response.ok) {
           throw new Error(`Failed to fetch user data: ${response.statusText}`);
