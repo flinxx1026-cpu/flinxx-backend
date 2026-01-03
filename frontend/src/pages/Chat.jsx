@@ -1484,6 +1484,7 @@ const Chat = () => {
       setIsSearching(true);
       setPartnerFound(false);
       setIsLoading(true);
+      console.log('STATE AFTER START SEARCH:', { isStarting: true, isSearching: true, partnerFound: false });
 
       // Emit start-search to start matching
       socket.emit('start-search', {
@@ -1494,7 +1495,7 @@ const Chat = () => {
         userPicture: currentUser.picture || null  // Include picture so partner can display it
       });
 
-      console.log('🎬 [SEARCHING] ✅ find_partner event emitted - now waiting for a partner');
+      console.log('🎬 [SEARCHING] ✅ start-search event emitted - now waiting for a partner');
     }
   };
 
@@ -2072,8 +2073,12 @@ const Chat = () => {
           text="Looking for a partner..."
           onCancel={() => {
             console.log('🛑 [CANCEL] User cancelled search');
+            console.log('STATE BEFORE CANCEL:', { isStarting: isLoading, isSearching, partnerFound });
             socket.emit("cancel-search", { userId: userIdRef.current });
             setIsSearching(false);
+            setPartnerFound(false);
+            setIsLoading(false); // 🔥 FIX: Reset loading state so button shows text again
+            console.log('STATE AFTER CANCEL:', { isStarting: false, isSearching: false, partnerFound: false });
           }}
         />
       )}
