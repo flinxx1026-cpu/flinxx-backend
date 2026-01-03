@@ -1,6 +1,6 @@
 {
   "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist2",
+  "outputDirectory": "frontend/dist",
   "framework": "vite",
   "env": {
     "VERCEL_FORCE_REBUILD": "2026-01-03-critical-panel-layout-fix"
