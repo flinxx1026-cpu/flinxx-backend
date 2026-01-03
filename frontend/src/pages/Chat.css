@@ -49,14 +49,14 @@ body {
 .right-panel {
   flex: 0 0 45%;
   height: 100%;
-  border: 2px solid #d4af37;
-  border-radius: 28px;
   box-sizing: border-box;
   position: relative;
   background: #000;
 }
 
 .left-panel {
+  border: 2px solid #d4af37;
+  border-radius: 28px;
   display: flex;
   flex-direction: column;
   justify-content: center;
