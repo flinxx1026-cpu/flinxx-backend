@@ -1453,7 +1453,6 @@ const Chat = () => {
         await startCamera();
         console.log('🎬 [BUTTON CLICK] startCamera() completed successfully');
 
-
         // Set camera started flag - shows preview on home screen
         console.log('🎬 [START] Setting cameraStarted = true (camera preview now showing)');
         setCameraStarted(true);
@@ -1480,13 +1479,9 @@ const Chat = () => {
     else if (cameraStarted && !isSearching) {
       console.log('🎬 [SEARCHING] User clicked "Start Video Chat" again - starting search');
       console.log('🎬 [SEARCHING] ⚠️ NOT reinitializing camera - stream already active');
+      console.log('CLICKED Start Video Chat'); // 🧪 DEBUG: Confirm handler runs
       
-      setIsSearching(true);
-      setPartnerFound(false);
-      setIsLoading(true);
-      console.log('STATE AFTER START SEARCH:', { isStarting: true, isSearching: true, partnerFound: false });
-
-      // Emit start-search to start matching
+      // EMIT SOCKET EVENT FIRST (synchronous, immediate)
       socket.emit('start-search', {
         userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
         userName: currentUser.name || 'Anonymous',
@@ -1494,8 +1489,14 @@ const Chat = () => {
         userLocation: currentUser.location || 'Unknown',
         userPicture: currentUser.picture || null  // Include picture so partner can display it
       });
-
-      console.log('🎬 [SEARCHING] ✅ start-search event emitted - now waiting for a partner');
+      
+      console.log('🎬 [SEARCHING] ✅ start-search event emitted immediately');
+      
+      // THEN UPDATE STATE (allow batching)
+      setIsSearching(true);
+      setPartnerFound(false);
+      setIsLoading(true);
+      console.log('STATE AFTER START SEARCH:', { isStarting: true, isSearching: true, partnerFound: false });
     }
   };
 
