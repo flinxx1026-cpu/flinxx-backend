@@ -1565,101 +1565,113 @@ const Chat = () => {
     console.log("Dashboard render");
     
     return (
-    <div className="dashboard">
-      {/* LEFT PANEL - Flinxx Heading + Button */}
-      <div className="left-panel">
-        <h1 className="logo-text">Flinxx</h1>
-
-        {/* Mode Toggle Buttons - SoloX / DuoX */}
-        <div className="mode-switch">
-          <button
-            className={`mode-btn ${activeMode === 'solo' ? 'active' : ''}`}
-            onClick={() => setActiveMode('solo')}
-          >
-            SoloX
-          </button>
-
-          <button
-            className={`mode-btn ${activeMode === 'duo' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveMode('duo');
-              openDuoSquad();
-            }}
-          >
-            DuoX
-          </button>
-        </div>
-
-        <button
-          onClick={startVideoChat}
-          disabled={isLoading}
-          className="start-btn"
-        >
-          {isLoading ? '⟳ Loading...' : '🎬 Start Video Chat'}
-        </button>
-
-        {/* Top Icons - Header Bar */}
-        <div className="top-icons">
+    <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
+      {/* LEFT PANEL - Flinxx Heading + Buttons */}
+      <aside className="w-full lg:flex-1 flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative overflow-hidden transition-all duration-300">
+        {/* Top Icons Header */}
+        <div className="p-6 sm:p-8 flex items-center gap-3 sm:gap-4 overflow-x-auto no-scrollbar relative z-10">
           {/* Profile Icon */}
-          <button
+          <button 
             onClick={() => setIsProfileOpen(true)}
-            className="icon"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-gray-400 hover:text-primary hover:border-primary transition-colors group"
             title="Profile"
           >
-            👤
+            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">person</span>
           </button>
 
           {/* Search Icon */}
-          <button
+          <button 
             onClick={() => setIsSearchOpen(true)}
-            className="icon"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-gray-400 hover:text-primary hover:border-primary transition-colors group"
             title="Search"
           >
-            🔍
+            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">search</span>
           </button>
 
-          {/* Heart Icon */}
-          <button
-            className="icon"
-            title="Likes"
-          >
-            ❤️
+          {/* Likes Icon */}
+          <button className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-pink-500 hover:text-pink-400 hover:border-pink-500 transition-colors group">
+            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">favorite</span>
           </button>
 
-          {/* Chat Icon */}
-          <button
+          {/* Messages Icon */}
+          <button 
             onClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
-            className="icon"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-gray-400 hover:text-primary hover:border-primary transition-colors group"
             title="Messages"
           >
-            💬
+            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">chat_bubble</span>
           </button>
 
           {/* Premium Icon */}
-          <button
+          <button 
             onClick={() => setIsPremiumOpen(true)}
-            className="icon"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-amber-500 hover:text-amber-400 hover:border-amber-500 transition-colors group"
             title="Premium"
           >
-            👑
+            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">emoji_events</span>
           </button>
 
           {/* History Icon */}
-          <button
+          <button 
             onClick={() => setIsMatchHistoryOpen(true)}
-            className="icon"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-purple-400 hover:text-purple-300 hover:border-purple-400 transition-colors group"
             title="History"
           >
-            ⏱️
+            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">timer</span>
           </button>
         </div>
-      </div>
 
-      {/* RIGHT PANEL - Camera Feed + Icons + You Badge */}
-      <div className="right-panel">
-        {/* CAMERA FRAME - Golden border wrapper (MUST contain video directly) */}
-        <div className="camera-frame">
-          {/* CAMERA VIDEO - MUST be direct child of camera-frame */}
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col items-center justify-center pb-20 space-y-12 relative z-10">
+          {/* Flinxx Title */}
+          <h1 className="font-display text-5xl sm:text-6xl font-bold text-primary tracking-tight drop-shadow-sm select-none">
+            Flinxx
+          </h1>
+
+          {/* Mode Toggle Buttons */}
+          <div className="flex items-center gap-6">
+            <button 
+              className={`px-8 py-3 rounded-xl font-semibold text-lg shadow-glow transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${activeMode === 'solo' ? 'bg-primary text-black hover:shadow-glow-hover hover:bg-primary-hover' : 'border border-primary text-primary hover:bg-primary/10'}`}
+              onClick={() => setActiveMode('solo')}
+            >
+              SoloX
+            </button>
+            <button 
+              className={`px-8 py-3 rounded-xl font-semibold text-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${activeMode === 'duo' ? 'bg-primary text-black hover:shadow-glow-hover hover:bg-primary-hover shadow-glow' : 'border border-primary text-primary hover:bg-primary/10'}`}
+              onClick={() => {
+                setActiveMode('duo');
+                openDuoSquad();
+              }}
+            >
+              DuoX
+            </button>
+          </div>
+
+          {/* Start Video Chat Button */}
+          <button 
+            onClick={startVideoChat}
+            disabled={isLoading}
+            className="group relative px-10 py-4 rounded-full bg-gradient-to-r from-primary via-[#E5C558] to-primary text-black font-bold text-lg shadow-lg hover:shadow-glow-hover transition-all transform hover:scale-105 overflow-hidden whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out skew-x-12 -translate-x-full"></span>
+            <div className="flex items-center justify-center gap-3 relative z-10">
+              <span className="text-2xl">🎬</span>
+              <span>{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
+            </div>
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div className="absolute bottom-6 w-full text-center z-10">
+          <p className="text-xs text-gray-500 dark:text-gray-600 font-medium">Premium Video Experience</p>
+        </div>
+      </aside>
+
+      {/* RIGHT PANEL - Camera Feed */}
+      <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
+        {/* Camera Frame with Video */}
+        <div className="camera-frame w-full h-full">
+          {/* Camera Video */}
           <video
             ref={localVideoRef}
             className="camera-video"
@@ -1667,11 +1679,19 @@ const Chat = () => {
             muted
             playsInline
           />
-          
-          {/* "You" Badge - Always render */}
-          <div className="you-label">You</div>
         </div>
-      </div>
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
+
+        {/* You Badge */}
+        <div className="absolute bottom-6 left-6 z-30 pointer-events-none">
+          <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
+            <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></span>
+            <span className="text-xs font-semibold tracking-wider text-white/90 uppercase">You</span>
+          </div>
+        </div>
+      </main>
     </div>
     );
   };
