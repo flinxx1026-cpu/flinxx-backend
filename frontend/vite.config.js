@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   build: {
-    outDir: 'dist',
+    outDir: 'dist2',
     sourcemap: true,
     minify: 'esbuild',
     chunkSizeWarningLimit: 1000,
