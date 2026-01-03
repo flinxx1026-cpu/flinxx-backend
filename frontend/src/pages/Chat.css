@@ -35,6 +35,24 @@
   flex-shrink: 0;
 }
 
+/* Center Divider - Absolute overlay for gap styling */
+.center-divider {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  background: linear-gradient(
+    to bottom,
+    #d4af37,
+    #f5d76e,
+    #d4af37
+  );
+  pointer-events: none;
+  z-index: 50;
+}
+
 /* Common panel styling */
 .panel {
   border: 1.5px solid #d4af37;
