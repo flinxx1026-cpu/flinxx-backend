@@ -19,6 +19,71 @@
   background: #444;
 }
 
+/* Icon row container */
+.icon-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  position: relative;
+  z-index: 10;
+}
+
+/* Circular icon button style */
+.icon-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid #caa24d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 10;
+}
+
+/* Icon visibility fix */
+.icon-btn i,
+.icon-btn .material-icons-round {
+  font-size: 22px;
+  color: #ffffff;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  border-color: #d4af37;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+}
+
+.icon-btn:hover i,
+.icon-btn:hover .material-icons-round {
+  color: #d4af37;
+}
+
+/* Mobile & small screen fix */
+@media (max-width: 768px) {
+  .icon-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .icon-btn i,
+  .icon-btn .material-icons-round {
+    font-size: 20px;
+  }
+
+  .icon-row {
+    gap: 12px;
+  }
+}
+
 .bg-refined {
   background-color: #050505;
   background-image: 

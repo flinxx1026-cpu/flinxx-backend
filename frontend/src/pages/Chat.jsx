@@ -1567,57 +1567,57 @@ const Chat = () => {
     return (
     <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
       {/* LEFT PANEL - Flinxx Heading + Buttons */}
-      <aside className="w-full lg:flex-1 flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative overflow-hidden transition-all duration-300">
-        {/* Top Icons Header */}
-        <div className="p-6 sm:p-8 flex items-center gap-3 sm:gap-4 overflow-x-auto no-scrollbar relative z-10">
+      <aside className="w-full lg:flex-1 flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300">
+        {/* Top Icons Header - Circular icon buttons */}
+        <div className="icon-row p-6 sm:p-8">
           {/* Profile Icon */}
           <button 
             onClick={() => setIsProfileOpen(true)}
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-gray-400 hover:text-primary hover:border-primary transition-colors group"
+            className="icon-btn"
             title="Profile"
           >
-            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">person</span>
+            <i className="material-icons-round">person</i>
           </button>
 
           {/* Search Icon */}
           <button 
             onClick={() => setIsSearchOpen(true)}
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-gray-400 hover:text-primary hover:border-primary transition-colors group"
+            className="icon-btn"
             title="Search"
           >
-            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">search</span>
+            <i className="material-icons-round">search</i>
           </button>
 
           {/* Likes Icon */}
-          <button className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-pink-500 hover:text-pink-400 hover:border-pink-500 transition-colors group">
-            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">favorite</span>
+          <button className="icon-btn" title="Likes">
+            <i className="material-icons-round">favorite</i>
           </button>
 
           {/* Messages Icon */}
           <button 
             onClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-gray-400 hover:text-primary hover:border-primary transition-colors group"
+            className="icon-btn"
             title="Messages"
           >
-            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">chat_bubble</span>
+            <i className="material-icons-round">chat_bubble</i>
           </button>
 
           {/* Premium Icon */}
           <button 
             onClick={() => setIsPremiumOpen(true)}
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-amber-500 hover:text-amber-400 hover:border-amber-500 transition-colors group"
+            className="icon-btn"
             title="Premium"
           >
-            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">emoji_events</span>
+            <i className="material-icons-round">emoji_events</i>
           </button>
 
           {/* History Icon */}
           <button 
             onClick={() => setIsMatchHistoryOpen(true)}
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-gray-700 dark:border-gray-800 flex items-center justify-center text-purple-400 hover:text-purple-300 hover:border-purple-400 transition-colors group"
+            className="icon-btn"
             title="History"
           >
-            <span className="material-icons-round text-xl group-hover:scale-110 transition-transform">timer</span>
+            <i className="material-icons-round">timer</i>
           </button>
         </div>
 
