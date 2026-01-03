@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
+// BUILD: 2025-01-03 - Home panel UI fix
 import flinxxPremiumLogo from '../assets/flinxx-premium-logo.svg'
 import ContactChat from '../components/ContactChat'
 
