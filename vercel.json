@@ -3,7 +3,7 @@
   "outputDirectory": "frontend/dist",
   "framework": "vite",
   "env": {
-    "VERCEL_FORCE_REBUILD": "2026-01-03-critical-panel-layout-fix"
+    "VERCEL_FORCE_REBUILD": "2026-01-03-panels-showing-cache-bust-v2"
   },
   "headers": [
     {
