@@ -398,13 +398,14 @@ const Chat = () => {
     }
   };
   
-  // 🔥 Cleanup: Stop camera on unmount
+  // 🔥 Cleanup: Stop camera on final unmount
   useEffect(() => {
     return () => {
-      console.log('📹 [CLEANUP] Component unmounting - stopping camera');
+      console.log('📹 [FINAL CLEANUP] Component unmounting - stopping all streams');
+      stopLocalCamera();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => {
-          console.log('📹 [CLEANUP] Stopping track:', track.kind);
+          console.log('📹 [FINAL CLEANUP] Stopping track:', track.kind);
           track.stop();
         });
         streamRef.current = null;
@@ -412,89 +413,101 @@ const Chat = () => {
     };
   }, []);
 
-  // Auto-start camera preview on page load (lobby screen)
-  // CRITICAL: Delayed initialization - only start after a short delay to ensure DOM is ready
-  // IMPORTANT: Skip if coming from profile completion (view=home) - camera starts when user clicks "Start Video Chat"
+  // 🔒 BIND CAMERA TO isSearching STATE - Only start when user initiates search
   useEffect(() => {
-    console.log('[Camera] ⏳ Auto-start useEffect triggered, shouldStartAsIntro:', shouldStartAsIntro);
+    console.log('📹 [CAMERA BINDING] isSearching changed:', isSearching);
     
-    // Skip camera initialization if user just completed profile
-    if (shouldStartAsIntro) {
-      console.log('[Camera] ⏭️ Skipping auto camera init - user just completed profile (view=home)');
-      console.log('[Camera] Camera will start when user clicks "Start Video Chat" button');
-      console.log('[Camera] User must click button to start camera manually');
+    // GUARD: Only start camera if user initiated search
+    if (!isSearching) {
+      console.log('📹 [CAMERA BINDING] isSearching=false - NOT starting camera on dashboard load');
       return;
     }
 
-    async function startPreview() {
+    console.log('📹 [CAMERA BINDING] isSearching=true - Starting camera NOW');
+    
+    const startLocalCamera = async () => {
+      // 🔒 CRITICAL GUARD: Double-check isSearching before proceeding
+      if (!isSearching) {
+        console.log('📹 [START LOCAL] Guard: isSearching is false, aborting camera start');
+        return;
+      }
+
       try {
-        console.log('📹 [AUTO-START] Starting camera preview automatically...');
-        console.log('📹 [AUTO-START] Chat component mounted, attempting to initialize camera');
+        console.log('📹 [START LOCAL] Starting local camera stream for searching...');
         
         // Verify video element exists in DOM
         if (!localVideoRef.current) {
-          console.error('📹 [AUTO-START] ❌ Video element not in DOM yet, cannot initialize camera');
+          console.error('📹 [START LOCAL] ❌ Video element not in DOM, cannot initialize camera');
           return;
         }
         
-        console.log('📹 [AUTO-START] ✓ Video element found in DOM, requesting camera permissions');
+        console.log('📹 [START LOCAL] ✓ Video element found in DOM, requesting camera permissions');
         
-        const previewStream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 } },
           audio: true
         });
         
         // Store the stream for later use in chat
-        localStreamRef.current = previewStream;
-        streamRef.current = previewStream;
-        console.log('📹 [AUTO-START] ✅ Camera stream obtained:', previewStream);
-        console.log('📹 [AUTO-START] Stream tracks:', previewStream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
+        localStreamRef.current = stream;
+        streamRef.current = stream;
+        console.log('📹 [START LOCAL] ✅ Camera stream obtained:', stream);
+        console.log('📹 [START LOCAL] Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
         
         if (localVideoRef.current) {
-          localVideoRef.current.srcObject = previewStream;
+          localVideoRef.current.srcObject = stream;
           localVideoRef.current.muted = true;
           
-          // 🔥 CRITICAL: Wait for video to actually render frames before hiding loading
+          // 🔥 CRITICAL: Wait for video to actually render frames before marking ready
           localVideoRef.current.onloadedmetadata = () => {
-            console.log('📹 [AUTO-START] ✅ Video metadata loaded, calling play()');
+            console.log('📹 [START LOCAL] ✅ Video metadata loaded, calling play()');
             
             localVideoRef.current.play().then(() => {
-              console.log('📹 [AUTO-START] ✅ Video playing - setting isLocalCameraReady=true');
+              console.log('📹 [START LOCAL] ✅ Video playing - camera ready');
               setCameraStarted(true);
               setIsLocalCameraReady(true);
             }).catch((playErr) => {
-              console.warn('📹 [AUTO-START] ⚠️ Play warning (but video loaded):', playErr.message);
+              console.warn('📹 [START LOCAL] ⚠️ Play warning (but video loaded):', playErr.message);
               setCameraStarted(true);
               setIsLocalCameraReady(true);
             });
           };
         }
       } catch (err) {
-        console.error('📹 [AUTO-START] ❌ Camera error:', err.message);
-        console.error('📹 [AUTO-START] Error name:', err.name);
-        console.error('📹 [AUTO-START] Error code:', err.code);
-        
-        // CRITICAL: Always hide loading placeholder even on error
-        // User will need to click button manually if auto-start fails
+        console.error('📹 [START LOCAL] ❌ Camera error:', err.message);
+        console.error('📹 [START LOCAL] Error name:', err.name);
         setIsLocalCameraReady(true);
       }
-    }
-
-    // CRITICAL FIX: Delay camera initialization slightly to ensure:
-    // 1. Video element is mounted in DOM
-    // 2. ProfileSetupModal has already been checked/dismissed
-    // 3. Permission popup appears in correct context
-    console.log('[Camera] Chat component useEffect triggered, scheduling camera init with delay');
-    const timer = setTimeout(() => {
-      console.log('[Camera] Delay complete, now calling startPreview()');
-      startPreview();
-    }, 100);
-
-    return () => {
-      console.log('[Camera] Chat component unmounting, clearing camera init timer');
-      clearTimeout(timer);
     };
-  }, [shouldStartAsIntro]);
+
+    startLocalCamera();
+
+    // Cleanup: Stop camera when search ends or component unmounts
+    return () => {
+      console.log('📹 [CAMERA CLEANUP] Search ended or component unmounting - stopping camera');
+      stopLocalCamera();
+    };
+  }, [isSearching]);
+
+  // 🔒 STOP CAMERA FUNCTION - Cleanup when search ends or dashboard reloads
+  const stopLocalCamera = () => {
+    console.log('📹 [STOP LOCAL] Stopping camera stream...');
+    if (localVideoRef.current?.srcObject) {
+      const tracks = localVideoRef.current.srcObject.getTracks();
+      console.log('📹 [STOP LOCAL] Stopping', tracks.length, 'tracks');
+      tracks.forEach(track => {
+        console.log('📹 [STOP LOCAL] Stopping track:', track.kind);
+        track.stop();
+      });
+      localVideoRef.current.srcObject = null;
+    }
+    if (localStreamRef.current) {
+      const tracks = localStreamRef.current.getTracks();
+      tracks.forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    console.log('📹 [STOP LOCAL] ✅ Camera stopped');
+  };
 
   // ========================================
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
@@ -1502,16 +1515,21 @@ const Chat = () => {
 
   const cancelSearch = () => {
     console.log('🛑 [CANCEL] User cancelled search');
+    console.log('🛑 [CANCEL] Stopping camera stream - resetting to dashboard');
+    
+    // Stop camera when cancelling search - useEffect will handle cleanup via isSearching=false
     setIsSearching(false);
     setPartnerFound(false);
     setIsLoading(false);
+    setCameraStarted(false);
+    setIsLocalCameraReady(false);
     
     socket.emit('cancel_search', {
       userId: userIdRef.current,
       timestamp: new Date().toISOString()
     });
     
-    console.log('🛑 [CANCEL] ✅ Search cancelled - returned to intro screen');
+    console.log('🛑 [CANCEL] ✅ Search cancelled - camera stopped - returned to dashboard');
   };
 
   const sendMessage = () => {
