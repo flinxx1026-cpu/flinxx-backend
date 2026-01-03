@@ -1755,6 +1755,31 @@ const Chat = () => {
             0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
             40% { transform: scale(1); opacity: 1; }
           }
+          @keyframes searchFloat {
+            0% {
+              transform: translateY(0) rotate(0deg);
+            }
+            50% {
+              transform: translateY(-10px) rotate(5deg);
+            }
+            100% {
+              transform: translateY(0) rotate(0deg);
+            }
+          }
+          .search-icon {
+            animation: searchFloat 2.5s ease-in-out infinite;
+          }
+          @keyframes dotPulse {
+            0% { opacity: 0.2; }
+            20% { opacity: 1; }
+            100% { opacity: 0.2; }
+          }
+          .loading-dots span {
+            animation: dotPulse 1.4s infinite;
+          }
+          .loading-dots span:nth-child(1) { animation-delay: 0s; }
+          .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+          .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
         `}</style>
         
         <main className="flex-grow flex items-center justify-center p-4 md:p-8 relative w-full h-screen bg-black">
@@ -1795,7 +1820,7 @@ const Chat = () => {
                 <div className="relative mb-4">
                   <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full animate-pulse"></div>
                   <div className="relative z-10 transform transition-transform duration-700 hover:scale-110">
-                    <div className="text-6xl md:text-8xl filter drop-shadow-lg animate-bounce" style={{ animationDuration: '3s' }}>
+                    <div className="text-6xl md:text-8xl filter drop-shadow-lg search-icon">
                       🔍
                     </div>
                   </div>
@@ -1812,10 +1837,10 @@ const Chat = () => {
                 </div>
 
                 {/* Loading dots */}
-                <div className="flex items-center justify-center space-x-3 py-4">
-                  <div className="w-3 h-3 bg-yellow-400 rounded-full loading-dot"></div>
-                  <div className="w-3 h-3 bg-yellow-400 rounded-full loading-dot"></div>
-                  <div className="w-3 h-3 bg-yellow-400 rounded-full loading-dot"></div>
+                <div className="loading-dots flex items-center justify-center space-x-3 py-4">
+                  <span className="w-3 h-3 bg-yellow-400 rounded-full">•</span>
+                  <span className="w-3 h-3 bg-yellow-400 rounded-full">•</span>
+                  <span className="w-3 h-3 bg-yellow-400 rounded-full">•</span>
                 </div>
 
                 {/* Cancel button */}
