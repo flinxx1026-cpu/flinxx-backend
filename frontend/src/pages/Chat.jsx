@@ -1655,9 +1655,6 @@ const Chat = () => {
         </div>
       </div>
 
-      {/* CENTER DIVIDER - Absolute overlay */}
-      <div className="center-divider"></div>
-
       {/* RIGHT PANEL - Camera Feed + Icons + You Badge */}
       <div className="right-panel">
         {/* Inner Camera Wrapper */}
