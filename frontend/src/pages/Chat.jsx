@@ -47,7 +47,7 @@ const Chat = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [partnerInfo, setPartnerInfo] = useState(null);
   const [connectionTime, setConnectionTime] = useState(0);
-  const [isSearching, setIsSearching] = useState(true); // 🔥 DEFAULT TRUE - waiting screen shows first
+  const [isSearching, setIsSearching] = useState(false); // 👈 IMPORTANT: Default FALSE
   const [partnerFound, setPartnerFound] = useState(false);
   const [isPremiumOpen, setIsPremiumOpen] = useState(false);
   const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
@@ -101,16 +101,13 @@ const Chat = () => {
 
   // 🔥 CRITICAL: Block camera/WebRTC until partner is found
   useEffect(() => {
-    console.log('🚪 [CAMERA BLOCK] Checking state:', { isSearching, partnerFound });
+    console.log('STATE:', { isSearching, partnerFound });
     
-    // If NOT searching or partner IS found, we can continue with camera logic
-    if (!isSearching || partnerFound) {
-      console.log('✅ [CAMERA BLOCK] Conditions met - camera can start');
+    // If waiting for partner, don't initialize camera
+    if (isSearching && !partnerFound) {
+      console.log('🛑 [CAMERA BLOCK] Waiting screen active - camera blocked');
       return;
     }
-    
-    // 🛑 BLOCK: Waiting screen showing - do NOT start camera
-    console.log('🛑 [CAMERA BLOCK] BLOCKED - Waiting screen active. Skipping camera initialization.');
   }, [isSearching, partnerFound]);
 
   // Check terms acceptance when component mounts - MUST BE FIRST useEffect
@@ -1483,14 +1480,13 @@ const Chat = () => {
     else if (cameraStarted && !isSearching) {
       console.log('🎬 [SEARCHING] User clicked "Start Video Chat" again - starting search');
       console.log('🎬 [SEARCHING] ⚠️ NOT reinitializing camera - stream already active');
-      console.log('🎬 [SEARCHING] Emitting find_partner event to server');
       
       setIsSearching(true);
       setPartnerFound(false);
       setIsLoading(true);
 
-      // Emit find_partner to start matching - ONLY THIS, NO CAMERA CODE
-      socket.emit('find_partner', {
+      // Emit start-search to start matching
+      socket.emit('start-search', {
         userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
         userName: currentUser.name || 'Anonymous',
         userAge: currentUser.age || 18,
@@ -2063,11 +2059,16 @@ const Chat = () => {
   return (
     <>
       {/* 🧪 DEBUG: Log UI state */}
-      {console.log('UI STATE →', { isSearching, partnerFound, cameraStarted })}
+      {console.log('UI STATE →', { isSearching, partnerFound })}
 
-      {/* 🔥 HARD BLOCK: If searching and no partner - show ONLY waiting screen */}
+      {/* HOME SCREEN */}
+      {!isSearching && !partnerFound && (
+        <IntroScreen />
+      )}
+
+      {/* WAITING SCREEN */}
       {isSearching && !partnerFound && (
-        <WaitingScreen
+        <WaitingScreen 
           text="Looking for a partner..."
           onCancel={() => {
             console.log('🛑 [CANCEL] User cancelled search');
@@ -2077,7 +2078,10 @@ const Chat = () => {
         />
       )}
 
-      {/* ⛔ If waiting screen is active, NOTHING ELSE RENDERS */}
+      {/* VIDEO CHAT */}
+      {partnerFound && <VideoChatScreen />}
+
+      {/* ⛔ Rest of modals and content only show when needed */}
       {!(isSearching && !partnerFound) && (
         <>
       {/* ✅ Terms modal – SAFE (no hook violation) */}
@@ -2100,18 +2104,6 @@ const Chat = () => {
           
           {/* 🔥 GLOBAL LOCAL VIDEO (NEVER UNMOUNTS) */}
           <GlobalLocalVideo />
-
-          {/* Screens */}
-          {partnerFound ? (
-            // Partner found: Show video chat (includes remote video inside)
-            <VideoChatScreen />
-          ) : isSearching ? (
-            // Searching in progress: Show waiting screen
-            <WaitingScreen onCancel={cancelSearch} />
-          ) : (
-            // Initial state: Show intro screen
-            <IntroScreen />
-          )}
 
           {/* Premium Modal */}
           <PremiumModal 
