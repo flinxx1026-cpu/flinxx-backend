@@ -152,12 +152,17 @@ body {
 .camera-frame {
   width: 100%;
   height: 100%;
-  border: 2px solid #d4af37;
-  border-radius: 28px;
   position: relative;
-  overflow: hidden;
-  box-sizing: border-box;
+  border-radius: 28px;
   background: #000;
+  overflow: hidden;
+
+  /* 🔥 GUARANTEED VISIBLE GOLD BORDER - Using outline + inset shadow */
+  outline: 2px solid #d4af37;
+  outline-offset: -2px;
+
+  /* fallback if outline gets clipped */
+  box-shadow: inset 0 0 0 2px #d4af37;
 }
 
 /* CAMERA VIDEO */
