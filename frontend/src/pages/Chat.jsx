@@ -1657,35 +1657,19 @@ const Chat = () => {
 
       {/* RIGHT PANEL - Camera Feed + Icons + You Badge */}
       <div className="right-panel">
-        {/* CAMERA FRAME - Golden border wrapper */}
+        {/* CAMERA FRAME - Golden border wrapper (MUST contain video directly) */}
         <div className="camera-frame">
-          {/* CAMERA CONTAINER - Contains all camera/video content */}
-          <div className="camera-container">
-            {/* Inner Camera Wrapper */}
-            <div className="camera-inner">
-              {/* Camera Placeholder - Rendered BEFORE video so it sits below */}
-              {!isLocalCameraReady && (
-                <div style={{
-                  position: 'absolute',
-                  inset: 0,
-                  backgroundColor: '#000',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#666',
-                  fontSize: '12px',
-                  zIndex: 1,
-                  pointerEvents: 'none'
-                }}>
-                  Camera loading...
-                </div>
-              )}
-            </div>
-
-            {/* "You" Badge - Always render */}
-            <div className="you-label">You</div>
-          </div>
+          {/* CAMERA VIDEO - MUST be direct child of camera-frame */}
+          <video
+            ref={localVideoRef}
+            className="camera-video"
+            autoPlay
+            muted
+            playsInline
+          />
+          
+          {/* "You" Badge - Always render */}
+          <div className="you-label">You</div>
         </div>
       </div>
     </div>
