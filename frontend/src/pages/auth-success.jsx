@@ -36,8 +36,8 @@ export default function AuthSuccess() {
         }
 
         // Token contains all user data (encoded by backend)
-        // Decode the token to get user info
-        const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
+        // Decode the token to get user info (using browser's atob instead of Node.js Buffer)
+        const decoded = JSON.parse(atob(token));
         
         // Fetch full user data from backend using the decoded token
         const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
