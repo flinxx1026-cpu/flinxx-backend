@@ -1719,31 +1719,36 @@ const Chat = () => {
         </div>
       </aside>
 
-      {/* RIGHT PANEL - Camera Feed */}
-      <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
-        {/* Camera Frame with Video */}
-        <div className="camera-frame w-full h-full">
-          {/* Camera Video */}
-          <video
-            ref={localVideoRef}
-            className="camera-video"
-            autoPlay
-            muted
-            playsInline
-          />
-        </div>
-
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
-
-        {/* You Badge */}
-        <div className="absolute bottom-6 left-6 z-30 pointer-events-none">
-          <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
-            <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></span>
-            <span className="text-xs font-semibold tracking-wider text-white/90 uppercase">You</span>
+      {/* RIGHT PANEL - Camera Feed (only show when searching or connected) */}
+      {(isSearching || partnerFound) ? (
+        <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
+          {/* Camera Frame with Video */}
+          <div className="camera-frame w-full h-full">
+            {/* Camera Video */}
+            <video
+              ref={localVideoRef}
+              className="camera-video"
+              autoPlay
+              muted
+              playsInline
+            />
           </div>
-        </div>
-      </main>
+
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
+
+          {/* You Badge */}
+          <div className="absolute bottom-6 left-6 z-30 pointer-events-none">
+            <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
+              <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></span>
+              <span className="text-xs font-semibold tracking-wider text-white/90 uppercase">You</span>
+            </div>
+          </div>
+        </main>
+      ) : (
+        // Dashboard state - no camera panel
+        null
+      )}
     </div>
     );
   };
