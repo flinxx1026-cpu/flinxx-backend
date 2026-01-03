@@ -1805,9 +1805,6 @@ const Chat = () => {
           </button>
         </div>
       </div>
-
-      {/* Center Divider - Absolute overlay */}
-      <div className="center-divider"></div>
     </div>
     );
   };

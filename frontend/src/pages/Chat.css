@@ -19,38 +19,7 @@
   align-items: stretch;
   padding: 12px;
   margin: 0;
-  gap: 0;
-}
-
-/* Vertical Divider */
-.vertical-divider {
-  width: 2px;
-  background: linear-gradient(
-    to bottom,
-    #d4af37,
-    #f5d76e,
-    #d4af37
-  );
-  height: 100%;
-  flex-shrink: 0;
-}
-
-/* Center Divider - Absolute overlay for gap styling */
-.center-divider {
-  position: absolute;
-  top: 12px;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 2px;
-  background: linear-gradient(
-    to bottom,
-    #d4af37,
-    #f5d76e,
-    #d4af37
-  );
-  pointer-events: none;
-  z-index: 50;
+  gap: 16px;
 }
 
 /* Common panel styling */
@@ -62,7 +31,7 @@
 }
 
 .left-panel {
-  width: calc(50% - 1px);
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -154,7 +123,7 @@
 }
 
 .right-panel {
-  width: calc(50% - 1px);
+  flex: 1;
   min-width: 0;
   padding: 6px;
   margin: 0;
@@ -172,8 +141,6 @@
 .camera-panel {
   flex: 1;
   height: 100vh;
-  border: 1.5px solid #d4af37;
-  border-radius: 16px;
   padding: 6px;
   box-sizing: border-box;
   background: #000;
