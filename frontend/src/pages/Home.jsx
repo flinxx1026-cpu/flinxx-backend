@@ -1,8 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-// BUILD: 2025-01-03 - Home panel UI fix
 import flinxxPremiumLogo from '../assets/flinxx-premium-logo.svg'
-import ContactChat from '../components/ContactChat'
 
 const Home = () => {
   const navigate = useNavigate()
@@ -43,40 +41,21 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Main Content - 2 Panel Layout */}
-      <div className="relative z-10 h-[calc(100vh-80px)] px-3 pb-3">
-        <div className="flex h-full gap-4">
-          
-          {/* LEFT PANEL */}
-          <div className="flex-1 rounded-2xl border border-[#d4af37] bg-black flex flex-col items-center justify-center">
-            <h1 className="text-5xl font-bold text-[#d4af37] mb-6">Flinxx</h1>
-
-            <div className="flex gap-3 mb-6">
-              <button className="px-6 py-2 rounded-lg bg-[#d4af37] text-black font-semibold hover:opacity-90 transition">
-                SoloX
-              </button>
-              <button className="px-6 py-2 rounded-lg border border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10 transition">
-                DuoX
-              </button>
-            </div>
-
-            <button 
-              onClick={handleStartChat}
-              disabled={isLoading}
-              className="px-10 py-4 rounded-full bg-[#d4af37] text-black font-semibold hover:opacity-90 transition disabled:opacity-50"
-            >
-              {isLoading ? '⟳ Loading...' : '🎁 Start Video Chat'}
-            </button>
-          </div>
-
-          {/* RIGHT PANEL */}
-          <div className="flex-1 rounded-2xl border border-[#d4af37] bg-black relative">
-            <span className="absolute bottom-4 left-4 text-xs border border-[#d4af37] px-3 py-1 rounded-full text-[#d4af37]">
-              You
-            </span>
-          </div>
-
-        </div>
+      {/* Hero Section */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-20 text-center">
+        <h1 className="text-6xl font-bold text-white mb-6 leading-tight">
+          Meet New People Instantly
+        </h1>
+        <p className="text-xl text-white/90 mb-8 max-w-2xl">
+          Connect with strangers around the world. Video chat, make friends, or find your next conversation partner.
+        </p>
+        <button 
+          onClick={handleStartChat}
+          disabled={isLoading}
+          className="px-10 py-4 rounded-full bg-gradient-to-r from-orange-400 to-orange-600 text-white font-bold text-lg hover:shadow-xl transition transform hover:scale-105 disabled:opacity-50"
+        >
+          {isLoading ? '⟳ Loading...' : '🎁 Start Video Chat Now'}
+        </button>
       </div>
 
       {/* Feature Cards Section */}
