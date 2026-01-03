@@ -47,7 +47,7 @@ const Chat = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [partnerInfo, setPartnerInfo] = useState(null);
   const [connectionTime, setConnectionTime] = useState(0);
-  const [isSearching, setIsSearching] = useState(false);
+  const [isSearching, setIsSearching] = useState(true); // 🔥 DEFAULT TRUE - waiting screen shows first
   const [partnerFound, setPartnerFound] = useState(false);
   const [isPremiumOpen, setIsPremiumOpen] = useState(false);
   const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
@@ -98,6 +98,20 @@ const Chat = () => {
 
   // ✅ NOW CONSOLE LOG AND LOGIC AFTER ALL HOOKS
   console.log('🎯 CHAT COMPONENT LOADED - BUILD: 895cedd (temporal deadzone fix - move hooks to top)');
+
+  // 🔥 CRITICAL: Block camera/WebRTC until partner is found
+  useEffect(() => {
+    console.log('🚪 [CAMERA BLOCK] Checking state:', { isSearching, partnerFound });
+    
+    // If NOT searching or partner IS found, we can continue with camera logic
+    if (!isSearching || partnerFound) {
+      console.log('✅ [CAMERA BLOCK] Conditions met - camera can start');
+      return;
+    }
+    
+    // 🛑 BLOCK: Waiting screen showing - do NOT start camera
+    console.log('🛑 [CAMERA BLOCK] BLOCKED - Waiting screen active. Skipping camera initialization.');
+  }, [isSearching, partnerFound]);
 
   // Check terms acceptance when component mounts - MUST BE FIRST useEffect
   useEffect(() => {
@@ -2048,6 +2062,24 @@ const Chat = () => {
 
   return (
     <>
+      {/* 🧪 DEBUG: Log UI state */}
+      {console.log('UI STATE →', { isSearching, partnerFound, cameraStarted })}
+
+      {/* 🔥 HARD BLOCK: If searching and no partner - show ONLY waiting screen */}
+      {isSearching && !partnerFound && (
+        <WaitingScreen
+          text="Looking for a partner..."
+          onCancel={() => {
+            console.log('🛑 [CANCEL] User cancelled search');
+            socket.emit("cancel-search", { userId: userIdRef.current });
+            setIsSearching(false);
+          }}
+        />
+      )}
+
+      {/* ⛔ If waiting screen is active, NOTHING ELSE RENDERS */}
+      {!(isSearching && !partnerFound) && (
+        <>
       {/* ✅ Terms modal – SAFE (no hook violation) */}
       {showTermsModal && (
         <TermsConfirmationModal
@@ -2142,6 +2174,8 @@ const Chat = () => {
             </div>
           )}
         </div>
+      )}
+        </>
       )}
     </>
   );
