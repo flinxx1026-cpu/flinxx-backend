@@ -47,6 +47,8 @@ const Chat = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [partnerInfo, setPartnerInfo] = useState(null);
   const [connectionTime, setConnectionTime] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
+  const [partnerFound, setPartnerFound] = useState(false);
   const [isPremiumOpen, setIsPremiumOpen] = useState(false);
   const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -786,6 +788,11 @@ const Chat = () => {
       console.log('👥 data.partnerId:', data.partnerId);
       console.log('👥 data.userName:', data.userName);
       
+      // ✅ UPDATE STATE: Partner found - hide waiting screen, show video chat
+      setIsSearching(false);
+      setPartnerFound(true);
+      setIsLoading(false);
+      
       // CRITICAL: PREVENT SELF-MATCHING
       console.log('\n👥 SELF-MATCH CHECK - START');
       const myUserId = userIdRef.current;  // USE REF FOR CONSISTENT ID
@@ -1413,7 +1420,7 @@ const Chat = () => {
 
   const startVideoChat = async () => {
     console.log('🎬 [BUTTON CLICK] "Start Video Chat" button clicked');
-    console.log('🎬 [BUTTON CLICK] Current state - cameraStarted:', cameraStarted, 'isMatchingStarted:', isMatchingStarted);
+    console.log('🎬 [BUTTON CLICK] Current state - cameraStarted:', cameraStarted, 'isSearching:', isSearching);
     
     // First click: Initialize camera only (no matching yet)
     if (!cameraStarted) {
@@ -1458,13 +1465,14 @@ const Chat = () => {
         }
       }
     } 
-    // Second click: Start matching ONLY (do NOT touch camera)
-    else if (cameraStarted && !isMatchingStarted) {
-      console.log('🎬 [MATCHING] User clicked "Start Video Chat" again - starting matching');
-      console.log('🎬 [MATCHING] ⚠️ NOT reinitializing camera - stream already active');
-      console.log('🎬 [MATCHING] Emitting find_partner event to server');
+    // Second click: Start searching ONLY (do NOT touch camera)
+    else if (cameraStarted && !isSearching) {
+      console.log('🎬 [SEARCHING] User clicked "Start Video Chat" again - starting search');
+      console.log('🎬 [SEARCHING] ⚠️ NOT reinitializing camera - stream already active');
+      console.log('🎬 [SEARCHING] Emitting find_partner event to server');
       
-      setIsMatchingStarted(true);
+      setIsSearching(true);
+      setPartnerFound(false);
       setIsLoading(true);
 
       // Emit find_partner to start matching - ONLY THIS, NO CAMERA CODE
@@ -1476,8 +1484,22 @@ const Chat = () => {
         userPicture: currentUser.picture || null  // Include picture so partner can display it
       });
 
-      console.log('🎬 [MATCHING] ✅ find_partner event emitted - now waiting for a partner');
+      console.log('🎬 [SEARCHING] ✅ find_partner event emitted - now waiting for a partner');
     }
+  };
+
+  const cancelSearch = () => {
+    console.log('🛑 [CANCEL] User cancelled search');
+    setIsSearching(false);
+    setPartnerFound(false);
+    setIsLoading(false);
+    
+    socket.emit('cancel_search', {
+      userId: userIdRef.current,
+      timestamp: new Date().toISOString()
+    });
+    
+    console.log('🛑 [CANCEL] ✅ Search cancelled - returned to intro screen');
   };
 
   const sendMessage = () => {
@@ -1697,7 +1719,7 @@ const Chat = () => {
   };
 
   // Waiting Screen Component - Shows when matching is in progress
-  const WaitingScreen = () => {
+  const WaitingScreen = ({ onCancel }) => {
     // Diagnostic logging for stream attachment issue
     useEffect(() => {
       console.log('\n\n🎬 ===== WAITING SCREEN DIAGNOSTIC CHECK =====\n');
@@ -1738,7 +1760,7 @@ const Chat = () => {
       }
       
       console.log('\n🎬 ===== END DIAGNOSTIC CHECK =====\n\n');
-    }, [isMatchingStarted]);
+    }, [isSearching]);
 
     return (
     <div className="dashboard">
@@ -1796,14 +1818,10 @@ const Chat = () => {
           {/* Cancel Button */}
           <button
             onClick={() => {
-              console.log('🔙 Cancel matching - emitting cancel_matching event');
-              // CRITICAL: Remove from queue on server before changing UI
-              socket.emit('cancel_matching', {
-                userId: userIdRef.current,
-                timestamp: new Date().toISOString()
-              });
-              setIsMatchingStarted(false);
-              setIsLoading(false);
+              console.log('🛑 [CANCEL] User clicked cancel - calling onCancel handler');
+              if (onCancel) {
+                onCancel();
+              }
             }}
             className="w-full font-bold py-3 px-6 rounded-xl transition-all duration-200 text-sm shadow-lg mt-4"
             style={{ backgroundColor: 'transparent', border: '1px solid #d9b85f', color: '#d9b85f' }}
@@ -2052,12 +2070,12 @@ const Chat = () => {
           <GlobalLocalVideo />
 
           {/* Screens */}
-          {hasPartner ? (
+          {partnerFound ? (
             // Partner found: Show video chat (includes remote video inside)
             <VideoChatScreen />
-          ) : isMatchingStarted ? (
-            // Matching in progress: Show waiting screen
-            <WaitingScreen />
+          ) : isSearching ? (
+            // Searching in progress: Show waiting screen
+            <WaitingScreen onCancel={cancelSearch} />
           ) : (
             // Initial state: Show intro screen
             <IntroScreen />
