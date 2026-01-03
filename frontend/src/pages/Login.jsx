@@ -323,11 +323,12 @@ const Login = () => {
             <a
               href="/terms"
               className="text-white/80 hover:text-white underline"
+              onClick={(e) => { e.preventDefault(); window.location.href = '/terms'; }}
             >
               TERMS & CONDITIONS
             </a>
             {' '}and{' '}
-            <a href="/privacy-policy" className="text-white/80 hover:text-white underline">
+            <a href="/privacy-policy" className="text-white/80 hover:text-white underline" onClick={(e) => { e.preventDefault(); window.location.href = '/privacy-policy'; }}>
               Privacy Policy
             </a>
           </p>

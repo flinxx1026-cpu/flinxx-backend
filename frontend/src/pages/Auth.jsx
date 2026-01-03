@@ -204,6 +204,7 @@ const Auth = () => {
             <a
               href="/terms"
               className="text-white/70 hover:text-white underline"
+              onClick={(e) => { e.preventDefault(); window.location.href = '/terms'; }}
             >
               TERMS & CONDITIONS
             </a>
@@ -211,6 +212,7 @@ const Auth = () => {
             <a
               href="/privacy-policy"
               className="text-white/70 hover:text-white underline"
+              onClick={(e) => { e.preventDefault(); window.location.href = '/privacy-policy'; }}
             >
               Privacy Policy
             </a>

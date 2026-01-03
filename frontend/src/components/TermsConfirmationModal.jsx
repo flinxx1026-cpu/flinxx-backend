@@ -41,11 +41,11 @@ const TermsConfirmationModal = ({ onContinue, onCancel }) => {
 
         <p className="text-gray-700 text-center text-sm">
           By continuing, you confirm that you are 18 years or older and agree to Flinxx's{' '}
-          <a href="/terms-and-conditions" className="text-blue-600 underline">
+          <a href="/terms-and-conditions" className="text-blue-600 underline" onClick={(e) => { e.preventDefault(); window.location.href = '/terms-and-conditions'; }}>
             Terms & Conditions
           </a>{' '}
           and{' '}
-          <a href="/privacy-policy" className="text-blue-600 underline">
+          <a href="/privacy-policy" className="text-blue-600 underline" onClick={(e) => { e.preventDefault(); window.location.href = '/privacy-policy'; }}>
             Privacy Policy
           </a>.
         </p>
