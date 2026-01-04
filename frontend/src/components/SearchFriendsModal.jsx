@@ -21,6 +21,16 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [friends, setFriends] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [profileData, setProfileData] = useState({
+    id: '',
+    name: '',
+    email: '',
+    picture: '',
+    location: '',
+    gender: '',
+    tokens: 0,
+    gems: 0
+  });
   
   // ✅ Determine which mode we're in
   const isNotificationMode = mode === 'notifications';
@@ -147,6 +157,46 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       refreshNotifications();
     }
   }, [isOpen, isNotificationMode, user?.uuid, refreshNotifications]);
+
+  // ✅ Load profile data when profile tab opens
+  useEffect(() => {
+    if (!isOpen || !isProfileMode) return;
+    
+    const loadProfileData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        
+        const response = await fetch(`${BACKEND_URL}/api/profile`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            setProfileData({
+              id: data.user.id || data.user.userId || '',
+              name: data.user.name || 'User',
+              email: data.user.email || '',
+              picture: data.user.picture || 'https://via.placeholder.com/120',
+              location: data.user.location || 'Not set',
+              gender: data.user.gender || 'Not set',
+              tokens: data.user.tokens || 0,
+              gems: data.user.gems || 0
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
+    };
+    
+    loadProfileData();
+  }, [isOpen, isProfileMode, BACKEND_URL]);
 
   // ✅ Notifications come from centralized AuthContext (single source of truth)
   // No need to fetch here - AuthContext manages it
@@ -629,9 +679,122 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
         {/* Profile Tab */}
         {isProfileMode && (
-          <div className="search-results">
-            <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
-              <p>👤 Profile features coming soon</p>
+          <div className="search-results" style={{ overflowY: 'auto', padding: '20px' }}>
+            {/* Profile Header */}
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <div style={{
+                width: '120px',
+                height: '120px',
+                borderRadius: '50%',
+                margin: '0 auto 20px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                border: '3px solid rgba(255, 255, 255, 0.1)'
+              }}>
+                <img 
+                  src={profileData.picture} 
+                  alt="Profile"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </div>
+              <h3 style={{ color: 'white', margin: '10px 0', fontSize: '24px', fontWeight: 'bold' }}>
+                {profileData.name}
+              </h3>
+              <p style={{ color: 'rgba(255,255,255,0.6)', margin: '10px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <span>ID: {profileData.id.substring(0, 8)}...</span>
+                <span style={{ cursor: 'pointer', fontSize: '14px' }} title="Copy ID">📋</span>
+              </p>
+            </div>
+
+            {/* Premium Section */}
+            <div style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              padding: '20px',
+              borderRadius: '12px',
+              marginBottom: '25px',
+              textAlign: 'center'
+            }}>
+              <p style={{ color: 'white', margin: '0 0 5px 0', fontSize: '16px' }}>⭐ Flinxx Premium</p>
+              <p style={{ color: 'rgba(255,255,255,0.8)', margin: '0', fontSize: '14px' }}>Unlock premium features</p>
+            </div>
+
+            {/* Stats */}
+            <div style={{ marginBottom: '25px' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '15px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '8px',
+                marginBottom: '12px',
+                borderLeft: '3px solid #667eea'
+              }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  💰 Tokens
+                </span>
+                <span style={{ color: 'white', fontWeight: 'bold' }}>{profileData.tokens}</span>
+              </div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '15px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '8px',
+                marginBottom: '12px',
+                borderLeft: '3px solid #667eea'
+              }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  💎 Gems
+                </span>
+                <span style={{ color: 'white', fontWeight: 'bold' }}>{profileData.gems}</span>
+              </div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '15px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '8px',
+                marginBottom: '12px',
+                borderLeft: '3px solid #667eea'
+              }}>
+                <span style={{ color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  📍 Location
+                </span>
+                <span style={{ color: 'white', fontWeight: 'bold' }}>{profileData.location}</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                padding: '14px 20px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                transition: 'opacity 0.2s'
+              }} onMouseEnter={(e) => e.target.style.opacity = '0.8'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
+                ✏️ Edit Profile
+              </button>
+              <button style={{
+                background: 'transparent',
+                color: 'white',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '14px 20px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                transition: 'all 0.2s'
+              }} onMouseEnter={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)'; e.target.style.background = 'rgba(255, 255, 255, 0.05)'; }} onMouseLeave={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)'; e.target.style.background = 'transparent'; }}>
+                ⋮ More
+              </button>
             </div>
           </div>
         )}
