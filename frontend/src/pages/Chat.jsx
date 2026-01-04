@@ -1508,6 +1508,8 @@ const Chat = () => {
       console.log('🎬 [SEARCHING] ⚠️ NOT reinitializing camera - stream already active');
       console.log('CLICKED Start Video Chat'); // 🧪 DEBUG: Confirm handler runs
       
+      console.log('🎬 [STATE BEFORE] isSearching:', isSearching, 'partnerFound:', partnerFound);
+      
       // EMIT SOCKET EVENT FIRST (synchronous, immediate)
       socket.emit('start-search', {
         userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
@@ -1523,6 +1525,8 @@ const Chat = () => {
       setIsSearching(true);
       setPartnerFound(false);
       setIsLoading(true);
+      
+      console.log('🎬 [STATE AFTER] Calling setIsSearching(true)');
       console.log('STATE AFTER START SEARCH:', { isStarting: true, isSearching: true, partnerFound: false });
     }
   };
@@ -1623,13 +1627,12 @@ const Chat = () => {
     setConnectionTime(0);
   };
 
-  // Intro Screen Component - MEMOIZED to prevent re-renders that clear video srcObject
-  const IntroScreen = useMemo(() => {
-    return () => {
-      console.log("Dashboard render");
-      
-      return (
-      <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
+  // Intro Screen Component
+  const IntroScreen = () => {
+    console.log("Dashboard render");
+    
+    return (
+    <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
       {/* LEFT PANEL - Flinxx Heading + Buttons */}
       <aside className="w-full lg:flex-1 h-full flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300">
         {/* Top Icons Header - Circular icon buttons */}
@@ -1764,13 +1767,11 @@ const Chat = () => {
       </main>
     </div>
     );
-    };
-  }, []);
+  };
 
   // Waiting Screen Component - Premium Design with animations
-  // ✅ WAITING SCREEN - Memoized to prevent unnecessary re-renders that cause it to "flash"
-  const WaitingScreen = useMemo(() => {
-    return ({ onCancel }) => {
+  // ✅ WAITING SCREEN - Normal component (not memoized) to receive state updates
+  const WaitingScreen = ({ onCancel }) => {
     useEffect(() => {
       // Force dark mode
       document.documentElement.classList.add('dark');
@@ -1917,8 +1918,7 @@ const Chat = () => {
         </main>
       </>
     );
-    };
-  }, []);
+  };
 
   // ✅ STEP 4: Video element STABLE rakho - Already in Dashboard component
   // Video element is in the camera-frame div (lines ~1680)
@@ -2123,20 +2123,26 @@ const Chat = () => {
 
   return (
     <>
-      {/* 🧪 DEBUG: Log UI state */}
-      {console.log('UI STATE →', { isSearching, partnerFound })}
+      {/* 🧪 DEBUG: Log UI state and which screen should render */}
+      {console.log('🎨 [RENDER] UI STATE →', { isSearching, partnerFound }, 'Should show:', isSearching && !partnerFound ? 'WAITING SCREEN' : partnerFound ? 'VIDEO CHAT' : 'DASHBOARD')}
 
       {/* HOME SCREEN */}
       {!isSearching && !partnerFound && (
-        <IntroScreen />
+        <>
+          {console.log('🎨 [RENDER] Showing DASHBOARD')}
+          <IntroScreen />
+        </>
       )}
 
       {/* WAITING SCREEN */}
       {isSearching && !partnerFound && (
-        <WaitingScreen 
-          text="Looking for a partner..."
-          onCancel={handleCancelSearch}
-        />
+        <>
+          {console.log('🎨 [RENDER] Showing WAITING SCREEN')}
+          <WaitingScreen 
+            text="Looking for a partner..."
+            onCancel={handleCancelSearch}
+          />
+        </>
       )}
 
       {/* VIDEO CHAT */}
