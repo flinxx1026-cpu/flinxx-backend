@@ -439,20 +439,21 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   return (
     <div className="search-friends-overlay" onClick={onClose}>
       <div className="search-friends-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="search-friends-header">
-          <h2>
-            {isMessageMode ? 'Message' : 
-             isNotificationMode ? 'Notifications' : 
-             isProfileMode ? 'Profile' : 
-             isSearchMode ? 'Search Friends' : 
-             isLikesMode ? 'Likes' : 
-             isTrophyMode ? 'Achievements' : 
-             isTimerMode ? 'History' : 
-             'Search Friends'}
-          </h2>
-          <button className="search-close-btn" onClick={onClose}>✖</button>
-        </div>
+        {/* Header - Hidden in Profile Mode */}
+        {!isProfileMode && (
+          <div className="search-friends-header">
+            <h2>
+              {isMessageMode ? 'Message' : 
+               isNotificationMode ? 'Notifications' : 
+               isSearchMode ? 'Search Friends' : 
+               isLikesMode ? 'Likes' : 
+               isTrophyMode ? 'Achievements' : 
+               isTimerMode ? 'History' : 
+               'Search Friends'}
+            </h2>
+            <button className="search-close-btn" onClick={onClose}>✖</button>
+          </div>
+        )}
 
         {/* Search Input - Hidden in Notifications, Message, or other side-tab modes */}
         {!isNotificationMode && !isMessageMode && !isProfileMode && !isLikesMode && !isTrophyMode && !isTimerMode && (
