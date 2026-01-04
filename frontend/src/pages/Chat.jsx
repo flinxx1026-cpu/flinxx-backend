@@ -568,7 +568,7 @@ const Chat = () => {
         sharedVideoRef.play()
           .catch(e => console.warn('📹 [RESUME CHECK] Resume error:', e.message));
       }
-    }, 100);
+    }, 500); // Check every 500ms
     
     return () => clearInterval(resumeInterval);
   }, []);
@@ -576,6 +576,7 @@ const Chat = () => {
   // ✅ PROTECTION: Monitor and fix stream track state
   // If tracks get disabled (common cause of black screen), re-enable them
   useEffect(() => {
+    let lastAttachTime = 0;
     const trackMonitorInterval = setInterval(() => {
       if (!sharedVideoRef) {
         // Ref not available yet, skip
@@ -597,12 +598,19 @@ const Chat = () => {
           console.error('📹 [TRACK MONITOR] ❌ Stream has no tracks! Stream was lost');
         }
       } else if (sharedVideoRef && !sharedVideoRef.srcObject && localStreamRef.current) {
-        console.warn('📹 [TRACK MONITOR] ❌ Video element lost srcObject! Emergency re-attach...');
+        // Only log/re-attach if it's been more than 1 second since last attach
+        // This prevents log spam from rapid re-renders
+        const now = Date.now();
+        if (now - lastAttachTime > 1000) {
+          console.warn('📹 [TRACK MONITOR] ❌ Video element lost srcObject! Emergency re-attach...');
+          lastAttachTime = now;
+        }
+        
         sharedVideoRef.srcObject = localStreamRef.current;
         sharedVideoRef.muted = true;
         sharedVideoRef.play().catch(err => console.warn('Play error:', err));
       }
-    }, 100); // Check EVERY 100ms - very aggressive
+    }, 500); // Check every 500ms instead of 100ms
     
     return () => clearInterval(trackMonitorInterval);
   }, []);
@@ -645,12 +653,7 @@ const Chat = () => {
           }
         });
       }
-      
-      // 4. Verify element is in DOM
-      if (sharedVideoRef && !document.contains(sharedVideoRef)) {
-        console.error('📹 [HEALTH] ❌ Video element not in DOM anymore!');
-      }
-    }, 200); // Check VERY frequently - every 200ms
+    }, 1000); // Check every 1 second (less frequent)
     
     return () => clearInterval(healthCheckInterval);
   }, []);
