@@ -503,6 +503,27 @@ const Chat = () => {
       isMounted = false;
     };
   }, []);
+
+  // ✅ PROTECTION: If video element loses stream, reattach it
+  // This prevents the 1-second blackout when component re-renders
+  useEffect(() => {
+    const protectionInterval = setInterval(() => {
+      if (localVideoRef.current && localStreamRef.current) {
+        // Check if srcObject is missing
+        if (!localVideoRef.current.srcObject) {
+          console.warn('📹 [PROTECTION] Video element lost srcObject! Reattaching...');
+          localVideoRef.current.srcObject = localStreamRef.current;
+          localVideoRef.current.muted = true;
+          localVideoRef.current.play().catch(err => 
+            console.warn('📹 [PROTECTION] Play error:', err.message)
+          );
+        }
+      }
+    }, 500); // Check every 500ms
+    
+    return () => clearInterval(protectionInterval);
+  }, []);
+
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
   // This function is called inside socket event handlers
   // Must be declared before the socket listener setup to avoid TDZ error
@@ -1603,12 +1624,13 @@ const Chat = () => {
     setConnectionTime(0);
   };
 
-  // Intro Screen Component
-  const IntroScreen = () => {
-    console.log("Dashboard render");
-    
-    return (
-    <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
+  // Intro Screen Component - MEMOIZED to prevent re-renders that clear video srcObject
+  const IntroScreen = useMemo(() => {
+    return () => {
+      console.log("Dashboard render");
+      
+      return (
+      <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
       {/* LEFT PANEL - Flinxx Heading + Buttons */}
       <aside className="w-full lg:flex-1 h-full flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300">
         {/* Top Icons Header - Circular icon buttons */}
@@ -1743,7 +1765,8 @@ const Chat = () => {
       </main>
     </div>
     );
-  };
+    };
+  }, []);
 
   // Waiting Screen Component - Premium Design with animations
   const WaitingScreen = ({ onCancel }) => {
