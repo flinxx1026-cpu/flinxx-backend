@@ -435,21 +435,46 @@ const Chat = () => {
         }
 
         // ✅ STEP 4: Video element STABLE rakho
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = localStreamRef.current;
-          localVideoRef.current.muted = true;
-          
-          try {
-            await localVideoRef.current.play();
-            console.log('📹 [CAMERA INIT] ✅ Video playing');
-            setCameraStarted(true);
-            setIsLocalCameraReady(true);
-          } catch (playErr) {
-            console.warn('📹 [CAMERA INIT] ⚠️ Play warning:', playErr.message);
-            setCameraStarted(true);
-            setIsLocalCameraReady(true);
+        // CRITICAL: Use a small delay to ensure ref is attached
+        const attachStream = () => {
+          if (localVideoRef.current) {
+            console.log('📹 [CAMERA INIT] Video element found, attaching stream...');
+            localVideoRef.current.srcObject = localStreamRef.current;
+            localVideoRef.current.muted = true;
+            
+            localVideoRef.current.onloadedmetadata = () => {
+              console.log('📹 [CAMERA INIT] ✅ Video metadata loaded, calling play()');
+              localVideoRef.current.play()
+                .then(() => {
+                  console.log('📹 [CAMERA INIT] ✅ Video playing');
+                  setCameraStarted(true);
+                  setIsLocalCameraReady(true);
+                })
+                .catch((playErr) => {
+                  console.warn('📹 [CAMERA INIT] ⚠️ Play warning:', playErr.message);
+                  setCameraStarted(true);
+                  setIsLocalCameraReady(true);
+                });
+            };
+            
+            // Fallback: if metadata doesn't load, set ready after timeout
+            const timeout = setTimeout(() => {
+              if (!cameraStarted) {
+                console.warn('📹 [CAMERA INIT] ⚠️ Metadata timeout, setting ready anyway');
+                setCameraStarted(true);
+                setIsLocalCameraReady(true);
+              }
+            }, 2000);
+            
+            return () => clearTimeout(timeout);
+          } else {
+            console.warn('📹 [CAMERA INIT] ⚠️ Video element NOT found, retrying...');
+            // Retry after ref attachment
+            setTimeout(attachStream, 100);
           }
-        }
+        };
+        
+        attachStream();
       } catch (err) {
         console.error('📹 [CAMERA INIT] ❌ Error:', err.message);
         console.error('📹 [CAMERA INIT] Error name:', err.name);
@@ -463,7 +488,26 @@ const Chat = () => {
     // Camera sirf logout / app close par stop ho
   }, []); // ⚠️ dependency array EMPTY hi rehni chahiye
 
-  // ========================================
+  // ✅ EXTRA: Ensure stream is attached to video element when ref becomes available
+  useEffect(() => {
+    if (localVideoRef.current && localStreamRef.current && !localVideoRef.current.srcObject) {
+      console.log('📹 [CAMERA REF WATCH] Video ref is now available, attaching stream...');
+      localVideoRef.current.srcObject = localStreamRef.current;
+      localVideoRef.current.muted = true;
+      
+      localVideoRef.current.play()
+        .then(() => {
+          console.log('📹 [CAMERA REF WATCH] ✅ Video now playing');
+          setCameraStarted(true);
+          setIsLocalCameraReady(true);
+        })
+        .catch((err) => {
+          console.warn('📹 [CAMERA REF WATCH] ⚠️ Play error:', err.message);
+          setCameraStarted(true);
+          setIsLocalCameraReady(true);
+        });
+    }
+  }, []);
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
   // This function is called inside socket event handlers
   // Must be declared before the socket listener setup to avoid TDZ error
