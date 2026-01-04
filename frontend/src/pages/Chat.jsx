@@ -411,102 +411,97 @@ const Chat = () => {
 
   // ✅ STEP 2: getUserMedia sirf pehli baar
   // Camera starts once when component mounts and runs continuously
-  // User can interact with it (search, connect, disconnect)
-  // Camera only stops on logout/app close
   useEffect(() => {
     console.log('📹 [CAMERA INIT] Starting camera initialization on mount');
+    
+    let isMounted = true;
     
     const startCamera = async () => {
       try {
         // ✅ STEP 1: Stream ko useRef me lock karo - sirf pehli baar
         if (!localStreamRef.current) {
-          console.log('📹 [CAMERA INIT] No existing stream, requesting from browser...');
+          console.log('📹 [CAMERA INIT] Requesting camera permissions from browser...');
           
-          localStreamRef.current = await navigator.mediaDevices.getUserMedia({
-            video: true,
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            },
             audio: true
           });
           
-          console.log('📹 [CAMERA INIT] ✅ Stream obtained:', localStreamRef.current);
-          console.log('📹 [CAMERA INIT] Tracks:', localStreamRef.current.getTracks().map(t => ({ kind: t.kind, id: t.id })));
-          streamRef.current = localStreamRef.current; // Keep streamRef in sync
+          if (!isMounted) {
+            console.log('📹 [CAMERA INIT] Component unmounted, cleaning up stream');
+            stream.getTracks().forEach(t => t.stop());
+            return;
+          }
+          
+          localStreamRef.current = stream;
+          streamRef.current = stream;
+          console.log('📹 [CAMERA INIT] ✅ Camera stream obtained');
+          console.log('📹 [CAMERA INIT] Active tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
         } else {
-          console.log('📹 [CAMERA INIT] Stream already exists - reusing it');
+          console.log('📹 [CAMERA INIT] Stream already exists - reusing existing stream');
         }
 
-        // ✅ STEP 4: Video element STABLE rakho
-        // CRITICAL: Use a small delay to ensure ref is attached
-        const attachStream = () => {
-          if (localVideoRef.current) {
-            console.log('📹 [CAMERA INIT] Video element found, attaching stream...');
-            localVideoRef.current.srcObject = localStreamRef.current;
-            localVideoRef.current.muted = true;
-            
-            localVideoRef.current.onloadedmetadata = () => {
-              console.log('📹 [CAMERA INIT] ✅ Video metadata loaded, calling play()');
-              localVideoRef.current.play()
-                .then(() => {
-                  console.log('📹 [CAMERA INIT] ✅ Video playing');
-                  setCameraStarted(true);
-                  setIsLocalCameraReady(true);
-                })
-                .catch((playErr) => {
-                  console.warn('📹 [CAMERA INIT] ⚠️ Play warning:', playErr.message);
-                  setCameraStarted(true);
-                  setIsLocalCameraReady(true);
-                });
-            };
-            
-            // Fallback: if metadata doesn't load, set ready after timeout
-            const timeout = setTimeout(() => {
-              if (!cameraStarted) {
-                console.warn('📹 [CAMERA INIT] ⚠️ Metadata timeout, setting ready anyway');
+        // ✅ Wait a tick to ensure ref is attached
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        if (!isMounted) return;
+        
+        // ✅ STEP 4: Attach stream to video element
+        if (localVideoRef.current && localStreamRef.current) {
+          console.log('📹 [CAMERA INIT] Attaching stream to video element...');
+          localVideoRef.current.srcObject = localStreamRef.current;
+          localVideoRef.current.muted = true;
+          
+          console.log('📹 [CAMERA INIT] Calling play() on video element');
+          
+          // Call play() directly without waiting for metadata
+          localVideoRef.current.play()
+            .then(() => {
+              if (isMounted) {
+                console.log('📹 [CAMERA INIT] ✅ Video stream is now playing');
                 setCameraStarted(true);
                 setIsLocalCameraReady(true);
               }
-            }, 2000);
-            
-            return () => clearTimeout(timeout);
-          } else {
-            console.warn('📹 [CAMERA INIT] ⚠️ Video element NOT found, retrying...');
-            // Retry after ref attachment
-            setTimeout(attachStream, 100);
-          }
-        };
-        
-        attachStream();
+            })
+            .catch(playErr => {
+              if (isMounted) {
+                console.warn('📹 [CAMERA INIT] ⚠️ Play error (stream may still display):', playErr.name, playErr.message);
+                // Still mark as ready - stream might display even with play error
+                setCameraStarted(true);
+                setIsLocalCameraReady(true);
+              }
+            });
+        } else {
+          console.error('📹 [CAMERA INIT] ❌ Video ref or stream is null after wait');
+          console.error('   localVideoRef.current:', !!localVideoRef.current);
+          console.error('   localStreamRef.current:', !!localStreamRef.current);
+          setIsLocalCameraReady(true);
+        }
       } catch (err) {
-        console.error('📹 [CAMERA INIT] ❌ Error:', err.message);
-        console.error('📹 [CAMERA INIT] Error name:', err.name);
-        setIsLocalCameraReady(true);
+        if (isMounted) {
+          console.error('📹 [CAMERA INIT] ❌ Error:', err.name, err.message);
+          
+          if (err.name === 'NotAllowedError') {
+            console.error('   → User denied camera permission');
+          } else if (err.name === 'NotFoundError') {
+            console.error('   → No camera device found');
+          } else if (err.name === 'NotReadableError') {
+            console.error('   → Camera is in use by another app');
+          }
+          
+          setIsLocalCameraReady(true);
+        }
       }
     };
 
     startCamera();
-
-    // ✅ No cleanup here - camera stays ON
-    // Camera sirf logout / app close par stop ho
-  }, []); // ⚠️ dependency array EMPTY hi rehni chahiye
-
-  // ✅ EXTRA: Ensure stream is attached to video element when ref becomes available
-  useEffect(() => {
-    if (localVideoRef.current && localStreamRef.current && !localVideoRef.current.srcObject) {
-      console.log('📹 [CAMERA REF WATCH] Video ref is now available, attaching stream...');
-      localVideoRef.current.srcObject = localStreamRef.current;
-      localVideoRef.current.muted = true;
-      
-      localVideoRef.current.play()
-        .then(() => {
-          console.log('📹 [CAMERA REF WATCH] ✅ Video now playing');
-          setCameraStarted(true);
-          setIsLocalCameraReady(true);
-        })
-        .catch((err) => {
-          console.warn('📹 [CAMERA REF WATCH] ⚠️ Play error:', err.message);
-          setCameraStarted(true);
-          setIsLocalCameraReady(true);
-        });
-    }
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
   // This function is called inside socket event handlers
