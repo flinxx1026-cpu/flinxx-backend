@@ -142,8 +142,10 @@
 .search-results {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  overflow-x: hidden;
+  padding: 20px;
   min-height: 420px;
+  padding-right: 12px;
 }
 
 .search-empty-state {

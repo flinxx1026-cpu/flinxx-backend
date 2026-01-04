@@ -679,122 +679,133 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
         {/* Profile Tab */}
         {isProfileMode && (
-          <div className="search-results" style={{ overflowY: 'auto', padding: '20px' }}>
-            {/* Profile Header */}
-            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <div className="search-results" style={{ overflowY: 'auto' }}>
+            <div style={{ padding: '0' }}>
+              {/* Profile Header */}
+              <div style={{ textAlign: 'center', marginBottom: '25px' }}>
+                <div style={{
+                  width: '100px',
+                  height: '100px',
+                  borderRadius: '50%',
+                  margin: '0 auto 15px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  border: '3px solid rgba(255, 255, 255, 0.1)'
+                }}>
+                  <img 
+                    src={profileData.picture} 
+                    alt="Profile"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+                <h3 style={{ color: 'white', margin: '8px 0', fontSize: '20px', fontWeight: 'bold' }}>
+                  {profileData.name}
+                </h3>
+                <p style={{ color: 'rgba(255,255,255,0.6)', margin: '8px 0', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', wordBreak: 'break-all' }}>
+                  ID: {profileData.id.substring(0, 16)}...
+                </p>
+              </div>
+
+              {/* Premium Section */}
               <div style={{
-                width: '120px',
-                height: '120px',
-                borderRadius: '50%',
-                margin: '0 auto 20px',
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                border: '3px solid rgba(255, 255, 255, 0.1)'
+                padding: '16px',
+                borderRadius: '12px',
+                marginBottom: '20px',
+                textAlign: 'center'
               }}>
-                <img 
-                  src={profileData.picture} 
-                  alt="Profile"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
+                <p style={{ color: 'white', margin: '0 0 4px 0', fontSize: '15px', fontWeight: 'bold' }}>⭐ Flinxx Premium</p>
+                <p style={{ color: 'rgba(255,255,255,0.8)', margin: '0', fontSize: '13px' }}>Unlock premium features</p>
               </div>
-              <h3 style={{ color: 'white', margin: '10px 0', fontSize: '24px', fontWeight: 'bold' }}>
-                {profileData.name}
-              </h3>
-              <p style={{ color: 'rgba(255,255,255,0.6)', margin: '10px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <span>ID: {profileData.id.substring(0, 8)}...</span>
-                <span style={{ cursor: 'pointer', fontSize: '14px' }} title="Copy ID">📋</span>
-              </p>
-            </div>
 
-            {/* Premium Section */}
-            <div style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              padding: '20px',
-              borderRadius: '12px',
-              marginBottom: '25px',
-              textAlign: 'center'
-            }}>
-              <p style={{ color: 'white', margin: '0 0 5px 0', fontSize: '16px' }}>⭐ Flinxx Premium</p>
-              <p style={{ color: 'rgba(255,255,255,0.8)', margin: '0', fontSize: '14px' }}>Unlock premium features</p>
-            </div>
+              {/* Stats */}
+              <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  padding: '12px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px',
+                  borderLeft: '3px solid #667eea'
+                }}>
+                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    💰 Tokens
+                  </span>
+                  <span style={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>{profileData.tokens}</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  padding: '12px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px',
+                  borderLeft: '3px solid #667eea'
+                }}>
+                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    💎 Gems
+                  </span>
+                  <span style={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>{profileData.gems}</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  padding: '12px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px',
+                  borderLeft: '3px solid #667eea'
+                }}>
+                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    📍 Location
+                  </span>
+                  <span style={{ color: 'white', fontWeight: 'bold', fontSize: '13px' }}>{profileData.location}</span>
+                </div>
+              </div>
 
-            {/* Stats */}
-            <div style={{ marginBottom: '25px' }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '15px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: '8px',
-                marginBottom: '12px',
-                borderLeft: '3px solid #667eea'
-              }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  💰 Tokens
-                </span>
-                <span style={{ color: 'white', fontWeight: 'bold' }}>{profileData.tokens}</span>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '13px',
+                  transition: 'opacity 0.2s'
+                }} onMouseEnter={(e) => e.target.style.opacity = '0.8'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
+                  ✏️ Edit Profile
+                </button>
+                <button style={{
+                  background: 'transparent',
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '13px',
+                  transition: 'all 0.2s'
+                }} onMouseEnter={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)'; e.target.style.background = 'rgba(255, 255, 255, 0.05)'; }} onMouseLeave={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)'; e.target.style.background = 'transparent'; }}>
+                  ⋮ More
+                </button>
+                <button style={{
+                  background: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '13px',
+                  transition: 'opacity 0.2s'
+                }} onMouseEnter={(e) => e.target.style.opacity = '0.9'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
+                  🚪 Sign Out
+                </button>
               </div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '15px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: '8px',
-                marginBottom: '12px',
-                borderLeft: '3px solid #667eea'
-              }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  💎 Gems
-                </span>
-                <span style={{ color: 'white', fontWeight: 'bold' }}>{profileData.gems}</span>
-              </div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '15px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: '8px',
-                marginBottom: '12px',
-                borderLeft: '3px solid #667eea'
-              }}>
-                <span style={{ color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  📍 Location
-                </span>
-                <span style={{ color: 'white', fontWeight: 'bold' }}>{profileData.location}</span>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <button style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                border: 'none',
-                padding: '14px 20px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '14px',
-                transition: 'opacity 0.2s'
-              }} onMouseEnter={(e) => e.target.style.opacity = '0.8'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
-                ✏️ Edit Profile
-              </button>
-              <button style={{
-                background: 'transparent',
-                color: 'white',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                padding: '14px 20px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '14px',
-                transition: 'all 0.2s'
-              }} onMouseEnter={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)'; e.target.style.background = 'rgba(255, 255, 255, 0.05)'; }} onMouseLeave={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)'; e.target.style.background = 'transparent'; }}>
-                ⋮ More
-              </button>
             </div>
           </div>
         )}
