@@ -45,6 +45,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // DEBUG: Log active mode
   if (isOpen) {
     console.log("📊 MODAL OPEN - Current Mode:", { isProfileMode, isMessageMode, isSearchMode, isLikesMode, isTrophyMode, isTimerMode, mode });
+  }
   
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   
