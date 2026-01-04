@@ -504,24 +504,28 @@ const Chat = () => {
     };
   }, []);
 
-  // ✅ PROTECTION: If video element loses stream, reattach it
-  // This prevents the blackout if re-renders accidentally clear srcObject
+  // ✅ PROTECTION: Monitor and fix stream track state
+  // If tracks get disabled (common cause of black screen), re-enable them
   useEffect(() => {
-    const protectionInterval = setInterval(() => {
-      if (localVideoRef.current && localStreamRef.current) {
-        // Check if srcObject is missing
-        if (!localVideoRef.current.srcObject) {
-          console.warn('📹 [PROTECTION] Video element lost srcObject! Reattaching stream...');
-          localVideoRef.current.srcObject = localStreamRef.current;
-          localVideoRef.current.muted = true;
-          localVideoRef.current.play().catch(err => 
-            console.warn('📹 [PROTECTION] Play error:', err.message)
-          );
+    const trackMonitorInterval = setInterval(() => {
+      if (localStreamRef.current && localVideoRef.current?.srcObject) {
+        const tracks = localStreamRef.current.getTracks();
+        
+        // Check if any video track is disabled
+        const videoTrack = tracks.find(t => t.kind === 'video');
+        if (videoTrack && !videoTrack.enabled) {
+          console.warn('📹 [TRACK MONITOR] Video track was disabled! Re-enabling...');
+          videoTrack.enabled = true;
+        }
+        
+        // Check if stream is still valid
+        if (tracks.length === 0) {
+          console.error('📹 [TRACK MONITOR] Stream has no tracks! Stream was lost');
         }
       }
-    }, 1000); // Check every 1 second (less aggressive than 500ms)
+    }, 2000); // Check every 2 seconds
     
-    return () => clearInterval(protectionInterval);
+    return () => clearInterval(trackMonitorInterval);
   }, []);
 
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
@@ -1627,32 +1631,9 @@ const Chat = () => {
     setConnectionTime(0);
   };
 
-  // ✅ VIDEO ELEMENT COMPONENT - Rendered at Chat level, NEVER recreated on IntroScreen updates
-  // This ensures the video element stays absolutely stable
-  const CameraVideoElement = () => (
-    <div className="w-full h-full absolute inset-0">
-      {/* Camera Video - Fixed element that persists across all renders */}
-      <video
-        ref={localVideoRef}
-        className="camera-video"
-        autoPlay
-        muted
-        playsInline
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          backgroundColor: "#000",
-          position: "absolute",
-          top: 0,
-          left: 0
-        }}
-        key="camera-video-element"
-      />
-    </div>
-  );
-
-  // Intro Screen Component
+  // ✅ STEP 4: Attach stream to video element
+  // Video element is in IntroScreen > camera-frame > video
+  // Using key to ensure React preserves the same element instance
   const IntroScreen = () => {
     console.log("Dashboard render");
     
@@ -1759,9 +1740,26 @@ const Chat = () => {
         </div>
       </aside>
 
-      {/* RIGHT PANEL - Camera Feed (positioned absolutely, never recreated) */}
+      {/* RIGHT PANEL - Camera Feed (always visible) */}
       <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
-        {/* Camera video is now rendered at Chat component level for stability */}
+        {/* Camera Frame with Video */}
+        <div className="camera-frame w-full h-full">
+          {/* Camera Video - Using stable key to prevent recreation */}
+          <video
+            ref={localVideoRef}
+            className="camera-video"
+            autoPlay
+            muted
+            playsInline
+            key="local-video-element-stable"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              backgroundColor: "#000"
+            }}
+          />
+        </div>
 
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
@@ -2132,12 +2130,6 @@ const Chat = () => {
 
   return (
     <>
-      {/* 🎬 CAMERA VIDEO ELEMENT - Rendered at Chat level, NEVER recreated */}
-      {/* This appears behind all screens and always stays stable */}
-      <div className="fixed inset-0 w-full h-screen z-0 pointer-events-none">
-        <CameraVideoElement />
-      </div>
-
       {/* 🧪 DEBUG: Log UI state and which screen should render */}
       {console.log('🎨 [RENDER] UI STATE →', { isSearching, partnerFound }, 'Should show:', isSearching && !partnerFound ? 'WAITING SCREEN' : partnerFound ? 'VIDEO CHAT' : 'DASHBOARD')}
 
