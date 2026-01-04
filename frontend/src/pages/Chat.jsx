@@ -542,6 +542,24 @@ const Chat = () => {
     };
   }, []);
 
+  // ✅ RESUME PLAYBACK: If video pauses for any reason, resume immediately
+  useEffect(() => {
+    const videoElement = localVideoRef.current;
+    if (!videoElement) return;
+    
+    const handlePause = () => {
+      console.warn('📹 [PAUSE LISTENER] Video was paused! Resuming...');
+      videoElement.play()
+        .catch(e => console.warn('📹 [PAUSE LISTENER] Resume error:', e.message));
+    };
+    
+    videoElement.addEventListener('pause', handlePause);
+    
+    return () => {
+      videoElement.removeEventListener('pause', handlePause);
+    };
+  }, []);
+
   // ✅ PROTECTION: Monitor and fix stream track state
   // If tracks get disabled (common cause of black screen), re-enable them
   useEffect(() => {
@@ -566,7 +584,7 @@ const Chat = () => {
         localVideoRef.current.muted = true;
         localVideoRef.current.play().catch(err => console.warn('Play error:', err));
       }
-    }, 500); // Check EVERY 500ms to catch issues immediately
+    }, 100); // Check EVERY 100ms - very aggressive
     
     return () => clearInterval(trackMonitorInterval);
   }, []);
@@ -579,6 +597,7 @@ const Chat = () => {
         return;
       }
       
+      // 1. Check if srcObject is missing
       if (!localVideoRef.current.srcObject && localStreamRef.current) {
         console.warn('📹 [HEALTH] 🚨 Video srcObject lost! Re-attaching stream NOW...');
         try {
@@ -592,11 +611,28 @@ const Chat = () => {
         }
       }
       
-      // Verify element is in DOM
+      // 2. Check if video is paused (common cause of black screen)
+      if (localVideoRef.current.srcObject && localVideoRef.current.paused) {
+        console.warn('📹 [HEALTH] ⚠️ Video element is PAUSED! Resuming...');
+        localVideoRef.current.play()
+          .catch(e => console.warn('📹 [HEALTH] Resume error:', e.message));
+      }
+      
+      // 3. Ensure tracks are enabled
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => {
+          if (!track.enabled) {
+            console.warn(`📹 [HEALTH] Track ${track.kind} disabled! Enabling...`);
+            track.enabled = true;
+          }
+        });
+      }
+      
+      // 4. Verify element is in DOM
       if (localVideoRef.current && !document.contains(localVideoRef.current)) {
         console.error('📹 [HEALTH] ❌ Video element not in DOM anymore!');
       }
-    }, 300); // Check every 300ms
+    }, 200); // Check VERY frequently - every 200ms
     
     return () => clearInterval(healthCheckInterval);
   }, []);
