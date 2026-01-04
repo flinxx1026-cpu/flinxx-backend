@@ -2,7 +2,7 @@
 // Last updated: 2025-12-20 - WebRTC remote black screen fix with persistent stream
 // BUILD TIMESTAMP: 2025-12-20T00:00:00Z - STABLE REMOTE STREAM FIX
 console.log('🎯 CHAT BUILD: 2025-12-20T00:00:00Z - WebRTC stable remote stream handling');
-import React, { useState, useRef, useEffect, useContext } from 'react';
+import React, { useState, useRef, useEffect, useContext, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
