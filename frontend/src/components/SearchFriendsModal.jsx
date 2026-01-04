@@ -20,6 +20,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [currentUser, setCurrentUser] = useState(null);
   const [friends, setFriends] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const isNotificationMode = mode === 'notifications';
   const isMessageMode = mode === 'message';
@@ -346,6 +347,17 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   };
 
+  // Filter friends based on search query
+  const filteredFriends = friends.filter(friend => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    const friendName = (friend.display_name || '').toLowerCase();
+    const friendId = (friend.id || '').toLowerCase();
+    
+    return friendName.includes(query) || friendId.includes(query);
+  });
+
   return (
     <div className="search-friends-overlay" onClick={onClose}>
       <div className="search-friends-modal" onClick={(e) => e.stopPropagation()}>
@@ -365,6 +377,20 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
               onChange={(e) => handleSearch(e.target.value)}
               className="search-input"
               autoFocus
+            />
+            <span className="search-icon">🔍</span>
+          </div>
+        )}
+
+        {/* Message Mode Search Input */}
+        {isMessageMode && !activeChat && (
+          <div className="search-input-container">
+            <input
+              type="text"
+              placeholder="Search a friend by ID"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
             />
             <span className="search-icon">🔍</span>
           </div>
@@ -530,8 +556,18 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   >
                     No friends yet
                   </p>
+                ) : filteredFriends.length === 0 ? (
+                  <p
+                    style={{
+                      textAlign: 'center',
+                      color: 'rgba(255,255,255,0.6)',
+                      marginTop: '40px'
+                    }}
+                  >
+                    No friends match your search
+                  </p>
                 ) : (
-                  friends.map(friend => (
+                  filteredFriends.map(friend => (
                     <div 
                       key={friend.id}
                       className="search-result-item friend-row"
