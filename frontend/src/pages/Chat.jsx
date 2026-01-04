@@ -495,36 +495,46 @@ const Chat = () => {
         if (!isMounted) return;
         
         // ✅ STEP 4: Attach stream to video element
-        if (sharedVideoRef && localStreamRef.current) {
-          console.log('📹 [CAMERA INIT] Attaching stream to video element...');
-          sharedVideoRef.srcObject = localStreamRef.current;
-          sharedVideoRef.muted = true;
-          
-          console.log('📹 [CAMERA INIT] Calling play() on video element');
-          
-          // Call play() directly without waiting for metadata
-          sharedVideoRef.play()
-            .then(() => {
-              if (isMounted) {
-                console.log('📹 [CAMERA INIT] ✅ Video stream is now playing');
-                setCameraStarted(true);
-                setIsLocalCameraReady(true);
-              }
-            })
-            .catch(playErr => {
-              if (isMounted) {
-                console.warn('📹 [CAMERA INIT] ⚠️ Play error (stream may still display):', playErr.name, playErr.message);
-                // Still mark as ready - stream might display even with play error
-                setCameraStarted(true);
-                setIsLocalCameraReady(true);
-              }
-            });
-        } else {
-          console.error('📹 [CAMERA INIT] ❌ Video ref or stream is null after wait');
-          console.error('   sharedVideoRef:', !!sharedVideoRef);
-          console.error('   localStreamRef.current:', !!localStreamRef.current);
-          setIsLocalCameraReady(true);
-        }
+        // Wait for sharedVideoRef to be available (CameraPanel must render first)
+        let attempts = 0;
+        const attachStream = () => {
+          if (sharedVideoRef && localStreamRef.current) {
+            console.log('📹 [CAMERA INIT] Attaching stream to video element...');
+            sharedVideoRef.srcObject = localStreamRef.current;
+            sharedVideoRef.muted = true;
+            
+            console.log('📹 [CAMERA INIT] Calling play() on video element');
+            
+            // Call play() directly without waiting for metadata
+            sharedVideoRef.play()
+              .then(() => {
+                if (isMounted) {
+                  console.log('📹 [CAMERA INIT] ✅ Video stream is now playing');
+                  setCameraStarted(true);
+                  setIsLocalCameraReady(true);
+                }
+              })
+              .catch(playErr => {
+                if (isMounted) {
+                  console.warn('📹 [CAMERA INIT] ⚠️ Play error (stream may still display):', playErr.name, playErr.message);
+                  // Still mark as ready - stream might display even with play error
+                  setCameraStarted(true);
+                  setIsLocalCameraReady(true);
+                }
+              });
+          } else if (attempts < 50) {
+            // Retry waiting for ref to be available
+            attempts++;
+            setTimeout(attachStream, 50);
+          } else {
+            console.error('📹 [CAMERA INIT] ❌ Video ref never became available');
+            console.error('   sharedVideoRef:', !!sharedVideoRef);
+            console.error('   localStreamRef.current:', !!localStreamRef.current);
+            setIsLocalCameraReady(true);
+          }
+        };
+        
+        attachStream();
       } catch (err) {
         if (isMounted) {
           console.error('📹 [CAMERA INIT] ❌ Error:', err.name, err.message);
@@ -567,7 +577,12 @@ const Chat = () => {
   // If tracks get disabled (common cause of black screen), re-enable them
   useEffect(() => {
     const trackMonitorInterval = setInterval(() => {
-      if (localStreamRef.current && localVideoRef.current?.srcObject) {
+      if (!sharedVideoRef) {
+        // Ref not available yet, skip
+        return;
+      }
+      
+      if (localStreamRef.current && sharedVideoRef?.srcObject) {
         const tracks = localStreamRef.current.getTracks();
         
         // Check if any video track is disabled
@@ -595,8 +610,8 @@ const Chat = () => {
   // ✅ PERMANENT HEALTH CHECK: Ensure video element stays healthy
   useEffect(() => {
     const healthCheckInterval = setInterval(() => {
-      if (!localVideoRef.current) {
-        console.error('📹 [HEALTH] ❌ Video element ref is NULL!');
+      if (!sharedVideoRef) {
+        // Ref not yet available, skip this check
         return;
       }
       
