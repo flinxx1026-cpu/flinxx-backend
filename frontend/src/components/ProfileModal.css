@@ -1,10 +1,18 @@
 .profile-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(8px);
-  z-index: 999;
-  animation: fadeIn 0.3s ease-out;
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(8px) !important;
+  z-index: 999 !important;
+  animation: fadeIn 0.3s ease-out !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 @keyframes fadeIn {
@@ -17,22 +25,24 @@
 }
 
 .profile-modal-container {
-  position: fixed;
-  top: 50%;
-  right: 40px;
-  transform: translateY(-50%);
-  width: 400px;
-  max-width: 90vw;
-  background: #1a1a2e;
-  border-radius: 20px;
-  z-index: 1000;
-  padding: 0;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  animation: slideInRight 0.3s ease-out;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  position: fixed !important;
+  top: 50% !important;
+  right: 40px !important;
+  transform: translateY(-50%) !important;
+  width: 400px !important;
+  max-width: 90vw !important;
+  background: #1a1a2e !important;
+  border-radius: 20px !important;
+  z-index: 1000 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+  animation: slideInRight 0.3s ease-out !important;
+  max-height: 85vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  pointer-events: auto !important;
 }
 
 @keyframes slideInRight {
