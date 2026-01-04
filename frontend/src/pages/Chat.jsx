@@ -14,6 +14,7 @@ import GenderFilterModal from '../components/GenderFilterModal';
 import ProfileModal from '../components/ProfileModal';
 import MatchHistory from '../components/MatchHistory';
 import SearchFriendsModal from '../components/SearchFriendsModal';
+import SubscriptionsPage from '../components/SubscriptionsPage';
 import TopActions from '../components/TopActions';
 import TermsConfirmationModal from '../components/TermsConfirmationModal';
 import logo from '../assets/flinxx-logo.svg';
@@ -2302,14 +2303,13 @@ const Chat = () => {
 
           {/* ✅ Unified Side Panel for all tabs */}
           <SearchFriendsModal 
-            isOpen={activeTab !== null} 
+            isOpen={activeTab !== null && activeTab !== 'trophy'} 
             onClose={() => setActiveTab(null)}
             mode={
               activeTab === 'profile' ? 'profile' :
               activeTab === 'search' ? 'search' :
               activeTab === 'likes' ? 'likes' :
               activeTab === 'messages' ? 'message' :
-              activeTab === 'trophy' ? 'trophy' :
               activeTab === 'timer' ? 'timer' :
               'notifications'
             }
@@ -2318,6 +2318,13 @@ const Chat = () => {
               // TODO: Navigate to user profile or open chat
             }}
           />
+
+          {/* ✅ Full-Page Subscriptions Modal */}
+          {activeTab === 'trophy' && (
+            <SubscriptionsPage 
+              onClose={() => setActiveTab(null)}
+            />
+          )}
 
           {/* Guest Session Timeout Modal */}
           {showGuestTimeoutModal && (

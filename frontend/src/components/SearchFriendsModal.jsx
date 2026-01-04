@@ -100,11 +100,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const isLikesMode = mode === 'likes';
   const isTrophyMode = mode === 'trophy';
   const isTimerMode = mode === 'timer';
-
-  // DEBUG: Log active mode
-  if (isOpen) {
-    console.log("📊 MODAL OPEN - Current Mode:", { isProfileMode, isMessageMode, isSearchMode, isLikesMode, isTrophyMode, isTimerMode, mode });
-  }
   
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   
@@ -878,78 +873,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {/* Trophy/Achievements Tab - Now shows Flex Plans */}
-        {isTrophyMode && (
-          <>
-            {console.log("🏆 TROPHY/ACHIEVEMENTS JSX RENDERED - isTrophyMode:", isTrophyMode)}
-            <div className="achievements-panel">
-              {/* Achievements Header - STICKY */}
-              <div className="achievements-header">
-                <h3>🏆 Achievements</h3>
-                <button 
-                  onClick={onClose}
-                  className="search-close-btn"
-                  style={{ width: '28px', height: '28px' }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Achievements Body - SCROLLABLE */}
-              <div className="achievements-body" style={{ display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '16px', paddingBottom: '8px', paddingTop: '0' }}>
-                  <h4 style={{ color: 'white', fontSize: '16px', margin: '0 0 8px 0', fontWeight: '600' }}>Flex Plans</h4>
-                  <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', margin: 0 }}>Choose individual features</p>
-                </div>
-
-                <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 20px 12px', display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-                  {flexItems.map((item) => (
-                    <div key={item.id} style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '12px',
-                      padding: '12px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '18px' }}>{item.emoji}</span>
-                        <h4 style={{ color: 'white', margin: 0, fontSize: '14px', fontWeight: '600' }}>{item.name}</h4>
-                      </div>
-
-                      <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', fontWeight: 'bold' }}>{item.price}</div>
-
-                      <ul style={{ margin: '8px 0', padding: '0 0 0 16px', listStyle: 'none', color: 'rgba(255,255,255,0.6)', fontSize: '12px' }}>
-                        {item.features.map((feature, idx) => (
-                          <li key={idx} style={{ marginBottom: '4px' }}>
-                            <span style={{ marginRight: '6px' }}>•</span>
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-
-                      <button style={{
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        transition: 'opacity 0.2s',
-                        marginTop: '4px'
-                      }} onMouseEnter={(e) => e.target.style.opacity = '0.8'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
-                        Add Now
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
 
         {/* Timer/History Tab */}
         {isTimerMode && (
