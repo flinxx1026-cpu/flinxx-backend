@@ -6,6 +6,7 @@
   backdrop-filter: blur(8px);
   z-index: 999;
   animation: fadeIn 0.2s ease-out;
+  pointer-events: auto;
 }
 
 @keyframes fadeIn {
@@ -21,6 +22,7 @@
   position: fixed;
   top: 70px;
   left: 20px;
+  right: auto;
   width: 360px;
   max-width: 90vw;
   background: #1a1a2e;
@@ -31,8 +33,10 @@
   flex-direction: column;
   height: calc(100vh - 120px);
   max-height: 85vh;
-  animation: slideInLeft 0.3s ease-out;
   z-index: 1000;
+  pointer-events: auto;
+  animation: slideInLeft 0.3s ease-out forwards;
+  transform: translateX(0);
 }
 
 @keyframes slideInLeft {
@@ -87,6 +91,7 @@
   align-items: center;
   justify-content: center;
   transition: opacity 0.2s;
+  pointer-events: auto;
 }
 
 .search-close-btn:hover {
@@ -112,6 +117,7 @@
   outline: none;
   transition: all 0.2s;
   box-sizing: border-box;
+  pointer-events: auto;
 }
 
 .search-input::placeholder {
@@ -165,6 +171,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
   transition: all 0.2s;
+  pointer-events: auto;
 }
 
 .search-result-item:hover {
