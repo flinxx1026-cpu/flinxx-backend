@@ -254,11 +254,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     setActiveChat(friend);
   };
 
-  // Handle Edit Profile click
-  const handleEditProfile = () => {
-    // Navigate to edit profile page or open edit modal
-    window.location.href = '/edit-profile';
-  };
 
   // Handle Sign Out click
   const handleSignOut = async () => {
@@ -773,77 +768,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                 <p style={{ color: 'rgba(255,255,255,0.8)', margin: '0', fontSize: '13px' }}>Unlock premium features</p>
               </div>
 
-              {/* Stats */}
-              <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '12px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '8px',
-                  borderLeft: '3px solid #667eea'
-                }}>
-                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    💰 Tokens
-                  </span>
-                  <span style={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>{profileData.tokens}</span>
-                </div>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '12px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '8px',
-                  borderLeft: '3px solid #667eea'
-                }}>
-                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    💎 Gems
-                  </span>
-                  <span style={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>{profileData.gems}</span>
-                </div>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  padding: '12px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '8px',
-                  borderLeft: '3px solid #667eea'
-                }}>
-                  <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    📍 Location
-                  </span>
-                  <span style={{ color: 'white', fontWeight: 'bold', fontSize: '13px' }}>{profileData.location}</span>
-                </div>
-              </div>
-
               {/* Action Buttons */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button onClick={handleEditProfile} style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '13px',
-                  transition: 'opacity 0.2s'
-                }} onMouseEnter={(e) => e.target.style.opacity = '0.8'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
-                  ✏️ Edit Profile
-                </button>
-                <button style={{
-                  background: 'transparent',
-                  color: 'white',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '13px',
-                  transition: 'all 0.2s'
-                }} onMouseEnter={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)'; e.target.style.background = 'rgba(255, 255, 255, 0.05)'; }} onMouseLeave={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)'; e.target.style.background = 'transparent'; }}>
-                  ⋮ More
-                </button>
                 <button onClick={handleSignOut} style={{
                   background: '#ef4444',
                   color: 'white',
