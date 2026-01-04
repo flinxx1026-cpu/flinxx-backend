@@ -1682,6 +1682,12 @@ const Chat = () => {
             autoPlay
             muted
             playsInline
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              backgroundColor: "#000"
+            }}
           />
         </div>
 
@@ -1850,27 +1856,9 @@ const Chat = () => {
     );
   };
 
-  // ✅ STEP 4: Video element STABLE rakho
-  // 🔥 GLOBAL LOCAL VIDEO - NEVER UNMOUNTS
-  // Persistent video element that stays mounted across all screens
-  // NOT inside conditional render
-  const GlobalLocalVideo = () => {
-    return (
-      <video
-        ref={localVideoRef}
-        autoPlay
-        muted
-        playsInline
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          background: "black"
-        }}
-        className="global-local-video"
-      />
-    );
-  };
+  // ✅ STEP 4: Video element STABLE rakho - Already in Dashboard component
+  // Video element is in the camera-frame div (lines ~1680)
+  // No need for GlobalLocalVideo - video is already properly placed
 
   const VideoChatScreen = () => {
     // CRITICAL DEBUG: Log partnerInfo to diagnose display issue
@@ -2119,8 +2107,7 @@ const Chat = () => {
       ) : (
         <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible', position: 'relative' }}>
           
-          {/* 🔥 GLOBAL LOCAL VIDEO (NEVER UNMOUNTS) */}
-          <GlobalLocalVideo />
+          {/* Dashboard and Waiting Screen rendered here */}
 
           {/* Premium Modal */}
           <PremiumModal 
