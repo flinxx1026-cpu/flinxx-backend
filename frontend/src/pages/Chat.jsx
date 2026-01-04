@@ -505,13 +505,13 @@ const Chat = () => {
   }, []);
 
   // ✅ PROTECTION: If video element loses stream, reattach it
-  // This prevents the 1-second blackout when component re-renders
+  // This prevents the blackout if re-renders accidentally clear srcObject
   useEffect(() => {
     const protectionInterval = setInterval(() => {
       if (localVideoRef.current && localStreamRef.current) {
         // Check if srcObject is missing
         if (!localVideoRef.current.srcObject) {
-          console.warn('📹 [PROTECTION] Video element lost srcObject! Reattaching...');
+          console.warn('📹 [PROTECTION] Video element lost srcObject! Reattaching stream...');
           localVideoRef.current.srcObject = localStreamRef.current;
           localVideoRef.current.muted = true;
           localVideoRef.current.play().catch(err => 
@@ -519,7 +519,7 @@ const Chat = () => {
           );
         }
       }
-    }, 500); // Check every 500ms
+    }, 1000); // Check every 1 second (less aggressive than 500ms)
     
     return () => clearInterval(protectionInterval);
   }, []);
@@ -1627,6 +1627,28 @@ const Chat = () => {
     setConnectionTime(0);
   };
 
+  // ✅ VIDEO ELEMENT COMPONENT - Extracted outside IntroScreen to prevent re-creation
+  // This ensures the video element stays stable even when parent re-renders
+  const CameraVideoElement = () => (
+    <div className="camera-frame w-full h-full">
+      {/* Camera Video */}
+      <video
+        ref={localVideoRef}
+        className="camera-video"
+        autoPlay
+        muted
+        playsInline
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          backgroundColor: "#000"
+        }}
+        key="camera-video-element"
+      />
+    </div>
+  );
+
   // Intro Screen Component
   const IntroScreen = () => {
     console.log("Dashboard render");
@@ -1736,23 +1758,8 @@ const Chat = () => {
 
       {/* RIGHT PANEL - Camera Feed (always visible) */}
       <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
-        {/* Camera Frame with Video */}
-        <div className="camera-frame w-full h-full">
-          {/* Camera Video */}
-          <video
-            ref={localVideoRef}
-            className="camera-video"
-            autoPlay
-            muted
-            playsInline
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              backgroundColor: "#000"
-            }}
-          />
-        </div>
+        {/* Camera Frame with Video - Using extracted component for stability */}
+        <CameraVideoElement />
 
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
