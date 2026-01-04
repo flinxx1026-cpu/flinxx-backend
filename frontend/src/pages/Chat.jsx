@@ -1627,11 +1627,11 @@ const Chat = () => {
     setConnectionTime(0);
   };
 
-  // ✅ VIDEO ELEMENT COMPONENT - Extracted outside IntroScreen to prevent re-creation
-  // This ensures the video element stays stable even when parent re-renders
+  // ✅ VIDEO ELEMENT COMPONENT - Rendered at Chat level, NEVER recreated on IntroScreen updates
+  // This ensures the video element stays absolutely stable
   const CameraVideoElement = () => (
-    <div className="camera-frame w-full h-full">
-      {/* Camera Video */}
+    <div className="w-full h-full absolute inset-0">
+      {/* Camera Video - Fixed element that persists across all renders */}
       <video
         ref={localVideoRef}
         className="camera-video"
@@ -1642,7 +1642,10 @@ const Chat = () => {
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          backgroundColor: "#000"
+          backgroundColor: "#000",
+          position: "absolute",
+          top: 0,
+          left: 0
         }}
         key="camera-video-element"
       />
@@ -1756,10 +1759,9 @@ const Chat = () => {
         </div>
       </aside>
 
-      {/* RIGHT PANEL - Camera Feed (always visible) */}
+      {/* RIGHT PANEL - Camera Feed (positioned absolutely, never recreated) */}
       <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
-        {/* Camera Frame with Video - Using extracted component for stability */}
-        <CameraVideoElement />
+        {/* Camera video is now rendered at Chat component level for stability */}
 
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
@@ -2130,6 +2132,12 @@ const Chat = () => {
 
   return (
     <>
+      {/* 🎬 CAMERA VIDEO ELEMENT - Rendered at Chat level, NEVER recreated */}
+      {/* This appears behind all screens and always stays stable */}
+      <div className="fixed inset-0 w-full h-screen z-0 pointer-events-none">
+        <CameraVideoElement />
+      </div>
+
       {/* 🧪 DEBUG: Log UI state and which screen should render */}
       {console.log('🎨 [RENDER] UI STATE →', { isSearching, partnerFound }, 'Should show:', isSearching && !partnerFound ? 'WAITING SCREEN' : partnerFound ? 'VIDEO CHAT' : 'DASHBOARD')}
 
