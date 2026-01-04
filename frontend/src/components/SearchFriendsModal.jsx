@@ -250,6 +250,27 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     setActiveChat(friend);
   };
 
+  // Handle Edit Profile click
+  const handleEditProfile = () => {
+    // Navigate to edit profile page or open edit modal
+    window.location.href = '/edit-profile';
+  };
+
+  // Handle Sign Out click
+  const handleSignOut = async () => {
+    try {
+      // Clear localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('notifications');
+      
+      // Navigate to login
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleSearch = async (value) => {
@@ -766,7 +787,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
               {/* Action Buttons */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button style={{
+                <button onClick={handleEditProfile} style={{
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   color: 'white',
                   border: 'none',
@@ -792,7 +813,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                 }} onMouseEnter={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.4)'; e.target.style.background = 'rgba(255, 255, 255, 0.05)'; }} onMouseLeave={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)'; e.target.style.background = 'transparent'; }}>
                   ⋮ More
                 </button>
-                <button style={{
+                <button onClick={handleSignOut} style={{
                   background: '#ef4444',
                   color: 'white',
                   border: 'none',
