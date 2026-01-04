@@ -1632,8 +1632,46 @@ const Chat = () => {
   };
 
   // ✅ STEP 4: Attach stream to video element
-  // Video element is in IntroScreen > camera-frame > video
-  // Using key to ensure React preserves the same element instance
+  // Video element is in camera panel > camera-frame > video
+  // Using React.memo to prevent re-creation when parent re-renders
+
+  // ✅ CAMERA PANEL - Memoized component to prevent re-render recreation of video element
+  const CameraPanel = React.memo(() => {
+    console.log('📹 [CAMERA PANEL] Rendering camera panel (should only render once)');
+    return (
+      <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
+        {/* Camera Frame with Video */}
+        <div className="camera-frame w-full h-full">
+          {/* Camera Video - Stable element thanks to React.memo */}
+          <video
+            ref={localVideoRef}
+            className="camera-video"
+            autoPlay
+            muted
+            playsInline
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              backgroundColor: "#000"
+            }}
+          />
+        </div>
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
+
+        {/* You Badge */}
+        <div className="absolute bottom-6 left-6 z-30 pointer-events-none">
+          <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
+            <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></span>
+            <span className="text-xs font-semibold tracking-wider text-white/90 uppercase">You</span>
+          </div>
+        </div>
+      </main>
+    );
+  });
+
   const IntroScreen = () => {
     console.log("Dashboard render");
     
@@ -1741,37 +1779,7 @@ const Chat = () => {
       </aside>
 
       {/* RIGHT PANEL - Camera Feed (always visible) */}
-      <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
-        {/* Camera Frame with Video */}
-        <div className="camera-frame w-full h-full">
-          {/* Camera Video - Using stable key to prevent recreation */}
-          <video
-            ref={localVideoRef}
-            className="camera-video"
-            autoPlay
-            muted
-            playsInline
-            key="local-video-element-stable"
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              backgroundColor: "#000"
-            }}
-          />
-        </div>
-
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
-
-        {/* You Badge */}
-        <div className="absolute bottom-6 left-6 z-30 pointer-events-none">
-          <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
-            <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></span>
-            <span className="text-xs font-semibold tracking-wider text-white/90 uppercase">You</span>
-          </div>
-        </div>
-      </main>
+      <CameraPanel />
     </div>
     );
   };
