@@ -152,12 +152,26 @@
 
 /* Profile Panel Structure */
 .profile-panel {
-  height: 100%;
+  position: fixed !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 20px !important;
+  right: auto !important;
+  width: 360px !important;
+  max-width: 90vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: stretch;
   overflow: hidden;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+  background: #1a1a2e !important;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
 }
 
 .profile-header {
@@ -187,7 +201,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 16px 20px 24px 20px;
-  margin-top: 0;
+  margin: 0 !important;
 }
 
 .search-empty-state {
