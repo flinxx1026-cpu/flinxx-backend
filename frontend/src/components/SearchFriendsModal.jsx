@@ -716,7 +716,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
             {/* Profile Body - SCROLLABLE */}
             <div className="profile-body">
               {/* Profile Avatar */}
-              <div style={{ textAlign: 'center', marginBottom: '25px', marginTop: '20px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '25px', marginTop: '0' }}>
                 <div style={{
                   width: '100px',
                   height: '100px',
