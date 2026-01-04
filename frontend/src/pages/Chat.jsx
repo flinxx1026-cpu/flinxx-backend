@@ -2,7 +2,7 @@
 // Last updated: 2025-12-20 - WebRTC remote black screen fix with persistent stream
 // BUILD TIMESTAMP: 2025-12-20T00:00:00Z - STABLE REMOTE STREAM FIX
 console.log('🎯 CHAT BUILD: 2025-12-20T00:00:00Z - WebRTC stable remote stream handling');
-import React, { useState, useRef, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useContext, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
@@ -1527,22 +1527,21 @@ const Chat = () => {
     }
   };
 
-  const cancelSearch = () => {
+  // ✅ Stable cancel search handler - memoized to prevent unnecessary re-renders
+  const handleCancelSearch = useCallback(() => {
     console.log('🛑 [CANCEL] User cancelled search');
-    console.log('🛑 [CANCEL] ❌ NOT stopping camera - keep running on dashboard');
+    console.log('STATE BEFORE CANCEL:', { isSearching, partnerFound });
     
-    // Reset search state but KEEP camera running
+    // Emit socket event
+    socket.emit("cancel-search", { userId: userIdRef.current });
+    
+    // Reset state
     setIsSearching(false);
     setPartnerFound(false);
     setIsLoading(false);
     
-    socket.emit('cancel_search', {
-      userId: userIdRef.current,
-      timestamp: new Date().toISOString()
-    });
-    
-    console.log('🛑 [CANCEL] ✅ Search cancelled - camera still ON - back to dashboard');
-  };
+    console.log('STATE AFTER CANCEL:', { isSearching: false, partnerFound: false, isLoading: false });
+  }, []);
 
   const sendMessage = () => {
     if (messageInput.trim() === '' || !hasPartner) return;
@@ -1769,7 +1768,9 @@ const Chat = () => {
   }, []);
 
   // Waiting Screen Component - Premium Design with animations
-  const WaitingScreen = ({ onCancel }) => {
+  // ✅ WAITING SCREEN - Memoized to prevent unnecessary re-renders that cause it to "flash"
+  const WaitingScreen = useMemo(() => {
+    return ({ onCancel }) => {
     useEffect(() => {
       // Force dark mode
       document.documentElement.classList.add('dark');
@@ -1916,7 +1917,8 @@ const Chat = () => {
         </main>
       </>
     );
-  };
+    };
+  }, []);
 
   // ✅ STEP 4: Video element STABLE rakho - Already in Dashboard component
   // Video element is in the camera-frame div (lines ~1680)
@@ -2133,15 +2135,7 @@ const Chat = () => {
       {isSearching && !partnerFound && (
         <WaitingScreen 
           text="Looking for a partner..."
-          onCancel={() => {
-            console.log('🛑 [CANCEL] User cancelled search');
-            console.log('STATE BEFORE CANCEL:', { isStarting: isLoading, isSearching, partnerFound });
-            socket.emit("cancel-search", { userId: userIdRef.current });
-            setIsSearching(false);
-            setPartnerFound(false);
-            setIsLoading(false); // 🔥 FIX: Reset loading state so button shows text again
-            console.log('STATE AFTER CANCEL:', { isStarting: false, isSearching: false, partnerFound: false });
-          }}
+          onCancel={handleCancelSearch}
         />
       )}
 
