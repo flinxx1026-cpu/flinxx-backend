@@ -552,18 +552,53 @@ const Chat = () => {
         // Check if any video track is disabled
         const videoTrack = tracks.find(t => t.kind === 'video');
         if (videoTrack && !videoTrack.enabled) {
-          console.warn('📹 [TRACK MONITOR] Video track was disabled! Re-enabling...');
+          console.warn('📹 [TRACK MONITOR] ⚠️ Video track was disabled! Re-enabling...');
           videoTrack.enabled = true;
         }
         
         // Check if stream is still valid
         if (tracks.length === 0) {
-          console.error('📹 [TRACK MONITOR] Stream has no tracks! Stream was lost');
+          console.error('📹 [TRACK MONITOR] ❌ Stream has no tracks! Stream was lost');
         }
+      } else if (localVideoRef.current && !localVideoRef.current.srcObject && localStreamRef.current) {
+        console.warn('📹 [TRACK MONITOR] ❌ Video element lost srcObject! Emergency re-attach...');
+        localVideoRef.current.srcObject = localStreamRef.current;
+        localVideoRef.current.muted = true;
+        localVideoRef.current.play().catch(err => console.warn('Play error:', err));
       }
-    }, 2000); // Check every 2 seconds
+    }, 500); // Check EVERY 500ms to catch issues immediately
     
     return () => clearInterval(trackMonitorInterval);
+  }, []);
+
+  // ✅ PERMANENT HEALTH CHECK: Ensure video element stays healthy
+  useEffect(() => {
+    const healthCheckInterval = setInterval(() => {
+      if (!localVideoRef.current) {
+        console.error('📹 [HEALTH] ❌ Video element ref is NULL!');
+        return;
+      }
+      
+      if (!localVideoRef.current.srcObject && localStreamRef.current) {
+        console.warn('📹 [HEALTH] 🚨 Video srcObject lost! Re-attaching stream NOW...');
+        try {
+          localVideoRef.current.srcObject = localStreamRef.current;
+          localVideoRef.current.muted = true;
+          localVideoRef.current.play()
+            .then(() => console.log('📹 [HEALTH] ✅ Stream reattached and playing'))
+            .catch(e => console.warn('📹 [HEALTH] Play error:', e.message));
+        } catch (err) {
+          console.error('📹 [HEALTH] Error reattaching:', err);
+        }
+      }
+      
+      // Verify element is in DOM
+      if (localVideoRef.current && !document.contains(localVideoRef.current)) {
+        console.error('📹 [HEALTH] ❌ Video element not in DOM anymore!');
+      }
+    }, 300); // Check every 300ms
+    
+    return () => clearInterval(healthCheckInterval);
   }, []);
 
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
