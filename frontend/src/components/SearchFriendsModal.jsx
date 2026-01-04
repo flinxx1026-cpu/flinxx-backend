@@ -700,10 +700,23 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
         {/* Profile Tab */}
         {isProfileMode && (
-          <div className="search-results" style={{ overflowY: 'auto' }}>
-            <div style={{ padding: '0' }}>
-              {/* Profile Header */}
-              <div style={{ textAlign: 'center', marginBottom: '25px' }}>
+          <div className="profile-panel">
+            {/* Profile Header - STICKY */}
+            <div className="profile-header">
+              <h3>👤 My Profile</h3>
+              <button 
+                onClick={onClose}
+                className="search-close-btn"
+                style={{ width: '28px', height: '28px' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Profile Body - SCROLLABLE */}
+            <div className="profile-body">
+              {/* Profile Avatar */}
+              <div style={{ textAlign: 'center', marginBottom: '25px', marginTop: '20px' }}>
                 <div style={{
                   width: '100px',
                   height: '100px',
