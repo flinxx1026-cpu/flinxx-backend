@@ -398,83 +398,70 @@ const Chat = () => {
     }
   };
   
-  // 🔥 Cleanup: Stop camera on final unmount
+  // 🔥 Cleanup: Do NOT stop camera on dashboard unmount
+  // Camera stays ON for stream reuse across navigation
   useEffect(() => {
     return () => {
-      console.log('📹 [FINAL CLEANUP] Component unmounting - stopping all streams');
-      stopLocalCamera();
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => {
-          console.log('📹 [FINAL CLEANUP] Stopping track:', track.kind);
-          track.stop();
-        });
-        streamRef.current = null;
-      }
+      console.log('📹 [DASHBOARD CLEANUP] Component unmounting');
+      console.log('📹 [DASHBOARD CLEANUP] ⚠️ NOT stopping camera - will be reused on return');
+      // ❌ ye mat rakho: stopLocalCamera();
+      // Camera sirf logout / app close par stop ho
     };
   }, []);
 
-  // ✅ AUTO-START CAMERA ON DASHBOARD MOUNT - Always ON
+  // ✅ STEP 2: getUserMedia sirf pehli baar
   // Camera starts once when component mounts and runs continuously
   // User can interact with it (search, connect, disconnect)
-  // Camera only stops on page unload/logout
+  // Camera only stops on logout/app close
   useEffect(() => {
-    console.log('📹 [AUTO-START] Dashboard mounted - starting camera for preview');
+    console.log('📹 [CAMERA INIT] Starting camera initialization on mount');
     
-    const startDashboardCamera = async () => {
+    const startCamera = async () => {
       try {
-        console.log('📹 [AUTO-START] Requesting camera for dashboard preview...');
-        
-        // Verify video element exists in DOM
-        if (!localVideoRef.current) {
-          console.error('📹 [AUTO-START] ❌ Video element not in DOM, cannot initialize camera');
-          return;
+        // ✅ STEP 1: Stream ko useRef me lock karo - sirf pehli baar
+        if (!localStreamRef.current) {
+          console.log('📹 [CAMERA INIT] No existing stream, requesting from browser...');
+          
+          localStreamRef.current = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+          });
+          
+          console.log('📹 [CAMERA INIT] ✅ Stream obtained:', localStreamRef.current);
+          console.log('📹 [CAMERA INIT] Tracks:', localStreamRef.current.getTracks().map(t => ({ kind: t.kind, id: t.id })));
+          streamRef.current = localStreamRef.current; // Keep streamRef in sync
+        } else {
+          console.log('📹 [CAMERA INIT] Stream already exists - reusing it');
         }
-        
-        console.log('📹 [AUTO-START] ✓ Video element found in DOM, requesting camera permissions');
-        
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: true
-        });
-        
-        // Store the stream for reuse in WebRTC
-        localStreamRef.current = stream;
-        streamRef.current = stream;
-        console.log('📹 [AUTO-START] ✅ Camera stream obtained:', stream);
-        console.log('📹 [AUTO-START] Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
-        
+
+        // ✅ STEP 4: Video element STABLE rakho
         if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
+          localVideoRef.current.srcObject = localStreamRef.current;
           localVideoRef.current.muted = true;
           
-          // 🔥 CRITICAL: Wait for video to actually render frames
-          localVideoRef.current.onloadedmetadata = () => {
-            console.log('📹 [AUTO-START] ✅ Video metadata loaded, calling play()');
-            
-            localVideoRef.current.play().then(() => {
-              console.log('📹 [AUTO-START] ✅ Video playing - camera ready on dashboard');
-              setCameraStarted(true);
-              setIsLocalCameraReady(true);
-            }).catch((playErr) => {
-              console.warn('📹 [AUTO-START] ⚠️ Play warning (but video loaded):', playErr.message);
-              setCameraStarted(true);
-              setIsLocalCameraReady(true);
-            });
-          };
+          try {
+            await localVideoRef.current.play();
+            console.log('📹 [CAMERA INIT] ✅ Video playing');
+            setCameraStarted(true);
+            setIsLocalCameraReady(true);
+          } catch (playErr) {
+            console.warn('📹 [CAMERA INIT] ⚠️ Play warning:', playErr.message);
+            setCameraStarted(true);
+            setIsLocalCameraReady(true);
+          }
         }
       } catch (err) {
-        console.error('📹 [AUTO-START] ❌ Camera error:', err.message);
-        console.error('📹 [AUTO-START] Error name:', err.name);
+        console.error('📹 [CAMERA INIT] ❌ Error:', err.message);
+        console.error('📹 [CAMERA INIT] Error name:', err.name);
         setIsLocalCameraReady(true);
       }
     };
 
-    // Start camera immediately on mount
-    startDashboardCamera();
+    startCamera();
 
-    // No cleanup - camera stays ON
-    return undefined;
-  }, []); // ✅ Empty dependency array - runs ONCE on mount
+    // ✅ No cleanup here - camera stays ON
+    // Camera sirf logout / app close par stop ho
+  }, []); // ⚠️ dependency array EMPTY hi rehni chahiye
 
   // ========================================
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
@@ -1863,9 +1850,10 @@ const Chat = () => {
     );
   };
 
-  // Video Chat Screen Component
+  // ✅ STEP 4: Video element STABLE rakho
   // 🔥 GLOBAL LOCAL VIDEO - NEVER UNMOUNTS
   // Persistent video element that stays mounted across all screens
+  // NOT inside conditional render
   const GlobalLocalVideo = () => {
     return (
       <video
@@ -1873,6 +1861,12 @@ const Chat = () => {
         autoPlay
         muted
         playsInline
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          background: "black"
+        }}
         className="global-local-video"
       />
     );
