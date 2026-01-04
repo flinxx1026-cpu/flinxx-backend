@@ -15,6 +15,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [search, setSearch] = useState('');
   const [results, setResults] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [friendRequestStates, setFriendRequestStates] = useState({});
   const [sendingRequest, setSendingRequest] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -163,6 +164,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     if (!isOpen || !isProfileMode) return;
     
     const loadProfileData = async () => {
+      setIsProfileLoading(true);
       try {
         const token = localStorage.getItem('token');
         if (!token) return;
@@ -192,6 +194,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         }
       } catch (error) {
         console.error('Error loading profile:', error);
+      } finally {
+        setIsProfileLoading(false);
       }
     };
     
@@ -704,7 +708,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           <div className="profile-panel">
             {/* Profile Header - STICKY */}
             <div className="profile-header">
-              <h3>👤 My Profile</h3>
+              <h3>👤 My Profile {isProfileLoading && <span style={{ marginLeft: '8px', fontSize: '16px' }}>⏳</span>}</h3>
               <button 
                 onClick={onClose}
                 className="search-close-btn"
@@ -716,26 +720,39 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
             {/* Profile Body - SCROLLABLE */}
             <div className="profile-body">
-              {/* Profile Avatar */}
-              <div style={{ textAlign: 'center', marginBottom: '25px', marginTop: '0' }}>
+              {isProfileLoading ? (
                 <div style={{
-                  width: '100px',
-                  height: '100px',
-                  borderRadius: '50%',
-                  margin: '0 auto 15px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   display: 'flex',
-                  alignItems: 'center',
                   justifyContent: 'center',
-                  overflow: 'hidden',
-                  border: '3px solid rgba(255, 255, 255, 0.1)'
+                  alignItems: 'center',
+                  height: '200px',
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: '14px'
                 }}>
-                  <img 
-                    src={profileData.picture} 
-                    alt="Profile"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+                  Loading profile...
                 </div>
+              ) : (
+                <>
+                  {/* Profile Avatar */}
+                  <div style={{ textAlign: 'center', marginBottom: '25px', marginTop: '0' }}>
+                    <div style={{
+                      width: '100px',
+                      height: '100px',
+                      borderRadius: '50%',
+                      margin: '0 auto 15px',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      border: '3px solid rgba(255, 255, 255, 0.1)'
+                    }}>
+                      <img 
+                        src={profileData.picture} 
+                        alt="Profile"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
                 <h3 style={{ color: 'white', margin: '8px 0', fontSize: '20px', fontWeight: 'bold' }}>
                   {profileData.name}
                 </h3>
@@ -841,6 +858,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   🚪 Sign Out
                 </button>
               </div>
+                </>
+              )}
             </div>
           </div>
         )}
