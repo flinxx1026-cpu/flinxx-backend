@@ -20,7 +20,7 @@
 .search-friends-modal {
   position: fixed;
   top: 70px;
-  right: 20px;
+  left: 20px;
   width: 360px;
   max-width: 90vw;
   background: #1a1a2e;
@@ -31,8 +31,19 @@
   flex-direction: column;
   height: calc(100vh - 120px);
   max-height: 85vh;
-  animation: slideUp 0.3s ease-out;
+  animation: slideInLeft 0.3s ease-out;
   z-index: 1000;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
