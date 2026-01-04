@@ -19,26 +19,29 @@
 }
 
 .search-friends-modal {
-  position: fixed;
-  top: 0;
-  left: 20px;
-  right: auto;
-  width: 360px;
-  max-width: 90vw;
-  background: #1a1a2e;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  max-height: 100vh;
-  z-index: 1000;
-  pointer-events: auto;
-  animation: slideInLeft 0.3s ease-out forwards;
-  transform: translateX(0);
-  margin: 0;
-  padding: 0;
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 20px !important;
+  right: auto !important;
+  width: 360px !important;
+  max-width: 90vw !important;
+  height: 100vh !important;
+  background: #1a1a2e !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+  animation: slideInLeft 0.3s ease-out forwards !important;
+  transform: translateX(0) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  padding-top: 0 !important;
 }
 
 @keyframes slideInLeft {
@@ -148,11 +151,15 @@
   padding: 20px;
   min-height: 420px;
   padding-right: 12px;
+  width: 100% !important;
+  margin: 0 !important;
+  padding-top: 0 !important;
 }
 
-/* Profile Panel Structure */
-.profile-panel {
+/* Achievements/Trophy Panel - Full Top Alignment */
+.achievements-panel {
   position: fixed !important;
+  inset: 0 !important;
   top: 0 !important;
   bottom: 0 !important;
   left: 20px !important;
@@ -162,31 +169,88 @@
   height: 100vh !important;
   margin: 0 !important;
   padding: 0 !important;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: stretch;
-  overflow: hidden;
+  padding-top: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  overflow: hidden !important;
   z-index: 1000 !important;
   pointer-events: auto !important;
   background: #1a1a2e !important;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
 }
 
-.profile-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  height: 64px;
-  background: #1a1a2e;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  flex-shrink: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-sizing: border-box;
+/* Likes/Visitors Panel - Full Top Alignment */
+.likes-panel {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 20px !important;
+  right: auto !important;
+  width: 360px !important;
+  max-width: 90vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  padding-top: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  overflow: hidden !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+  background: #1a1a2e !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Profile Panel Structure */
+.profile-panel {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 20px !important;
+  right: auto !important;
+  width: 360px !important;
+  max-width: 90vw !important;
+  height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  padding-top: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
+  overflow: hidden !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+  background: #1a1a2e !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
+}
+
+.profile-header,
+.achievements-header,
+.likes-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  height: 64px !important;
+  background: #1a1a2e !important;
+  padding: 16px 20px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  margin: 0 !important;
 }
 
 .profile-header h3 {
@@ -196,12 +260,15 @@
   color: white;
 }
 
-.profile-body {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 16px 20px 24px 20px;
+.profile-body,
+.achievements-body,
+.likes-body {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 16px 20px 24px 20px !important;
   margin: 0 !important;
+  width: 100% !important;
 }
 
 .search-empty-state {
