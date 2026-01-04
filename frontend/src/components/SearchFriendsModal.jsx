@@ -22,8 +22,15 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [activeChat, setActiveChat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // ✅ Determine which mode we're in
   const isNotificationMode = mode === 'notifications';
   const isMessageMode = mode === 'message';
+  const isProfileMode = mode === 'profile';
+  const isSearchMode = mode === 'search';
+  const isLikesMode = mode === 'likes';
+  const isTrophyMode = mode === 'trophy';
+  const isTimerMode = mode === 'timer';
+  
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   
   // Fetch current user from backend and store in localStorage
@@ -363,12 +370,21 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       <div className="search-friends-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="search-friends-header">
-          <h2>{isMessageMode ? 'Message' : isNotificationMode ? 'Notifications' : 'Search Friends'}</h2>
+          <h2>
+            {isMessageMode ? 'Message' : 
+             isNotificationMode ? 'Notifications' : 
+             isProfileMode ? 'Profile' : 
+             isSearchMode ? 'Search Friends' : 
+             isLikesMode ? 'Likes' : 
+             isTrophyMode ? 'Achievements' : 
+             isTimerMode ? 'History' : 
+             'Search Friends'}
+          </h2>
           <button className="search-close-btn" onClick={onClose}>✖</button>
         </div>
 
-        {/* Search Input - Hidden in Notifications or Message Mode */}
-        {!isNotificationMode && !isMessageMode && (
+        {/* Search Input - Hidden in Notifications, Message, or other side-tab modes */}
+        {!isNotificationMode && !isMessageMode && !isProfileMode && !isLikesMode && !isTrophyMode && !isTimerMode && (
           <div className="search-input-container">
             <input
               type="text"
@@ -608,6 +624,42 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                 onMessageSent={updateChatListOnMessage}
               />
             )}
+          </div>
+        )}
+
+        {/* Profile Tab */}
+        {isProfileMode && (
+          <div className="search-results">
+            <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+              <p>👤 Profile features coming soon</p>
+            </div>
+          </div>
+        )}
+
+        {/* Likes Tab */}
+        {isLikesMode && (
+          <div className="search-results">
+            <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+              <p>❤️ Likes/Profile Visitors coming soon</p>
+            </div>
+          </div>
+        )}
+
+        {/* Trophy/Achievements Tab */}
+        {isTrophyMode && (
+          <div className="search-results">
+            <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+              <p>🏆 Achievements & Ranks coming soon</p>
+            </div>
+          </div>
+        )}
+
+        {/* Timer/History Tab */}
+        {isTimerMode && (
+          <div className="search-results">
+            <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+              <p>⏱️ Call History coming soon</p>
+            </div>
           </div>
         )}
       </div>

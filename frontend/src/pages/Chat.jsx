@@ -104,6 +104,9 @@ const Chat = () => {
   const [selectedGender, setSelectedGender] = useState('both');
   const [isRequestingCamera, setIsRequestingCamera] = useState(false);
   const [isLocalCameraReady, setIsLocalCameraReady] = useState(false);
+  
+  // ✅ Unified tab state for all side panels
+  const [activeTab, setActiveTab] = useState(null); // 'profile' | 'search' | 'likes' | 'messages' | 'trophy' | 'timer' | null
 
   // Chat state
   const [messages, setMessages] = useState([]);
@@ -1776,7 +1779,7 @@ const Chat = () => {
         <div className="icon-row p-6 sm:p-8">
           {/* Profile Icon */}
           <button 
-            onClick={() => setIsProfileOpen(true)}
+            onClick={() => setActiveTab(activeTab === 'profile' ? null : 'profile')}
             className="icon-btn"
             title="Profile"
           >
@@ -1785,7 +1788,7 @@ const Chat = () => {
 
           {/* Search Icon */}
           <button 
-            onClick={() => setIsSearchOpen(true)}
+            onClick={() => setActiveTab(activeTab === 'search' ? null : 'search')}
             className="icon-btn"
             title="Search"
           >
@@ -1793,31 +1796,35 @@ const Chat = () => {
           </button>
 
           {/* Likes Icon */}
-          <button className="icon-btn" title="Likes">
+          <button 
+            onClick={() => setActiveTab(activeTab === 'likes' ? null : 'likes')}
+            className="icon-btn" 
+            title="Likes"
+          >
             <i className="material-icons-round">favorite</i>
           </button>
 
           {/* Messages Icon */}
           <button 
-            onClick={() => setActivePanel(activePanel === 'message' ? null : 'message')}
+            onClick={() => setActiveTab(activeTab === 'messages' ? null : 'messages')}
             className="icon-btn"
             title="Messages"
           >
             <i className="material-icons-round">chat_bubble</i>
           </button>
 
-          {/* Premium Icon */}
+          {/* Trophy/Achievements Icon */}
           <button 
-            onClick={() => setIsPremiumOpen(true)}
+            onClick={() => setActiveTab(activeTab === 'trophy' ? null : 'trophy')}
             className="icon-btn"
-            title="Premium"
+            title="Achievements"
           >
             <i className="material-icons-round">emoji_events</i>
           </button>
 
-          {/* History Icon */}
+          {/* History/Timer Icon */}
           <button 
-            onClick={() => setIsMatchHistoryOpen(true)}
+            onClick={() => setActiveTab(activeTab === 'timer' ? null : 'timer')}
             className="icon-btn"
             title="History"
           >
@@ -2285,44 +2292,31 @@ const Chat = () => {
             onClose={() => setIsPremiumOpen(false)} 
           />
 
-          {/* Profile Modal */}
-          <ProfileModal 
-            isOpen={isProfileOpen} 
-            onClose={() => setIsProfileOpen(false)}
-            onOpenPremium={() => setIsPremiumOpen(true)}
-            onReinitializeCamera={cameraFunctionsRef.current?.reinitializeCamera}
-          />
-
-          {/* Match History Modal */}
-          <MatchHistory 
-            isOpen={isMatchHistoryOpen} 
-            onClose={() => setIsMatchHistoryOpen(false)}
-          />
-
-          {/* Search Friends Modal */}
-          <SearchFriendsModal 
-            isOpen={isSearchOpen} 
-            onClose={() => setIsSearchOpen(false)}
-            mode="search"
-            onUserSelect={(user) => {
-              console.log('Selected user from search:', user);
-              // TODO: Navigate to user profile or open chat
-            }}
-          />
-
-          {/* Top Panel (Notifications or Messages) */}
-          <SearchFriendsModal 
-            isOpen={activePanel !== null} 
-            onClose={() => setActivePanel(null)}
-            mode={activePanel === 'message' ? 'message' : 'notifications'}
-          />
-
           {/* Gender Filter Modal */}
           <GenderFilterModal 
             isOpen={isGenderFilterOpen} 
             onClose={() => setIsGenderFilterOpen(false)}
             currentGender={selectedGender}
             onOpenPremium={() => setIsPremiumOpen(true)}
+          />
+
+          {/* ✅ Unified Side Panel for all tabs */}
+          <SearchFriendsModal 
+            isOpen={activeTab !== null} 
+            onClose={() => setActiveTab(null)}
+            mode={
+              activeTab === 'profile' ? 'profile' :
+              activeTab === 'search' ? 'search' :
+              activeTab === 'likes' ? 'likes' :
+              activeTab === 'messages' ? 'message' :
+              activeTab === 'trophy' ? 'trophy' :
+              activeTab === 'timer' ? 'timer' :
+              'notifications'
+            }
+            onUserSelect={(user) => {
+              console.log('Selected user from search:', user);
+              // TODO: Navigate to user profile or open chat
+            }}
           />
 
           {/* Guest Session Timeout Modal */}
