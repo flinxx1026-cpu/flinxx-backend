@@ -41,6 +41,10 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const isLikesMode = mode === 'likes';
   const isTrophyMode = mode === 'trophy';
   const isTimerMode = mode === 'timer';
+
+  // DEBUG: Log active mode
+  if (isOpen) {
+    console.log("📊 MODAL OPEN - Current Mode:", { isProfileMode, isMessageMode, isSearchMode, isLikesMode, isTrophyMode, isTimerMode, mode });
   
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   
@@ -801,11 +805,14 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
         {/* Trophy/Achievements Tab */}
         {isTrophyMode && (
-          <div className="search-results">
-            <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
-              <p>🏆 Achievements & Ranks coming soon</p>
+          <>
+            {console.log("🏆 TROPHY/ACHIEVEMENTS JSX RENDERED - isTrophyMode:", isTrophyMode)}
+            <div className="search-results">
+              <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+                <p>🏆 Achievements & Ranks coming soon</p>
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Timer/History Tab */}
