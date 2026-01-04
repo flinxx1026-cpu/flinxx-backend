@@ -19,17 +19,24 @@ import TermsConfirmationModal from '../components/TermsConfirmationModal';
 import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
-// ✅ CAMERA PANEL - Defined at MODULE LEVEL to maintain reference
-// This prevents React.memo from re-rendering when parent component changes
-const CameraPanel = React.memo(({ localVideoRef }) => {
-  console.log('📹 [CAMERA PANEL] Rendering camera panel');
+// ✅ MODULE-LEVEL REF HOLDER - Allows CameraPanel to access the ref without prop drilling
+// This prevents prop changes from triggering re-renders of CameraPanel
+let sharedVideoRef = null;
+
+// ✅ CAMERA PANEL - Defined at MODULE LEVEL with NO PROPS
+// React.memo ensures it never re-renders after first render
+const CameraPanel = React.memo(() => {
+  // Access the shared ref (will be set by Chat component)
+  const localVideoRef = { current: sharedVideoRef };
+  
+  console.log('📹 [CAMERA PANEL] Rendering camera panel (FINAL RENDER)');
   return (
     <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
       {/* Camera Frame with Video */}
       <div className="camera-frame w-full h-full">
         {/* Camera Video - Stable element thanks to module-level component */}
         <video
-          ref={localVideoRef}
+          ref={el => { sharedVideoRef = el; }}
           className="camera-video"
           autoPlay
           muted
@@ -488,15 +495,15 @@ const Chat = () => {
         if (!isMounted) return;
         
         // ✅ STEP 4: Attach stream to video element
-        if (localVideoRef.current && localStreamRef.current) {
+        if (sharedVideoRef && localStreamRef.current) {
           console.log('📹 [CAMERA INIT] Attaching stream to video element...');
-          localVideoRef.current.srcObject = localStreamRef.current;
-          localVideoRef.current.muted = true;
+          sharedVideoRef.srcObject = localStreamRef.current;
+          sharedVideoRef.muted = true;
           
           console.log('📹 [CAMERA INIT] Calling play() on video element');
           
           // Call play() directly without waiting for metadata
-          localVideoRef.current.play()
+          sharedVideoRef.play()
             .then(() => {
               if (isMounted) {
                 console.log('📹 [CAMERA INIT] ✅ Video stream is now playing');
@@ -514,7 +521,7 @@ const Chat = () => {
             });
         } else {
           console.error('📹 [CAMERA INIT] ❌ Video ref or stream is null after wait');
-          console.error('   localVideoRef.current:', !!localVideoRef.current);
+          console.error('   sharedVideoRef:', !!sharedVideoRef);
           console.error('   localStreamRef.current:', !!localStreamRef.current);
           setIsLocalCameraReady(true);
         }
@@ -544,20 +551,16 @@ const Chat = () => {
 
   // ✅ RESUME PLAYBACK: If video pauses for any reason, resume immediately
   useEffect(() => {
-    const videoElement = localVideoRef.current;
-    if (!videoElement) return;
+    // Use a polling approach since we can't set up event listeners on shared ref initially
+    const resumeInterval = setInterval(() => {
+      if (sharedVideoRef && sharedVideoRef.paused && sharedVideoRef.srcObject) {
+        console.warn('📹 [RESUME CHECK] Video was paused! Resuming...');
+        sharedVideoRef.play()
+          .catch(e => console.warn('📹 [RESUME CHECK] Resume error:', e.message));
+      }
+    }, 100);
     
-    const handlePause = () => {
-      console.warn('📹 [PAUSE LISTENER] Video was paused! Resuming...');
-      videoElement.play()
-        .catch(e => console.warn('📹 [PAUSE LISTENER] Resume error:', e.message));
-    };
-    
-    videoElement.addEventListener('pause', handlePause);
-    
-    return () => {
-      videoElement.removeEventListener('pause', handlePause);
-    };
+    return () => clearInterval(resumeInterval);
   }, []);
 
   // ✅ PROTECTION: Monitor and fix stream track state
@@ -578,11 +581,11 @@ const Chat = () => {
         if (tracks.length === 0) {
           console.error('📹 [TRACK MONITOR] ❌ Stream has no tracks! Stream was lost');
         }
-      } else if (localVideoRef.current && !localVideoRef.current.srcObject && localStreamRef.current) {
+      } else if (sharedVideoRef && !sharedVideoRef.srcObject && localStreamRef.current) {
         console.warn('📹 [TRACK MONITOR] ❌ Video element lost srcObject! Emergency re-attach...');
-        localVideoRef.current.srcObject = localStreamRef.current;
-        localVideoRef.current.muted = true;
-        localVideoRef.current.play().catch(err => console.warn('Play error:', err));
+        sharedVideoRef.srcObject = localStreamRef.current;
+        sharedVideoRef.muted = true;
+        sharedVideoRef.play().catch(err => console.warn('Play error:', err));
       }
     }, 100); // Check EVERY 100ms - very aggressive
     
@@ -598,12 +601,12 @@ const Chat = () => {
       }
       
       // 1. Check if srcObject is missing
-      if (!localVideoRef.current.srcObject && localStreamRef.current) {
+      if (!sharedVideoRef.srcObject && localStreamRef.current) {
         console.warn('📹 [HEALTH] 🚨 Video srcObject lost! Re-attaching stream NOW...');
         try {
-          localVideoRef.current.srcObject = localStreamRef.current;
-          localVideoRef.current.muted = true;
-          localVideoRef.current.play()
+          sharedVideoRef.srcObject = localStreamRef.current;
+          sharedVideoRef.muted = true;
+          sharedVideoRef.play()
             .then(() => console.log('📹 [HEALTH] ✅ Stream reattached and playing'))
             .catch(e => console.warn('📹 [HEALTH] Play error:', e.message));
         } catch (err) {
@@ -612,9 +615,9 @@ const Chat = () => {
       }
       
       // 2. Check if video is paused (common cause of black screen)
-      if (localVideoRef.current.srcObject && localVideoRef.current.paused) {
+      if (sharedVideoRef.srcObject && sharedVideoRef.paused) {
         console.warn('📹 [HEALTH] ⚠️ Video element is PAUSED! Resuming...');
-        localVideoRef.current.play()
+        sharedVideoRef.play()
           .catch(e => console.warn('📹 [HEALTH] Resume error:', e.message));
       }
       
@@ -629,7 +632,7 @@ const Chat = () => {
       }
       
       // 4. Verify element is in DOM
-      if (localVideoRef.current && !document.contains(localVideoRef.current)) {
+      if (sharedVideoRef && !document.contains(sharedVideoRef)) {
         console.error('📹 [HEALTH] ❌ Video element not in DOM anymore!');
       }
     }, 200); // Check VERY frequently - every 200ms
@@ -1851,7 +1854,7 @@ const Chat = () => {
       </aside>
 
       {/* RIGHT PANEL - Camera Feed (always visible) */}
-      <CameraPanel localVideoRef={localVideoRef} />
+      <CameraPanel />
     </div>
     );
   };
