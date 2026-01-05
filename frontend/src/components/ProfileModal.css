@@ -189,6 +189,39 @@
   margin: 0;
 }
 
+/* Profile Info Section (Gender & Birthday) */
+.profile-info-section {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-radius: 15px !important;
+  padding: 16px 20px !important;
+  margin: 14px 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.profile-info-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 8px 0 !important;
+}
+
+.profile-info-row:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  margin-bottom: 10px !important;
+}
+
+.profile-info-label {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #a0a0b0 !important;
+}
+
+.profile-info-value {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #e8e8f0 !important;
+}
+
 /* Profile Details */
 .profile-details {
   margin-bottom: 20px;

@@ -487,6 +487,18 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
           <p className="premium-description">Unlock premium features</p>
         </div>
 
+        {/* Profile Info Section (Gender & Birthday) */}
+        <div className="profile-info-section">
+          <div className="profile-info-row">
+            <span className="profile-info-label">⚧ Gender</span>
+            <span className="profile-info-value">{profileData.gender || 'Not set'}</span>
+          </div>
+          <div className="profile-info-row">
+            <span className="profile-info-label">🎂 Birthday</span>
+            <span className="profile-info-value">{profileData.birthday || 'Not set'}</span>
+          </div>
+        </div>
+
         {/* Profile Details */}
         <div className="profile-details">
           <div className="detail-row">
