@@ -771,7 +771,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
     console.log(`  - profileCompleted: true`);
     
     const user = await prisma.users.update({
-      where: { public_id: userId },
+      where: { id: existingUser.id },
       data: {
         birthday: birthDate,
         gender: genderLowercase,
