@@ -27,7 +27,7 @@
 .profile-modal-container {
   position: fixed !important;
   top: 50% !important;
-  right: 40px !important;
+  left: 40px !important;
   transform: translateY(-50%) !important;
   width: 400px !important;
   max-width: 90vw !important;
@@ -37,7 +37,7 @@
   padding: 0 !important;
   margin: 0 !important;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
-  animation: slideInRight 0.3s ease-out !important;
+  animation: slideInLeft 0.3s ease-out !important;
   max-height: 85vh !important;
   display: flex !important;
   flex-direction: column !important;
@@ -46,9 +46,9 @@
   pointer-events: auto !important;
 }
 
-@keyframes slideInRight {
+@keyframes slideInLeft {
   from {
-    transform: translateY(-50%) translateX(100px);
+    transform: translateY(-50%) translateX(-100px);
     opacity: 0;
   }
   to {
