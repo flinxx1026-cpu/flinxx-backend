@@ -581,86 +581,105 @@ const Chat = () => {
   // If tracks get disabled (common cause of black screen), re-enable them
   useEffect(() => {
     let lastAttachTime = 0;
+    let hasReportedMissingSrcObject = false;
+    
     const trackMonitorInterval = setInterval(() => {
       try {
         if (!sharedVideoRef) {
-          // Ref not available yet, skip
           return;
         }
         
+        // Check if tracks are disabled and re-enable them
         if (localStreamRef.current && sharedVideoRef?.srcObject) {
           const tracks = localStreamRef.current.getTracks();
-          
-          // Check if any video track is disabled
           const videoTrack = tracks.find(t => t.kind === 'video');
+          
           if (videoTrack && !videoTrack.enabled) {
             console.warn('📹 [TRACK MONITOR] ⚠️ Video track was disabled! Re-enabling...');
             videoTrack.enabled = true;
           }
           
-          // Check if stream is still valid
-          if (tracks.length === 0) {
-            console.error('📹 [TRACK MONITOR] ❌ Stream has no tracks! Stream was lost');
-          }
+          // Reset error flag when stream is healthy
+          hasReportedMissingSrcObject = false;
         } else if (sharedVideoRef && !sharedVideoRef.srcObject && localStreamRef.current) {
-          // Only log/re-attach if it's been more than 2 seconds since last attach
-          // This prevents log spam from rapid re-renders
-          const now = Date.now();
-          if (now - lastAttachTime > 2000) {
-            console.warn('📹 [TRACK MONITOR] ❌ Video element lost srcObject! Emergency re-attach...');
-            lastAttachTime = now;
-            
-            // Re-attach stream
-            if (sharedVideoRef && localStreamRef.current) {
+          // Only report this error once until it recovers
+          if (!hasReportedMissingSrcObject) {
+            const now = Date.now();
+            if (now - lastAttachTime > 2000) {
+              console.debug('📹 [TRACK MONITOR] srcObject lost, re-attaching stream...');
+              lastAttachTime = now;
+              hasReportedMissingSrcObject = true;
+            }
+          }
+          
+          // Try to re-attach stream silently
+          try {
+            if (sharedVideoRef && localStreamRef.current && localStreamRef.current.getTracks().length > 0) {
               sharedVideoRef.srcObject = localStreamRef.current;
               sharedVideoRef.muted = true;
-              sharedVideoRef.play().catch(err => console.warn('Play error:', err));
+              sharedVideoRef.play().catch(() => {});
             }
+          } catch (e) {
+            // Silently ignore
           }
         }
       } catch (err) {
-        // Silently handle errors to prevent console spam
-        console.debug('📹 [TRACK MONITOR] Minor error:', err.message);
+        // Silently handle errors
       }
-    }, 1000); // Check every 1000ms instead of 500ms to reduce overhead
+    }, 2000); // Check every 2 seconds
     
     return () => clearInterval(trackMonitorInterval);
   }, []);
 
   // ✅ PERMANENT HEALTH CHECK: Ensure video element stays healthy
   useEffect(() => {
+    let hasReportedIssue = false;
+    
     const healthCheckInterval = setInterval(() => {
       try {
         if (!sharedVideoRef) {
-          // Ref not yet available, skip this check
           return;
         }
         
-        // 1. Check if srcObject is missing
-        if (!sharedVideoRef.srcObject && localStreamRef.current) {
-          console.warn('📹 [HEALTH] 🚨 Video srcObject lost! Re-attaching stream NOW...');
+        // 1. Check if srcObject is missing - try to reattach silently
+        if (!sharedVideoRef.srcObject && localStreamRef.current && localStreamRef.current.getTracks().length > 0) {
           try {
             sharedVideoRef.srcObject = localStreamRef.current;
             sharedVideoRef.muted = true;
-            sharedVideoRef.play()
-              .then(() => console.log('📹 [HEALTH] ✅ Stream reattached and playing'))
-              .catch(e => console.warn('📹 [HEALTH] Play error:', e.message));
+            sharedVideoRef.play().catch(() => {});
+            hasReportedIssue = false;
           } catch (err) {
-            console.error('📹 [HEALTH] Error reattaching:', err);
+            // Silently ignore
           }
         }
         
-        // 2. Check if video is paused (common cause of black screen)
+        // 2. Check if video is paused - resume it
         if (sharedVideoRef.srcObject && sharedVideoRef.paused) {
-          console.warn('📹 [HEALTH] ⚠️ Video element is PAUSED! Resuming...');
-          sharedVideoRef.play()
-            .catch(e => console.warn('📹 [HEALTH] Resume error:', e.message));
+          try {
+            sharedVideoRef.play().catch(() => {});
+            hasReportedIssue = false;
+          } catch (e) {
+            // Silently ignore
+          }
+        }
+        
+        // 3. Ensure video tracks are enabled
+        if (localStreamRef.current) {
+          const tracks = localStreamRef.current.getTracks();
+          const videoTrack = tracks.find(t => t.kind === 'video');
+          
+          if (videoTrack && !videoTrack.enabled) {
+            videoTrack.enabled = true;
+            if (!hasReportedIssue) {
+              console.debug('📹 [HEALTH] Re-enabled video track');
+              hasReportedIssue = true;
+            }
+          }
         }
       } catch (err) {
-        // Silently handle errors to prevent console spam
-        console.debug('📹 [HEALTH] Minor error:', err.message);
+        // Silently handle errors
       }
-    }, 2000); // Check every 2 seconds instead of 500ms
+    }, 3000); // Check every 3 seconds
     
     return () => clearInterval(healthCheckInterval);
   }, []);
