@@ -490,6 +490,84 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
           <p className="premium-description">Unlock premium features</p>
         </div>
 
+        {/* Profile Details - Location, Gender, Birthday */}
+        <div className="profile-details">
+          {isEditing ? (
+            <>
+              <div className="detail-row">
+                <span className="detail-label">📍 Location</span>
+                <input
+                  type="text"
+                  name="location"
+                  value={profileData.location}
+                  onChange={handleInputChange}
+                  className="profile-input-small"
+                />
+              </div>
+
+              <div className="detail-row">
+                <span className="detail-label">⚧ Gender</span>
+                <select
+                  name="gender"
+                  value={profileData.gender}
+                  onChange={handleInputChange}
+                  className="profile-input-small"
+                >
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div className="detail-row">
+                <span className="detail-label">🎂 Birthday</span>
+                <input
+                  type="date"
+                  name="birthday"
+                  value={profileData.birthdayRaw || ''}
+                  onChange={handleInputChange}
+                  className="profile-input-small text-black focus:text-black !text-black [&::-webkit-datetime-edit]:text-black [&::-webkit-datetime-edit-year-field]:text-black [&::-webkit-datetime-edit-month-field]:text-black [&::-webkit-datetime-edit-day-field]:text-black"
+                />
+              </div>
+
+              <button
+                className="btn-save"
+                onClick={handleSaveProfile}
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                className="btn-cancel"
+                onClick={() => {
+                  setIsEditing(false);
+                  loadUserProfile();
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="detail-row">
+                <span className="detail-label">📍 Location</span>
+                <span className="detail-value">{profileData.location || 'Not set'}</span>
+              </div>
+
+              <div className="detail-row">
+                <span className="detail-label">⚧ Gender</span>
+                <span className="detail-value">{profileData.gender || 'Not set'}</span>
+              </div>
+
+              <div className="detail-row">
+                <span className="detail-label">🎂 Birthday</span>
+                <span className="detail-value">{profileData.birthday || 'Not set'}</span>
+              </div>
+            </>
+          )}
+        </div>
+
         {/* Sign Out Button */}
         <button className="btn-sign-out" onClick={handleSignOut}>
           Sign Out
