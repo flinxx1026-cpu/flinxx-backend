@@ -675,7 +675,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         {isMessageMode && (
           <div className="message-panel-body">
             {!activeChat ? (
-              <div className="search-results">
+              <>
+                <div className="message-panel-header">
+                  <h3>Message</h3>
+                  <button className="message-close-btn" onClick={onClose}>✕</button>
+                </div>
+                <div className="search-results">
                 {friends.length === 0 ? (
                   <p
                     style={{
@@ -724,6 +729,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   ))
                 )}
               </div>
+              </>
             ) : (
               <ChatBox
                 friend={activeChat}
