@@ -680,7 +680,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   <h3>Message</h3>
                   <button className="message-close-btn" onClick={onClose}>✕</button>
                 </div>
-                <div className="search-results">
+                <div className="message-friends-list">
                 {friends.length === 0 ? (
                   <p
                     style={{
