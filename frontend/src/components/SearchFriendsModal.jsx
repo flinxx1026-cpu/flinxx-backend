@@ -677,56 +677,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                 </div>
               )}
 
-              {/* SECTION 2: Friends List */}
-              {friends && friends.length > 0 && (
-                <div>
-                  <h3 style={{ 
-                    color: '#fff', 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
-                    padding: '10px 0',
-                    borderBottom: '1px solid rgba(255,255,255,0.1)',
-                    marginTop: pendingRequests && pendingRequests.length > 0 ? '20px' : '0'
-                  }}>
-                    👥 {friends.length} Friend{friends.length !== 1 ? 's' : ''}
-                  </h3>
-                  {friends.map(friend => (
-                    <div 
-                      key={friend.id}
-                      className="search-result-item friend-row"
-                      onClick={() => openChat(friend)}
-                      style={{ marginTop: '10px', cursor: 'pointer' }}
-                    >
-                      <div className="result-avatar">
-                        {friend.photo_url ? (
-                          <img 
-                            src={friend.photo_url} 
-                            alt={friend.display_name}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              borderRadius: '50%',
-                              objectFit: 'cover'
-                            }}
-                          />
-                        ) : (
-                          '👤'
-                        )}
-                      </div>
-
-                      <div className="result-info">
-                        <p className="result-name">{friend.display_name}</p>
-                        <p className="tap-to-chat">
-                          {friend.unreadCount > 0 ? 'New message' : 'Click to chat'}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {/* Empty State */}
-              {(!pendingRequests || pendingRequests.length === 0) && (!friends || friends.length === 0) && (
+              {(!pendingRequests || pendingRequests.length === 0) && (
                 <p
                   style={{
                     textAlign: 'center',
@@ -735,7 +687,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     padding: '20px'
                   }}
                 >
-                  No friend requests or friends yet
+                  No friend requests yet
                 </p>
               )}
             </div>
