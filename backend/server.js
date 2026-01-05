@@ -690,9 +690,19 @@ app.post('/api/users/complete-profile', async (req, res) => {
 
     // Verify user exists in database
     console.log('[PROFILE SAVE] Checking if user exists in database...');
-    const existingUser = await prisma.users.findUnique({
-      where: { public_id: userId }
+    
+    // Try to find user by ID (UUID from frontend) first
+    let existingUser = await prisma.users.findUnique({
+      where: { id: userId }
     })
+    
+    // If not found by ID, try by public_id for backward compatibility
+    if (!existingUser) {
+      console.log('[PROFILE SAVE] User not found by UUID, trying by public_id...');
+      existingUser = await prisma.users.findUnique({
+        where: { public_id: userId }
+      })
+    }
 
     if (!existingUser) {
       console.error(`[PROFILE SAVE] ❌ DATABASE ERROR: User not found in database: ${userId}`);
