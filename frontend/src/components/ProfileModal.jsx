@@ -490,23 +490,6 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
           <p className="premium-description">Unlock premium features</p>
         </div>
 
-        {/* Gender & Birthday Section */}
-        <div className="profile-info-card">
-          <div className="profile-info-row">
-            <span className="label">Gender</span>
-            <span className="value">{user?.gender || "Not set"}</span>
-          </div>
-
-          <div className="profile-info-row">
-            <span className="label">Birthday</span>
-            <span className="value">
-              {user?.dob
-                ? new Date(user.dob).toLocaleDateString()
-                : "Not set"}
-            </span>
-          </div>
-        </div>
-
         {/* Profile Info Section (Gender & Birthday) */}
         <div className="profile-info-section">
           <div className="profile-info-row">
