@@ -159,7 +159,7 @@ body {
 .left-panel,
 .right-panel {
   flex: 0 0 45%;
-  height: 100%;
+  height: auto;
   box-sizing: border-box;
   position: relative;
   background: #000;
@@ -257,7 +257,7 @@ body {
 
 .right-panel {
   flex: 0 0 45%;
-  height: 100%;
+  height: auto;
   display: flex;
 }
 
