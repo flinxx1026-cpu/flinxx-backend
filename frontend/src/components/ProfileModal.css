@@ -41,7 +41,8 @@
   max-height: 85vh !important;
   display: flex !important;
   flex-direction: column !important;
-  overflow: hidden !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   pointer-events: auto !important;
 }
 
@@ -192,9 +193,7 @@
 .profile-details {
   margin-bottom: 20px;
   padding: 0 24px;
-  overflow-y: auto;
   flex: 1;
-  max-height: calc(85vh - 400px);
 }
 
 .detail-row {
