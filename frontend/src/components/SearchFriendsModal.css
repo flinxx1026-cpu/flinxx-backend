@@ -148,12 +148,13 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px;
+  padding: 0;
   min-height: 420px;
-  padding-right: 12px;
   width: 100% !important;
   margin: 0 !important;
-  padding-top: 0 !important;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 /* Achievements/Trophy Panel - Full Top Alignment */
@@ -286,17 +287,18 @@
 
 /* Result Item */
 .search-result-item {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  margin-bottom: 8px;
+  padding: 12px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
   transition: all 0.2s;
   pointer-events: auto;
+  box-sizing: border-box;
 }
 
 .search-result-item:hover {
@@ -305,8 +307,8 @@
 }
 
 .result-avatar {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
@@ -314,6 +316,7 @@
   justify-content: center;
   font-size: 20px;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .result-info {
@@ -575,6 +578,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding: 16px;
+  gap: 12px;
 }
 
 /* ===== CHAT BOX STYLES ===== */
