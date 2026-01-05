@@ -13,7 +13,6 @@ import PremiumModal from '../components/PremiumModal';
 import GenderFilterModal from '../components/GenderFilterModal';
 import ProfileModal from '../components/ProfileModal';
 import MatchHistory from '../components/MatchHistory';
-import MessagesModal from '../components/MessagesModal';
 import SearchFriendsModal from '../components/SearchFriendsModal';
 import SubscriptionsPage from '../components/SubscriptionsPage';
 import TopActions from '../components/TopActions';
@@ -100,7 +99,6 @@ const Chat = () => {
   const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMatchHistoryOpen, setIsMatchHistoryOpen] = useState(false);
-  const [isMessagesOpen, setIsMessagesOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [activePanel, setActivePanel] = useState(null); // 'notification' | 'message' | null
@@ -1809,7 +1807,7 @@ const Chat = () => {
 
           {/* Messages Icon */}
           <button 
-            onClick={() => setIsMessagesOpen(!isMessagesOpen)}
+            onClick={() => setActiveTab(activeTab === 'messages' ? null : 'messages')}
             className="icon-btn"
             title="Messages"
           >
@@ -2320,12 +2318,6 @@ const Chat = () => {
           <MatchHistory 
             isOpen={isMatchHistoryOpen}
             onClose={() => setIsMatchHistoryOpen(false)}
-          />
-
-          {/* Messages Modal */}
-          <MessagesModal 
-            isOpen={isMessagesOpen}
-            onClose={() => setIsMessagesOpen(false)}
           />
 
           {/* ✅ Unified Side Panel for all tabs */}
