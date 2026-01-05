@@ -1,7 +1,7 @@
-// DEPLOYMENT VERSION: webrtc-stable-streams - Remote stream fix - 2025-12-20
-// Last updated: 2025-12-20 - WebRTC remote black screen fix with persistent stream
-// BUILD TIMESTAMP: 2025-12-20T00:00:00Z - STABLE REMOTE STREAM FIX
-console.log('🎯 CHAT BUILD: 2025-12-20T00:00:00Z - WebRTC stable remote stream handling');
+// DEPLOYMENT VERSION: webrtc-stable-streams - Remote stream fix - 2026-01-05
+// Last updated: 2026-01-05 - Chat bottom spacing fixes deployed
+// BUILD TIMESTAMP: 2026-01-05T10:20:00Z - CHAT LAYOUT FIXES
+console.log('🎯 CHAT BUILD: 2026-01-05T10:20:00Z - Chat layout and spacing fixes');
 import React, { useState, useRef, useEffect, useContext, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
