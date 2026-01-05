@@ -106,11 +106,13 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
       // First set data from context
       setProfileData(prev => ({
         ...prev,
-        id: user.id || '',
+        id: user.id || user.uuid || '',
         name: user.name || 'User',
         email: user.email || '',
         picture: user.picture || '',
-        googleId: user.googleId || ''
+        googleId: user.googleId || '',
+        gender: user.gender || 'Not set',
+        birthday: user.birthday || 'Not set'
       }));
 
       // Then fetch fresh data from backend
@@ -130,17 +132,34 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
         if (response.ok) {
           const data = await response.json();
           console.log('[ProfileModal] ✅ Fetched profile data from backend:', data.user?.email);
+          console.log('[ProfileModal] User gender:', data.user?.gender);
+          console.log('[ProfileModal] User birthday:', data.user?.birthday);
           
           if (data.success && data.user) {
+            // Format birthday for display
+            let formattedBirthday = 'Not set';
+            if (data.user.birthday) {
+              try {
+                const dateObj = new Date(data.user.birthday);
+                formattedBirthday = dateObj.toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                });
+              } catch (e) {
+                formattedBirthday = data.user.birthday;
+              }
+            }
+
             setProfileData(prev => ({
               ...prev,
-              id: data.user.id || data.user.userId || '',
+              id: data.user.uuid || data.user.id || data.user.userId || '',
               name: data.user.name || 'User',
               email: data.user.email || '',
               picture: data.user.picture || '',
               googleId: data.user.googleId || '',
               gender: data.user.gender || 'Not set',
-              birthday: data.user.birthday || 'Not set'
+              birthday: formattedBirthday
             }));
           }
         } else {
