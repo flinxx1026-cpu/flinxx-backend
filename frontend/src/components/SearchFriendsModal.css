@@ -1032,6 +1032,7 @@
   height: auto;
   max-height: auto;
   overflow: hidden;
+  flex: 0 0 auto;
 }
 
 .messages-title {
