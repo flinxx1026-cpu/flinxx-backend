@@ -197,12 +197,13 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
               gender: genderValue,
               birthday: formattedBirthday,
               birthdayRaw: rawBirthday,
-              raw_birthday: data.user.birthday
+              publicId: data.user.publicId,
+              uuid: data.user.uuid
             });
 
             setProfileData(prev => ({
               ...prev,
-              id: data.user.uuid || data.user.id || data.user.userId || '',
+              id: data.user.publicId || data.user.uuid || data.user.id || data.user.userId || '',
               name: data.user.name || 'User',
               email: data.user.email || '',
               picture: data.user.picture || '',

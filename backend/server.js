@@ -1684,12 +1684,14 @@ app.get('/api/profile', async (req, res) => {
     console.log('[PROFILE API] About to return user with:', {
       id_type: typeof user.id,
       id_length: user.id?.length,
-      id_value: user.id?.substring(0, 8) + '...'
+      id_value: user.id?.substring(0, 8) + '...',
+      public_id: user.public_id
     })
     res.json({
       success: true,
       user: {
         uuid: user.id,                    // ✅ 36-char UUID from users.id
+        publicId: user.public_id,         // ✅ 8-digit public ID for display
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
