@@ -31,6 +31,14 @@ const CameraPanel = React.memo(() => {
   const localVideoRef = { current: sharedVideoRef };
   
   console.log('📹 [CAMERA PANEL] Rendering camera panel (FINAL RENDER)');
+  console.log('📹 [CAMERA PANEL] sharedVideoRef at render time:', !!sharedVideoRef);
+  
+  // DEBUG: Ensure video element will be in DOM
+  React.useEffect(() => {
+    console.log('📹 [CAMERA PANEL EFFECT] CameraPanel mounted in DOM');
+    console.log('📹 [CAMERA PANEL EFFECT] Video element in DOM:', document.querySelector('video') !== null);
+    return () => console.log('📹 [CAMERA PANEL EFFECT] CameraPanel unmounted');
+  }, []);
   return (
     <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
       {/* Camera Frame with Video */}
@@ -461,7 +469,9 @@ const Chat = () => {
   // ✅ STEP 2: getUserMedia sirf pehli baar
   // Camera starts once when component mounts and runs continuously
   useEffect(() => {
-    console.log('📹 [CAMERA INIT] Starting camera initialization on mount');
+    console.log('📹 [CAMERA INIT] 🔴 Starting camera initialization on mount');
+    console.log('📹 [CAMERA INIT] localStreamRef.current exists:', !!localStreamRef.current);
+    console.log('📹 [CAMERA INIT] sharedVideoRef exists:', !!sharedVideoRef);
     
     let isMounted = true;
     
