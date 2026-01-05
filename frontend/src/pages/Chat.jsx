@@ -577,57 +577,49 @@ const Chat = () => {
     return () => clearInterval(resumeInterval);
   }, []);
 
-  // ✅ MINIMAL PROTECTION: Only fix stream if tracks actually stop
-  // Avoid aggressive re-attaching which causes blinking
+  // ✅ STREAM RECOVERY: Monitor and recover from stream loss quickly
+  // Checks frequently but doesn't interfere with playback
   useEffect(() => {
-    let checkTimeout = null;
-    
     const checkStreamHealth = () => {
       try {
         if (!sharedVideoRef || !localStreamRef.current) {
           return;
         }
         
-        // Only check if stream is still valid - if tracks are all stopped, try to recover
         const tracks = localStreamRef.current.getTracks();
-        const videoTrack = tracks.find(t => t.kind === 'video');
         
-        // If video track exists but is disabled, re-enable it
-        if (videoTrack && !videoTrack.enabled) {
-          videoTrack.enabled = true;
-        }
+        // 1. If tracks are stopped/disabled, re-enable them
+        tracks.forEach(track => {
+          if (track.readyState === 'ended') {
+            // Track stopped, can't recover
+            return;
+          }
+          if (!track.enabled) {
+            track.enabled = true;
+          }
+        });
         
-        // If srcObject was somehow lost, re-attach (only check once every 5 seconds)
-        if (!sharedVideoRef.srcObject && localStreamRef.current && tracks.length > 0) {
+        // 2. If srcObject is lost, immediately re-attach without playing
+        if (!sharedVideoRef.srcObject && tracks.length > 0) {
           sharedVideoRef.srcObject = localStreamRef.current;
           sharedVideoRef.muted = true;
+          // Don't call play() here - let browser handle playback
+        }
+        
+        // 3. If video element is somehow not playing but should be, try to resume
+        // Only check if the stream looks valid
+        if (sharedVideoRef.srcObject && tracks.some(t => t.readyState === 'live') && sharedVideoRef.paused) {
+          sharedVideoRef.play().catch(() => {});
         }
       } catch (err) {
         // Silently ignore
       }
     };
     
-    // Check health only every 5 seconds to avoid blinking
-    const healthCheckInterval = setInterval(checkStreamHealth, 5000);
+    // Check frequently to catch stream loss immediately (500ms)
+    const healthCheckInterval = setInterval(checkStreamHealth, 500);
     
     return () => clearInterval(healthCheckInterval);
-  }, []);
-
-  // ✅ Auto-play recovery: If video gets paused, resume it
-  // This handles browser autoplay restrictions gracefully
-  useEffect(() => {
-    const resumePlayInterval = setInterval(() => {
-      try {
-        if (sharedVideoRef && sharedVideoRef.srcObject && sharedVideoRef.paused) {
-          // Video got paused for some reason, resume it
-          sharedVideoRef.play().catch(() => {});
-        }
-      } catch (err) {
-        // Silently ignore
-      }
-    }, 5000); // Check every 5 seconds
-    
-    return () => clearInterval(resumePlayInterval);
   }, []);
 
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
