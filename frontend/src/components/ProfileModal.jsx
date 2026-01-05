@@ -19,6 +19,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
     location: '',
     gender: '',
     birthday: '',
+    birthdayRaw: '', // Store raw YYYY-MM-DD format for editing
     tokens: 0,
     gems: 0
   });
@@ -104,6 +105,30 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
     
     try {
       // First set data from context
+      console.log('[ProfileModal] Setting initial data from context user:', {
+        gender: user.gender,
+        birthday: user.birthday
+      });
+      
+      // Format birthday from context if it exists
+      let contextBirthdayRaw = '';
+      let contextBirthdayFormatted = user.birthday || 'Not set';
+      if (user.birthday) {
+        try {
+          const dateObj = new Date(user.birthday);
+          if (!isNaN(dateObj.getTime())) {
+            contextBirthdayRaw = dateObj.toISOString().split('T')[0];
+            contextBirthdayFormatted = dateObj.toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            });
+          }
+        } catch (e) {
+          console.error('[ProfileModal] Error formatting context birthday:', e);
+        }
+      }
+      
       setProfileData(prev => ({
         ...prev,
         id: user.id || user.uuid || '',
@@ -111,8 +136,9 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
         email: user.email || '',
         picture: user.picture || '',
         googleId: user.googleId || '',
-        gender: user.gender || 'Not set',
-        birthday: user.birthday || 'Not set'
+        gender: user.gender ? user.gender.toLowerCase() : 'Not set',
+        birthday: contextBirthdayFormatted,
+        birthdayRaw: contextBirthdayRaw
       }));
 
       // Then fetch fresh data from backend
@@ -131,25 +157,48 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
 
         if (response.ok) {
           const data = await response.json();
-          console.log('[ProfileModal] ✅ Fetched profile data from backend:', data.user?.email);
+          console.log('[ProfileModal] ✅ Fetched profile data from backend:', data);
           console.log('[ProfileModal] User gender:', data.user?.gender);
           console.log('[ProfileModal] User birthday:', data.user?.birthday);
+          console.log('[ProfileModal] Full user object:', data.user);
           
           if (data.success && data.user) {
-            // Format birthday for display
+            // Store raw birthday for editing
+            let rawBirthday = '';
             let formattedBirthday = 'Not set';
+            
             if (data.user.birthday) {
               try {
                 const dateObj = new Date(data.user.birthday);
-                formattedBirthday = dateObj.toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                });
+                // Check if it's a valid date
+                if (!isNaN(dateObj.getTime())) {
+                  // For YYYY-MM-DD format (used in date input)
+                  rawBirthday = dateObj.toISOString().split('T')[0];
+                  // For display in non-edit mode
+                  formattedBirthday = dateObj.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  });
+                } else {
+                  rawBirthday = data.user.birthday;
+                  formattedBirthday = data.user.birthday;
+                }
               } catch (e) {
+                console.error('[ProfileModal] Error formatting birthday:', e);
+                rawBirthday = data.user.birthday;
                 formattedBirthday = data.user.birthday;
               }
             }
+
+            const genderValue = data.user.gender ? data.user.gender.toLowerCase() : 'Not set';
+            
+            console.log('[ProfileModal] Setting profile data with:', {
+              gender: genderValue,
+              birthday: formattedBirthday,
+              birthdayRaw: rawBirthday,
+              raw_birthday: data.user.birthday
+            });
 
             setProfileData(prev => ({
               ...prev,
@@ -158,12 +207,14 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
               email: data.user.email || '',
               picture: data.user.picture || '',
               googleId: data.user.googleId || '',
-              gender: data.user.gender || 'Not set',
-              birthday: formattedBirthday
+              gender: genderValue,
+              birthday: formattedBirthday,
+              birthdayRaw: rawBirthday
             }));
           }
         } else {
           console.warn('[ProfileModal] ⚠️ Failed to fetch profile from backend:', response.status);
+          console.log('[ProfileModal] Response text:', await response.text());
         }
       } else {
         console.log('[ProfileModal] ⚠️ No token found in localStorage');
@@ -175,10 +226,35 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setProfileData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Special handling for birthday - update both birthdayRaw and birthday
+    if (name === 'birthday') {
+      let formattedDate = 'Not set';
+      if (value) {
+        try {
+          const dateObj = new Date(value + 'T00:00:00Z');
+          if (!isNaN(dateObj.getTime())) {
+            formattedDate = dateObj.toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            });
+          }
+        } catch (e) {
+          console.error('[ProfileModal] Error formatting date:', e);
+        }
+      }
+      setProfileData(prev => ({
+        ...prev,
+        birthdayRaw: value,
+        birthday: formattedDate
+      }));
+    } else {
+      setProfileData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handlePhotoChange = (e) => {
@@ -202,7 +278,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
       console.log('[PROFILE SAVE] Profile data:', profileData);
       
       // Get user ID from context or localStorage
-      const userId = user?.googleId || localStorage.getItem('userId');
+      const userId = user?.id || user?.uuid || user?.googleId || localStorage.getItem('userId');
       console.log('[PROFILE SAVE] User ID:', userId);
       
       if (!userId) {
@@ -212,11 +288,15 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
         return;
       }
 
+      // Use birthdayRaw (YYYY-MM-DD format) for the API call
+      const birthdayValue = profileData.birthdayRaw || new Date().toISOString().split('T')[0];
+      const genderValue = profileData.gender && profileData.gender !== 'Not set' ? profileData.gender : '';
+
       // Prepare data for API call
       const profilePayload = {
         userId: userId,
-        birthday: profileData.birthday || new Date().toISOString().split('T')[0],
-        gender: profileData.gender || 'Not set'
+        birthday: birthdayValue,
+        gender: genderValue
       };
 
       console.log('[PROFILE SAVE] Request body:', JSON.stringify(profilePayload));
@@ -443,7 +523,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
                 <input
                   type="date"
                   name="birthday"
-                  value={profileData.birthday ? profileData.birthday.slice(0, 10) : ''}
+                  value={profileData.birthdayRaw || ''}
                   onChange={handleInputChange}
                   className="profile-input-small text-black focus:text-black !text-black [&::-webkit-datetime-edit]:text-black [&::-webkit-datetime-edit-year-field]:text-black [&::-webkit-datetime-edit-month-field]:text-black [&::-webkit-datetime-edit-day-field]:text-black"
                 />
