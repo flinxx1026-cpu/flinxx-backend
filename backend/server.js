@@ -735,7 +735,11 @@ app.post('/api/users/complete-profile', async (req, res) => {
 
     // Calculate age from birthday
     console.log('[PROFILE SAVE] Calculating age from birthday:', birthday);
-    const birthDate = new Date(birthday)
+    
+    // Parse the date more explicitly to avoid timezone issues
+    // Birthday format is YYYY-MM-DD
+    const [year, month, day] = birthday.split('-').map(Number);
+    const birthDate = new Date(year, month - 1, day, 12, 0, 0); // Set to noon to avoid timezone issues
     
     // Validate date is valid
     if (isNaN(birthDate.getTime())) {
@@ -798,13 +802,19 @@ app.post('/api/users/complete-profile', async (req, res) => {
     console.error('[PROFILE SAVE] Error type:', error.constructor.name);
     console.error('[PROFILE SAVE] Error stack:', error.stack);
     if (error.meta) {
-      console.error('[PROFILE SAVE] Prisma meta:', error.meta);
+      console.error('[PROFILE SAVE] Prisma meta:', JSON.stringify(error.meta, null, 2));
     }
     if (error.code) {
       console.error('[PROFILE SAVE] Error code:', error.code);
     }
-    console.error('[PROFILE SAVE] Full error:', error);
-    res.status(500).json({ error: 'Failed to complete profile', details: error.message })
+    console.error('[PROFILE SAVE] Full error:', JSON.stringify(error, null, 2));
+    
+    // Return more detailed error message for debugging
+    res.status(500).json({ 
+      error: 'Failed to complete profile', 
+      details: error.message,
+      type: error.constructor.name
+    })
   }
 })
 
