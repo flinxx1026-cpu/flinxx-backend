@@ -582,39 +582,47 @@ const Chat = () => {
   useEffect(() => {
     let lastAttachTime = 0;
     const trackMonitorInterval = setInterval(() => {
-      if (!sharedVideoRef) {
-        // Ref not available yet, skip
-        return;
+      try {
+        if (!sharedVideoRef) {
+          // Ref not available yet, skip
+          return;
+        }
+        
+        if (localStreamRef.current && sharedVideoRef?.srcObject) {
+          const tracks = localStreamRef.current.getTracks();
+          
+          // Check if any video track is disabled
+          const videoTrack = tracks.find(t => t.kind === 'video');
+          if (videoTrack && !videoTrack.enabled) {
+            console.warn('📹 [TRACK MONITOR] ⚠️ Video track was disabled! Re-enabling...');
+            videoTrack.enabled = true;
+          }
+          
+          // Check if stream is still valid
+          if (tracks.length === 0) {
+            console.error('📹 [TRACK MONITOR] ❌ Stream has no tracks! Stream was lost');
+          }
+        } else if (sharedVideoRef && !sharedVideoRef.srcObject && localStreamRef.current) {
+          // Only log/re-attach if it's been more than 2 seconds since last attach
+          // This prevents log spam from rapid re-renders
+          const now = Date.now();
+          if (now - lastAttachTime > 2000) {
+            console.warn('📹 [TRACK MONITOR] ❌ Video element lost srcObject! Emergency re-attach...');
+            lastAttachTime = now;
+            
+            // Re-attach stream
+            if (sharedVideoRef && localStreamRef.current) {
+              sharedVideoRef.srcObject = localStreamRef.current;
+              sharedVideoRef.muted = true;
+              sharedVideoRef.play().catch(err => console.warn('Play error:', err));
+            }
+          }
+        }
+      } catch (err) {
+        // Silently handle errors to prevent console spam
+        console.debug('📹 [TRACK MONITOR] Minor error:', err.message);
       }
-      
-      if (localStreamRef.current && sharedVideoRef?.srcObject) {
-        const tracks = localStreamRef.current.getTracks();
-        
-        // Check if any video track is disabled
-        const videoTrack = tracks.find(t => t.kind === 'video');
-        if (videoTrack && !videoTrack.enabled) {
-          console.warn('📹 [TRACK MONITOR] ⚠️ Video track was disabled! Re-enabling...');
-          videoTrack.enabled = true;
-        }
-        
-        // Check if stream is still valid
-        if (tracks.length === 0) {
-          console.error('📹 [TRACK MONITOR] ❌ Stream has no tracks! Stream was lost');
-        }
-      } else if (sharedVideoRef && !sharedVideoRef.srcObject && localStreamRef.current) {
-        // Only log/re-attach if it's been more than 1 second since last attach
-        // This prevents log spam from rapid re-renders
-        const now = Date.now();
-        if (now - lastAttachTime > 1000) {
-          console.warn('📹 [TRACK MONITOR] ❌ Video element lost srcObject! Emergency re-attach...');
-          lastAttachTime = now;
-        }
-        
-        sharedVideoRef.srcObject = localStreamRef.current;
-        sharedVideoRef.muted = true;
-        sharedVideoRef.play().catch(err => console.warn('Play error:', err));
-      }
-    }, 500); // Check every 500ms instead of 100ms
+    }, 1000); // Check every 1000ms instead of 500ms to reduce overhead
     
     return () => clearInterval(trackMonitorInterval);
   }, []);
@@ -622,32 +630,40 @@ const Chat = () => {
   // ✅ PERMANENT HEALTH CHECK: Ensure video element stays healthy
   useEffect(() => {
     const healthCheckInterval = setInterval(() => {
-      if (!sharedVideoRef) {
-        // Ref not yet available, skip this check
-        return;
-      }
-      
-      // 1. Check if srcObject is missing
-      if (!sharedVideoRef.srcObject && localStreamRef.current) {
-        console.warn('📹 [HEALTH] 🚨 Video srcObject lost! Re-attaching stream NOW...');
-        try {
-          sharedVideoRef.srcObject = localStreamRef.current;
-          sharedVideoRef.muted = true;
-          sharedVideoRef.play()
-            .then(() => console.log('📹 [HEALTH] ✅ Stream reattached and playing'))
-            .catch(e => console.warn('📹 [HEALTH] Play error:', e.message));
-        } catch (err) {
-          console.error('📹 [HEALTH] Error reattaching:', err);
+      try {
+        if (!sharedVideoRef) {
+          // Ref not yet available, skip this check
+          return;
         }
+        
+        // 1. Check if srcObject is missing
+        if (!sharedVideoRef.srcObject && localStreamRef.current) {
+          console.warn('📹 [HEALTH] 🚨 Video srcObject lost! Re-attaching stream NOW...');
+          try {
+            sharedVideoRef.srcObject = localStreamRef.current;
+            sharedVideoRef.muted = true;
+            sharedVideoRef.play()
+              .then(() => console.log('📹 [HEALTH] ✅ Stream reattached and playing'))
+              .catch(e => console.warn('📹 [HEALTH] Play error:', e.message));
+          } catch (err) {
+            console.error('📹 [HEALTH] Error reattaching:', err);
+          }
+        }
+        
+        // 2. Check if video is paused (common cause of black screen)
+        if (sharedVideoRef.srcObject && sharedVideoRef.paused) {
+          console.warn('📹 [HEALTH] ⚠️ Video element is PAUSED! Resuming...');
+          sharedVideoRef.play()
+            .catch(e => console.warn('📹 [HEALTH] Resume error:', e.message));
+        }
+      } catch (err) {
+        // Silently handle errors to prevent console spam
+        console.debug('📹 [HEALTH] Minor error:', err.message);
       }
-      
-      // 2. Check if video is paused (common cause of black screen)
-      if (sharedVideoRef.srcObject && sharedVideoRef.paused) {
-        console.warn('📹 [HEALTH] ⚠️ Video element is PAUSED! Resuming...');
-        sharedVideoRef.play()
-          .catch(e => console.warn('📹 [HEALTH] Resume error:', e.message));
-      }
-      
+    }, 2000); // Check every 2 seconds instead of 500ms
+    
+    return () => clearInterval(healthCheckInterval);
+  }, []);
       // 3. Ensure tracks are enabled
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => {
