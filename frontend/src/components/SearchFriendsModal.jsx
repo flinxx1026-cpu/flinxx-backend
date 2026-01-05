@@ -527,8 +527,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {/* Results Container - Search Mode */}
-        {!isNotificationMode && !isMessageMode && (
+        {/* ✅ RENDER ONLY ONE PANEL BASED ON MODE - Using switch to prevent multiple renders */}
+        {mode === 'search' && (
           <div className="search-results">
             {results.length === 0 ? (
               <div className="search-empty-state">
@@ -590,8 +590,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {/* Notifications Container - Notifications Mode */}
-        {isNotificationMode && (
+        {mode === 'notifications' && (
           <div className="search-results">
             {activeChat ? (
               // CHAT VIEW in notifications mode
@@ -671,8 +670,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {/* Message Mode - Old Working Panel */}
-        {isMessageMode && (
+        {mode === 'message' && (
           <div className="message-panel-body">
             {!activeChat ? (
               <>
