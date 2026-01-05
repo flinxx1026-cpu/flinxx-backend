@@ -103,6 +103,9 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
   const loadUserProfile = async () => {
     if (!user) return;
     
+    // Console check for user data
+    console.log("USER PROFILE DATA:", user);
+    
     try {
       // First set data from context
       console.log('[ProfileModal] Setting initial data from context user:', {
@@ -485,6 +488,23 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
         >
           <div className="premium-badge">⭐ Flinxx Premium</div>
           <p className="premium-description">Unlock premium features</p>
+        </div>
+
+        {/* Gender & Birthday Section */}
+        <div className="profile-info-card">
+          <div className="profile-info-row">
+            <span className="label">Gender</span>
+            <span className="value">{user?.gender || "Not set"}</span>
+          </div>
+
+          <div className="profile-info-row">
+            <span className="label">Birthday</span>
+            <span className="value">
+              {user?.dob
+                ? new Date(user.dob).toLocaleDateString()
+                : "Not set"}
+            </span>
+          </div>
         </div>
 
         {/* Profile Info Section (Gender & Birthday) */}
