@@ -573,12 +573,12 @@
 /* ===== MESSAGE PANEL STYLES ===== */
 
 .message-panel-body {
-  height: auto;
+  height: 58vh;
   min-height: unset;
-  max-height: none;
+  max-height: unset;
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow-y: auto;
   padding: 0;
   gap: 0;
 }
@@ -783,20 +783,21 @@
 /* Message Panel Sizing */
 .message-panel {
   width: 380px;
-  height: auto;
+  height: 58vh;
   min-height: unset;
-  max-height: none;
+  max-height: unset;
   border-radius: 20px;
-  overflow: visible;
+  overflow-y: auto;
   padding-bottom: 0;
 }
 
 .message-panel-body {
-  height: auto;
+  height: 58vh;
   min-height: unset;
-  max-height: none;
+  max-height: unset;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 /* Chat Box Styles */
