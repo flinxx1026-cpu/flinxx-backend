@@ -15,92 +15,15 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [search, setSearch] = useState('');
   const [results, setResults] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [friendRequestStates, setFriendRequestStates] = useState({});
   const [sendingRequest, setSendingRequest] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [friends, setFriends] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [profileData, setProfileData] = useState({
-    id: '',
-    name: '',
-    email: '',
-    picture: '',
-    location: '',
-    gender: '',
-    tokens: 0,
-    gems: 0
-  });
-
-  // Flex Plans data for Achievements tab
-  const flexItems = [
-    {
-      id: "blue-tick",
-      name: "Blue Tick",
-      emoji: "✓",
-      price: "₹69",
-      features: [
-        "Verification badge",
-        "Trust boost",
-        "Status indicator"
-      ]
-    },
-    {
-      id: "chat-themes",
-      name: "Chat Themes",
-      emoji: "🎨",
-      price: "₹49",
-      features: [
-        "Unlock themes",
-        "Custom colors",
-        "Personal style"
-      ]
-    },
-    {
-      id: "match-boost",
-      name: "Match Boost",
-      emoji: "⚡",
-      price: "₹39",
-      features: [
-        "30 min visibility boost",
-        "Increased reach",
-        "More matches"
-      ]
-    },
-    {
-      id: "profile-ring",
-      name: "Profile Ring",
-      emoji: "💍",
-      price: "₹79",
-      features: [
-        "Colored profile ring",
-        "Stand out",
-        "Eye-catching design"
-      ]
-    },
-    {
-      id: "profile-highlight",
-      name: "Profile Highlight",
-      emoji: "⭐",
-      price: "₹99",
-      features: [
-        "24h highlight",
-        "Top search visibility",
-        "Premium placement"
-      ]
-    }
-  ];
   
-  // ✅ Determine which mode we're in
   const isNotificationMode = mode === 'notifications';
   const isMessageMode = mode === 'message';
-  const isProfileMode = mode === 'profile';
-  const isSearchMode = mode === 'search';
   const isLikesMode = mode === 'likes';
-  const isTrophyMode = mode === 'trophy';
-  const isTimerMode = mode === 'timer';
-  
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
   
   // Fetch current user from backend and store in localStorage
@@ -218,49 +141,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   }, [isOpen, isNotificationMode, user?.uuid, refreshNotifications]);
 
-  // ✅ Load profile data when profile tab opens
-  useEffect(() => {
-    if (!isOpen || !isProfileMode) return;
-    
-    const loadProfileData = async () => {
-      setIsProfileLoading(true);
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        
-        const response = await fetch(`${BACKEND_URL}/api/profile`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.user) {
-            setProfileData({
-              id: data.user.id || data.user.userId || '',
-              name: data.user.name || 'User',
-              email: data.user.email || '',
-              picture: data.user.picture || 'https://via.placeholder.com/120',
-              location: data.user.location || 'Not set',
-              gender: data.user.gender || 'Not set',
-              tokens: data.user.tokens || 0,
-              gems: data.user.gems || 0
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error loading profile:', error);
-      } finally {
-        setIsProfileLoading(false);
-      }
-    };
-    
-    loadProfileData();
-  }, [isOpen, isProfileMode, BACKEND_URL]);
-
   // ✅ Notifications come from centralized AuthContext (single source of truth)
   // No need to fetch here - AuthContext manages it
   const pendingRequests = notifications || [];
@@ -311,22 +191,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     
     // Just set the active chat - ChatBox component will handle socket room joining
     setActiveChat(friend);
-  };
-
-
-  // Handle Sign Out click
-  const handleSignOut = async () => {
-    try {
-      // Clear localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('notifications');
-      
-      // Navigate to login
-      window.location.href = '/login';
-    } catch (error) {
-      console.error('Sign out error:', error);
-    }
   };
 
   if (!isOpen) return null;
@@ -483,37 +347,22 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   };
 
-  // Filter friends based on search query
-  const filteredFriends = friends.filter(friend => {
-    if (!searchQuery.trim()) return true;
-    
-    const query = searchQuery.toLowerCase();
-    const friendName = (friend.display_name || '').toLowerCase();
-    const friendId = (friend.id || '').toLowerCase();
-    
-    return friendName.includes(query) || friendId.includes(query);
-  });
-
   return (
     <div className="search-friends-overlay" onClick={onClose}>
       <div className="search-friends-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Header - Hidden in Profile Mode and Message Mode */}
-        {!isProfileMode && !isMessageMode && (
-          <div className="search-friends-header">
-            <h2>
-              {isNotificationMode ? 'Notifications' : 
-               isSearchMode ? 'Search Friends' : 
-               isLikesMode ? 'Likes' : 
-               isTrophyMode ? 'Achievements' : 
-               isTimerMode ? 'History' : 
-               'Search Friends'}
-            </h2>
-            <button className="search-close-btn" onClick={onClose}>✖</button>
-          </div>
-        )}
+        {/* Header */}
+        <div className="search-friends-header">
+          <h2>
+            {isMessageMode ? 'Messages' : 
+             isNotificationMode ? 'Friend Requests' : 
+             isLikesMode ? '❤️ Friends & Requests' :
+             'Search Friends'}
+          </h2>
+          <button className="search-close-btn" onClick={onClose}>✖</button>
+        </div>
 
-        {/* Search Input - Hidden in Notifications, Message, or other side-tab modes */}
-        {!isNotificationMode && !isMessageMode && !isProfileMode && !isLikesMode && !isTrophyMode && !isTimerMode && (
+        {/* Search Input - Hidden in Notifications, Message, or Likes Mode */}
+        {!isNotificationMode && !isMessageMode && !isLikesMode && (
           <div className="search-input-container">
             <input
               type="text"
@@ -527,8 +376,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {/* ✅ RENDER ONLY ONE PANEL BASED ON MODE - Using switch to prevent multiple renders */}
-        {mode === 'search' && (
+        {/* Results Container - Search Mode */}
+        {!isNotificationMode && !isMessageMode && !isLikesMode && (
           <div className="search-results">
             {results.length === 0 ? (
               <div className="search-empty-state">
@@ -590,7 +439,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {mode === 'notifications' && (
+        {/* Notifications Container - Notifications Mode */}
+        {isNotificationMode && (
           <div className="search-results">
             {activeChat ? (
               // CHAT VIEW in notifications mode
@@ -599,7 +449,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                 onBack={() => setActiveChat(null)}
                 onMessageSent={updateChatListOnMessage}
               />
-            ) : !notifications ? (
+            ) : notificationsLoading ? (
               <p
                 style={{
                   textAlign: 'center',
@@ -670,15 +520,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {mode === 'message' && (
+        {/* Message Container - Message Mode */}
+        {isMessageMode && (
           <div className="message-panel-body">
             {!activeChat ? (
-              <>
-                <div className="message-panel-header">
-                  <h3>Message</h3>
-                  <button className="message-close-btn" onClick={onClose}>✕</button>
-                </div>
-                <div className="message-friends-list">
+              // FRIEND LIST VIEW
+              <div className="search-results">
                 {friends.length === 0 ? (
                   <p
                     style={{
@@ -689,21 +536,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   >
                     No friends yet
                   </p>
-                ) : filteredFriends.length === 0 ? (
-                  <p
-                    style={{
-                      textAlign: 'center',
-                      color: 'rgba(255,255,255,0.6)',
-                      marginTop: '40px'
-                    }}
-                  >
-                    No friends match your search
-                  </p>
                 ) : (
-                  filteredFriends.map(friend => (
+                  friends.map(friend => (
                     <div 
                       key={friend.id}
-                      className="search-result-item"
+                      className="search-result-item friend-row"
                       onClick={() => openChat(friend)}
                     >
                       <div className="result-avatar">
@@ -711,24 +548,30 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                           <img 
                             src={friend.photo_url} 
                             alt={friend.display_name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              borderRadius: '50%',
+                              objectFit: 'cover'
+                            }}
                           />
                         ) : (
-                          <div className="text-avatar">
-                            {friend.display_name?.charAt(0)?.toUpperCase() || '👤'}
-                          </div>
+                          '👤'
                         )}
                       </div>
 
                       <div className="result-info">
                         <p className="result-name">{friend.display_name}</p>
-                        <p className="tap-to-chat">Tap to chat</p>
+                        <p className="tap-to-chat">
+                          {friend.unreadCount > 0 ? 'New message' : 'Tap to chat'}
+                        </p>
                       </div>
                     </div>
                   ))
                 )}
               </div>
-              </>
             ) : (
+              // CHAT VIEW
               <ChatBox
                 friend={activeChat}
                 onBack={() => setActiveChat(null)}
@@ -738,124 +581,163 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {mode === 'profile' && (
-          <div className="profile-panel">
-            {/* Profile Header - STICKY */}
-            <div className="profile-header">
-              <h3>👤 My Profile {isProfileLoading && <span style={{ marginLeft: '8px', fontSize: '16px' }}>⏳</span>}</h3>
-              <button 
-                onClick={onClose}
-                className="search-close-btn"
-                style={{ width: '28px', height: '28px' }}
-              >
-                ✕
-              </button>
-            </div>
+        {/* Likes Container - Shows Friend Requests + Friends List */}
+        {isLikesMode && (
+          <div className="message-panel-body">
+            <div className="search-results">
+              {/* SECTION 1: Friend Requests (Incoming) */}
+              {pendingRequests && pendingRequests.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <h3 style={{ 
+                    color: '#fff', 
+                    fontSize: '14px', 
+                    fontWeight: '600', 
+                    padding: '10px 0',
+                    borderBottom: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                    📬 {pendingRequests.length} Friend Request{pendingRequests.length !== 1 ? 's' : ''}
+                  </h3>
+                  {pendingRequests.map(req => (
+                    <div key={req.id} className="notification-item" style={{ marginTop: '10px' }}>
+                      <div className="notification-avatar">
+                        {req.photo_url ? (
+                          <img src={req.photo_url} alt={req.display_name} />
+                        ) : (
+                          <div className="text-avatar">
+                            {req.display_name?.charAt(0).toUpperCase() || '?'}
+                          </div>
+                        )}
+                      </div>
 
-            {/* Profile Body - SCROLLABLE */}
-            <div className="profile-body">
-              {isProfileLoading ? (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  height: '200px',
-                  color: 'rgba(255,255,255,0.6)',
-                  fontSize: '14px'
-                }}>
-                  Loading profile...
-                </div>
-              ) : (
-                <>
-                  {/* Profile Avatar */}
-                  <div style={{ textAlign: 'center', marginBottom: '25px', marginTop: '0' }}>
-                    <div style={{
-                      width: '100px',
-                      height: '100px',
-                      borderRadius: '50%',
-                      margin: '0 auto 15px',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden',
-                      border: '3px solid rgba(255, 255, 255, 0.1)'
-                    }}>
-                      <img 
-                        src={profileData.picture} 
-                        alt="Profile"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
+                      <div className="notification-text">
+                        <strong>{req.display_name}</strong>
+                        {req.status !== 'accepted' && (
+                          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                            {req.status === 'pending' ? 'Pending' : 'Request received'}
+                          </p>
+                        )}
+                      </div>
+
+                      {req.status !== 'accepted' && (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={() => handleAcceptRequest(req.id, req.sender_id)}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#10b981',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => handleRejectRequest(req.id)}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                      {req.status === 'accepted' && (
+                        <button
+                          className="message-btn"
+                          onClick={async () => {
+                            if (user?.uuid && user.uuid.length === 36 && req.user_id) {
+                              await markMessagesAsRead(user.uuid, req.user_id);
+                            }
+                            if (markAsRead && req.user_id) {
+                              markAsRead(req.user_id);
+                            }
+                            const chatUser = {
+                              ...req,
+                              id: req.user_id
+                            };
+                            setActiveChat(chatUser);
+                          }}
+                        >
+                          Message
+                        </button>
+                      )}
                     </div>
-                <h3 style={{ color: 'white', margin: '8px 0', fontSize: '20px', fontWeight: 'bold' }}>
-                  {profileData.name}
-                </h3>
-                <p style={{ color: 'rgba(255,255,255,0.6)', margin: '8px 0', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', wordBreak: 'break-all' }}>
-                  ID: {profileData.id.substring(0, 16)}...
-                </p>
-              </div>
-
-              {/* Premium Section */}
-              <div style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                padding: '16px',
-                borderRadius: '12px',
-                marginBottom: '20px',
-                textAlign: 'center'
-              }}>
-                <p style={{ color: 'white', margin: '0 0 4px 0', fontSize: '15px', fontWeight: 'bold' }}>⭐ Flinxx Premium</p>
-                <p style={{ color: 'rgba(255,255,255,0.8)', margin: '0', fontSize: '13px' }}>Unlock premium features</p>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button onClick={handleSignOut} style={{
-                  background: '#ef4444',
-                  color: 'white',
-                  border: 'none',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold',
-                  fontSize: '13px',
-                  transition: 'opacity 0.2s'
-                }} onMouseEnter={(e) => e.target.style.opacity = '0.9'} onMouseLeave={(e) => e.target.style.opacity = '1'}>
-                  🚪 Sign Out
-                </button>
-              </div>
-                </>
+                  ))}
+                </div>
               )}
-            </div>
-          </div>
-        )}
 
-        {mode === 'likes' && (
-          <div className="likes-panel">
-            {/* Likes Header - STICKY */}
-            <div className="likes-header">
-              <h3>❤️ Likes</h3>
-              <button 
-                onClick={onClose}
-                className="search-close-btn"
-                style={{ width: '28px', height: '28px' }}
-              >
-                ✕
-              </button>
-            </div>
+              {/* SECTION 2: Friends List */}
+              {friends && friends.length > 0 && (
+                <div>
+                  <h3 style={{ 
+                    color: '#fff', 
+                    fontSize: '14px', 
+                    fontWeight: '600', 
+                    padding: '10px 0',
+                    borderBottom: '1px solid rgba(255,255,255,0.1)',
+                    marginTop: pendingRequests && pendingRequests.length > 0 ? '20px' : '0'
+                  }}>
+                    👥 {friends.length} Friend{friends.length !== 1 ? 's' : ''}
+                  </h3>
+                  {friends.map(friend => (
+                    <div 
+                      key={friend.id}
+                      className="search-result-item friend-row"
+                      onClick={() => openChat(friend)}
+                      style={{ marginTop: '10px', cursor: 'pointer' }}
+                    >
+                      <div className="result-avatar">
+                        {friend.photo_url ? (
+                          <img 
+                            src={friend.photo_url} 
+                            alt={friend.display_name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              borderRadius: '50%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                        ) : (
+                          '👤'
+                        )}
+                      </div>
 
-            {/* Likes Body - SCROLLABLE */}
-            <div className="likes-body">
-              <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
-                <p>❤️ Likes/Profile Visitors coming soon</p>
-              </div>
-            </div>
-          </div>
-        )}
+                      <div className="result-info">
+                        <p className="result-name">{friend.display_name}</p>
+                        <p className="tap-to-chat">
+                          {friend.unreadCount > 0 ? 'New message' : 'Click to chat'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-        {mode === 'timer' && (
-          <div className="search-results">
-            <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
-              <p>⏱️ Call History coming soon</p>
+              {/* Empty State */}
+              {(!pendingRequests || pendingRequests.length === 0) && (!friends || friends.length === 0) && (
+                <p
+                  style={{
+                    textAlign: 'center',
+                    color: 'rgba(255,255,255,0.6)',
+                    marginTop: '40px',
+                    padding: '20px'
+                  }}
+                >
+                  No friend requests or friends yet
+                </p>
+              )}
             </div>
           </div>
         )}
