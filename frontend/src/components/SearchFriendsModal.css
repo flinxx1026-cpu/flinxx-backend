@@ -1021,16 +1021,19 @@
 
 .message-modal {
   width: 360px;
-  padding: 16px;
   border-radius: 20px;
   background: linear-gradient(180deg, #1c1f35, #15182b);
+  display: flex;
+  flex-direction: column;
 }
 
 .message-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 14px;
+  justify-content: space-between;
+  padding: 18px 20px;
+  min-height: 60px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .message-header h3 {
@@ -1038,17 +1041,17 @@
   font-size: 18px;
   font-weight: 600;
   color: white;
+  line-height: 1;
 }
 
 .close-btn {
   background: none;
   border: none;
   color: white;
-  font-size: 24px;
+  font-size: 20px;
   cursor: pointer;
   padding: 0;
-  width: 28px;
-  height: 28px;
+  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1063,6 +1066,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 16px 20px;
 }
 
 .message-card {
