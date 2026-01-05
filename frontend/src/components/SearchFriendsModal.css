@@ -20,17 +20,16 @@
 
 .search-friends-modal {
   position: fixed !important;
-  inset: 0 !important;
   top: 0 !important;
   left: 20px !important;
   right: auto !important;
   width: 360px !important;
   max-width: 90vw !important;
-  height: 100vh !important;
+  height: auto !important;
   background: #1a1a2e !important;
   border-radius: 16px !important;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
