@@ -1780,7 +1780,7 @@ const Chat = () => {
         <div className="icon-row p-6 sm:p-8">
           {/* Profile Icon */}
           <button 
-            onClick={() => setActiveTab(activeTab === 'profile' ? null : 'profile')}
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="icon-btn"
             title="Profile"
           >
@@ -1825,7 +1825,7 @@ const Chat = () => {
 
           {/* History/Timer Icon */}
           <button 
-            onClick={() => setActiveTab(activeTab === 'timer' ? null : 'timer')}
+            onClick={() => setIsMatchHistoryOpen(!isMatchHistoryOpen)}
             className="icon-btn"
             title="History"
           >
@@ -2299,6 +2299,25 @@ const Chat = () => {
             onClose={() => setIsGenderFilterOpen(false)}
             currentGender={selectedGender}
             onOpenPremium={() => setIsPremiumOpen(true)}
+          />
+
+          {/* Profile Modal */}
+          <ProfileModal 
+            isOpen={isProfileOpen}
+            onClose={() => setIsProfileOpen(false)}
+            onOpenPremium={() => setIsPremiumOpen(true)}
+            onReinitializeCamera={async () => {
+              if (cameraFunctionsRef.current?.reinitializeCamera) {
+                return await cameraFunctionsRef.current.reinitializeCamera();
+              }
+              return false;
+            }}
+          />
+
+          {/* Match History Modal */}
+          <MatchHistory 
+            isOpen={isMatchHistoryOpen}
+            onClose={() => setIsMatchHistoryOpen(false)}
           />
 
           {/* ✅ Unified Side Panel for all tabs */}
