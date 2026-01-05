@@ -664,19 +664,6 @@ const Chat = () => {
     
     return () => clearInterval(healthCheckInterval);
   }, []);
-      // 3. Ensure tracks are enabled
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => {
-          if (!track.enabled) {
-            console.warn(`📹 [HEALTH] Track ${track.kind} disabled! Enabling...`);
-            track.enabled = true;
-          }
-        });
-      }
-    }, 1000); // Check every 1 second (less frequent)
-    
-    return () => clearInterval(healthCheckInterval);
-  }, []);
 
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
   // This function is called inside socket event handlers
