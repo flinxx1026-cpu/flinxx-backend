@@ -497,12 +497,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   return (
     <div className="search-friends-overlay" onClick={onClose}>
       <div className="search-friends-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Header - Hidden in Profile Mode */}
-        {!isProfileMode && (
+        {/* Header - Hidden in Profile Mode and Message Mode */}
+        {!isProfileMode && !isMessageMode && (
           <div className="search-friends-header">
             <h2>
-              {isMessageMode ? 'Message' : 
-               isNotificationMode ? 'Notifications' : 
+              {isNotificationMode ? 'Notifications' : 
                isSearchMode ? 'Search Friends' : 
                isLikesMode ? 'Likes' : 
                isTrophyMode ? 'Achievements' : 
@@ -675,6 +674,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         {/* Message Modal - Message Mode */}
         {isMessageMode && (
           <div className="message-modal">
+            {console.log("Message panel rendered")}
             {!activeChat ? (
               <>
                 {/* Messages Title */}
