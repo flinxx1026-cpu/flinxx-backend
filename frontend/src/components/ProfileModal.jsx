@@ -106,6 +106,9 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
     try {
       // First set data from context
       console.log('[ProfileModal] Setting initial data from context user:', {
+        id: user.id,
+        uuid: user.uuid,
+        publicId: user.publicId,
         gender: user.gender,
         birthday: user.birthday
       });
@@ -131,7 +134,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
       
       setProfileData(prev => ({
         ...prev,
-        id: user.id || user.uuid || '',
+        id: user.publicId || user.id || user.uuid || '',
         name: user.name || 'User',
         email: user.email || '',
         picture: user.picture || '',
@@ -145,6 +148,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
       const token = localStorage.getItem('token');
       if (token) {
         console.log('[ProfileModal] Fetching fresh user profile from backend');
+        console.log('[ProfileModal] Token present: YES');
         const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
         
         const response = await fetch(`${BACKEND_URL}/api/profile`, {
@@ -155,11 +159,14 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
           }
         });
 
+        console.log('[ProfileModal] API Response status:', response.status);
+
         if (response.ok) {
           const data = await response.json();
           console.log('[ProfileModal] ✅ Fetched profile data from backend:', data);
           console.log('[ProfileModal] User gender:', data.user?.gender);
           console.log('[ProfileModal] User birthday:', data.user?.birthday);
+          console.log('[ProfileModal] User publicId:', data.user?.publicId);
           console.log('[ProfileModal] Full user object:', data.user);
           
           if (data.success && data.user) {
@@ -215,7 +222,8 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
           }
         } else {
           console.warn('[ProfileModal] ⚠️ Failed to fetch profile from backend:', response.status);
-          console.log('[ProfileModal] Response text:', await response.text());
+          const errorText = await response.text();
+          console.log('[ProfileModal] Response text:', errorText);
         }
       } else {
         console.log('[ProfileModal] ⚠️ No token found in localStorage');
