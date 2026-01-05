@@ -1834,7 +1834,7 @@ const Chat = () => {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col items-center justify-center space-y-12 relative z-10">
+        <div className="flex-1 flex flex-col items-center justify-start space-y-12 relative z-10 pt-8">
           {/* Flinxx Title */}
           <h1 className="font-display text-5xl sm:text-6xl font-bold text-primary tracking-tight drop-shadow-sm select-none">
             Flinxx
