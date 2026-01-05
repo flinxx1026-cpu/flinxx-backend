@@ -11,11 +11,11 @@ export default function Callback() {
   useEffect(() => {
     try {
       const token = searchParams.get("token");
-      const userString = searchParams.get("user");
+      const dataString = searchParams.get("data");
       const error = searchParams.get("error");
 
       console.log("🔐 Callback - Token:", token);
-      console.log("👤 Callback - User:", userString);
+      console.log("📦 Callback - Data:", dataString);
 
       if (error) {
         console.error("❌ OAuth Error:", error);
@@ -23,9 +23,13 @@ export default function Callback() {
         return;
       }
 
-      if (token && userString) {
+      if (token && dataString) {
         try {
-          const user = JSON.parse(userString);
+          // Decode the response data
+          const responseData = JSON.parse(decodeURIComponent(dataString));
+          const user = responseData.user;
+
+          console.log("✅ User data extracted:", user);
 
           // Save token to localStorage with both keys for compatibility
           localStorage.setItem("token", token);
@@ -37,7 +41,7 @@ export default function Callback() {
           console.log("✅ User data saved:", user);
 
           // Check if profile is completed
-          if (!user.isProfileCompleted) {
+          if (!user.profileCompleted) {
             console.log("ℹ️ Profile not completed, showing setup modal");
             setUserData(user);
             setShowProfileSetup(true);
@@ -48,11 +52,11 @@ export default function Callback() {
             }, 500);
           }
         } catch (parseError) {
-          console.error("❌ Error parsing user data:", parseError);
+          console.error("❌ Error parsing response data:", parseError);
           navigate("/login?error=invalid_user_data", { replace: true });
         }
       } else {
-        console.error("❌ Missing token or user data");
+        console.error("❌ Missing token or data");
         navigate("/login?error=missing_data", { replace: true });
       }
     } catch (error) {
