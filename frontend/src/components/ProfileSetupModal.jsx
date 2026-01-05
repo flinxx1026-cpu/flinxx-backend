@@ -51,8 +51,8 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
     try {
       const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
       
-      // Get the user ID from various possible sources
-      const userId = user.id || user.uid || user.googleId
+      // Get the user ID from the user object (uuid from AuthContext)
+      const userId = user.uuid || user.id || user.uid || user.googleId
       
       if (!userId) {
         throw new Error('Unable to determine user ID')
