@@ -211,3 +211,71 @@ export const markMessagesAsRead = async (userUUID, senderOrChatId, receiverId) =
     return { success: false };
   }
 };
+
+/**
+ * Accept a friend request
+ */
+export const acceptFriendRequest = async (requestId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No auth token');
+      return { success: false };
+    }
+
+    const response = await fetch(`${BACKEND_URL}/api/friends/accept`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ requestId })
+    });
+
+    if (!response.ok) {
+      console.error('❌ Accept request API error:', response.status);
+      return { success: false };
+    }
+
+    const data = await response.json();
+    console.log('✅ Friend request accepted', data);
+    return { success: true, data };
+  } catch (err) {
+    console.error('Error accepting friend request:', err);
+    return { success: false };
+  }
+};
+
+/**
+ * Reject a friend request
+ */
+export const rejectFriendRequest = async (requestId) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No auth token');
+      return { success: false };
+    }
+
+    const response = await fetch(`${BACKEND_URL}/api/friends/reject`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ requestId })
+    });
+
+    if (!response.ok) {
+      console.error('❌ Reject request API error:', response.status);
+      return { success: false };
+    }
+
+    const data = await response.json();
+    console.log('✅ Friend request rejected', data);
+    return { success: true, data };
+  } catch (err) {
+    console.error('Error rejecting friend request:', err);
+    return { success: false };
+  }
+};

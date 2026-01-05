@@ -288,6 +288,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           [targetUserId]: 'pending'
         }));
         console.log('Friend request sent to:', targetUserId);
+        
+        // Refresh notifications to update the recipient's view
+        if (refreshNotifications) {
+          refreshNotifications();
+        }
       } else {
         console.error('Failed to send friend request');
       }
@@ -321,6 +326,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           )
         );
         console.log('Friend request accepted');
+        
+        // Refresh notifications to notify the sender
+        if (refreshNotifications) {
+          refreshNotifications();
+        }
       }
     } catch (error) {
       console.error('Error accepting request:', error);
@@ -341,6 +351,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       if (response.ok) {
         setPendingRequests(prev => prev.filter(req => req.id !== requestId));
         console.log('Friend request rejected');
+        
+        // Refresh notifications to notify the sender
+        if (refreshNotifications) {
+          refreshNotifications();
+        }
       }
     } catch (error) {
       console.error('Error rejecting request:', error);
