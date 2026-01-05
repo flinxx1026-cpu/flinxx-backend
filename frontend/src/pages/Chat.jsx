@@ -75,6 +75,8 @@ const CameraPanel = React.memo(() => {
 
 const Chat = () => {
   // 🧪 DEBUG TEST - Check if this log appears first
+  console.error('🔴 CHAT COMPONENT FUNCTION CALLED - BUILD ORDER TEST');
+  
   console.log("RENDER START");
 
   // ✅ Get DuoSquad context (manages state at Layout level to prevent remounting)
@@ -469,6 +471,9 @@ const Chat = () => {
   // ✅ STEP 2: getUserMedia sirf pehli baar
   // Camera starts once when component mounts and runs continuously
   useEffect(() => {
+    // ABSOLUTE FIRST LOG - before anything else
+    console.error('🚨🚨🚨 CAMERA INIT USEEFFECT FIRED - THIS SHOULD APPEAR FIRST 🚨🚨🚨');
+    
     console.log('📹 [CAMERA INIT] 🔴 Starting camera initialization on mount');
     console.log('📹 [CAMERA INIT] localStreamRef.current exists:', !!localStreamRef.current);
     console.log('📹 [CAMERA INIT] sharedVideoRef exists:', !!sharedVideoRef);
