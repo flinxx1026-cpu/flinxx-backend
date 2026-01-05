@@ -738,8 +738,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {/* Profile Tab */}
-        {isProfileMode && (
+        {mode === 'profile' && (
           <div className="profile-panel">
             {/* Profile Header - STICKY */}
             <div className="profile-header">
@@ -830,8 +829,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {/* Likes Tab */}
-        {isLikesMode && (
+        {mode === 'likes' && (
           <div className="likes-panel">
             {/* Likes Header - STICKY */}
             <div className="likes-header">
@@ -854,9 +852,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-
-        {/* Timer/History Tab */}
-        {isTimerMode && (
+        {mode === 'timer' && (
           <div className="search-results">
             <div style={{ padding: '20px', textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
               <p>⏱️ Call History coming soon</p>
