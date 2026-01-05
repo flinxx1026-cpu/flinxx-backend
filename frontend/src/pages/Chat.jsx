@@ -580,6 +580,8 @@ const Chat = () => {
   // ✅ STREAM RECOVERY: Monitor and recover from stream loss quickly
   // Checks frequently but doesn't interfere with playback
   useEffect(() => {
+    let lastPlayAttempt = 0;
+    
     const checkStreamHealth = () => {
       try {
         if (!sharedVideoRef || !localStreamRef.current) {
@@ -607,9 +609,13 @@ const Chat = () => {
         }
         
         // 3. If video element is somehow not playing but should be, try to resume
-        // Only check if the stream looks valid
+        // BUT only attempt play once every 2 seconds to avoid micro-stutters
         if (sharedVideoRef.srcObject && tracks.some(t => t.readyState === 'live') && sharedVideoRef.paused) {
-          sharedVideoRef.play().catch(() => {});
+          const now = Date.now();
+          if (now - lastPlayAttempt > 2000) {
+            sharedVideoRef.play().catch(() => {});
+            lastPlayAttempt = now;
+          }
         }
       } catch (err) {
         // Silently ignore
@@ -617,6 +623,7 @@ const Chat = () => {
     };
     
     // Check frequently to catch stream loss immediately (500ms)
+    // But play() calls are debounced to 2 seconds to avoid stutters
     const healthCheckInterval = setInterval(checkStreamHealth, 500);
     
     return () => clearInterval(healthCheckInterval);
