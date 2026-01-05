@@ -1778,13 +1778,26 @@ const Chat = () => {
       <aside className="w-full lg:flex-1 h-full flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300">
         {/* Top Icons Header - Circular icon buttons */}
         <div className="icon-row p-6 sm:p-8">
-          {/* Profile Icon */}
+          {/* Profile Icon - Show profile photo or fallback to user icon */}
           <button 
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="icon-btn"
             title="Profile"
           >
-            <i className="material-icons-round">person</i>
+            {user?.picture ? (
+              <img 
+                src={user.picture} 
+                alt="Profile" 
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  objectFit: 'cover'
+                }}
+              />
+            ) : (
+              <i className="material-icons-round">person</i>
+            )}
           </button>
 
           {/* Search Icon */}
