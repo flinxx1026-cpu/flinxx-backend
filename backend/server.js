@@ -1500,7 +1500,19 @@ app.get('/auth/google/callback', async (req, res) => {
     } else {
       // EXISTING USER
       console.log(`✅ Existing user found:`, existingUser.email)
-      user = existingUser
+      
+      // Ensure existing user has a public_id (migrate if needed)
+      if (!existingUser.public_id) {
+        console.log(`⚠️ Existing user missing public_id, generating one...`)
+        const publicId = await generateUniquePublicId()
+        user = await prisma.users.update({
+          where: { id: existingUser.id },
+          data: { public_id: publicId }
+        })
+        console.log(`✅ Generated and saved public_id for existing user:`, publicId)
+      } else {
+        user = existingUser
+      }
       isNewUser = false
     }
     
@@ -1518,6 +1530,7 @@ app.get('/auth/google/callback', async (req, res) => {
       profileCompleted: user.profileCompleted || false,
       user: {
         uuid: user.id,
+        publicId: user.public_id,
         email: user.email,
         name: user.display_name,
         picture: user.photo_url
