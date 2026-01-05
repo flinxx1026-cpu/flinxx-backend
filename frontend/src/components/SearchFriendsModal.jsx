@@ -730,7 +730,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
                         <div className="info">
                           <div className="name">{friend.display_name}</div>
-                          <div className="id">ID: {friend.shortId || friend.id?.slice(0, 8)}</div>
+                          <div className="id">Tap to chat</div>
                         </div>
                       </div>
                     ))}
