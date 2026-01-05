@@ -1027,21 +1027,32 @@
   flex-direction: column;
 }
 
-.message-header {
+.messages-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px;
-  min-height: 60px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px 18px;
 }
 
-.message-header h3 {
+.messages-title h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
   color: white;
-  line-height: 1;
+}
+
+.messages-title .close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.2s;
+}
+
+.messages-title .close-btn:hover {
+  opacity: 0.7;
 }
 
 .close-btn {

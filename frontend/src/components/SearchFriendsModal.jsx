@@ -528,20 +528,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {/* Message Mode Search Input */}
-        {isMessageMode && !activeChat && (
-          <div className="search-input-container">
-            <input
-              type="text"
-              placeholder="Search a friend by ID"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
-            <span className="search-icon">🔍</span>
-          </div>
-        )}
-
         {/* Results Container - Search Mode */}
         {!isNotificationMode && !isMessageMode && (
           <div className="search-results">
@@ -691,8 +677,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           <div className="message-modal">
             {!activeChat ? (
               <>
-                {/* Message Header */}
-                <div className="message-header">
+                {/* Messages Title */}
+                <div className="messages-title">
                   <h3>Messages</h3>
                   <button 
                     className="close-btn"
