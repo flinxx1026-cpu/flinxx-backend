@@ -671,24 +671,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           </div>
         )}
 
-        {/* Message Modal - Message Mode */}
+        {/* Message Mode - Old Working Panel */}
         {isMessageMode && (
-          <div className="message-modal">
-            {console.log("Message panel rendered")}
+          <div className="message-panel-body">
             {!activeChat ? (
-              <>
-                {/* Messages Title */}
-                <div className="messages-title">
-                  <h3>Messages</h3>
-                  <button 
-                    className="close-btn"
-                    onClick={onClose}
-                  >
-                    ×
-                  </button>
-                </div>
-
-                {/* Message List */}
+              <div className="search-results">
                 {friends.length === 0 ? (
                   <p
                     style={{
@@ -710,35 +697,34 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     No friends match your search
                   </p>
                 ) : (
-                  <div className="message-list">
-                    {filteredFriends.map(friend => (
-                      <div 
-                        key={friend.id}
-                        className="message-card"
-                        onClick={() => openChat(friend)}
-                      >
-                        <div className="avatar">
-                          {friend.photo_url ? (
-                            <img 
-                              src={friend.photo_url} 
-                              alt={friend.display_name}
-                            />
-                          ) : (
-                            <span>{friend.display_name?.[0]?.toUpperCase() || '👤'}</span>
-                          )}
-                        </div>
-
-                        <div className="info">
-                          <div className="name">{friend.display_name}</div>
-                          <div className="id">Tap to chat</div>
-                        </div>
+                  filteredFriends.map(friend => (
+                    <div 
+                      key={friend.id}
+                      className="search-result-item"
+                      onClick={() => openChat(friend)}
+                    >
+                      <div className="result-avatar">
+                        {friend.photo_url ? (
+                          <img 
+                            src={friend.photo_url} 
+                            alt={friend.display_name}
+                          />
+                        ) : (
+                          <div className="text-avatar">
+                            {friend.display_name?.charAt(0)?.toUpperCase() || '👤'}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="result-info">
+                        <p className="result-name">{friend.display_name}</p>
+                        <p className="tap-to-chat">Tap to chat</p>
+                      </div>
+                    </div>
+                  ))
                 )}
-              </>
+              </div>
             ) : (
-              // CHAT VIEW
               <ChatBox
                 friend={activeChat}
                 onBack={() => setActiveChat(null)}
