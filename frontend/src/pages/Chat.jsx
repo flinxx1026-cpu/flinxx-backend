@@ -404,15 +404,12 @@ const Chat = () => {
   // ✅ NOW CONSOLE LOG AND LOGIC AFTER ALL HOOKS
   console.log('🎯 CHAT COMPONENT LOADED - BUILD: 895cedd (temporal deadzone fix - move hooks to top)');
 
-  // 🔥 CRITICAL: Block camera/WebRTC until partner is found
+  // ✅ Camera should ALWAYS be available - removed blocking logic
+  // The camera feeds the IntroScreen which is always mounted in background
+  // WaitingScreen overlays on top and the camera shows through
   useEffect(() => {
     console.log('STATE:', { isSearching, partnerFound });
-    
-    // If waiting for partner, don't initialize camera
-    if (isSearching && !partnerFound) {
-      console.log('🛑 [CAMERA BLOCK] Waiting screen active - camera blocked');
-      return;
-    }
+    console.log('✅ [CAMERA] Camera available for all screens');
   }, [isSearching, partnerFound]);
 
   // Check terms acceptance when component mounts - MUST BE FIRST useEffect
@@ -1925,11 +1922,27 @@ const Chat = () => {
             {/* Left panel - Camera preview */}
             <div className="w-full md:w-1/2 h-full flex flex-col relative group">
               <div className="relative w-full h-full border-2 border-yellow-400/60 dark:border-yellow-400/80 rounded-3xl overflow-hidden bg-black shadow-2xl gold-glow transition-all duration-500 hover:border-yellow-400">
-                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50">
-                  <div className="text-zinc-600 dark:text-zinc-700 flex flex-col items-center gap-2">
-                    <span className="material-icons-outlined text-6xl opacity-20">videocam_off</span>
+                {/* Video element for camera stream */}
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    backgroundColor: '#000'
+                  }}
+                />
+                {/* Fallback placeholder if no camera */}
+                {!cameraStarted && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50">
+                    <div className="text-zinc-600 dark:text-zinc-700 flex flex-col items-center gap-2">
+                      <span className="material-icons-outlined text-6xl opacity-20">videocam_off</span>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="absolute bottom-6 left-6">
                   <div className="px-4 py-1.5 rounded-full border border-yellow-400/50 bg-black/60 text-yellow-400 text-sm font-medium backdrop-blur-sm shadow-lg">
                     You
