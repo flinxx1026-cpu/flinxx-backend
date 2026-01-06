@@ -2,12 +2,29 @@ import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import './MobileHome.css'
 
-const MobileHome = () => {
+/**
+ * MobileHome - Mobile Dashboard Component
+ * This component displays the dashboard UI for mobile devices (< 769px)
+ * It should be used ONLY in the chat/dashboard area after user login
+ * NOT on the home landing page
+ */
+const MobileHome = ({ user, onStartChat, onModeChange }) => {
   const navigate = useNavigate()
   const [gameMode, setGameMode] = useState('solo')
 
   const handleStartChat = () => {
-    navigate('/login', { replace: true })
+    if (onStartChat) {
+      onStartChat(gameMode)
+    } else {
+      navigate('/matching', { replace: true })
+    }
+  }
+
+  const handleModeChange = (mode) => {
+    setGameMode(mode)
+    if (onModeChange) {
+      onModeChange(mode)
+    }
   }
 
   return (
@@ -47,13 +64,13 @@ const MobileHome = () => {
         <div className="mobile-mode-buttons">
           <button 
             className={`mobile-mode-btn ${gameMode === 'solo' ? 'active' : ''}`}
-            onClick={() => setGameMode('solo')}
+            onClick={() => handleModeChange('solo')}
           >
             SoloX
           </button>
           <button 
             className={`mobile-mode-btn ${gameMode === 'duo' ? 'active' : ''}`}
-            onClick={() => setGameMode('duo')}
+            onClick={() => handleModeChange('duo')}
           >
             DuoX
           </button>

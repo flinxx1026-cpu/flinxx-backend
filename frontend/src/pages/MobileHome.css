@@ -290,19 +290,3 @@
         display: none !important;
     }
 }
-
-/* Mobile specific adjustments */
-@media (max-width: 768px) {
-    .mobile-home-container {
-        max-width: 100%;
-        height: auto;
-        min-height: 100vh;
-        border-radius: 0;
-        border: none;
-        box-shadow: none;
-    }
-
-    .mobile-main {
-        min-height: calc(100vh - 80px);
-    }
-}
