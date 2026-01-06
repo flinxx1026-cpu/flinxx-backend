@@ -580,6 +580,7 @@ const Chat = () => {
   // Checks frequently but doesn't interfere with playback
   useEffect(() => {
     let lastPlayAttempt = 0;
+    let logCount = 0;
     
     const checkStreamHealth = () => {
       try {
@@ -589,19 +590,32 @@ const Chat = () => {
         
         const tracks = localStreamRef.current.getTracks();
         
+        // Log what's happening (limit to avoid spam)
+        if (logCount % 10 === 0) {
+          console.log('📹 Stream health check:', {
+            srcObject: !!sharedVideoRef.srcObject,
+            paused: sharedVideoRef.paused,
+            tracks: tracks.length,
+            trackStates: tracks.map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState }))
+          });
+        }
+        logCount++;
+        
         // 1. If tracks are stopped/disabled, re-enable them
         tracks.forEach(track => {
           if (track.readyState === 'ended') {
-            // Track stopped, can't recover
+            console.warn('📹 Track ended, cannot recover');
             return;
           }
           if (!track.enabled) {
+            console.log('📹 Re-enabling disabled track:', track.kind);
             track.enabled = true;
           }
         });
         
         // 2. If srcObject is lost, immediately re-attach without playing
         if (!sharedVideoRef.srcObject && tracks.length > 0) {
+          console.warn('📹 ⚠️ srcObject lost! Re-attaching stream');
           sharedVideoRef.srcObject = localStreamRef.current;
           sharedVideoRef.muted = true;
           // Don't call play() here - let browser handle playback
@@ -612,12 +626,13 @@ const Chat = () => {
         if (sharedVideoRef.srcObject && tracks.some(t => t.readyState === 'live') && sharedVideoRef.paused) {
           const now = Date.now();
           if (now - lastPlayAttempt > 2000) {
+            console.log('📹 Resuming paused video (2s debounce)');
             sharedVideoRef.play().catch(() => {});
             lastPlayAttempt = now;
           }
         }
       } catch (err) {
-        // Silently ignore
+        console.error('📹 Stream health check error:', err);
       }
     };
     
