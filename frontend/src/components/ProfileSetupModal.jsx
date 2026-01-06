@@ -117,6 +117,14 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4 sm:p-6">
+      <style>{`
+        input[type="date"]::-webkit-calendar-picker-indicator {
+          filter: invert(1) brightness(1.2);
+          opacity: 0.8;
+          cursor: pointer;
+          margin-right: 4px;
+        }
+      `}</style>
       <div className="w-full max-w-2xl bg-[#0f172a] rounded-3xl shadow-2xl border-2 border-[#D4AF37] relative overflow-hidden">
         {/* Top gradient line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-60"></div>
@@ -225,7 +233,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
                     type="date"
                     value={birthday}
                     onChange={(e) => setBirthday(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-3.5 bg-black border border-[#334155] rounded-lg text-[#f8fafc] placeholder-[#94a3b8] placeholder-opacity-50 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all shadow-sm"
+                    className="block w-full pl-10 pr-12 py-3.5 bg-black border border-[#334155] rounded-lg text-[#f8fafc] placeholder-[#94a3b8] placeholder-opacity-50 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all shadow-sm"
                     required
                   />
                 </div>
