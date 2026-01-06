@@ -29,6 +29,9 @@ const MobileHome = ({ user, onStartChat, onModeChange }) => {
 
   return (
     <div className="mobile-home-container">
+      {/* Glow effect top */}
+      <div className="glow-top"></div>
+      
       {/* Header Navigation */}
       <header className="mobile-header">
         <nav className="mobile-nav">
