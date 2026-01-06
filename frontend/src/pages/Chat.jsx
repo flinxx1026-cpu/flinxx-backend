@@ -576,69 +576,14 @@ const Chat = () => {
   // Duplicate removed - see camera init useEffect at top
 
 
-  // ✅ STREAM RECOVERY: Monitor and recover from stream loss quickly
-  // Checks frequently but doesn't interfere with playback
+  // ✅ STREAM RECOVERY: Monitor and recover from stream loss quickly - DISABLED TO TEST
+  // The constant checking and re-attachment was causing flickering
+  // Will re-enable only if needed after testing stable playback
   useEffect(() => {
-    let lastPlayAttempt = 0;
-    let logCount = 0;
-    
-    const checkStreamHealth = () => {
-      try {
-        if (!sharedVideoRef || !localStreamRef.current) {
-          return;
-        }
-        
-        const tracks = localStreamRef.current.getTracks();
-        
-        // Log what's happening (limit to avoid spam)
-        if (logCount % 10 === 0) {
-          console.log('📹 Stream health check:', {
-            srcObject: !!sharedVideoRef.srcObject,
-            paused: sharedVideoRef.paused,
-            tracks: tracks.length,
-            trackStates: tracks.map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState }))
-          });
-        }
-        logCount++;
-        
-        // 1. If tracks are stopped/disabled, re-enable them
-        tracks.forEach(track => {
-          if (track.readyState === 'ended') {
-            console.warn('📹 Track ended, cannot recover');
-            return;
-          }
-          if (!track.enabled) {
-            console.log('📹 Re-enabling disabled track:', track.kind);
-            track.enabled = true;
-          }
-        });
-        
-        // 2. If srcObject is lost, immediately re-attach without playing
-        if (!sharedVideoRef.srcObject && tracks.length > 0) {
-          console.warn('📹 ⚠️ srcObject lost! Re-attaching stream');
-          sharedVideoRef.srcObject = localStreamRef.current;
-          sharedVideoRef.muted = true;
-          // Don't call play() here - let browser handle playback
-        }
-        
-        // 3. If video element is somehow not playing but should be, try to resume
-        // BUT only attempt play once every 2 seconds to avoid micro-stutters
-        if (sharedVideoRef.srcObject && tracks.some(t => t.readyState === 'live') && sharedVideoRef.paused) {
-          const now = Date.now();
-          if (now - lastPlayAttempt > 2000) {
-            console.log('📹 Resuming paused video (2s debounce)');
-            sharedVideoRef.play().catch(() => {});
-            lastPlayAttempt = now;
-          }
-        }
-      } catch (err) {
-        console.error('📹 Stream health check error:', err);
-      }
-    };
-    
-    // Check frequently to catch stream loss immediately (500ms)
-    // But play() calls are debounced to 2 seconds to avoid stutters
-    const healthCheckInterval = setInterval(checkStreamHealth, 500);
+    // RECOVERY DISABLED - Just monitor quietly
+    const healthCheckInterval = setInterval(() => {
+      // Silent monitoring - don't try to recover
+    }, 500);
     
     return () => clearInterval(healthCheckInterval);
   }, []);
