@@ -1,18 +1,10 @@
 {
-  "version": 2,
-  "nodeVersion": "20.x",
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist2",
   "installCommand": "cd frontend && npm install",
   "public": false,
   "env": {},
   "regions": ["sfo1"],
-  "functions": {
-    "api/**/*.js": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],

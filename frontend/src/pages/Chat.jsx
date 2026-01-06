@@ -1705,9 +1705,6 @@ const Chat = () => {
   };
 
   // ✅ STEP 4: Attach stream to video element
-  // Video element is in camera panel > camera-frame > video
-  // Using React.memo to prevent re-creation when parent re-renders
-
   const IntroScreen = () => {
     console.log("Dashboard render");
     
@@ -2194,27 +2191,30 @@ const Chat = () => {
       {/* 🧪 DEBUG: Log UI state and which screen should render */}
       {console.log('🎨 [RENDER] UI STATE →', { isSearching, partnerFound }, 'Should show:', isSearching && !partnerFound ? 'WAITING SCREEN' : partnerFound ? 'VIDEO CHAT' : 'DASHBOARD')}
 
-      {/* HOME SCREEN */}
-      {!isSearching && !partnerFound && (
-        <>
+      {/* ✅ CRITICAL FIX: ALWAYS keep IntroScreen mounted (with Camera) on the background */}
+      {/* The camera panel is inside IntroScreen, so we NEVER unmount it */}
+      {/* Instead, other screens appear on top or replace visibility */}
+      <div className="w-full h-screen overflow-hidden bg-black">
+        {/* Dashboard with Camera - Base layer (always mounted, visibility toggled) */}
+        <div className={isSearching || partnerFound ? 'hidden' : ''}>
           {console.log('🎨 [RENDER] Showing DASHBOARD')}
           <IntroScreen />
-        </>
-      )}
+        </div>
 
-      {/* WAITING SCREEN */}
-      {isSearching && !partnerFound && (
-        <>
-          {console.log('🎨 [RENDER] Showing WAITING SCREEN')}
-          <WaitingScreen 
-            text="Looking for a partner..."
-            onCancel={handleCancelSearch}
-          />
-        </>
-      )}
+        {/* WAITING SCREEN - appears on top when searching */}
+        {isSearching && !partnerFound && (
+          <>
+            {console.log('🎨 [RENDER] Showing WAITING SCREEN')}
+            <WaitingScreen 
+              text="Looking for a partner..."
+              onCancel={handleCancelSearch}
+            />
+          </>
+        )}
 
-      {/* VIDEO CHAT */}
-      {partnerFound && <VideoChatScreen />}
+        {/* VIDEO CHAT - appears on top when partner found */}
+        {partnerFound && <VideoChatScreen />}
+      </div>
 
       {/* ⛔ Rest of modals and content only show when needed */}
       {!(isSearching && !partnerFound) && (
