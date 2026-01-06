@@ -283,7 +283,6 @@ const Chat = () => {
   // Video and stream refs
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
-  const waitingScreenVideoRef = useRef(null);  // ✅ Separate ref for waiting screen to prevent flickering
   const localStreamRef = useRef(null);
   const streamRef = useRef(null);  // 🔥 Keep track of stream for cleanup
   const partnerSocketIdRef = useRef(null);  // CRITICAL: Store partner socket ID for sending offers/answers
@@ -1854,30 +1853,23 @@ const Chat = () => {
       document.documentElement.classList.add('dark');
     }, []);
 
-    // ✅ Ensure camera stream is attached to video element when waiting screen shows
-    // ✅ Only attach once - check if already attached to prevent flickering
-    useEffect(() => {
-      console.log('📺 [WAITING SCREEN] Mounting - checking camera stream');
+    // ✅ Ref callback to attach stream - fires when element mounts/unmounts
+    // This is more stable than useEffect and prevents flickering from repeated attachments
+    const handleWaitingVideoRef = React.useCallback((videoElement) => {
+      if (!videoElement) return;
       
-      if (waitingScreenVideoRef.current && localStreamRef.current) {
-        // Check if stream is already attached
-        if (waitingScreenVideoRef.current.srcObject === localStreamRef.current) {
-          console.log('📺 [WAITING SCREEN] Stream already attached - skipping');
-          return;
-        }
+      console.log('📺 [WAITING SCREEN] Video element ref callback fired');
+      
+      // Only attach if stream exists and not already attached
+      if (localStreamRef.current && videoElement.srcObject !== localStreamRef.current) {
+        console.log('📺 [WAITING SCREEN] ✅ Attaching stream via ref callback');
+        videoElement.srcObject = localStreamRef.current;
+        videoElement.muted = true;
         
-        console.log('📺 [WAITING SCREEN] ✅ Attaching stream to video element');
-        waitingScreenVideoRef.current.srcObject = localStreamRef.current;
-        waitingScreenVideoRef.current.muted = true;
-        
-        // Play the video
-        waitingScreenVideoRef.current.play().catch(err => {
+        // Try to play - some browsers require user interaction
+        videoElement.play().catch(err => {
           console.warn('📺 [WAITING SCREEN] Play warning:', err.message);
         });
-      } else {
-        console.warn('📺 [WAITING SCREEN] ⚠️ Missing video element or stream');
-        console.log('  - waitingScreenVideoRef.current exists:', !!waitingScreenVideoRef.current);
-        console.log('  - localStreamRef.current exists:', !!localStreamRef.current);
       }
     }, []);
 
@@ -1950,9 +1942,9 @@ const Chat = () => {
             {/* Left panel - Camera preview */}
             <div className="w-full md:w-1/2 h-full flex flex-col relative group">
               <div className="relative w-full h-full border-2 border-yellow-400/60 dark:border-yellow-400/80 rounded-3xl overflow-hidden bg-black shadow-2xl gold-glow transition-all duration-500 hover:border-yellow-400">
-                {/* Video element for camera stream - use separate ref to prevent conflicts */}
+                {/* Video element for camera stream - use ref callback to prevent flickering */}
                 <video
-                  ref={waitingScreenVideoRef}
+                  ref={handleWaitingVideoRef}
                   autoPlay
                   muted
                   playsInline
