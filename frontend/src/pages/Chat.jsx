@@ -159,6 +159,112 @@ const Chat = () => {
   
   console.error('🔴 PASSED UUID CHECK - ABOUT TO RUN USEEFFECTS');
 
+  // ✅ CAMERA INIT - MOVE THIS TO FIRST useEffect SO IT RUNS IMMEDIATELY
+  useEffect(() => {
+    console.error('🚨🚨🚨 CAMERA INIT USEEFFECT FIRED - THIS SHOULD APPEAR FIRST 🚨🚨🚨');
+    console.error('🚨🚨🚨 ENTERING USEFFECT FUNCTION BODY 🚨🚨🚨');
+    
+    let isMounted = true;
+    
+    const startCamera = async () => {
+      console.error('🚨 startCamera FUNCTION CALLED');
+      try {
+        // ✅ STEP 1: Stream ko useRef me lock karo - sirf pehli baar
+        if (!localStreamRef.current) {
+          console.log('📹 [CAMERA INIT] Requesting camera permissions from browser...');
+          
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            },
+            audio: true
+          });
+          
+          if (!isMounted) {
+            console.log('📹 [CAMERA INIT] Component unmounted, cleaning up stream');
+            stream.getTracks().forEach(t => t.stop());
+            return;
+          }
+          
+          localStreamRef.current = stream;
+          streamRef.current = stream;
+          console.log('📹 [CAMERA INIT] ✅ Camera stream obtained');
+          console.log('📹 [CAMERA INIT] Active tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+        } else {
+          console.log('📹 [CAMERA INIT] Stream already exists - reusing existing stream');
+        }
+
+        // ✅ Wait a tick to ensure ref is attached
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        if (!isMounted) return;
+        
+        // ✅ STEP 4: Attach stream to video element
+        // Wait for sharedVideoRef to be available (CameraPanel must render first)
+        let attempts = 0;
+        const attachStream = () => {
+          if (sharedVideoRef && localStreamRef.current) {
+            console.log('📹 [CAMERA INIT] Attaching stream to video element...');
+            sharedVideoRef.srcObject = localStreamRef.current;
+            sharedVideoRef.muted = true;
+            
+            console.log('📹 [CAMERA INIT] Calling play() on video element');
+            
+            // Call play() directly without waiting for metadata
+            sharedVideoRef.play()
+              .then(() => {
+                if (isMounted) {
+                  console.log('📹 [CAMERA INIT] ✅ Video stream is now playing');
+                  setCameraStarted(true);
+                  setIsLocalCameraReady(true);
+                }
+              })
+              .catch(playErr => {
+                if (isMounted) {
+                  console.warn('📹 [CAMERA INIT] ⚠️ Play error (stream may still display):', playErr.name, playErr.message);
+                  // Still mark as ready - stream might display even with play error
+                  setCameraStarted(true);
+                  setIsLocalCameraReady(true);
+                }
+              });
+          } else if (attempts < 50) {
+            // Retry waiting for ref to be available
+            attempts++;
+            setTimeout(attachStream, 50);
+          } else {
+            console.error('📹 [CAMERA INIT] ❌ Video ref never became available');
+            console.error('   sharedVideoRef:', !!sharedVideoRef);
+            console.error('   localStreamRef.current:', !!localStreamRef.current);
+            setIsLocalCameraReady(true);
+          }
+        };
+        
+        attachStream();
+      } catch (err) {
+        if (isMounted) {
+          console.error('📹 [CAMERA INIT] ❌ Error:', err.name, err.message);
+          
+          if (err.name === 'NotAllowedError') {
+            console.error('   → User denied camera permission');
+          } else if (err.name === 'NotFoundError') {
+            console.error('   → No camera device found');
+          } else if (err.name === 'NotReadableError') {
+            console.error('   → Camera is in use by another app');
+          }
+          
+          setIsLocalCameraReady(true);
+        }
+      }
+    };
+
+    startCamera();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // ✅ NOW CONSOLE LOG AND LOGIC AFTER ALL HOOKS
   console.log('🎯 CHAT COMPONENT LOADED - BUILD: 895cedd (temporal deadzone fix - move hooks to top)');
 
@@ -472,115 +578,10 @@ const Chat = () => {
     };
   }, []);
 
-  // ✅ STEP 2: getUserMedia sirf pehli baar
+  // ✅ STEP 2: getUserMedia sirf pehli baar - MOVED TO TOP (line 160+) FOR IMMEDIATE EXECUTION
   // Camera starts once when component mounts and runs continuously
-  useEffect(() => {
-    // ABSOLUTE FIRST LOG - before anything else
-    console.error('🚨🚨🚨 CAMERA INIT USEEFFECT FIRED - THIS SHOULD APPEAR FIRST 🚨🚨🚨');
-    
-    console.log('📹 [CAMERA INIT] 🔴 Starting camera initialization on mount');
-    console.log('📹 [CAMERA INIT] localStreamRef.current exists:', !!localStreamRef.current);
-    console.log('📹 [CAMERA INIT] sharedVideoRef exists:', !!sharedVideoRef);
-    
-    let isMounted = true;
-    
-    const startCamera = async () => {
-      try {
-        // ✅ STEP 1: Stream ko useRef me lock karo - sirf pehli baar
-        if (!localStreamRef.current) {
-          console.log('📹 [CAMERA INIT] Requesting camera permissions from browser...');
-          
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            },
-            audio: true
-          });
-          
-          if (!isMounted) {
-            console.log('📹 [CAMERA INIT] Component unmounted, cleaning up stream');
-            stream.getTracks().forEach(t => t.stop());
-            return;
-          }
-          
-          localStreamRef.current = stream;
-          streamRef.current = stream;
-          console.log('📹 [CAMERA INIT] ✅ Camera stream obtained');
-          console.log('📹 [CAMERA INIT] Active tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
-        } else {
-          console.log('📹 [CAMERA INIT] Stream already exists - reusing existing stream');
-        }
-
-        // ✅ Wait a tick to ensure ref is attached
-        await new Promise(resolve => setTimeout(resolve, 0));
-        
-        if (!isMounted) return;
-        
-        // ✅ STEP 4: Attach stream to video element
-        // Wait for sharedVideoRef to be available (CameraPanel must render first)
-        let attempts = 0;
-        const attachStream = () => {
-          if (sharedVideoRef && localStreamRef.current) {
-            console.log('📹 [CAMERA INIT] Attaching stream to video element...');
-            sharedVideoRef.srcObject = localStreamRef.current;
-            sharedVideoRef.muted = true;
-            
-            console.log('📹 [CAMERA INIT] Calling play() on video element');
-            
-            // Call play() directly without waiting for metadata
-            sharedVideoRef.play()
-              .then(() => {
-                if (isMounted) {
-                  console.log('📹 [CAMERA INIT] ✅ Video stream is now playing');
-                  setCameraStarted(true);
-                  setIsLocalCameraReady(true);
-                }
-              })
-              .catch(playErr => {
-                if (isMounted) {
-                  console.warn('📹 [CAMERA INIT] ⚠️ Play error (stream may still display):', playErr.name, playErr.message);
-                  // Still mark as ready - stream might display even with play error
-                  setCameraStarted(true);
-                  setIsLocalCameraReady(true);
-                }
-              });
-          } else if (attempts < 50) {
-            // Retry waiting for ref to be available
-            attempts++;
-            setTimeout(attachStream, 50);
-          } else {
-            console.error('📹 [CAMERA INIT] ❌ Video ref never became available');
-            console.error('   sharedVideoRef:', !!sharedVideoRef);
-            console.error('   localStreamRef.current:', !!localStreamRef.current);
-            setIsLocalCameraReady(true);
-          }
-        };
-        
-        attachStream();
-      } catch (err) {
-        if (isMounted) {
-          console.error('📹 [CAMERA INIT] ❌ Error:', err.name, err.message);
-          
-          if (err.name === 'NotAllowedError') {
-            console.error('   → User denied camera permission');
-          } else if (err.name === 'NotFoundError') {
-            console.error('   → No camera device found');
-          } else if (err.name === 'NotReadableError') {
-            console.error('   → Camera is in use by another app');
-          }
-          
-          setIsLocalCameraReady(true);
-        }
-      }
-    };
-
-    startCamera();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  
+  // Duplicate removed - see camera init useEffect at top
 
   // ✅ RESUME PLAYBACK: If video pauses for any reason, resume immediately
   useEffect(() => {
