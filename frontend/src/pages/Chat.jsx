@@ -77,6 +77,150 @@ const CameraPanel = React.memo(() => {
   );
 });
 
+// ✅ INTRO SCREEN - Defined at MODULE LEVEL to prevent recreation
+// Wrapped with React.memo to ensure it never re-renders unnecessarily
+const IntroScreen = React.memo(({ 
+  user, 
+  isLoading, 
+  activeMode, 
+  setActiveMode, 
+  openDuoSquad, 
+  startVideoChat,
+  isProfileOpen,
+  setIsProfileOpen,
+  activeTab,
+  setActiveTab,
+  isMatchHistoryOpen,
+  setIsMatchHistoryOpen
+}) => {
+  console.log("Dashboard render");
+  
+  return (
+    <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
+      {/* LEFT PANEL - Flinxx Heading + Buttons */}
+      <aside className="w-full lg:flex-1 h-full flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300">
+        {/* Top Icons Header - Circular icon buttons */}
+        <div className="icon-row p-6 sm:p-8">
+          {/* Profile Icon - Show profile photo or fallback to user icon */}
+          <button 
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className="icon-btn"
+            title="Profile"
+          >
+            {user?.picture ? (
+              <img 
+                src={user.picture} 
+                alt="Profile" 
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  objectFit: 'cover'
+                }}
+              />
+            ) : (
+              <i className="material-icons-round">person</i>
+            )}
+          </button>
+
+          {/* Search Icon */}
+          <button 
+            onClick={() => setActiveTab(activeTab === 'search' ? null : 'search')}
+            className="icon-btn"
+            title="Search"
+          >
+            <i className="material-icons-round">search</i>
+          </button>
+
+          {/* Likes Icon */}
+          <button 
+            onClick={() => setActiveTab(activeTab === 'likes' ? null : 'likes')}
+            className="icon-btn" 
+            title="Likes"
+          >
+            <i className="material-icons-round">favorite</i>
+          </button>
+
+          {/* Messages Icon */}
+          <button 
+            onClick={() => setActiveTab(activeTab === 'messages' ? null : 'messages')}
+            className="icon-btn"
+            title="Messages"
+          >
+            <i className="material-icons-round">chat_bubble</i>
+          </button>
+
+          {/* Trophy/Achievements Icon */}
+          <button 
+            onClick={() => setActiveTab(activeTab === 'trophy' ? null : 'trophy')}
+            className="icon-btn"
+            title="Achievements"
+          >
+            <i className="material-icons-round">emoji_events</i>
+          </button>
+
+          {/* History/Timer Icon */}
+          <button 
+            onClick={() => setIsMatchHistoryOpen(!isMatchHistoryOpen)}
+            className="icon-btn"
+            title="History"
+          >
+            <i className="material-icons-round">timer</i>
+          </button>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col items-center justify-start space-y-12 relative z-10 pt-8">
+          {/* Flinxx Title */}
+          <h1 className="font-display text-5xl sm:text-6xl font-bold text-primary tracking-tight drop-shadow-sm select-none">
+            Flinxx
+          </h1>
+
+          {/* Mode Toggle Buttons */}
+          <div className="flex items-center gap-6">
+            <button 
+              className={`px-8 py-3 rounded-xl font-semibold text-lg shadow-glow transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${activeMode === 'solo' ? 'bg-primary text-black hover:shadow-glow-hover hover:bg-primary-hover' : 'border border-primary text-primary hover:bg-primary/10'}`}
+              onClick={() => setActiveMode('solo')}
+            >
+              SoloX
+            </button>
+            <button 
+              className={`px-8 py-3 rounded-xl font-semibold text-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${activeMode === 'duo' ? 'bg-primary text-black hover:shadow-glow-hover hover:bg-primary-hover shadow-glow' : 'border border-primary text-primary hover:bg-primary/10'}`}
+              onClick={() => {
+                setActiveMode('duo');
+                openDuoSquad();
+              }}
+            >
+              DuoX
+            </button>
+          </div>
+
+          {/* Start Video Chat Button */}
+          <button 
+            onClick={startVideoChat}
+            disabled={isLoading}
+            className="group relative px-10 py-4 rounded-full bg-gradient-to-r from-primary via-[#E5C558] to-primary text-black font-bold text-lg shadow-lg hover:shadow-glow-hover transition-all transform hover:scale-105 overflow-hidden whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out skew-x-12 -translate-x-full"></span>
+            <div className="flex items-center justify-center gap-3 relative z-10">
+              <span className="text-2xl">🎬</span>
+              <span>{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
+            </div>
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div className="w-full text-center py-4 z-10 mt-auto">
+          <p className="text-xs text-gray-500 dark:text-gray-600 font-medium">Premium Video Experience</p>
+        </div>
+      </aside>
+
+      {/* RIGHT PANEL - Camera Feed (always visible) */}
+      <CameraPanel />
+    </div>
+  );
+});
+
 const Chat = () => {
   console.log("RENDER START");
 
@@ -1704,136 +1848,6 @@ const Chat = () => {
     setConnectionTime(0);
   };
 
-  // ✅ STEP 4: Attach stream to video element
-  const IntroScreen = () => {
-    console.log("Dashboard render");
-    
-    return (
-    <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
-      {/* LEFT PANEL - Flinxx Heading + Buttons */}
-      <aside className="w-full lg:flex-1 h-full flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300">
-        {/* Top Icons Header - Circular icon buttons */}
-        <div className="icon-row p-6 sm:p-8">
-          {/* Profile Icon - Show profile photo or fallback to user icon */}
-          <button 
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="icon-btn"
-            title="Profile"
-          >
-            {user?.picture ? (
-              <img 
-                src={user.picture} 
-                alt="Profile" 
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '50%',
-                  objectFit: 'cover'
-                }}
-              />
-            ) : (
-              <i className="material-icons-round">person</i>
-            )}
-          </button>
-
-          {/* Search Icon */}
-          <button 
-            onClick={() => setActiveTab(activeTab === 'search' ? null : 'search')}
-            className="icon-btn"
-            title="Search"
-          >
-            <i className="material-icons-round">search</i>
-          </button>
-
-          {/* Likes Icon */}
-          <button 
-            onClick={() => setActiveTab(activeTab === 'likes' ? null : 'likes')}
-            className="icon-btn" 
-            title="Likes"
-          >
-            <i className="material-icons-round">favorite</i>
-          </button>
-
-          {/* Messages Icon */}
-          <button 
-            onClick={() => setActiveTab(activeTab === 'messages' ? null : 'messages')}
-            className="icon-btn"
-            title="Messages"
-          >
-            <i className="material-icons-round">chat_bubble</i>
-          </button>
-
-          {/* Trophy/Achievements Icon */}
-          <button 
-            onClick={() => setActiveTab(activeTab === 'trophy' ? null : 'trophy')}
-            className="icon-btn"
-            title="Achievements"
-          >
-            <i className="material-icons-round">emoji_events</i>
-          </button>
-
-          {/* History/Timer Icon */}
-          <button 
-            onClick={() => setIsMatchHistoryOpen(!isMatchHistoryOpen)}
-            className="icon-btn"
-            title="History"
-          >
-            <i className="material-icons-round">timer</i>
-          </button>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col items-center justify-start space-y-12 relative z-10 pt-8">
-          {/* Flinxx Title */}
-          <h1 className="font-display text-5xl sm:text-6xl font-bold text-primary tracking-tight drop-shadow-sm select-none">
-            Flinxx
-          </h1>
-
-          {/* Mode Toggle Buttons */}
-          <div className="flex items-center gap-6">
-            <button 
-              className={`px-8 py-3 rounded-xl font-semibold text-lg shadow-glow transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${activeMode === 'solo' ? 'bg-primary text-black hover:shadow-glow-hover hover:bg-primary-hover' : 'border border-primary text-primary hover:bg-primary/10'}`}
-              onClick={() => setActiveMode('solo')}
-            >
-              SoloX
-            </button>
-            <button 
-              className={`px-8 py-3 rounded-xl font-semibold text-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${activeMode === 'duo' ? 'bg-primary text-black hover:shadow-glow-hover hover:bg-primary-hover shadow-glow' : 'border border-primary text-primary hover:bg-primary/10'}`}
-              onClick={() => {
-                setActiveMode('duo');
-                openDuoSquad();
-              }}
-            >
-              DuoX
-            </button>
-          </div>
-
-          {/* Start Video Chat Button */}
-          <button 
-            onClick={startVideoChat}
-            disabled={isLoading}
-            className="group relative px-10 py-4 rounded-full bg-gradient-to-r from-primary via-[#E5C558] to-primary text-black font-bold text-lg shadow-lg hover:shadow-glow-hover transition-all transform hover:scale-105 overflow-hidden whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out skew-x-12 -translate-x-full"></span>
-            <div className="flex items-center justify-center gap-3 relative z-10">
-              <span className="text-2xl">🎬</span>
-              <span>{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
-            </div>
-          </button>
-        </div>
-
-        {/* Footer */}
-        <div className="w-full text-center py-4 z-10 mt-auto">
-          <p className="text-xs text-gray-500 dark:text-gray-600 font-medium">Premium Video Experience</p>
-        </div>
-      </aside>
-
-      {/* RIGHT PANEL - Camera Feed (always visible) */}
-      <CameraPanel />
-    </div>
-    );
-  };
-
   // Waiting Screen Component - Premium Design with animations
   // ✅ WAITING SCREEN - Normal component (not memoized) to receive state updates
   const WaitingScreen = ({ onCancel }) => {
@@ -2197,7 +2211,20 @@ const Chat = () => {
       <div className="w-full h-screen overflow-hidden bg-black relative">
         {/* Dashboard with Camera - ALWAYS MOUNTED in background */}
         {console.log('🎨 [RENDER] Showing DASHBOARD')}
-        <IntroScreen />
+        <IntroScreen 
+          user={user}
+          isLoading={isLoading}
+          activeMode={activeMode}
+          setActiveMode={setActiveMode}
+          openDuoSquad={openDuoSquad}
+          startVideoChat={startVideoChat}
+          isProfileOpen={isProfileOpen}
+          setIsProfileOpen={setIsProfileOpen}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isMatchHistoryOpen={isMatchHistoryOpen}
+          setIsMatchHistoryOpen={setIsMatchHistoryOpen}
+        />
 
         {/* WAITING SCREEN - overlays on top (absolute positioning) */}
         {isSearching && !partnerFound && (
