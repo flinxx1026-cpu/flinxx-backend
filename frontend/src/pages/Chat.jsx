@@ -2191,29 +2191,31 @@ const Chat = () => {
       {/* 🧪 DEBUG: Log UI state and which screen should render */}
       {console.log('🎨 [RENDER] UI STATE →', { isSearching, partnerFound }, 'Should show:', isSearching && !partnerFound ? 'WAITING SCREEN' : partnerFound ? 'VIDEO CHAT' : 'DASHBOARD')}
 
-      {/* ✅ CRITICAL FIX: ALWAYS keep IntroScreen mounted (with Camera) on the background */}
-      {/* The camera panel is inside IntroScreen, so we NEVER unmount it */}
-      {/* Instead, other screens appear on top or replace visibility */}
-      <div className="w-full h-screen overflow-hidden bg-black">
-        {/* Dashboard with Camera - Base layer (always mounted, visibility toggled) */}
-        <div className={isSearching || partnerFound ? 'hidden' : ''}>
-          {console.log('🎨 [RENDER] Showing DASHBOARD')}
-          <IntroScreen />
-        </div>
+      {/* ✅ CRITICAL FIX: ALWAYS keep IntroScreen mounted (with Camera) */}
+      {/* The camera panel is inside IntroScreen, never unmounted */}
+      {/* Other screens overlay on top with absolute positioning */}
+      <div className="w-full h-screen overflow-hidden bg-black relative">
+        {/* Dashboard with Camera - ALWAYS MOUNTED in background */}
+        {console.log('🎨 [RENDER] Showing DASHBOARD')}
+        <IntroScreen />
 
-        {/* WAITING SCREEN - appears on top when searching */}
+        {/* WAITING SCREEN - overlays on top (absolute positioning) */}
         {isSearching && !partnerFound && (
-          <>
+          <div className="absolute inset-0 z-50">
             {console.log('🎨 [RENDER] Showing WAITING SCREEN')}
             <WaitingScreen 
               text="Looking for a partner..."
               onCancel={handleCancelSearch}
             />
-          </>
+          </div>
         )}
 
-        {/* VIDEO CHAT - appears on top when partner found */}
-        {partnerFound && <VideoChatScreen />}
+        {/* VIDEO CHAT - overlays on top (absolute positioning) */}
+        {partnerFound && (
+          <div className="absolute inset-0 z-50">
+            <VideoChatScreen />
+          </div>
+        )}
       </div>
 
       {/* ⛔ Rest of modals and content only show when needed */}
