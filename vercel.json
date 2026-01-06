@@ -5,7 +5,7 @@
   "outputDirectory": "frontend/dist2",
   "installCommand": "cd frontend && npm install",
   "public": false,
-  "env": [],
+  "env": {},
   "regions": ["sfo1"],
   "functions": {
     "api/**/*.js": {
