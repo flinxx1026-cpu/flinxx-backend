@@ -1853,6 +1853,26 @@ const Chat = () => {
       document.documentElement.classList.add('dark');
     }, []);
 
+    // ✅ Ensure camera stream is attached to video element when waiting screen shows
+    useEffect(() => {
+      console.log('📺 [WAITING SCREEN] Mounting - checking camera stream');
+      
+      if (localVideoRef.current && localStreamRef.current) {
+        console.log('📺 [WAITING SCREEN] ✅ Attaching stream to video element');
+        localVideoRef.current.srcObject = localStreamRef.current;
+        localVideoRef.current.muted = true;
+        
+        // Play the video
+        localVideoRef.current.play().catch(err => {
+          console.warn('📺 [WAITING SCREEN] Play warning:', err.message);
+        });
+      } else {
+        console.warn('📺 [WAITING SCREEN] ⚠️ Missing video element or stream');
+        console.log('  - localVideoRef.current exists:', !!localVideoRef.current);
+        console.log('  - localStreamRef.current exists:', !!localStreamRef.current);
+      }
+    }, []);
+
     return (
       <>
         <style>{`
