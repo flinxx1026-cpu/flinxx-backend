@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import socket from '../services/socketService'
 import flinxxLogo from '../assets/flinxx-logo.svg'
+import MobileWaitingScreen from './MobileWaitingScreen'
 
 const Matching = () => {
   const navigate = useNavigate()
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 769)
   const [countdown, setCountdown] = useState(5)
   const [isAutoNext, setIsAutoNext] = useState(true)
   const [userProfiles, setUserProfiles] = useState([
@@ -20,6 +22,16 @@ const Matching = () => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const countdownRef = useRef(null)
 
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 769)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Countdown timer for auto-next
   useEffect(() => {
     if (isAutoNext && countdown > 0) {
       countdownRef.current = setTimeout(() => {
@@ -44,6 +56,11 @@ const Matching = () => {
       setCountdown(5)
       setIsAutoNext(true)
     }
+  }
+
+  // Show mobile waiting screen on mobile
+  if (isMobile) {
+    return <MobileWaitingScreen onCancel={() => navigate('/login', { replace: true })} />
   }
 
   const handleSkip = () => {
