@@ -7,9 +7,24 @@ import './MobileWaitingScreen.css'
  * Displays when user is searching for a match
  * Only for mobile devices (< 769px)
  */
-const MobileWaitingScreen = ({ onCancel }) => {
+const MobileWaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
   const navigate = useNavigate()
   const [isSearching, setIsSearching] = useState(true)
+
+  const handleCameraRef = (videoElement) => {
+    if (!videoElement) return;
+    
+    // Only attach if stream exists and not already attached
+    if (localStreamRef && localStreamRef.current && videoElement.srcObject !== localStreamRef.current) {
+      videoElement.srcObject = localStreamRef.current;
+      videoElement.muted = true;
+      
+      // Try to play - some browsers require user interaction
+      videoElement.play().catch(err => {
+        console.warn('📺 [MOBILE WAITING SCREEN] Play warning:', err.message);
+      });
+    }
+  };
 
   const handleCancel = () => {
     setIsSearching(false)
@@ -26,9 +41,23 @@ const MobileWaitingScreen = ({ onCancel }) => {
       <div className="waiting-content">
         {/* Top Half - Your Camera Section */}
         <div className="camera-section">
-          <div className="camera-placeholder">
-            <span className="material-symbols-outlined">desktop_windows</span>
-          </div>
+          <video
+            ref={handleCameraRef}
+            autoPlay
+            muted
+            playsInline
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              backgroundColor: '#000'
+            }}
+          />
+          {!cameraStarted && (
+            <div className="camera-placeholder">
+              <span className="material-symbols-outlined">desktop_windows</span>
+            </div>
+          )}
           <div className="you-badge">
             <span>You</span>
           </div>

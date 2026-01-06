@@ -239,7 +239,7 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
 
   // ✅ MOBILE VIEW: Show mobile waiting screen on mobile devices
   if (isMobile) {
-    return <MobileWaitingScreen onCancel={onCancel} />;
+    return <MobileWaitingScreen onCancel={onCancel} localStreamRef={localStreamRef} cameraStarted={cameraStarted} />;
   }
 
   // ✅ DESKTOP VIEW: Show desktop waiting screen
