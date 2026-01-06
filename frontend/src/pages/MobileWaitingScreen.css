@@ -37,10 +37,13 @@
     justify-content: space-between;
     align-items: center;
     padding: 0 24px;
-    position: absolute;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 30;
     color: white;
+    background: transparent;
 }
 
 .time {
@@ -64,7 +67,7 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
-    padding-top: 48px;
+    margin-top: 48px;
 }
 
 /* Camera Section - Top Half */
@@ -81,7 +84,6 @@
     border-radius: 32px 32px 0 0;
     box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
     z-index: 10;
-    min-height: 50vh;
 }
 
 .camera-placeholder {
@@ -135,8 +137,8 @@
     width: 100%;
     background: var(--background-dark);
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: flex-start;
+    justify-content: flex-start;
     padding: 40px 24px 32px;
     border: 4px solid var(--primary);
     border-radius: 0 0 32px 32px;
@@ -144,7 +146,6 @@
     z-index: 20;
     margin-top: -4px;
     overflow-y: auto;
-    min-height: 50vh;
 }
 
 .matching-content {
