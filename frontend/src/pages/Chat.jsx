@@ -74,13 +74,9 @@ const CameraPanel = React.memo(() => {
 });
 
 const Chat = () => {
-  // 🧪 DEBUG TEST - Check if this log appears first
-  console.error('🔴 CHAT COMPONENT FUNCTION CALLED - BUILD ORDER TEST');
-  
   console.log("RENDER START");
 
   // ✅ Get DuoSquad context (manages state at Layout level to prevent remounting)
-  console.error('🔴 ABOUT TO CALL useDuoSquad');
   const { activeMode, setActiveMode, handleModeChange, openDuoSquad } = useDuoSquad();
 
   // ✅ ALL HOOKS FIRST - BEFORE ANY LOGIC OR RETURNS
@@ -151,13 +147,10 @@ const Chat = () => {
   console.log("HOOKS DONE");
 
   // ✅ HARD BLOCK: Don't render anything until auth is ready
-  console.error('🔴 CHECKING USER UUID:', !!user?.uuid, user?.uuid?.length);
   if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
     console.log('⏳ Chat: Waiting for valid user UUID from AuthContext...');
     return null;
   }
-  
-  console.error('🔴 PASSED UUID CHECK - ABOUT TO RUN USEEFFECTS');
 
   // ✅ CAMERA INIT - MOVE THIS TO FIRST useEffect SO IT RUNS IMMEDIATELY
   useEffect(() => {
@@ -167,7 +160,6 @@ const Chat = () => {
     let isMounted = true;
     
     const startCamera = async () => {
-      console.error('🚨 startCamera FUNCTION CALLED');
       try {
         // ✅ STEP 1: Stream ko useRef me lock karo - sirf pehli baar
         if (!localStreamRef.current) {
