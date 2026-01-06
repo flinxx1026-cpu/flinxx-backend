@@ -27,8 +27,13 @@ let sharedVideoRef = null;
 // ✅ CAMERA PANEL - Defined at MODULE LEVEL with NO PROPS
 // React.memo ensures it never re-renders after first render
 const CameraPanel = React.memo(() => {
-  // Access the shared ref (will be set by Chat component)
-  const localVideoRef = { current: sharedVideoRef };
+  // Use useCallback to ensure ref callback is stable and doesn't recreate element
+  const videoRefCallback = React.useCallback(el => {
+    if (el) {
+      sharedVideoRef = el;
+      console.log('📹 [VIDEO REF] Video element attached to DOM');
+    }
+  }, []);
   
   return (
     <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
@@ -36,7 +41,7 @@ const CameraPanel = React.memo(() => {
       <div className="camera-frame w-full h-full">
         {/* Camera Video - Stable element thanks to module-level component */}
         <video
-          ref={el => { sharedVideoRef = el; }}
+          ref={videoRefCallback}
           className="camera-video"
           autoPlay
           muted
