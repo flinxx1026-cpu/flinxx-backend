@@ -9,26 +9,24 @@
     --gold-dim: #B8860B;
 }
 
-/* Hide on desktop */
-@media (min-width: 769px) {
-    .mobile-waiting-container {
-        display: none !important;
-    }
-}
-
 .mobile-waiting-container {
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
-    max-width: 28rem;
-    height: 800px;
-    margin: 0 auto;
+    height: 100vh;
+    max-width: none;
+    margin: 0;
     background: var(--background-dark);
-    border-radius: 40px;
+    border-radius: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    border: 8px solid #27272a;
+    box-shadow: none;
+    border: none;
+    z-index: 9999;
 }
 
 /* Status Bar */
@@ -301,6 +299,13 @@
     border-radius: 40px;
     pointer-events: none;
     z-index: 50;
+}
+
+/* Hide on desktop */
+@media (min-width: 769px) {
+    .mobile-waiting-container {
+        display: none !important;
+    }
 }
 
 /* Responsive adjustments for mobile */
