@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
-  const [birthday, setBirthday] = useState('')
+  const [birthday, setBirthday] = useState('2002-01-01')
   const [gender, setGender] = useState('')
   const [age, setAge] = useState(null)
   const [error, setError] = useState(null)
