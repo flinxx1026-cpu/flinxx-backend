@@ -26,13 +26,21 @@ let sharedVideoRef = null;
 
 // ✅ CAMERA PANEL - Defined at MODULE LEVEL with NO PROPS
 // React.memo ensures it never re-renders after first render
+// Add logging to track mounting/unmounting
 const CameraPanel = React.memo(() => {
   // Use useCallback to ensure ref callback is stable and doesn't recreate element
   const videoRefCallback = React.useCallback(el => {
     if (el) {
       sharedVideoRef = el;
-      console.log('📹 [VIDEO REF] Video element attached to DOM');
     }
+  }, []);
+  
+  // Log mount/unmount to catch if component is being destroyed
+  React.useEffect(() => {
+    console.log('📹 CameraPanel mounted');
+    return () => {
+      console.error('❌ CameraPanel unmounting - THIS BREAKS THE STREAM');
+    };
   }, []);
   
   return (
@@ -147,12 +155,8 @@ const Chat = () => {
     console.log('⏳ Chat: Waiting for valid user UUID from AuthContext...');
     return null;
   }
-
   // ✅ CAMERA INIT - MOVE THIS TO FIRST useEffect SO IT RUNS IMMEDIATELY
   useEffect(() => {
-    console.error('🚨🚨🚨 CAMERA INIT USEEFFECT FIRED - THIS SHOULD APPEAR FIRST 🚨🚨🚨');
-    console.error('🚨🚨🚨 ENTERING USEFFECT FUNCTION BODY 🚨🚨🚨');
-    
     let isMounted = true;
     
     const startCamera = async () => {
