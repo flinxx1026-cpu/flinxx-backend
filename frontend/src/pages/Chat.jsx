@@ -221,6 +221,193 @@ const IntroScreen = React.memo(({
   );
 });
 
+// ✅ WAITING SCREEN - Module-level component (memoized) to prevent recreation on every Chat render
+// This prevents the video ref callback from firing repeatedly, which causes flickering
+const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) => {
+  // ✅ Ref callback to attach stream - fires when element mounts, not on every render
+  // Module-level component + memoization ensures this fires only once
+  const handleWaitingVideoRef = React.useCallback((videoElement) => {
+    if (!videoElement) return;
+    
+    console.log('📺 [WAITING SCREEN] Video element ref callback fired');
+    
+    // Only attach if stream exists and not already attached
+    if (localStreamRef.current && videoElement.srcObject !== localStreamRef.current) {
+      console.log('📺 [WAITING SCREEN] ✅ Attaching stream via ref callback');
+      videoElement.srcObject = localStreamRef.current;
+      videoElement.muted = true;
+      
+      // Try to play - some browsers require user interaction
+      videoElement.play().catch(err => {
+        console.warn('📺 [WAITING SCREEN] Play warning:', err.message);
+      });
+    }
+  }, [localStreamRef]);
+
+  // Force dark mode when visible
+  React.useEffect(() => {
+    document.documentElement.classList.add('dark');
+  }, []);
+
+  return (
+    <>
+      <style>{`
+        .gold-glow {
+          box-shadow: 0 0 10px rgba(255, 215, 0, 0.15);
+        }
+        .gold-text-glow {
+          text-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        }
+        .loading-dot {
+          animation: dot-pulse 1.4s infinite ease-in-out both;
+        }
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes dot-pulse {
+          0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+          40% { transform: scale(1); opacity: 1; }
+        }
+        .search-icon-wrapper {
+          position: relative;
+          display: inline-block;
+          width: fit-content;
+          height: fit-content;
+        }
+        @keyframes searchFloat {
+          0% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-6px);
+          }
+          100% {
+            transform: translateY(0);
+          }
+        }
+        .search-icon {
+          animation: searchFloat 2s ease-in-out infinite;
+          display: block;
+        }
+        @keyframes dotPulse {
+          0% { opacity: 0.2; }
+          20% { opacity: 1; }
+          100% { opacity: 0.2; }
+        }
+        .loading-dots span {
+          animation: dotPulse 1.4s infinite;
+        }
+        .loading-dots span:nth-child(1) { animation-delay: 0s; }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+      `}</style>
+      
+      <main className="flex-grow flex items-center justify-center p-4 md:p-8 relative w-full h-screen bg-black">
+        {/* Floating gradient background */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-yellow-400/5 rounded-full blur-[120px] animate-pulse"></div>
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-yellow-400/5 rounded-full blur-[80px]" style={{ animation: 'float 15s infinite linear' }}></div>
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-yellow-400/5 rounded-full blur-[90px]" style={{ animation: 'float 15s infinite linear', animationDelay: '-5s' }}></div>
+          <div className="absolute top-1/3 right-1/3 w-40 h-40 bg-yellow-400/5 rounded-full blur-[60px]" style={{ animation: 'float 15s infinite linear', animationDelay: '-10s' }}></div>
+        </div>
+
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 z-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#333 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
+
+        {/* Main container */}
+        <div className="w-full max-w-7xl z-10 h-[85vh] flex flex-col md:flex-row gap-8 items-center">
+          {/* Left panel - Camera preview */}
+          <div className="w-full md:w-1/2 h-full flex flex-col relative group">
+            <div className="relative w-full h-full border-2 border-yellow-400/60 dark:border-yellow-400/80 rounded-3xl overflow-hidden bg-black shadow-2xl gold-glow transition-all duration-500 hover:border-yellow-400">
+              {/* Video element for camera stream - use ref callback to prevent flickering */}
+              <video
+                ref={handleWaitingVideoRef}
+                autoPlay
+                muted
+                playsInline
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  backgroundColor: '#000'
+                }}
+              />
+              {/* Fallback placeholder if no camera */}
+              {!cameraStarted && (
+                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50">
+                  <div className="text-zinc-600 dark:text-zinc-700 flex flex-col items-center gap-2">
+                    <span className="material-icons-outlined text-6xl opacity-20">videocam_off</span>
+                  </div>
+                </div>
+              )}
+              <div className="absolute bottom-6 left-6">
+                <div className="px-4 py-1.5 rounded-full border border-yellow-400/50 bg-black/60 text-yellow-400 text-sm font-medium backdrop-blur-sm shadow-lg">
+                  You
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right panel - Waiting screen */}
+          <div className="w-full md:w-1/2 h-full flex flex-col relative group">
+            <div className="relative w-full h-full border-2 border-yellow-400/60 dark:border-yellow-400/80 rounded-3xl overflow-hidden bg-black shadow-2xl gold-glow transition-all duration-500 hover:border-yellow-400 flex flex-col items-center justify-center text-center space-y-8">
+              
+              {/* Animated search icon */}
+              <div className="relative mb-4">
+                <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full animate-pulse"></div>
+                <div className="search-icon-wrapper">
+                  <div className="text-6xl md:text-8xl filter drop-shadow-lg search-icon">
+                    🔍
+                  </div>
+                </div>
+              </div>
+
+              {/* Waiting text */}
+              <div className="space-y-3">
+                <h1 className="text-3xl md:text-4xl font-bold text-yellow-400 gold-text-glow tracking-tight">
+                  Looking for a partner...
+                </h1>
+                <p className="text-yellow-400/70 text-lg md:text-xl font-light">
+                  Matching you with someone nearby
+                </p>
+              </div>
+
+              {/* Loading dots */}
+              <div className="loading-dots flex items-center justify-center space-x-3 py-4">
+                <span className="w-3 h-3 bg-yellow-400 rounded-full">•</span>
+                <span className="w-3 h-3 bg-yellow-400 rounded-full">•</span>
+                <span className="w-3 h-3 bg-yellow-400 rounded-full">•</span>
+              </div>
+
+              {/* Cancel button */}
+              <div className="pt-8 w-full max-w-xs">
+                <button 
+                  onClick={() => {
+                    console.log('🛑 [CANCEL] User clicked cancel - calling onCancel handler');
+                    if (onCancel) {
+                      onCancel();
+                    }
+                  }}
+                  className="w-full group relative px-8 py-3.5 bg-transparent overflow-hidden rounded-full border border-yellow-400/40 hover:border-yellow-400 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 focus:ring-offset-black"
+                >
+                  <div className="absolute inset-0 w-0 bg-yellow-400/10 transition-all duration-[250ms] ease-out group-hover:w-full"></div>
+                  <span className="relative text-yellow-400/90 font-semibold tracking-wide group-hover:text-yellow-400">
+                    Cancel Search
+                  </span>
+                </button>
+              </div>
+
+              {/* Footer text */}
+              <div className="absolute bottom-4 text-xs text-zinc-600 dark:text-zinc-700 max-w-md mx-auto">
+                <p>By connecting, you agree to our Terms of Service & Privacy Policy.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </>
+  );
+});
+
 const Chat = () => {
   console.log("RENDER START");
 
@@ -1847,191 +2034,6 @@ const Chat = () => {
 
   // Waiting Screen Component - Premium Design with animations
   // ✅ WAITING SCREEN - Normal component (not memoized) to receive state updates
-  const WaitingScreen = ({ onCancel }) => {
-    useEffect(() => {
-      // Force dark mode
-      document.documentElement.classList.add('dark');
-    }, []);
-
-    // ✅ Ref callback to attach stream - fires when element mounts/unmounts
-    // This is more stable than useEffect and prevents flickering from repeated attachments
-    const handleWaitingVideoRef = React.useCallback((videoElement) => {
-      if (!videoElement) return;
-      
-      console.log('📺 [WAITING SCREEN] Video element ref callback fired');
-      
-      // Only attach if stream exists and not already attached
-      if (localStreamRef.current && videoElement.srcObject !== localStreamRef.current) {
-        console.log('📺 [WAITING SCREEN] ✅ Attaching stream via ref callback');
-        videoElement.srcObject = localStreamRef.current;
-        videoElement.muted = true;
-        
-        // Try to play - some browsers require user interaction
-        videoElement.play().catch(err => {
-          console.warn('📺 [WAITING SCREEN] Play warning:', err.message);
-        });
-      }
-    }, []);
-
-    return (
-      <>
-        <style>{`
-          .gold-glow {
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.15);
-          }
-          .gold-text-glow {
-            text-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
-          }
-          .loading-dot {
-            animation: dot-pulse 1.4s infinite ease-in-out both;
-          }
-          .loading-dot:nth-child(1) { animation-delay: -0.32s; }
-          .loading-dot:nth-child(2) { animation-delay: -0.16s; }
-          @keyframes dot-pulse {
-            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
-            40% { transform: scale(1); opacity: 1; }
-          }
-          .search-icon-wrapper {
-            position: relative;
-            display: inline-block;
-            width: fit-content;
-            height: fit-content;
-          }
-          @keyframes searchFloat {
-            0% {
-              transform: translateY(0);
-            }
-            50% {
-              transform: translateY(-6px);
-            }
-            100% {
-              transform: translateY(0);
-            }
-          }
-          .search-icon {
-            animation: searchFloat 2s ease-in-out infinite;
-            display: block;
-          }
-          @keyframes dotPulse {
-            0% { opacity: 0.2; }
-            20% { opacity: 1; }
-            100% { opacity: 0.2; }
-          }
-          .loading-dots span {
-            animation: dotPulse 1.4s infinite;
-          }
-          .loading-dots span:nth-child(1) { animation-delay: 0s; }
-          .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-          .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-        `}</style>
-        
-        <main className="flex-grow flex items-center justify-center p-4 md:p-8 relative w-full h-screen bg-black">
-          {/* Floating gradient background */}
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-yellow-400/5 rounded-full blur-[120px] animate-pulse"></div>
-            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-yellow-400/5 rounded-full blur-[80px]" style={{ animation: 'float 15s infinite linear' }}></div>
-            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-yellow-400/5 rounded-full blur-[90px]" style={{ animation: 'float 15s infinite linear', animationDelay: '-5s' }}></div>
-            <div className="absolute top-1/3 right-1/3 w-40 h-40 bg-yellow-400/5 rounded-full blur-[60px]" style={{ animation: 'float 15s infinite linear', animationDelay: '-10s' }}></div>
-          </div>
-
-          {/* Grid pattern overlay */}
-          <div className="absolute inset-0 z-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#333 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-
-          {/* Main container */}
-          <div className="w-full max-w-7xl z-10 h-[85vh] flex flex-col md:flex-row gap-8 items-center">
-            {/* Left panel - Camera preview */}
-            <div className="w-full md:w-1/2 h-full flex flex-col relative group">
-              <div className="relative w-full h-full border-2 border-yellow-400/60 dark:border-yellow-400/80 rounded-3xl overflow-hidden bg-black shadow-2xl gold-glow transition-all duration-500 hover:border-yellow-400">
-                {/* Video element for camera stream - use ref callback to prevent flickering */}
-                <video
-                  ref={handleWaitingVideoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    backgroundColor: '#000'
-                  }}
-                />
-                {/* Fallback placeholder if no camera */}
-                {!cameraStarted && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50">
-                    <div className="text-zinc-600 dark:text-zinc-700 flex flex-col items-center gap-2">
-                      <span className="material-icons-outlined text-6xl opacity-20">videocam_off</span>
-                    </div>
-                  </div>
-                )}
-                <div className="absolute bottom-6 left-6">
-                  <div className="px-4 py-1.5 rounded-full border border-yellow-400/50 bg-black/60 text-yellow-400 text-sm font-medium backdrop-blur-sm shadow-lg">
-                    You
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right panel - Waiting screen */}
-            <div className="w-full md:w-1/2 h-full flex flex-col relative group">
-              <div className="relative w-full h-full border-2 border-yellow-400/60 dark:border-yellow-400/80 rounded-3xl overflow-hidden bg-black shadow-2xl gold-glow transition-all duration-500 hover:border-yellow-400 flex flex-col items-center justify-center text-center space-y-8">
-                
-                {/* Animated search icon */}
-                <div className="relative mb-4">
-                  <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full animate-pulse"></div>
-                  <div className="search-icon-wrapper">
-                    <div className="text-6xl md:text-8xl filter drop-shadow-lg search-icon">
-                      🔍
-                    </div>
-                  </div>
-                </div>
-
-                {/* Waiting text */}
-                <div className="space-y-3">
-                  <h1 className="text-3xl md:text-4xl font-bold text-yellow-400 gold-text-glow tracking-tight">
-                    Looking for a partner...
-                  </h1>
-                  <p className="text-yellow-400/70 text-lg md:text-xl font-light">
-                    Matching you with someone nearby
-                  </p>
-                </div>
-
-                {/* Loading dots */}
-                <div className="loading-dots flex items-center justify-center space-x-3 py-4">
-                  <span className="w-3 h-3 bg-yellow-400 rounded-full">•</span>
-                  <span className="w-3 h-3 bg-yellow-400 rounded-full">•</span>
-                  <span className="w-3 h-3 bg-yellow-400 rounded-full">•</span>
-                </div>
-
-                {/* Cancel button */}
-                <div className="pt-8 w-full max-w-xs">
-                  <button 
-                    onClick={() => {
-                      console.log('🛑 [CANCEL] User clicked cancel - calling onCancel handler');
-                      if (onCancel) {
-                        onCancel();
-                      }
-                    }}
-                    className="w-full group relative px-8 py-3.5 bg-transparent overflow-hidden rounded-full border border-yellow-400/40 hover:border-yellow-400 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 focus:ring-offset-black"
-                  >
-                    <div className="absolute inset-0 w-0 bg-yellow-400/10 transition-all duration-[250ms] ease-out group-hover:w-full"></div>
-                    <span className="relative text-yellow-400/90 font-semibold tracking-wide group-hover:text-yellow-400">
-                      Cancel Search
-                    </span>
-                  </button>
-                </div>
-
-                {/* Footer text */}
-                <div className="absolute bottom-4 text-xs text-zinc-600 dark:text-zinc-700 max-w-md mx-auto">
-                  <p>By connecting, you agree to our Terms of Service & Privacy Policy.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </>
-    );
-  };
-
   // ✅ STEP 4: Video element STABLE rakho - Already in Dashboard component
   // Video element is in the camera-frame div (lines ~1680)
   // No need for GlobalLocalVideo - video is already properly placed
@@ -2264,8 +2266,9 @@ const Chat = () => {
           <div className="absolute inset-0 z-50">
             {console.log('🎨 [RENDER] Showing WAITING SCREEN')}
             <WaitingScreen 
-              text="Looking for a partner..."
               onCancel={handleCancelSearch}
+              localStreamRef={localStreamRef}
+              cameraStarted={cameraStarted}
             />
           </div>
         )}
