@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import flinxxPremiumLogo from '../assets/flinxx-premium-logo.svg'
+import MobileHome from './MobileHome'
 import './Home.css'
 
 // ✅ HOMEPAGE: Pure hero landing page - NO chat/dashboard components
@@ -8,6 +9,21 @@ import './Home.css'
 const Home = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 769)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 769)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Show mobile dashboard on mobile devices
+  if (isMobile) {
+    return <MobileHome />
+  }
 
   const handleStartChat = () => {
     setIsLoading(true)
