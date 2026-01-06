@@ -576,14 +576,35 @@ const Chat = () => {
   // Duplicate removed - see camera init useEffect at top
 
 
-  // ✅ STREAM RECOVERY: Monitor and recover from stream loss quickly - DISABLED TO TEST
-  // The constant checking and re-attachment was causing flickering
-  // Will re-enable only if needed after testing stable playback
+  // ✅ STREAM RECOVERY: Monitor and recover from stream loss - MINIMAL to avoid flickering
+  // Only checks every 5 seconds and only re-attaches if srcObject is truly lost
   useEffect(() => {
-    // RECOVERY DISABLED - Just monitor quietly
-    const healthCheckInterval = setInterval(() => {
-      // Silent monitoring - don't try to recover
-    }, 500);
+    const checkStreamHealth = () => {
+      try {
+        if (!sharedVideoRef || !localStreamRef.current) {
+          return;
+        }
+        
+        const tracks = localStreamRef.current.getTracks();
+        
+        // ONLY re-attach if srcObject is lost (not on every check)
+        if (!sharedVideoRef.srcObject && tracks.length > 0) {
+          console.warn('📹 ⚠️ srcObject lost! Re-attaching stream');
+          sharedVideoRef.srcObject = localStreamRef.current;
+          sharedVideoRef.muted = true;
+          
+          // Try to play after re-attachment
+          sharedVideoRef.play().catch(err => {
+            console.warn('📹 Play error after recovery:', err.message);
+          });
+        }
+      } catch (err) {
+        console.error('📹 Stream health check error:', err);
+      }
+    };
+    
+    // Check every 5 seconds (not 500ms) to avoid constant interference
+    const healthCheckInterval = setInterval(checkStreamHealth, 5000);
     
     return () => clearInterval(healthCheckInterval);
   }, []);
