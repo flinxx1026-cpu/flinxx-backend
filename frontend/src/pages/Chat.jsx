@@ -30,15 +30,6 @@ const CameraPanel = React.memo(() => {
   // Access the shared ref (will be set by Chat component)
   const localVideoRef = { current: sharedVideoRef };
   
-  console.log('📹 [CAMERA PANEL] Rendering camera panel (FINAL RENDER)');
-  console.log('📹 [CAMERA PANEL] sharedVideoRef at render time:', !!sharedVideoRef);
-  
-  // DEBUG: Ensure video element will be in DOM
-  React.useEffect(() => {
-    console.log('📹 [CAMERA PANEL EFFECT] CameraPanel mounted in DOM');
-    console.log('📹 [CAMERA PANEL EFFECT] Video element in DOM:', document.querySelector('video') !== null);
-    return () => console.log('📹 [CAMERA PANEL EFFECT] CameraPanel unmounted');
-  }, []);
   return (
     <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
       {/* Camera Frame with Video */}
@@ -576,38 +567,9 @@ const Chat = () => {
   // Duplicate removed - see camera init useEffect at top
 
 
-  // ✅ STREAM RECOVERY: Monitor and recover from stream loss - MINIMAL to avoid flickering
-  // Only checks every 5 seconds and only re-attaches if srcObject is truly lost
-  useEffect(() => {
-    const checkStreamHealth = () => {
-      try {
-        if (!sharedVideoRef || !localStreamRef.current) {
-          return;
-        }
-        
-        const tracks = localStreamRef.current.getTracks();
-        
-        // ONLY re-attach if srcObject is lost (not on every check)
-        if (!sharedVideoRef.srcObject && tracks.length > 0) {
-          console.warn('📹 ⚠️ srcObject lost! Re-attaching stream');
-          sharedVideoRef.srcObject = localStreamRef.current;
-          sharedVideoRef.muted = true;
-          
-          // Try to play after re-attachment
-          sharedVideoRef.play().catch(err => {
-            console.warn('📹 Play error after recovery:', err.message);
-          });
-        }
-      } catch (err) {
-        console.error('📹 Stream health check error:', err);
-      }
-    };
-    
-    // Check every 5 seconds (not 500ms) to avoid constant interference
-    const healthCheckInterval = setInterval(checkStreamHealth, 5000);
-    
-    return () => clearInterval(healthCheckInterval);
-  }, []);
+  // ✅ NO RECOVERY - Stream should stay stable after initial attachment
+  // Any interference causes flickering. Let the browser handle playback.
+  // If stream truly dies, user can refresh the page.
 
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
   // This function is called inside socket event handlers
