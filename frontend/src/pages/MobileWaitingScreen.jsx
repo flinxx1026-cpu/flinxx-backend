@@ -22,16 +22,6 @@ const MobileWaitingScreen = ({ onCancel }) => {
 
   return (
     <div className="mobile-waiting-container">
-      {/* Status Bar */}
-      <div className="status-bar">
-        <span className="time">9:41</span>
-        <div className="status-icons">
-          <span className="material-icons-round">signal_cellular_alt</span>
-          <span className="material-icons-round">wifi</span>
-          <span className="material-icons-round">battery_full</span>
-        </div>
-      </div>
-
       {/* Content Container */}
       <div className="waiting-content">
         {/* Top Half - Your Camera Section */}
