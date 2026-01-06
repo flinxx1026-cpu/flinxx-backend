@@ -575,19 +575,6 @@ const Chat = () => {
   
   // Duplicate removed - see camera init useEffect at top
 
-  // ✅ RESUME PLAYBACK: If video pauses for any reason, resume immediately
-  useEffect(() => {
-    // Use a polling approach since we can't set up event listeners on shared ref initially
-    const resumeInterval = setInterval(() => {
-      if (sharedVideoRef && sharedVideoRef.paused && sharedVideoRef.srcObject) {
-        console.warn('📹 [RESUME CHECK] Video was paused! Resuming...');
-        sharedVideoRef.play()
-          .catch(e => console.warn('📹 [RESUME CHECK] Resume error:', e.message));
-      }
-    }, 500); // Check every 500ms
-    
-    return () => clearInterval(resumeInterval);
-  }, []);
 
   // ✅ STREAM RECOVERY: Monitor and recover from stream loss quickly
   // Checks frequently but doesn't interfere with playback
