@@ -80,6 +80,7 @@ const Chat = () => {
   console.log("RENDER START");
 
   // ✅ Get DuoSquad context (manages state at Layout level to prevent remounting)
+  console.error('🔴 ABOUT TO CALL useDuoSquad');
   const { activeMode, setActiveMode, handleModeChange, openDuoSquad } = useDuoSquad();
 
   // ✅ ALL HOOKS FIRST - BEFORE ANY LOGIC OR RETURNS
@@ -150,10 +151,13 @@ const Chat = () => {
   console.log("HOOKS DONE");
 
   // ✅ HARD BLOCK: Don't render anything until auth is ready
+  console.error('🔴 CHECKING USER UUID:', !!user?.uuid, user?.uuid?.length);
   if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
     console.log('⏳ Chat: Waiting for valid user UUID from AuthContext...');
     return null;
   }
+  
+  console.error('🔴 PASSED UUID CHECK - ABOUT TO RUN USEEFFECTS');
 
   // ✅ NOW CONSOLE LOG AND LOGIC AFTER ALL HOOKS
   console.log('🎯 CHAT COMPONENT LOADED - BUILD: 895cedd (temporal deadzone fix - move hooks to top)');
