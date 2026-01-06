@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useDuoSquad } from '../context/DuoSquadContext';
 import socket from '../services/socketService';
+import MobileWaitingScreen from './MobileWaitingScreen';
 import { getIceServers, getMediaConstraints, formatTime, logIceServers } from '../utils/webrtcUtils';
 import PremiumModal from '../components/PremiumModal';
 import GenderFilterModal from '../components/GenderFilterModal';
@@ -224,6 +225,24 @@ const IntroScreen = React.memo(({
 // ✅ WAITING SCREEN - Module-level component (memoized) to prevent recreation on every Chat render
 // This prevents the video ref callback from firing repeatedly, which causes flickering
 const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) => {
+  // Check if mobile device
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 769);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // ✅ MOBILE VIEW: Show mobile waiting screen on mobile devices
+  if (isMobile) {
+    return <MobileWaitingScreen onCancel={onCancel} />;
+  }
+
+  // ✅ DESKTOP VIEW: Show desktop waiting screen
   // ✅ Ref callback to attach stream - fires when element mounts, not on every render
   // Module-level component + memoization ensures this fires only once
   const handleWaitingVideoRef = React.useCallback((videoElement) => {
