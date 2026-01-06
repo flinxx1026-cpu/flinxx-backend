@@ -242,7 +242,7 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
         console.warn('📺 [WAITING SCREEN] Play warning:', err.message);
       });
     }
-  }, [localStreamRef]);
+  }, []);  // ✅ EMPTY dependency array - localStreamRef is accessed via closure, not as dependency
 
   // Force dark mode when visible
   React.useEffect(() => {
