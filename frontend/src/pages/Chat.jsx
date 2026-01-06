@@ -567,9 +567,30 @@ const Chat = () => {
   // Duplicate removed - see camera init useEffect at top
 
 
-  // ✅ NO RECOVERY - Stream should stay stable after initial attachment
-  // Any interference causes flickering. Let the browser handle playback.
-  // If stream truly dies, user can refresh the page.
+  // ✅ ONE-TIME VERIFICATION: Check after 1 second that stream is properly attached
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (sharedVideoRef && localStreamRef.current) {
+        console.log('📹 [VERIFY] Stream attached:', {
+          srcObject: !!sharedVideoRef.srcObject,
+          paused: sharedVideoRef.paused,
+          tracks: localStreamRef.current.getTracks().length,
+          readyState: sharedVideoRef.readyState,
+          networkState: sharedVideoRef.networkState
+        });
+        
+        // If not playing, try to play
+        if (sharedVideoRef.paused) {
+          console.log('📹 [VERIFY] Video is paused, attempting play...');
+          sharedVideoRef.play().catch(err => {
+            console.warn('📹 [VERIFY] Play failed:', err.message);
+          });
+        }
+      }
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
   // This function is called inside socket event handlers
