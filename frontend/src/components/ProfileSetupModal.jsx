@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import BirthdayPicker from './BirthdayPicker'
 
 const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
   const [birthday, setBirthday] = useState('')
@@ -117,116 +116,152 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 my-8">
-        <div className="p-8">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Complete Your Profile</h2>
-            <p className="text-gray-600 text-sm">Just a few more details to get started</p>
-          </div>
-
-          {/* Profile Photo */}
-          <div className="flex justify-center mb-6">
-            {user.picture || user.photoURL ? (
-              <img
-                src={user.picture || user.photoURL}
-                alt={user.name || user.displayName}
-                className="w-20 h-20 rounded-full object-cover border-4 border-blue-500"
-              />
-            ) : (
-              <div className="w-20 h-20 rounded-full bg-gray-300 flex items-center justify-center border-4 border-blue-500">
-                <span className="text-gray-600 text-2xl">👤</span>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4 sm:p-6">
+      <div className="w-full max-w-2xl bg-[#0f172a] rounded-3xl shadow-2xl border-2 border-[#D4AF37] relative overflow-hidden">
+        {/* Top gradient line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-60"></div>
+        
+        <div className="p-8 md:p-12 pt-32">
+          {/* Header with Avatar */}
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-8 mb-8 border-b border-[#334155] border-opacity-40 pb-6">
+            {/* Avatar */}
+            <div className="relative shrink-0">
+              <div className="w-20 h-20 rounded-full bg-[#1e293b] border border-[#D4AF37] border-opacity-30 p-1 shadow-lg">
+                <div className="w-full h-full rounded-full bg-[#0f172a] overflow-hidden flex items-center justify-center">
+                  {user.picture || user.photoURL ? (
+                    <img
+                      src={user.picture || user.photoURL}
+                      alt={user.name || user.displayName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-2xl font-medium text-[#D4AF37] font-display">
+                      {(user.name || user.displayName || 'J').charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
+            
+            <div className="flex-1">
+              <h1 className="font-display text-3xl font-semibold text-[#f8fafc] tracking-tight">My Profile</h1>
+            </div>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700 text-sm font-medium">{error}</p>
+            <div className="mb-6 p-4 bg-red-900 bg-opacity-20 border border-red-500 border-opacity-40 rounded-lg">
+              <p className="text-red-400 text-sm font-medium">{error}</p>
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleSaveProfile} className="space-y-4">
-            {/* Name Field (Read-only) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Name
+          <form onSubmit={handleSaveProfile} className="space-y-8 mt-10">
+            {/* Name Field */}
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold uppercase tracking-widest text-[#D4AF37] text-opacity-90 ml-1">
+                Full Name
               </label>
-              <input
-                type="text"
-                value={user.name || user.displayName || ''}
-                disabled
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={user.name || user.displayName || ''}
+                  disabled
+                  className="block w-full px-4 py-3.5 bg-black border border-[#334155] rounded-lg text-[#f8fafc] placeholder-[#94a3b8] placeholder-opacity-50 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all shadow-sm cursor-not-allowed opacity-60"
+                />
+              </div>
             </div>
 
-            {/* Birthday Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Birthday <span className="text-red-500">*</span>
-              </label>
-              <BirthdayPicker
-                value={birthday}
-                onChange={setBirthday}
-                maxDate={new Date()}
-              />
-              {age !== null && (
-                <p className="text-xs text-gray-600 mt-1">
-                  Age: <span className={age < 18 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>{age} years old</span>
-                </p>
-              )}
-            </div>
+            {/* Grid for Gender and Birthday */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+              {/* Gender Field with Radio Buttons */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-widest text-[#D4AF37] text-opacity-90 ml-1">
+                  Gender
+                </label>
+                <div className="flex bg-black rounded-lg p-1 border border-[#334155] h-[50px] items-center">
+                  <label className="flex-1 relative cursor-pointer h-full">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="male"
+                      checked={gender === 'male'}
+                      onChange={(e) => setGender(e.target.value)}
+                      className="peer sr-only"
+                    />
+                    <div className="w-full h-full flex items-center justify-center gap-2 rounded text-sm text-[#94a3b8] hover:text-white transition-all peer-checked:bg-[#1e293b] peer-checked:text-[#D4AF37] peer-checked:shadow-sm peer-checked:font-medium">
+                      <span>👨</span>
+                      <span>Male</span>
+                    </div>
+                  </label>
+                  <div className="w-px h-4 bg-[#334155] mx-1"></div>
+                  <label className="flex-1 relative cursor-pointer h-full">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="female"
+                      checked={gender === 'female'}
+                      onChange={(e) => setGender(e.target.value)}
+                      className="peer sr-only"
+                    />
+                    <div className="w-full h-full flex items-center justify-center gap-2 rounded text-sm text-[#94a3b8] hover:text-white transition-all peer-checked:bg-[#1e293b] peer-checked:text-[#D4AF37] peer-checked:shadow-sm peer-checked:font-medium">
+                      <span>👩</span>
+                      <span>Female</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
 
-            {/* Gender Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Gender <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white text-gray-900 appearance-none cursor-pointer"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 0.75rem center',
-                  backgroundSize: '1.5em 1.5em',
-                  paddingRight: '2.5rem'
-                }}
-                required
-              >
-                <option value="" disabled>Select gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
+              {/* Birthday Field */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-widest text-[#D4AF37] text-opacity-90 ml-1">
+                  Date of Birth
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <span className="text-lg">🎂</span>
+                  </div>
+                  <input
+                    type="date"
+                    value={birthday}
+                    onChange={(e) => setBirthday(e.target.value)}
+                    className="block w-full pl-10 pr-4 py-3.5 bg-black border border-[#334155] rounded-lg text-[#f8fafc] placeholder-[#94a3b8] placeholder-opacity-50 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all shadow-sm"
+                    required
+                  />
+                </div>
+                {age !== null && (
+                  <p className="text-xs mt-2">
+                    Age: <span className={age < 18 ? 'text-red-400 font-bold' : 'text-green-400 font-bold'}>{age} years old</span>
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Save Button */}
-            <button
-              type="submit"
-              disabled={isSaveDisabled}
-              className={`w-full py-3 px-4 rounded-lg font-medium transition mt-6 ${
-                isSaveDisabled
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
-              }`}
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <span className="inline-block animate-spin mr-2">⏳</span>
-                  Saving...
-                </span>
-              ) : (
-                'Save Profile'
-              )}
-            </button>
+            <div className="pt-6 flex flex-col-reverse sm:flex-row items-center justify-end gap-4 border-t border-[#334155] border-opacity-40 mt-8">
+              <button
+                type="submit"
+                disabled={isSaveDisabled}
+                className={`w-full sm:w-auto px-8 py-3 rounded-lg font-bold shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center ${
+                  isSaveDisabled
+                    ? 'bg-[#334155] text-[#94a3b8] cursor-not-allowed opacity-60'
+                    : 'bg-[#D4AF37] hover:bg-[#B5952F] text-[#0f172a] hover:shadow-xl'
+                }`}
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <span className="inline-block animate-spin mr-2">⏳</span>
+                    Saving...
+                  </span>
+                ) : (
+                  <span>Save Profile</span>
+                )}
+              </button>
+            </div>
           </form>
 
           {/* Info Text */}
-          <p className="text-xs text-gray-500 text-center mt-4">
+          <p className="text-xs text-[#94a3b8] text-center mt-6">
             Your birthday and gender cannot be changed after saving.
           </p>
         </div>
