@@ -95,10 +95,6 @@ const MobileWaitingScreen = ({ onCancel }) => {
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Border Accent */}
-      <div className="border-accent"></div>
     </div>
   )
 }
