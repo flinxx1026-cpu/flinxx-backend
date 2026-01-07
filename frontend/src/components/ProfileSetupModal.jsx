@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import CommunityStandardsModal from './CommunityStandardsModal'
 
 const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
   const [birthday, setBirthday] = useState('2002-01-01')
@@ -7,6 +8,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
   const [age, setAge] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [showCommunityStandards, setShowCommunityStandards] = useState(false)
   const navigate = useNavigate()
 
   // Calculate age from birthday
@@ -99,16 +101,20 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
         onProfileComplete(updatedUser)
       }
 
-      // Redirect to chat home screen (not directly to video chat)
-      setTimeout(() => {
-        navigate('/chat?view=home')
-      }, 500)
+      // Show Community Standards screen instead of redirecting immediately
+      setLoading(false)
+      setShowCommunityStandards(true)
     } catch (err) {
       console.error('❌ Error saving profile:', err)
       setError(err.message || 'Network error. Please try again.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleCommunityStandardsAccept = () => {
+    // Redirect to chat home screen after accepting community standards
+    navigate('/chat?view=home')
   }
 
   if (!isOpen || !user) {
@@ -274,6 +280,12 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
           </p>
         </div>
       </div>
+
+      {/* Community Standards Modal - Shows after profile is saved */}
+      <CommunityStandardsModal 
+        isOpen={showCommunityStandards} 
+        onAccept={handleCommunityStandardsAccept}
+      />
     </div>
   )
 }
