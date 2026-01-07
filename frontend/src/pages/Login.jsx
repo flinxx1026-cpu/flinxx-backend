@@ -52,13 +52,13 @@ const GoogleCustomButton = ({ isSigningIn, onShowTermsModal }) => {
     <button
       onClick={handleGoogleClick}
       disabled={isSigningIn}
-      className={`w-full py-3 px-6 rounded-full transition-all text-lg font-bold flex items-center justify-center gap-3 ${
+      className={`w-full py-2.5 md:py-3 px-8 md:px-10 rounded-2xl md:rounded-3xl transition-all text-base md:text-lg font-semibold flex items-center justify-center gap-3 ${
         isSigningIn
-          ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+          ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
           : 'bg-white hover:bg-gray-50 text-black shadow-lg hover:shadow-xl transform hover:scale-105'
       }`}
     >
-      <img src={googleIcon} alt="Google" className="w-6 h-6" />
+      <img src={googleIcon} alt="Google" className="w-5 h-5 md:w-6 md:h-6" />
       Continue with Google
     </button>
   )
@@ -268,92 +268,103 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4 md:p-8">
       <div className="w-full max-w-md">
-        {/* Welcome Card */}
-        <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 text-center mb-8">
-          <h1 className="text-4xl font-black text-white mb-4">Welcome to Flinxx</h1>
-          <p className="text-lg text-white/80">Connect with strangers instantly</p>
-          <p className="text-sm text-white/70 mt-2">Sign up to get started</p>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
-            <p className="text-red-200 text-sm">{error}</p>
+        {/* Main Container */}
+        <div className="text-center">
+          {/* Logo Section */}
+          <div className="mb-8 md:mb-10">
+            <img src={flinxxLogo} alt="Flinxx" className="w-12 h-12 md:w-14 md:h-14 mx-auto mb-4" />
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Welcome to Flinxx</h1>
+            <p className="text-sm md:text-base text-white/70">Connect with strangers instantly</p>
           </div>
-        )}
 
-        {/* Sign In / Login Buttons */}
-        <div className="space-y-4">
-          {/* Signing In Button (when loading) */}
-          {isSigningIn && (
-            <button
-              disabled
-              className="w-full bg-gray-400 cursor-not-allowed text-gray-700 font-bold py-3 px-6 rounded-full transition-all text-lg flex items-center justify-center gap-2"
-            >
-              <span className="animate-spin">⟳</span> Signing in...
-            </button>
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-3 md:p-4 bg-red-500/20 border border-red-500/50 rounded-2xl md:rounded-3xl">
+              <p className="text-red-200 text-xs md:text-sm">{error}</p>
+            </div>
           )}
 
-          {/* Custom Google Login Button */}
-          <GoogleCustomButton 
-            isSigningIn={isSigningIn}
-            onShowTermsModal={handleShowTermsModal}
-          />
+          {/* Authentication Buttons */}
+          <div className="space-y-3 md:space-y-4 mb-8 md:mb-10">
+            {/* Signing In Button (when loading) */}
+            {isSigningIn && (
+              <button
+                disabled
+                className="w-full bg-gray-600 cursor-not-allowed text-gray-300 font-semibold py-2.5 md:py-3 px-8 md:px-10 rounded-2xl md:rounded-3xl transition-all text-base md:text-lg flex items-center justify-center gap-2"
+              >
+                <span className="animate-spin">⟳</span> Signing in...
+              </button>
+            )}
 
-          {/* Facebook Login Button */}
-          <button
-            onClick={handleFacebookLogin}
-            disabled={isSigningIn}
-            className={`w-full py-3 px-6 rounded-full transition-all text-lg font-bold flex items-center justify-center gap-3 ${
-              isSigningIn
-                ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
-            }`}
-          >
-            <span className="text-xl">f</span> Continue with Facebook
-          </button>
-        </div>
+            {/* Google Login Button */}
+            {!isSigningIn && (
+              <GoogleCustomButton 
+                isSigningIn={isSigningIn}
+                onShowTermsModal={handleShowTermsModal}
+              />
+            )}
 
-        {/* Terms */}
-        <div className="text-center mt-8">
-          <p className="text-xs text-white/60">
-            By signing in, you agree to our{' '}
-            <a
-              href="/terms"
-              className="text-white/80 hover:text-white underline"
-              onClick={(e) => { e.preventDefault(); window.location.href = '/terms'; }}
-            >
-              TERMS & CONDITIONS
-            </a>
-            {' '}and{' '}
-            <a href="/privacy-policy" className="text-white/80 hover:text-white underline" onClick={(e) => { e.preventDefault(); window.location.href = '/privacy-policy'; }}>
-              Privacy Policy
-            </a>
-          </p>
-        </div>
-
-        {/* Features Section */}
-        <div className="mt-10 flex flex-col items-center gap-3 text-white/80 text-sm">
-          <div className="flex items-center gap-2">
-            <span>⚡</span>
-            <p>Instant connection with strangers</p>
+            {/* Facebook Login Button */}
+            {!isSigningIn && (
+              <button
+                onClick={handleFacebookLogin}
+                disabled={isSigningIn}
+                className="w-full py-2.5 md:py-3 px-8 md:px-10 rounded-2xl md:rounded-3xl transition-all text-base md:text-lg font-semibold flex items-center justify-center gap-3 border-2 border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 hover:shadow-lg transform hover:scale-105"
+              >
+                <svg className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+                Continue with Facebook
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <span>👤</span>
-            <p>100% Anonymous & Safe</p>
+          {/* Features */}
+          <div className="mb-8 md:mb-10 space-y-3 md:space-y-4">
+            <div className="flex items-center justify-center gap-3">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-[#D4AF37]" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
+              </svg>
+              <span className="text-sm md:text-base text-white/80">Instant connection with strangers</span>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-[#D4AF37]" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="1"/><path d="M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22z"/>
+              </svg>
+              <span className="text-sm md:text-base text-white/80">100% Anonymous & Safe</span>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <svg className="w-5 h-5 md:w-6 md:h-6 text-[#D4AF37]" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+              </svg>
+              <span className="text-sm md:text-base text-white/80">High-quality Video Chat</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span>🎥</span>
-            <p>High-quality Video Chat</p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span>🌍</span>
-            <p>Connect Worldwide</p>
+          {/* Terms & Conditions */}
+          <div className="text-center text-xs md:text-sm">
+            <p className="text-white/70 mb-2">
+              By signing in, you agree to our
+            </p>
+            <p>
+              <a
+                href="/terms"
+                className="text-[#D4AF37] hover:text-[#E3C55D] underline transition-colors font-semibold"
+                onClick={(e) => { e.preventDefault(); window.location.href = '/terms'; }}
+              >
+                Terms & Conditions
+              </a>
+              <span className="text-white/70"> and </span>
+              <a
+                href="/privacy-policy"
+                className="text-[#D4AF37] hover:text-[#E3C55D] underline transition-colors font-semibold"
+                onClick={(e) => { e.preventDefault(); window.location.href = '/privacy-policy'; }}
+              >
+                Privacy Policy
+              </a>
+            </p>
           </div>
         </div>
       </div>
