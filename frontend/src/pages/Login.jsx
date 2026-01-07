@@ -5,6 +5,7 @@ import flinxxLogo from '../assets/flinxx-logo.svg'
 import googleIcon from '../assets/google-icon.svg'
 import { signInWithGoogle, signInWithFacebook, checkRedirectResult } from '../config/firebase'
 import TermsConfirmationModal from '../components/TermsConfirmationModal'
+import './Login.css'
 
 // Helper function to check if terms are accepted
 const isTermsAccepted = () => {
@@ -52,13 +53,9 @@ const GoogleCustomButton = ({ isSigningIn, onShowTermsModal }) => {
     <button
       onClick={handleGoogleClick}
       disabled={isSigningIn}
-      className={`w-full py-2.5 md:py-3 px-8 md:px-10 rounded-2xl md:rounded-3xl transition-all text-base md:text-lg font-semibold flex items-center justify-center gap-3 ${
-        isSigningIn
-          ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
-          : 'bg-white hover:bg-gray-50 text-black shadow-lg hover:shadow-xl transform hover:scale-105'
-      }`}
+      className="login-btn"
     >
-      <img src={googleIcon} alt="Google" className="w-5 h-5 md:w-6 md:h-6" />
+      <img src={googleIcon} alt="Google" />
       Continue with Google
     </button>
   )
@@ -268,105 +265,64 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4 md:p-8">
-      <div className="w-full max-w-md">
-        {/* Main Container */}
-        <div className="text-center">
-          {/* Logo Section */}
-          <div className="mb-8 md:mb-10">
-            <img src={flinxxLogo} alt="Flinxx" className="w-12 h-12 md:w-14 md:h-14 mx-auto mb-4" />
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Welcome to Flinxx</h1>
-            <p className="text-sm md:text-base text-white/70">Connect with strangers instantly</p>
-          </div>
+    <div className="login-container">
+      {/* Card Section */}
+      <div className="login-card">
+        <h1>Welcome to <span>Flinxx</span></h1>
+        <p className="login-subtitle">Connect with strangers instantly</p>
+        <p className="login-signup">SIGN UP TO GET STARTED</p>
+      </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 p-3 md:p-4 bg-red-500/20 border border-red-500/50 rounded-2xl md:rounded-3xl">
-              <p className="text-red-200 text-xs md:text-sm">{error}</p>
-            </div>
-          )}
+      {/* Error Message */}
+      {error && (
+        <p className="login-error">{error}</p>
+      )}
 
-          {/* Authentication Buttons */}
-          <div className="space-y-3 md:space-y-4 mb-8 md:mb-10">
-            {/* Signing In Button (when loading) */}
-            {isSigningIn && (
-              <button
-                disabled
-                className="w-full bg-gray-600 cursor-not-allowed text-gray-300 font-semibold py-2.5 md:py-3 px-8 md:px-10 rounded-2xl md:rounded-3xl transition-all text-base md:text-lg flex items-center justify-center gap-2"
-              >
-                <span className="animate-spin">⟳</span> Signing in...
-              </button>
-            )}
+      {/* Signing In Button */}
+      {isSigningIn && (
+        <button
+          disabled
+          className="login-btn"
+          style={{ opacity: 0.6, cursor: 'not-allowed' }}
+        >
+          <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span> Signing in...
+        </button>
+      )}
 
-            {/* Google Login Button */}
-            {!isSigningIn && (
-              <GoogleCustomButton 
-                isSigningIn={isSigningIn}
-                onShowTermsModal={handleShowTermsModal}
-              />
-            )}
+      {/* Google Login Button */}
+      {!isSigningIn && (
+        <GoogleCustomButton 
+          isSigningIn={isSigningIn}
+          onShowTermsModal={handleShowTermsModal}
+        />
+      )}
 
-            {/* Facebook Login Button */}
-            {!isSigningIn && (
-              <button
-                onClick={handleFacebookLogin}
-                disabled={isSigningIn}
-                className="w-full py-2.5 md:py-3 px-8 md:px-10 rounded-2xl md:rounded-3xl transition-all text-base md:text-lg font-semibold flex items-center justify-center gap-3 border-2 border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10 hover:shadow-lg transform hover:scale-105"
-              >
-                <svg className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-                Continue with Facebook
-              </button>
-            )}
-          </div>
+      {/* Facebook Login Button */}
+      {!isSigningIn && (
+        <button
+          onClick={handleFacebookLogin}
+          disabled={isSigningIn}
+          className="login-btn"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ width: '18px', height: '18px' }}>
+            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+          </svg>
+          Continue with Facebook
+        </button>
+      )}
 
-          {/* Features */}
-          <div className="mb-8 md:mb-10 space-y-3 md:space-y-4">
-            <div className="flex items-center justify-center gap-3">
-              <svg className="w-5 h-5 md:w-6 md:h-6 text-[#D4AF37]" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
-              </svg>
-              <span className="text-sm md:text-base text-white/80">Instant connection with strangers</span>
-            </div>
-            <div className="flex items-center justify-center gap-3">
-              <svg className="w-5 h-5 md:w-6 md:h-6 text-[#D4AF37]" fill="currentColor" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="1"/><path d="M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22z"/>
-              </svg>
-              <span className="text-sm md:text-base text-white/80">100% Anonymous & Safe</span>
-            </div>
-            <div className="flex items-center justify-center gap-3">
-              <svg className="w-5 h-5 md:w-6 md:h-6 text-[#D4AF37]" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-              </svg>
-              <span className="text-sm md:text-base text-white/80">High-quality Video Chat</span>
-            </div>
-          </div>
+      {/* Terms & Conditions */}
+      <p className="login-terms">
+        By signing in, you agree to our
+        <span onClick={(e) => { e.preventDefault(); window.location.href = '/terms'; }}> Terms & Conditions</span> and
+        <span onClick={(e) => { e.preventDefault(); window.location.href = '/privacy-policy'; }}> Privacy Policy</span>
+      </p>
 
-          {/* Terms & Conditions */}
-          <div className="text-center text-xs md:text-sm">
-            <p className="text-white/70 mb-2">
-              By signing in, you agree to our
-            </p>
-            <p>
-              <a
-                href="/terms"
-                className="text-[#D4AF37] hover:text-[#E3C55D] underline transition-colors font-semibold"
-                onClick={(e) => { e.preventDefault(); window.location.href = '/terms'; }}
-              >
-                Terms & Conditions
-              </a>
-              <span className="text-white/70"> and </span>
-              <a
-                href="/privacy-policy"
-                className="text-[#D4AF37] hover:text-[#E3C55D] underline transition-colors font-semibold"
-                onClick={(e) => { e.preventDefault(); window.location.href = '/privacy-policy'; }}
-              >
-                Privacy Policy
-              </a>
-            </p>
-          </div>
-        </div>
+      {/* Features */}
+      <div className="login-features">
+        <div>⚡ Fast connection</div>
+        <div>✨ Clean & modern design</div>
+        <div>👤 Smart matching with real users</div>
       </div>
 
       {/* Terms Confirmation Modal */}
