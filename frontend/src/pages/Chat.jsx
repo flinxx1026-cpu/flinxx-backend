@@ -287,10 +287,13 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
           40% { transform: scale(1); opacity: 1; }
         }
         .search-icon-wrapper {
-          position: relative;
+          position: absolute;
           display: inline-block;
           width: fit-content;
           height: fit-content;
+          top: -60px;
+          left: 50%;
+          transform: translateX(-50%);
         }
         @keyframes searchFloat {
           0% {
