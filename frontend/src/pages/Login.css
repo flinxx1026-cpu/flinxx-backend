@@ -20,6 +20,7 @@ html, body {
   align-items: center;
   justify-content: center;
   overflow: auto;
+  min-height: 100vh;
 }
 
 .login-container {
@@ -27,6 +28,7 @@ html, body {
   max-width: 420px;
   text-align: center;
   padding: 20px;
+  margin: auto;
 }
 
 .login-card {
