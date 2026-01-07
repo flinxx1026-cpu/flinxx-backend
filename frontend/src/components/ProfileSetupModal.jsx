@@ -9,6 +9,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
   const [showCommunityStandards, setShowCommunityStandards] = useState(false)
+  const [updatedUserData, setUpdatedUserData] = useState(null)
   const navigate = useNavigate()
 
   // Calculate age from birthday
@@ -97,9 +98,8 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
       localStorage.setItem('profileCompleted', 'true')
       localStorage.setItem('user', JSON.stringify(updatedUser))
 
-      if (onProfileComplete) {
-        onProfileComplete(updatedUser)
-      }
+      // Store updated user data for later use after Community Standards acceptance
+      setUpdatedUserData(updatedUser)
 
       // Show Community Standards screen instead of redirecting immediately
       setLoading(false)
@@ -113,6 +113,10 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
   }
 
   const handleCommunityStandardsAccept = () => {
+    // Notify parent component AFTER user accepts community standards
+    if (onProfileComplete && updatedUserData) {
+      onProfileComplete(updatedUserData)
+    }
     // Redirect to chat home screen after accepting community standards
     navigate('/chat?view=home')
   }
