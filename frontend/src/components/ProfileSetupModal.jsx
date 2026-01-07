@@ -117,7 +117,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
     navigate('/chat?view=home')
   }
 
-  if (!isOpen || !user) {
+  if (!isOpen && !showCommunityStandards || !user) {
     return null
   }
 
@@ -135,6 +135,8 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
         {/* Top gradient line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-60"></div>
         
+        {/* Profile Form - Hidden when showing community standards */}
+        {!showCommunityStandards && (
         <div className="p-8 md:p-12 pt-32">
           {/* Header with Avatar */}
           <div className="flex flex-col md:flex-row items-start md:items-center gap-8 mb-8 border-b border-[#334155] border-opacity-40 pb-6">
@@ -279,6 +281,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
             Your birthday and gender cannot be changed after saving.
           </p>
         </div>
+        )}
       </div>
 
       {/* Community Standards Modal - Shows after profile is saved */}
