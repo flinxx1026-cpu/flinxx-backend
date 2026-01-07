@@ -291,9 +291,9 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
           display: inline-block;
           width: fit-content;
           height: fit-content;
-          top: -100px;
-          left: 50%;
-          transform: translateX(-50%);
+          top: 60px;
+          left: 80px;
+          transform: none;
         }
         @keyframes searchFloat {
           0% {
