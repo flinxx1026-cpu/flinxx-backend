@@ -368,7 +368,7 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
 
           {/* Right panel - Waiting screen */}
           <div className="w-full md:w-1/2 h-full flex flex-col relative group">
-            <div className="relative w-full h-full border-2 border-yellow-400/60 dark:border-yellow-400/80 rounded-3xl overflow-hidden bg-black shadow-2xl gold-glow transition-all duration-500 hover:border-yellow-400 flex flex-col items-center justify-center text-center space-y-8">
+            <div className="relative w-full h-full border-2 border-yellow-400/60 dark:border-yellow-400/80 rounded-3xl overflow-visible bg-black shadow-2xl gold-glow transition-all duration-500 hover:border-yellow-400 flex flex-col items-center justify-center text-center space-y-8">
               
               {/* Animated search icon */}
               <div className="relative mb-4">
