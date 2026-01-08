@@ -265,64 +265,100 @@ const Login = () => {
   }
 
   return (
-    <div className="login-container">
-      {/* Card Section */}
-      <div className="login-card">
-        <h1>Welcome to <span>Flinxx</span></h1>
-        <p className="login-subtitle">Connect with strangers instantly</p>
-        <p className="login-signup">SIGN UP TO GET STARTED</p>
+    <div className="w-full max-w-lg mx-auto flex flex-col items-center">
+      <div className="w-full rounded-3xl p-10 sm:p-12 mb-9 text-center bg-surface gold-border shadow-gold backdrop-blur-md relative overflow-hidden">
+        <div className="absolute inset-0 bg-shimmer opacity-30 pointer-events-none"></div>
+        <h1 className="text-4xl sm:text-4xl font-bold mb-3 tracking-tight text-gradient-gold drop-shadow-sm">
+          Welcome to Flinxx
+        </h1>
+        <p className="text-gray-300 text-lg font-normal mb-2 tracking-wide">
+          Connect with strangers instantly
+        </p>
+        <p className="text-gold-200/60 text-xs font-medium uppercase tracking-widest mb-0">
+          Sign up to get started
+        </p>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <p className="login-error">{error}</p>
-      )}
-
-      {/* Signing In Button */}
-      {isSigningIn && (
+      <div className="w-full space-y-4 mb-11">
+        {/* Google Login Button */}
         <button
-          disabled
-          className="login-btn"
-          style={{ opacity: 0.6, cursor: 'not-allowed' }}
-        >
-          <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span> Signing in...
-        </button>
-      )}
-
-      {/* Google Login Button */}
-      {!isSigningIn && (
-        <GoogleCustomButton 
-          isSigningIn={isSigningIn}
-          onShowTermsModal={handleShowTermsModal}
-        />
-      )}
-
-      {/* Facebook Login Button */}
-      {!isSigningIn && (
-        <button
-          onClick={handleFacebookLogin}
+          onClick={() => {
+            console.log('🔐 Google login clicked - checking terms acceptance')
+            if (isTermsAccepted()) {
+              console.log('✅ Terms already accepted - proceeding with Google login')
+              const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+              console.log('🔗 Redirecting to Google OAuth:', `${BACKEND_URL}/auth/google`)
+              window.location.href = `${BACKEND_URL}/auth/google`
+            } else {
+              console.log('⚠️ Terms not accepted - showing modal first')
+              handleShowTermsModal('google')
+            }
+          }}
           disabled={isSigningIn}
-          className="login-btn"
+          className="w-full group relative flex items-center justify-center bg-[#0F0F0F] hover:bg-[#141414] text-white font-semibold py-4 px-7 rounded-2xl shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 gold-border hover:border-gold-400/60 hover:shadow-gold-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-gold-400 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ width: '18px', height: '18px' }}>
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-          </svg>
-          Continue with Facebook
+          <span className="absolute left-7 flex items-center opacity-90 group-hover:opacity-100 transition-opacity">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+            </svg>
+          </span>
+          <span className="pl-2 tracking-wide">Continue with Google</span>
         </button>
-      )}
 
-      {/* Terms & Conditions */}
-      <p className="login-terms">
-        By signing in, you agree to our
-        <span onClick={(e) => { e.preventDefault(); window.location.href = '/terms'; }}> Terms & Conditions</span> and
-        <span onClick={(e) => { e.preventDefault(); window.location.href = '/privacy-policy'; }}> Privacy Policy</span>
+        {/* Facebook Login Button */}
+        <button
+          onClick={() => {
+            console.log('🔐 Facebook login clicked - checking terms acceptance')
+            if (isTermsAccepted()) {
+              console.log('✅ Terms already accepted - proceeding with Facebook login')
+              const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+              console.log('🔗 Redirecting to Facebook OAuth:', `${BACKEND_URL}/auth/facebook`)
+              window.location.href = `${BACKEND_URL}/auth/facebook`
+            } else {
+              console.log('⚠️ Terms not accepted - showing modal first')
+              handleShowTermsModal('facebook')
+            }
+          }}
+          disabled={isSigningIn}
+          className="w-full group relative flex items-center justify-center bg-[#0F0F0F] hover:bg-[#141414] text-white font-semibold py-4 px-7 rounded-2xl shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 gold-border hover:border-gold-400/60 hover:shadow-gold-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-gold-400 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <span className="absolute left-7 flex items-center text-[#1877F2] group-hover:text-white transition-colors duration-300">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+          </span>
+          <span className="pl-2 tracking-wide">Continue with Facebook</span>
+        </button>
+      </div>
+
+      <p className="text-xs text-center text-gray-500 mb-11 max-w-xs mx-auto leading-relaxed">
+        By signing in, you agree to our 
+        <a href="/terms" className="text-gold-400 hover:text-white transition-colors underline decoration-gold-400/30 underline-offset-4"> Terms &amp; Conditions</a> and 
+        <a href="/privacy-policy" className="text-gold-400 hover:text-white transition-colors underline decoration-gold-400/30 underline-offset-4"> Privacy Policy</a>
       </p>
 
-      {/* Features */}
-      <div className="login-features">
-        <div>⚡ Fast connection</div>
-        <div>✨ Clean & modern design</div>
-        <div>👤 Smart matching with real users</div>
+      <div className="space-y-4 flex flex-col items-start w-full max-w-xs mx-auto text-sm text-gray-300 font-medium">
+        <div className="flex items-center space-x-4 group">
+          <span className="flex items-center justify-center w-9 h-9 rounded-full bg-gold-400/10 gold-border-subtle group-hover:border-gold-400/40 group-hover:bg-gold-400/20 transition-all duration-300 flex-shrink-0">
+            <span className="material-icons-round text-gold-400 text-sm">bolt</span>
+          </span>
+          <span className="group-hover:text-white transition-colors">Fast connection</span>
+        </div>
+        <div className="flex items-center space-x-4 group">
+          <span className="flex items-center justify-center w-9 h-9 rounded-full bg-gold-400/10 gold-border-subtle group-hover:border-gold-400/40 group-hover:bg-gold-400/20 transition-all duration-300 flex-shrink-0">
+            <span className="material-icons-round text-gold-400 text-sm">auto_awesome</span>
+          </span>
+          <span className="group-hover:text-white transition-colors">Clean &amp; modern design</span>
+        </div>
+        <div className="flex items-center space-x-4 group">
+          <span className="flex items-center justify-center w-9 h-9 rounded-full bg-gold-400/10 gold-border-subtle group-hover:border-gold-400/40 group-hover:bg-gold-400/20 transition-all duration-300 flex-shrink-0">
+            <span className="material-icons-round text-gold-400 text-sm">person</span>
+          </span>
+          <span className="group-hover:text-white transition-colors">Smart matching with real users</span>
+        </div>
       </div>
 
       {/* Terms Confirmation Modal */}
