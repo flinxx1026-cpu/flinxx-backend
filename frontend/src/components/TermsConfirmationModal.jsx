@@ -33,43 +33,104 @@ const TermsConfirmationModal = ({ onContinue, onCancel }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 p-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-          Before you continue
-        </h2>
+    <>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div className="relative w-full max-w-lg rounded-2xl p-8 border shadow-2xl" style={{
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(212, 175, 55, 0.3)',
+          boxShadow: '0 0 50px rgba(212, 175, 55, 0.15)',
+          background: 'rgba(5, 5, 5, 0.8)'
+        }}>
+          <div className="text-center space-y-6">
+            <h2 className="text-3xl font-bold text-white tracking-tight">
+              Before you continue
+            </h2>
+            
+            <div className="space-y-4 text-zinc-300 font-light text-base leading-relaxed">
+              <p>
+                By continuing, you confirm that you are 18 years or older and agree to Flinxx's{' '}
+                <a 
+                  href="/terms-and-conditions" 
+                  className="transition-colors underline" 
+                  style={{ color: 'rgb(212, 175, 55)', textDecorationColor: 'rgba(212, 175, 55, 0.3)', textUnderlineOffset: '4px' }}
+                  onMouseOver={(e) => e.target.style.color = 'rgb(217, 170, 29)'}
+                  onMouseOut={(e) => e.target.style.color = 'rgb(212, 175, 55)'}
+                  onClick={(e) => { e.preventDefault(); window.location.href = '/terms-and-conditions'; }}
+                >
+                  Terms & Conditions
+                </a>{' '}
+                and{' '}
+                <a 
+                  href="/privacy-policy" 
+                  className="transition-colors underline" 
+                  style={{ color: 'rgb(212, 175, 55)', textDecorationColor: 'rgba(212, 175, 55, 0.3)', textUnderlineOffset: '4px' }}
+                  onMouseOver={(e) => e.target.style.color = 'rgb(217, 170, 29)'}
+                  onMouseOut={(e) => e.target.style.color = 'rgb(212, 175, 55)'}
+                  onClick={(e) => { e.preventDefault(); window.location.href = '/privacy-policy'; }}
+                >
+                  Privacy Policy
+                </a>.
+              </p>
+              
+              <p>
+                You understand that Flinxx is a live interaction platform and you use it at your own responsibility.
+              </p>
+            </div>
 
-        <p className="text-gray-700 text-center text-sm">
-          By continuing, you confirm that you are 18 years or older and agree to Flinxx's{' '}
-          <a href="/terms-and-conditions" className="text-blue-600 underline" onClick={(e) => { e.preventDefault(); window.location.href = '/terms-and-conditions'; }}>
-            Terms & Conditions
-          </a>{' '}
-          and{' '}
-          <a href="/privacy-policy" className="text-blue-600 underline" onClick={(e) => { e.preventDefault(); window.location.href = '/privacy-policy'; }}>
-            Privacy Policy
-          </a>.
-        </p>
-
-        <p className="text-gray-700 text-center text-sm mt-4">
-          You understand that Flinxx is a live interaction platform and you use it at your own responsibility.
-        </p>
-
-        <div className="flex gap-4 mt-6">
-          <button
-            onClick={onCancel}
-            className="flex-1 px-4 py-2 bg-gray-200 text-gray-900 font-semibold rounded-lg hover:bg-gray-300 transition-colors"
-          >
-            Decline
-          </button>
-          <button
-            onClick={handleContinue}
-            className="flex-1 px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            Accept & Proceed
-          </button>
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <button
+                onClick={onCancel}
+                className="flex-1 px-6 py-3 rounded-xl border transition-all duration-300 font-medium text-sm"
+                style={{
+                  borderColor: 'rgba(212, 175, 55, 0.2)',
+                  background: 'rgba(139, 107, 0, 0.1)',
+                  color: 'rgb(200, 170, 100)'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(139, 107, 0, 0.3)'
+                  e.currentTarget.style.color = 'rgb(220, 180, 120)'
+                  e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.4)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(139, 107, 0, 0.1)'
+                  e.currentTarget.style.color = 'rgb(200, 170, 100)'
+                  e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.2)'
+                }}
+              >
+                Decline
+              </button>
+              
+              <button
+                onClick={handleContinue}
+                className="flex-1 px-6 py-3 rounded-xl text-black font-bold shadow-lg transition-all duration-300 text-sm"
+                style={{
+                  background: 'linear-gradient(135deg, #DEB72B 0%, #B29222 100%)',
+                  boxShadow: 'rgba(212, 175, 55, 0.2) 0px 0px 20px'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.filter = 'brightness(1.1)'
+                  e.currentTarget.style.boxShadow = 'rgba(212, 175, 55, 0.4) 0px 0px 40px'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.filter = 'brightness(1)'
+                  e.currentTarget.style.boxShadow = 'rgba(212, 175, 55, 0.2) 0px 0px 20px'
+                }}
+              >
+                Accept & Proceed
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+
+      <style>{`
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 1; }
+          50% { opacity: .5; }
+        }
+      `}</style>
+    </>
   )
 }
 
