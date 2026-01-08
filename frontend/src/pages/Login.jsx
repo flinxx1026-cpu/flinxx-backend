@@ -265,7 +265,8 @@ const Login = () => {
   }
 
   return (
-    <div className="w-full max-w-lg mx-auto flex flex-col items-center">
+    <div className="login-page-wrapper">
+      <div className="w-full max-w-lg mx-auto flex flex-col items-center">
       <div className="w-full rounded-3xl p-10 sm:p-12 mb-9 text-center bg-surface gold-border shadow-gold backdrop-blur-md relative overflow-hidden">
         <div className="absolute inset-0 bg-shimmer opacity-30 pointer-events-none"></div>
         <h1 className="text-4xl sm:text-4xl font-bold mb-3 tracking-tight text-gradient-gold drop-shadow-sm">
@@ -368,6 +369,7 @@ const Login = () => {
           onContinue={handleTermsContinue}
         />
       )}
+      </div>
     </div>
   )
 }

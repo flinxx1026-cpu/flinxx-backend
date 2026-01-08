@@ -16,6 +16,13 @@ html, body {
 #root {
   width: 100%;
   display: flex;
+  min-height: 100vh;
+}
+
+/* Login page specific container centering */
+.login-page-wrapper {
+  width: 100%;
+  display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
