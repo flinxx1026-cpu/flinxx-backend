@@ -2069,7 +2069,7 @@ const Chat = () => {
       console.log('🎬 [STATE BEFORE] isSearching:', isSearching, 'partnerFound:', partnerFound);
       
       // EMIT SOCKET EVENT FIRST (synchronous, immediate)
-      socket.emit('start-search', {
+      socket.emit('find_partner', {
         userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
         userName: currentUser.name || 'Anonymous',
         userAge: currentUser.age || 18,
@@ -2077,7 +2077,7 @@ const Chat = () => {
         userPicture: currentUser.picture || null  // Include picture so partner can display it
       });
       
-      console.log('🎬 [SEARCHING] ✅ start-search event emitted immediately');
+      console.log('🎬 [SEARCHING] ✅ find_partner event emitted immediately');
       
       // THEN UPDATE STATE (allow batching)
       setIsSearching(true);
@@ -2095,7 +2095,7 @@ const Chat = () => {
     console.log('STATE BEFORE CANCEL:', { isSearching, partnerFound });
     
     // Emit socket event
-    socket.emit("cancel-search", { userId: userIdRef.current });
+    socket.emit("cancel_matching", { userId: userIdRef.current });
     
     // Reset state
     setIsSearching(false);
