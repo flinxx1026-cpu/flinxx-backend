@@ -96,128 +96,288 @@ const IntroScreen = React.memo(({
 }) => {
   console.log("Dashboard render");
   
-  return (
-    <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
-      {/* LEFT PANEL - Flinxx Heading + Buttons */}
-      <aside className="w-full lg:flex-1 h-full flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300">
-        {/* Top Icons Header - Circular icon buttons */}
-        <div className="icon-row p-6 sm:p-8">
-          {/* Profile Icon - Show profile photo or fallback to user icon */}
-          <button 
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="icon-btn"
-            title="Profile"
-          >
-            {user?.picture ? (
-              <img 
-                src={user.picture} 
-                alt="Profile" 
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '50%',
-                  objectFit: 'cover'
-                }}
-              />
-            ) : (
-              <i className="material-icons-round">person</i>
-            )}
-          </button>
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 769);
 
-          {/* Search Icon */}
-          <button 
-            onClick={() => setActiveTab(activeTab === 'search' ? null : 'search')}
-            className="icon-btn"
-            title="Search"
-          >
-            <i className="material-icons-round">search</i>
-          </button>
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 769);
+    };
 
-          {/* Likes Icon */}
-          <button 
-            onClick={() => setActiveTab(activeTab === 'likes' ? null : 'likes')}
-            className="icon-btn" 
-            title="Likes"
-          >
-            <i className="material-icons-round">favorite</i>
-          </button>
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-          {/* Messages Icon */}
-          <button 
-            onClick={() => setActiveTab(activeTab === 'messages' ? null : 'messages')}
-            className="icon-btn"
-            title="Messages"
-          >
-            <i className="material-icons-round">chat_bubble</i>
-          </button>
-
-          {/* Trophy/Achievements Icon */}
-          <button 
-            onClick={() => setActiveTab(activeTab === 'trophy' ? null : 'trophy')}
-            className="icon-btn"
-            title="Achievements"
-          >
-            <i className="material-icons-round">emoji_events</i>
-          </button>
-
-          {/* History/Timer Icon */}
-          <button 
-            onClick={() => setIsMatchHistoryOpen(!isMatchHistoryOpen)}
-            className="icon-btn"
-            title="History"
-          >
-            <i className="material-icons-round">timer</i>
-          </button>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col items-center justify-start space-y-12 relative z-10 pt-8">
-          {/* Flinxx Title */}
-          <h1 className="font-display text-5xl sm:text-6xl font-bold text-primary tracking-tight drop-shadow-sm select-none">
-            Flinxx
-          </h1>
-
-          {/* Mode Toggle Buttons */}
-          <div className="flex items-center gap-6">
+  // Desktop version
+  if (!isMobile) {
+    return (
+      <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
+        {/* LEFT PANEL - Flinxx Heading + Buttons */}
+        <aside className="w-full lg:flex-1 h-full flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300">
+          {/* Top Icons Header - Circular icon buttons */}
+          <div className="icon-row p-6 sm:p-8">
+            {/* Profile Icon - Show profile photo or fallback to user icon */}
             <button 
-              className={`px-8 py-3 rounded-xl font-semibold text-lg shadow-glow transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${activeMode === 'solo' ? 'bg-primary text-black hover:shadow-glow-hover hover:bg-primary-hover' : 'border border-primary text-primary hover:bg-primary/10'}`}
-              onClick={() => setActiveMode('solo')}
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className="icon-btn"
+              title="Profile"
             >
-              SoloX
+              {user?.picture ? (
+                <img 
+                  src={user.picture} 
+                  alt="Profile" 
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                <i className="material-icons-round">person</i>
+              )}
             </button>
+
+            {/* Search Icon */}
             <button 
-              className={`px-8 py-3 rounded-xl font-semibold text-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${activeMode === 'duo' ? 'bg-primary text-black hover:shadow-glow-hover hover:bg-primary-hover shadow-glow' : 'border border-primary text-primary hover:bg-primary/10'}`}
-              onClick={() => {
-                setActiveMode('duo');
-                openDuoSquad();
-              }}
+              onClick={() => setActiveTab(activeTab === 'search' ? null : 'search')}
+              className="icon-btn"
+              title="Search"
             >
-              DuoX
+              <i className="material-icons-round">search</i>
+            </button>
+
+            {/* Likes Icon */}
+            <button 
+              onClick={() => setActiveTab(activeTab === 'likes' ? null : 'likes')}
+              className="icon-btn" 
+              title="Likes"
+            >
+              <i className="material-icons-round">favorite</i>
+            </button>
+
+            {/* Messages Icon */}
+            <button 
+              onClick={() => setActiveTab(activeTab === 'messages' ? null : 'messages')}
+              className="icon-btn"
+              title="Messages"
+            >
+              <i className="material-icons-round">chat_bubble</i>
+            </button>
+
+            {/* Trophy/Achievements Icon */}
+            <button 
+              onClick={() => setActiveTab(activeTab === 'trophy' ? null : 'trophy')}
+              className="icon-btn"
+              title="Achievements"
+            >
+              <i className="material-icons-round">emoji_events</i>
+            </button>
+
+            {/* History/Timer Icon */}
+            <button 
+              onClick={() => setIsMatchHistoryOpen(!isMatchHistoryOpen)}
+              className="icon-btn"
+              title="History"
+            >
+              <i className="material-icons-round">timer</i>
             </button>
           </div>
 
-          {/* Start Video Chat Button */}
-          <button 
-            onClick={startVideoChat}
-            disabled={isLoading}
-            className="group relative px-10 py-4 rounded-full bg-gradient-to-r from-primary via-[#E5C558] to-primary text-black font-bold text-lg shadow-lg hover:shadow-glow-hover transition-all transform hover:scale-105 overflow-hidden whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out skew-x-12 -translate-x-full"></span>
-            <div className="flex items-center justify-center gap-3 relative z-10">
-              <span className="text-2xl">🎬</span>
-              <span>{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col items-center justify-start space-y-12 relative z-10 pt-8">
+            {/* Flinxx Title */}
+            <h1 className="font-display text-5xl sm:text-6xl font-bold text-primary tracking-tight drop-shadow-sm select-none">
+              Flinxx
+            </h1>
+
+            {/* Mode Toggle Buttons */}
+            <div className="flex items-center gap-6">
+              <button 
+                className={`px-8 py-3 rounded-xl font-semibold text-lg shadow-glow transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${activeMode === 'solo' ? 'bg-primary text-black hover:shadow-glow-hover hover:bg-primary-hover' : 'border border-primary text-primary hover:bg-primary/10'}`}
+                onClick={() => setActiveMode('solo')}
+              >
+                SoloX
+              </button>
+              <button 
+                className={`px-8 py-3 rounded-xl font-semibold text-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${activeMode === 'duo' ? 'bg-primary text-black hover:shadow-glow-hover hover:bg-primary-hover shadow-glow' : 'border border-primary text-primary hover:bg-primary/10'}`}
+                onClick={() => {
+                  setActiveMode('duo');
+                  openDuoSquad();
+                }}
+              >
+                DuoX
+              </button>
             </div>
+
+            {/* Start Video Chat Button */}
+            <button 
+              onClick={startVideoChat}
+              disabled={isLoading}
+              className="group relative px-10 py-4 rounded-full bg-gradient-to-r from-primary via-[#E5C558] to-primary text-black font-bold text-lg shadow-lg hover:shadow-glow-hover transition-all transform hover:scale-105 overflow-hidden whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out skew-x-12 -translate-x-full"></span>
+              <div className="flex items-center justify-center gap-3 relative z-10">
+                <span className="text-2xl">🎬</span>
+                <span>{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
+              </div>
+            </button>
+          </div>
+
+          {/* Footer */}
+          <div className="w-full text-center py-4 z-10 mt-auto">
+            <p className="text-xs text-gray-500 dark:text-gray-600 font-medium">Premium Video Experience</p>
+          </div>
+        </aside>
+
+        {/* RIGHT PANEL - Camera Feed (always visible) */}
+        <CameraPanel />
+      </div>
+    );
+  }
+
+  // Mobile version with new design
+  return (
+    <div className="relative w-full h-screen bg-background-light dark:bg-background-dark flex flex-col transition-colors duration-300 font-body">
+      <style>{`
+        .text-metallic {
+          background: linear-gradient(to bottom, #FDE047, #EAB308, #CA8A04);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        .btn-metallic {
+          background: linear-gradient(135deg, #b47d04 0%, #EAB308 20%, #FDE047 50%, #EAB308 80%, #b47d04 100%);
+          background-size: 200% 200%;
+          animation: shine 4s ease-in-out infinite;
+        }
+        @keyframes shine {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .grid-bg {
+          background-size: 24px 24px;
+        }
+        .shadow-glow-gold {
+          box-shadow: 0 0 15px rgba(234, 179, 8, 0.3);
+        }
+        .shadow-inner-gold {
+          box-shadow: inset 0 0 12px rgba(234, 179, 8, 0.1);
+        }
+      `}</style>
+
+      <div className="absolute inset-0 bg-subtle-grain opacity-20 pointer-events-none z-0 mix-blend-overlay"></div>
+      <div className="absolute inset-0 bg-grid-light dark:bg-grid-dark grid-bg opacity-20 pointer-events-none z-0 [mask-image:linear-gradient(to_bottom,black,transparent)]"></div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-primary/10 blur-[60px] rounded-full pointer-events-none z-0"></div>
+      
+      <div className="h-6 w-full z-10"></div>
+
+      {/* Header Navigation */}
+      <header className="relative z-10 px-6 pt-6 pb-2">
+        <nav className="flex justify-between items-center gap-2 overflow-x-auto no-scrollbar py-2 px-1">
+          <button 
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+            <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">person</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab(activeTab === 'search' ? null : 'search')}
+            className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+            <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">search</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab(activeTab === 'likes' ? null : 'likes')}
+            className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+            <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">favorite</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab(activeTab === 'messages' ? null : 'messages')}
+            className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+            <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">chat_bubble</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab(activeTab === 'trophy' ? null : 'trophy')}
+            className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+            <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">emoji_events</span>
+          </button>
+          <button 
+            onClick={() => setIsMatchHistoryOpen(!isMatchHistoryOpen)}
+            className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+            <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">timer</span>
+          </button>
+        </nav>
+      </header>
+
+      {/* Main Content */}
+      <main className="relative z-10 flex-1 flex flex-col items-center px-6 pt-8 pb-6 overflow-y-auto no-scrollbar">
+        {/* Flinxx Logo */}
+        <div className="mb-10 text-center relative">
+          <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full pointer-events-none"></div>
+          <h1 className="font-display text-5xl text-metallic drop-shadow-sm tracking-wide relative z-10">Flinxx</h1>
+        </div>
+
+        {/* Mode Selection Buttons */}
+        <div className="flex gap-4 w-full justify-center mb-10 max-w-[280px]">
+          <button 
+            onClick={() => setActiveMode('solo')}
+            className={`flex-1 ${activeMode === 'solo' ? 'btn-metallic text-gray-900' : 'bg-transparent border border-primary/50 text-gray-800 dark:text-[#EAB308] hover:bg-primary/5 hover:border-primary/80'} font-bold py-3 px-4 rounded-xl shadow-[0_4px_15px_rgba(234,179,8,0.3)] border border-yellow-300/50 transform active:scale-95 transition-all relative overflow-hidden`}
+          >
+            <span className="relative z-10">SoloX</span>
+            <div className="absolute inset-0 bg-white/20 translate-y-full hover:translate-y-0 transition-transform duration-300"></div>
+          </button>
+          <button 
+            onClick={() => {
+              setActiveMode('duo');
+              openDuoSquad();
+            }}
+            className={`flex-1 ${activeMode === 'duo' ? 'btn-metallic text-gray-900' : 'bg-transparent border border-primary/50 text-gray-800 dark:text-[#EAB308] hover:bg-primary/5 hover:border-primary/80'} font-bold py-3 px-4 rounded-xl shadow-inner-gold backdrop-blur-sm transform active:scale-95 transition-all`}
+          >
+            DuoX
           </button>
         </div>
 
-        {/* Footer */}
-        <div className="w-full text-center py-4 z-10 mt-auto">
-          <p className="text-xs text-gray-500 dark:text-gray-600 font-medium">Premium Video Experience</p>
-        </div>
-      </aside>
+        {/* Start Video Chat Button */}
+        <button 
+          onClick={startVideoChat}
+          disabled={isLoading}
+          className="w-full max-w-[280px] btn-metallic text-gray-950 font-bold text-lg py-4 px-6 rounded-full shadow-[0_0_20px_rgba(234,179,8,0.4)] border-t border-yellow-200/50 flex items-center justify-center gap-3 hover:shadow-[0_0_30px_rgba(234,179,8,0.5)] transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all mb-8 relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <div className="absolute inset-0 bg-white/20 skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
+          <span className="material-symbols-outlined text-gray-900 text-3xl relative z-10">movie</span>
+          <span className="relative z-10">{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
+        </button>
 
-      {/* RIGHT PANEL - Camera Feed (always visible) */}
-      <CameraPanel />
+        {/* Camera Preview */}
+        <div className="w-full flex-1 min-h-[220px] rounded-3xl overflow-hidden relative border border-gray-300 dark:border-primary/30 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] group">
+          <CameraPanel />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/40"></div>
+          <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white/90 text-xs font-bold py-1.5 px-3 rounded-full flex items-center gap-2 border border-white/10 shadow-lg ring-1 ring-white/5">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
+            YOU
+          </div>
+        </div>
+      </main>
+    </div>
+  );
     </div>
   );
 });
