@@ -332,7 +332,7 @@ const IntroScreen = React.memo(({
         {/* Flinxx Logo */}
         <div className="mb-10 text-center relative">
           <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full pointer-events-none"></div>
-          <h1 className="font-display text-5xl text-metallic drop-shadow-sm tracking-wide relative z-10">Flinxx</h1>
+          <img src={logo} alt="Flinxx Logo" className="w-40 h-40 object-contain mx-auto relative z-10" />
         </div>
 
         {/* Mode Selection Buttons */}
