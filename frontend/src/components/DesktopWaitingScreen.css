@@ -1,0 +1,107 @@
+/* Premium Waiting Screen Styles */
+
+:root {
+  --primary: #FFD700;
+  --background-light: #F9FAFB;
+  --background-dark: #050505;
+  --surface-dark: #121212;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.gold-glow {
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.15);
+}
+
+.gold-text-glow {
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+.loading-dot {
+  animation: dot-pulse 1.4s infinite ease-in-out both;
+}
+
+.loading-dot:nth-child(1) { 
+  animation-delay: -0.32s; 
+}
+
+.loading-dot:nth-child(2) { 
+  animation-delay: -0.16s; 
+}
+
+@keyframes dot-pulse {
+  0%, 80%, 100% { 
+    transform: scale(0); 
+    opacity: 0.5; 
+  }
+  40% { 
+    transform: scale(1); 
+    opacity: 1; 
+  }
+}
+
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 2s infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Tailwind color overrides for dark mode */
+.dark .text-primary {
+  color: var(--primary);
+}
+
+.dark .border-primary {
+  border-color: var(--primary);
+}
+
+.dark .bg-primary {
+  background-color: var(--primary);
+}
+
+.dark .focus\:ring-primary\/50 {
+  --tw-ring-color: rgba(255, 215, 0, 0.5);
+}
+
+.primary {
+  color: var(--primary);
+}
