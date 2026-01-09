@@ -36,10 +36,7 @@ const Home = () => {
       <nav className="homepage-header glass-panel">
         <div className="header-content">
           <div className="header-left">
-            <a href="#" className="logo-link">
-              <img src={flinxxLogo} alt="Flinxx Logo" className="logo-image" />
-              <span className="logo-text">FLINXX</span>
-            </a>
+            <span className="logo-text">FLINXX</span>
             <div className="online-indicator">
               <span className="pulse-dot"></span>
               <span className="online-text">3,247 online</span>
