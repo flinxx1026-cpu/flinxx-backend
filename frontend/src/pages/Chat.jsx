@@ -2390,76 +2390,66 @@ const Chat = () => {
   };
 
   return (
-    <>
+    <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
       {/* 🧪 DEBUG: Log UI state and which screen should render */}
       {console.log('🎨 [RENDER] UI STATE →', { isSearching, partnerFound }, 'Should show:', isSearching && !partnerFound ? 'WAITING SCREEN' : partnerFound ? 'VIDEO CHAT' : 'DASHBOARD')}
 
       {/* ✅ CRITICAL FIX: ALWAYS keep IntroScreen mounted (with Camera) */}
       {/* The camera panel is inside IntroScreen, never unmounted */}
       {/* Other screens overlay on top with absolute positioning */}
-      <div className="w-full h-screen overflow-hidden bg-black relative">
-        {/* Dashboard with Camera - ALWAYS MOUNTED in background */}
-        {console.log('🎨 [RENDER] Showing DASHBOARD')}
-        <IntroScreen 
-          user={user}
-          isLoading={isLoading}
-          activeMode={activeMode}
-          setActiveMode={setActiveMode}
-          openDuoSquad={openDuoSquad}
-          startVideoChat={startVideoChat}
-          isProfileOpen={isProfileOpen}
-          setIsProfileOpen={setIsProfileOpen}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          isMatchHistoryOpen={isMatchHistoryOpen}
-          setIsMatchHistoryOpen={setIsMatchHistoryOpen}
-        >
-          {/* ✅ Pass CameraPanel as children - prevents unmounting on prop changes */}
-          <CameraPanel />
-        </IntroScreen>
+      {!partnerFound && (
+        <div className="w-full h-screen overflow-hidden bg-black relative">
+          {/* Dashboard with Camera - ALWAYS MOUNTED in background */}
+          {console.log('🎨 [RENDER] Showing DASHBOARD')}
+          <IntroScreen 
+            user={user}
+            isLoading={isLoading}
+            activeMode={activeMode}
+            setActiveMode={setActiveMode}
+            openDuoSquad={openDuoSquad}
+            startVideoChat={startVideoChat}
+            isProfileOpen={isProfileOpen}
+            setIsProfileOpen={setIsProfileOpen}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            isMatchHistoryOpen={isMatchHistoryOpen}
+            setIsMatchHistoryOpen={setIsMatchHistoryOpen}
+          >
+            {/* ✅ Pass CameraPanel as children - prevents unmounting on prop changes */}
+            <CameraPanel />
+          </IntroScreen>
 
-        {/* WAITING SCREEN - overlays on top (absolute positioning) */}
-        {isSearching && !partnerFound && (
-          <div className="absolute inset-0 z-50">
-            {console.log('🎨 [RENDER] Showing WAITING SCREEN')}
-            <WaitingScreen 
-              onCancel={handleCancelSearch}
-              localStreamRef={localStreamRef}
-              cameraStarted={cameraStarted}
-            />
-          </div>
-        )}
-
-        {/* VIDEO CHAT - overlays on top (absolute positioning) */}
-        {partnerFound && (
-          <div className="absolute inset-0 z-50">
-            <VideoChatScreen />
-          </div>
-        )}
-      </div>
-
-      {/* ⛔ Rest of modals and content only show when needed */}
-      {!(isSearching && !partnerFound) && (
-        <>
-      {/* ✅ Terms modal – SAFE (no hook violation) */}
-      {showTermsModal && (
-        <TermsConfirmationModal
-          onCancel={handleDashboardTermsCancel}
-          onContinue={handleDashboardTermsAccept}
-        />
+          {/* WAITING SCREEN - overlays on top (absolute positioning) */}
+          {isSearching && !partnerFound && (
+            <div className="absolute inset-0 z-50">
+              {console.log('🎨 [RENDER] Showing WAITING SCREEN')}
+              <WaitingScreen 
+                onCancel={handleCancelSearch}
+                localStreamRef={localStreamRef}
+                cameraStarted={cameraStarted}
+              />
+            </div>
+          )}
+        </div>
       )}
 
-      {/* ✅ Loading state or chat UI */}
-      {!termsCheckComplete ? (
-        <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center">
-          <div className="text-center text-white">
-            <p>Loading...</p>
-          </div>
+      {/* VIDEO CHAT - FULL SCREEN (absolute positioning) */}
+      {partnerFound && (
+        <div className="absolute inset-0 z-50 w-full h-full">
+          <VideoChatScreen />
         </div>
-      ) : (
-        <div className="flex flex-col h-screen w-screen overflow-visible min-h-0" style={{ backgroundColor: '#0f0f0f', overflow: 'visible', position: 'relative' }}>
-          
-          {/* Dashboard and Waiting Screen rendered here */}
+      )}
+
+      {/* ⛔ Modals and extras - Only show when NOT in video chat mode */}
+      {!partnerFound && (
+        <>
+          {/* ✅ Terms modal – SAFE (no hook violation) */}
+          {showTermsModal && (
+            <TermsConfirmationModal
+              onCancel={handleDashboardTermsCancel}
+              onContinue={handleDashboardTermsAccept}
+            />
+          )}
 
           {/* Premium Modal */}
           <PremiumModal 
@@ -2533,11 +2523,9 @@ const Chat = () => {
               </div>
             </div>
           )}
-        </div>
-      )}
         </>
       )}
-    </>
+    </div>
   );
 };
 
