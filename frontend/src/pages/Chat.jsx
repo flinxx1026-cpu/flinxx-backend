@@ -369,7 +369,6 @@ const IntroScreen = React.memo(({
         {/* Camera Preview */}
         <div className="w-full flex-1 min-h-[220px] rounded-3xl overflow-hidden relative border border-gray-300 dark:border-primary/30 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] group">
           <CameraPanel />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/40"></div>
           <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white/90 text-xs font-bold py-1.5 px-3 rounded-full flex items-center gap-2 border border-white/10 shadow-lg ring-1 ring-white/5">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
             YOU
