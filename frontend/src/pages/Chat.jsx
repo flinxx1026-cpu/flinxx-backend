@@ -378,8 +378,6 @@ const IntroScreen = React.memo(({
       </main>
     </div>
   );
-    </div>
-  );
 });
 
 // ✅ WAITING SCREEN - Module-level component (memoized) to prevent recreation on every Chat render
