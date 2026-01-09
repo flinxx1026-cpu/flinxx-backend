@@ -396,11 +396,6 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
                   </span>
                 </button>
               </div>
-
-              {/* Footer text */}
-              <div className="absolute bottom-4 text-xs text-zinc-600 dark:text-zinc-700 max-w-md mx-auto">
-                <p>By connecting, you agree to our Terms of Service & Privacy Policy.</p>
-              </div>
             </div>
           </div>
         </div>
