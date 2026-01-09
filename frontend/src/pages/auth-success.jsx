@@ -169,14 +169,35 @@ export default function AuthSuccess() {
 
   // ✅ Unified routing: Show loading screen while redirecting all users to /chat
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center px-4">
-      <div className="text-center">
-        <div className="inline-block">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
-        </div>
-        <p className="mt-4 text-white text-lg font-semibold">Completing your login...</p>
-        <p className="text-white/70 text-sm mt-2">Please wait while we set up your session</p>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#000000',
+      paddingLeft: '1rem',
+      paddingRight: '1rem'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          display: 'inline-block',
+          width: '48px',
+          height: '48px',
+          border: '2px solid rgba(255, 215, 0, 0.1)',
+          borderTopColor: '#FFD700',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '1rem'
+        }}></div>
+        <p style={{ color: 'white', fontSize: '1.125rem', fontWeight: '600', marginTop: '1rem' }}>Completing your login...</p>
+        <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.875rem', marginTop: '0.5rem' }}>Please wait while we set up your session</p>
       </div>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
