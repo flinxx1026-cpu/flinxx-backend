@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
+import flinxxLogo from '../assets/flinxx-logo.svg'
 import './Home.css'
 
 // ✅ HOMEPAGE: Pure hero landing page - NO chat/dashboard components
@@ -36,9 +37,7 @@ const Home = () => {
         <div className="header-content">
           <div className="header-left">
             <a href="#" className="logo-link">
-              <div className="logo-icon">
-                <span className="material-icons">videocam</span>
-              </div>
+              <img src={flinxxLogo} alt="Flinxx Logo" className="logo-image" />
               <span className="logo-text">FLINXX</span>
             </a>
             <div className="online-indicator">
