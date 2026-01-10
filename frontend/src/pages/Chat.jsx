@@ -92,7 +92,8 @@ const IntroScreen = React.memo(({
   activeTab,
   setActiveTab,
   isMatchHistoryOpen,
-  setIsMatchHistoryOpen
+  setIsMatchHistoryOpen,
+  children
 }) => {
   console.log("Dashboard render");
   
@@ -229,7 +230,8 @@ const IntroScreen = React.memo(({
           </div>
         </aside>
 
-        {/* RIGHT PANEL - Removed children, camera is now mounted separately at top level */}
+        {/* RIGHT PANEL - Camera Feed (always visible) */}
+        {children}
       </div>
     );
   }
@@ -365,8 +367,9 @@ const IntroScreen = React.memo(({
           <span className="relative z-10">{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
         </button>
 
-        {/* Camera Preview - Removed children, camera mounted separately */}
+        {/* Camera Preview */}
         <div className="w-full flex-1 min-h-[220px] rounded-3xl overflow-hidden relative border border-gray-300 dark:border-primary/30 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] group">
+          {children}
           <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white/90 text-xs font-bold py-1.5 px-3 rounded-full flex items-center gap-2 border border-white/10 shadow-lg ring-1 ring-white/5">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
             YOU
@@ -2734,30 +2737,28 @@ const Chat = () => {
       {console.log('🎨 [RENDER] UI STATE →', { isSearching, partnerFound }, 'Should show:', isSearching && !partnerFound ? 'WAITING SCREEN' : partnerFound ? 'VIDEO CHAT' : 'DASHBOARD')}
 
       {/* ✅ CRITICAL FIX: ALWAYS keep IntroScreen mounted (with Camera) */}
-      {/* The camera panel is ALWAYS mounted separately, never unmounted */}
+      {/* The camera panel is inside IntroScreen, never unmounted */}
       {/* Other screens overlay on top with absolute positioning */}
       <div className="w-full h-screen overflow-hidden bg-black relative" style={{ display: partnerFound ? 'none' : 'block' }}>
-          {/* Camera Panel - ALWAYS MOUNTED at module level, NEVER as child of IntroScreen */}
-          <CameraPanel />
-          
-          {/* Dashboard WITHOUT Camera as children */}
+          {/* Dashboard with Camera - ALWAYS MOUNTED in background */}
           {console.log('🎨 [RENDER] Showing DASHBOARD')}
-          <div className="absolute inset-0 z-0 pointer-events-none">
-            <IntroScreen 
-              user={user}
-              isLoading={isLoading}
-              activeMode={activeMode}
-              setActiveMode={setActiveMode}
-              openDuoSquad={openDuoSquad}
-              startVideoChat={startVideoChat}
-              isProfileOpen={isProfileOpen}
-              setIsProfileOpen={setIsProfileOpen}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              isMatchHistoryOpen={isMatchHistoryOpen}
-              setIsMatchHistoryOpen={setIsMatchHistoryOpen}
-            />
-          </div>
+          <IntroScreen 
+            user={user}
+            isLoading={isLoading}
+            activeMode={activeMode}
+            setActiveMode={setActiveMode}
+            openDuoSquad={openDuoSquad}
+            startVideoChat={startVideoChat}
+            isProfileOpen={isProfileOpen}
+            setIsProfileOpen={setIsProfileOpen}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            isMatchHistoryOpen={isMatchHistoryOpen}
+            setIsMatchHistoryOpen={setIsMatchHistoryOpen}
+          >
+            {/* ✅ CameraPanel as children - prevents unmounting on prop changes */}
+            <CameraPanel />
+          </IntroScreen>
 
           {/* WAITING SCREEN - overlays on top (absolute positioning) */}
           {isSearching && (
