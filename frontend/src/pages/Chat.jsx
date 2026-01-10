@@ -2262,6 +2262,30 @@ const Chat = () => {
   // Video element is in the camera-frame div (lines ~1680)
   // No need for GlobalLocalVideo - video is already properly placed
 
+  // ✅ Create stable ref callbacks to prevent blinking
+  const localVideoRefCallback = useCallback((el) => {
+    if (el && localStreamRef.current) {
+      if (el.srcObject !== localStreamRef.current) {
+        el.srcObject = localStreamRef.current;
+        el.muted = true;
+        el.play().catch(() => {});
+      }
+    }
+    localVideoRef.current = el;
+  }, []);
+
+  const remoteVideoRefCallback = useCallback((el) => {
+    if (el && peerConnectionRef.current?._remoteStream) {
+      const remoteStream = peerConnectionRef.current._remoteStream;
+      if (el.srcObject !== remoteStream) {
+        el.srcObject = remoteStream;
+        el.muted = false;
+        el.play().catch(() => {});
+      }
+    }
+    remoteVideoRef.current = el;
+  }, []);
+
   const VideoChatScreen = React.memo(() => {
     // CRITICAL DEBUG: Log partnerInfo to diagnose display issue
     console.log('🎬 VideoChatScreen rendering - partnerInfo:', {
@@ -2384,20 +2408,7 @@ const Chat = () => {
                   </div>
                   {/* Remote Video - Desktop */}
                   <video
-                    ref={(el) => {
-                      if (el && peerConnectionRef.current?._remoteStream) {
-                        // Attach stream immediately when video element is available
-                        const remoteStream = peerConnectionRef.current._remoteStream;
-                        if (el.srcObject !== remoteStream) {
-                          el.srcObject = remoteStream;
-                          el.muted = false;
-                          el.play().catch(() => {});
-                          console.log('📹 [VIDEO REF CALLBACK] Remote stream attached via ref callback');
-                        }
-                      }
-                      // Always update the ref
-                      remoteVideoRef.current = el;
-                    }}
+                    ref={remoteVideoRefCallback}
                     autoPlay
                     playsInline
                     muted
@@ -2490,19 +2501,7 @@ const Chat = () => {
                 {/* Local Video for Desktop */}
                 <div style={{ position: 'absolute', inset: 0, backgroundColor: '#000', display: 'block', width: '100%', height: '100%' }}>
                   <video
-                    ref={(el) => {
-                      if (el && localStreamRef.current) {
-                        // Attach stream immediately when video element is available
-                        if (el.srcObject !== localStreamRef.current) {
-                          el.srcObject = localStreamRef.current;
-                          el.muted = true;
-                          el.play().catch(() => {});
-                          console.log('📹 [VIDEO REF CALLBACK] Local stream attached via ref callback');
-                        }
-                      }
-                      // Always update the ref
-                      localVideoRef.current = el;
-                    }}
+                    ref={localVideoRefCallback}
                     autoPlay
                     muted
                     playsInline
