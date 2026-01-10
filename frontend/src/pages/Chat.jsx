@@ -1158,6 +1158,9 @@ const Chat = () => {
   const iceCandidateBufferRef = useRef([]);
 
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
+  // This function is called inside socket event handlers
+  // Must be declared before the socket listener setup to avoid TDZ error
+  const createPeerConnection = async () => {
     console.log('🔧 createPeerConnection called');
     console.log('   Current localStreamRef:', localStreamRef.current);
     
