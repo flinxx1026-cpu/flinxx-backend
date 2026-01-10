@@ -2354,7 +2354,7 @@ const Chat = () => {
                 </header>
 
                 {/* Video Container */}
-                <div className="flex-1 relative flex items-center justify-center">
+                <div style={{ flex: '1 1 auto', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                   <div className="chat-messages md:flex flex-col items-center justify-center opacity-10 pointer-events-none hidden">
                     <span className="material-symbols-outlined" style={{ fontSize: '100px', color: '#c8ba93' }}>chat_bubble_outline</span>
                   </div>
@@ -2369,12 +2369,15 @@ const Chat = () => {
                       height: '100%',
                       objectFit: 'cover',
                       backgroundColor: '#000',
-                      display: hasPartner ? 'block' : 'none'
+                      display: hasPartner ? 'block' : 'none',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0
                     }}
                   />
                   {/* Placeholder when no partner */}
                   {!hasPartner && (
-                    <div style={{ width: '100%', height: '100%', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute' }}>
+                    <div style={{ width: '100%', height: '100%', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 0, left: 0 }}>
                       <span style={{ color: '#999', fontSize: '14px' }}>Waiting for partner video...</span>
                     </div>
                   )}
@@ -2448,7 +2451,7 @@ const Chat = () => {
                 </header>
 
                 {/* Local Video for Desktop */}
-                <div className="video-container absolute inset-0 hidden md:block" style={{ backgroundColor: '#000', position: 'relative' }}>
+                <div style={{ position: 'absolute', inset: 0, backgroundColor: '#000', display: 'block', width: '100%', height: '100%' }}>
                   <video
                     ref={localVideoRef}
                     autoPlay
@@ -2458,11 +2461,14 @@ const Chat = () => {
                       width: '100%',
                       height: '100%',
                       objectFit: 'cover',
-                      backgroundColor: '#000'
+                      backgroundColor: '#000',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0
                     }}
                   />
                   {!isLocalCameraReady && (
-                    <div style={{ position: 'absolute', inset: 0, backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '12px' }}>
+                    <div style={{ position: 'absolute', inset: 0, backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '12px', top: 0, left: 0, width: '100%', height: '100%' }}>
                       Camera loading...
                     </div>
                   )}
