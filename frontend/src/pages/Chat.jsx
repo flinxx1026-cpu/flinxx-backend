@@ -1229,6 +1229,10 @@ const Chat = () => {
     peerConnectionRef.current = peerConnection;  // ✅ Store immediately for use in event handlers
     console.log('✅ RTCPeerConnection created with iceTransportPolicy: all');
 
+    // ✅ Initialize remote stream immediately (will be populated by ontrack events)
+    peerConnectionRef.current._remoteStream = new MediaStream();
+    console.log('✅ Remote MediaStream initialized, ID:', peerConnectionRef.current._remoteStream.id);
+
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
             const candidate = event.candidate;
@@ -1325,9 +1329,15 @@ const Chat = () => {
         console.log('\n\n🔴🔴🔴 ===== CRITICAL: ONTRACK HANDLER FIRING! =====');
         console.log('🔴 ONTRACK CALLED AT:', new Date().toISOString());
         console.log('🔴 Track received:', { kind: event.track.kind, id: event.track.id, enabled: event.track.enabled });
+        console.log('🔴 Streams in event:', event.streams);
         
         // ✅ FIX #1: Use persistent remote MediaStream
-        const remoteStream = peerConnectionRef.current._remoteStream;
+        let remoteStream = peerConnectionRef.current._remoteStream;
+        if (!remoteStream) {
+          console.log('⚠️ ONTRACK: Remote stream not initialized, creating new one');
+          remoteStream = new MediaStream();
+          peerConnectionRef.current._remoteStream = remoteStream;
+        }
         console.log('🔴 Using persistent remote stream ID:', remoteStream.id);
         
         // Add track to persistent stream
