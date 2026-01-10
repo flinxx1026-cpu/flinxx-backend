@@ -2110,20 +2110,20 @@ const Chat = () => {
 
       console.log('📡 Xirsys API Response:', data);
       console.log('   data.v type:', typeof data?.v);
-      console.log('   data.v structure:', JSON.stringify(data?.v, null, 2));
       console.log('   Is data.v an array?', Array.isArray(data?.v));
       console.log('   Is data.v.iceServers an array?', Array.isArray(data?.v?.iceServers));
+      console.log('   Is data.v.iceServers an object?', typeof data?.v?.iceServers === 'object' && !Array.isArray(data?.v?.iceServers));
 
       // Try multiple possible response formats
       let iceServers = null;
       
       // Format 1: data.v.iceServers as array (expected format)
-      if (data?.v?.iceServers && Array.isArray(data.v.iceServers)) {
+      if (Array.isArray(data?.v?.iceServers)) {
         iceServers = data.v.iceServers;
         console.log('✅ TURN servers found in data.v.iceServers (array)');
       }
       // Format 2: data.iceServers as array (direct)
-      else if (data?.iceServers && Array.isArray(data.iceServers)) {
+      else if (Array.isArray(data?.iceServers)) {
         iceServers = data.iceServers;
         console.log('✅ TURN servers found in data.iceServers (array)');
       }
@@ -2132,23 +2132,35 @@ const Chat = () => {
         iceServers = data.v;
         console.log('✅ TURN servers found in data.v directly (array)');
       }
-      // Format 4: data.v.iceServers is an object with an iceServers property
-      else if (data?.v?.iceServers && typeof data.v.iceServers === 'object') {
+      // Format 4: data.v.iceServers is an object containing iceServers array (THIS IS THE ACTUAL FORMAT)
+      else if (data?.v?.iceServers && typeof data.v.iceServers === 'object' && !Array.isArray(data.v.iceServers)) {
+        console.log('   data.v.iceServers is an object. Checking for nested array...');
+        console.log('   data.v.iceServers keys:', Object.keys(data.v.iceServers));
+        
+        // Check if it has an iceServers property with an array
         if (Array.isArray(data.v.iceServers.iceServers)) {
           iceServers = data.v.iceServers.iceServers;
-          console.log('✅ TURN servers found in data.v.iceServers.iceServers (nested)');
-        } else if (data.v.iceServers.v && Array.isArray(data.v.iceServers.v)) {
+          console.log('✅ TURN servers found in data.v.iceServers.iceServers (nested array)');
+          console.log('   Found', iceServers.length, 'TURN servers');
+        }
+        // Check if it has a v property with an array
+        else if (Array.isArray(data.v.iceServers.v)) {
           iceServers = data.v.iceServers.v;
-          console.log('✅ TURN servers found in data.v.iceServers.v (nested)');
+          console.log('✅ TURN servers found in data.v.iceServers.v (nested array)');
+        }
+        // Check if it has a servers property
+        else if (Array.isArray(data.v.iceServers.servers)) {
+          iceServers = data.v.iceServers.servers;
+          console.log('✅ TURN servers found in data.v.iceServers.servers (nested array)');
         }
       }
       // Format 5: Check if response is wrapped differently
-      else if (data?.servers && Array.isArray(data.servers)) {
+      else if (Array.isArray(data?.servers)) {
         iceServers = data.servers;
         console.log('✅ TURN servers found in data.servers');
       }
       // Format 6: Check if v is an object with servers
-      else if (data?.v?.servers && Array.isArray(data.v.servers)) {
+      else if (Array.isArray(data?.v?.servers)) {
         iceServers = data.v.servers;
         console.log('✅ TURN servers found in data.v.servers');
       }
