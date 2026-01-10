@@ -2312,24 +2312,26 @@ const Chat = () => {
                   <div className="chat-messages md:flex flex-col items-center justify-center opacity-10 pointer-events-none hidden">
                     <span className="material-symbols-outlined" style={{ fontSize: '100px', color: '#c8ba93' }}>chat_bubble_outline</span>
                   </div>
-                  <div className="video-container absolute inset-0 md:hidden">
-                    <video
-                      ref={remoteVideoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        backgroundColor: '#000',
-                        display: hasPartner ? 'block' : 'none'
-                      }}
-                    />
-                    {!hasPartner && (
-                      <div style={{ width: '100%', height: '100%', backgroundColor: '#000', opacity: 0.4, grayscale: '100%' }}></div>
-                    )}
-                  </div>
+                  {/* Remote Video - Desktop */}
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      backgroundColor: '#000',
+                      display: hasPartner ? 'block' : 'none'
+                    }}
+                  />
+                  {/* Placeholder when no partner */}
+                  {!hasPartner && (
+                    <div style={{ width: '100%', height: '100%', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute' }}>
+                      <span style={{ color: '#999', fontSize: '14px' }}>Waiting for partner video...</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Skip Button - Bottom Right */}
@@ -2400,8 +2402,12 @@ const Chat = () => {
                 </header>
 
                 {/* Local Video for Desktop */}
-                <div className="video-container absolute inset-0 hidden md:block" style={{ backgroundColor: '#000' }}>
+                <div className="video-container absolute inset-0 hidden md:block" style={{ backgroundColor: '#000', position: 'relative' }}>
                   <video
+                    ref={localVideoRef}
+                    autoPlay
+                    muted
+                    playsInline
                     style={{
                       width: '100%',
                       height: '100%',
@@ -2409,6 +2415,18 @@ const Chat = () => {
                       backgroundColor: '#000'
                     }}
                   />
+                  {!isLocalCameraReady && (
+                    <div style={{ position: 'absolute', inset: 0, backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: '12px' }}>
+                      Camera loading...
+                    </div>
+                  )}
+                  {/* YOU Badge */}
+                  <div style={{ position: 'absolute', bottom: '16px', left: '16px', zIndex: 20, pointerEvents: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(8px)', paddingLeft: '12px', paddingRight: '12px', paddingTop: '6px', paddingBottom: '6px', borderRadius: '20px', border: '1px solid rgba(255, 255, 255, 0.1)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', boxShadow: '0 0 8px rgba(34, 197, 94, 0.8)', animation: 'pulse 2s infinite' }}></span>
+                      <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#f5f5f5' }}>You</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Chat Messages Area for Mobile */}
