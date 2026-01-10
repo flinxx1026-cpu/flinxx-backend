@@ -742,7 +742,23 @@ const Chat = () => {
     };
   }, []);
 
-  // ✅ NOW CONSOLE LOG AND LOGIC AFTER ALL HOOKS
+  // ✅ Attach local stream to localVideoRef when in video chat mode
+  useEffect(() => {
+    if (partnerFound && localVideoRef.current && localStreamRef.current) {
+      console.log('📹 [VIDEO CHAT] Attaching local stream to localVideoRef');
+      
+      if (localVideoRef.current.srcObject !== localStreamRef.current) {
+        localVideoRef.current.srcObject = localStreamRef.current;
+        localVideoRef.current.muted = true;
+        
+        localVideoRef.current.play().catch(err => {
+          console.warn('📹 [VIDEO CHAT] Local video play warning:', err.message);
+        });
+        
+        console.log('📹 [VIDEO CHAT] ✅ Local stream attached to localVideoRef');
+      }
+    }
+  }, [partnerFound]);
   console.log('🎯 CHAT COMPONENT LOADED - BUILD: 895cedd (temporal deadzone fix - move hooks to top)');
 
   // ✅ Camera should ALWAYS be available - removed blocking logic
