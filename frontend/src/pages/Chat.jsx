@@ -2449,7 +2449,7 @@ const Chat = () => {
   }, []);
 
   const remoteVideoRefCallback = useCallback((el) => {
-    // Just store the ref - the ontrack event handler will attach the stream
+    // Store the ref
     console.log('📍 REMOTE VIDEO REF CALLBACK:', {
       element: !!el,
       hasSrcObject: !!el?.srcObject,
@@ -2457,12 +2457,25 @@ const Chat = () => {
       trackCount: el?.srcObject?.getTracks?.().length || 0
     });
     remoteVideoRef.current = el;
+    
     if (el) {
       console.log('✅ VIDEO REF CALLBACK: Remote video element mounted and stored in ref');
-      // If stream already attached, log it
-      if (el.srcObject) {
-        console.log('   Stream already attached:', el.srcObject.id);
-        console.log('   Tracks:', el.srcObject.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled })));
+      
+      // ✅ CRITICAL FIX: If stream already exists on peerConnection, attach it now
+      const remoteStream = peerConnectionRef.current?._remoteStream;
+      if (remoteStream && remoteStream.getTracks().length > 0) {
+        console.log('✅ VIDEO REF CALLBACK: Remote stream already exists with', remoteStream.getTracks().length, 'tracks - attaching to element now');
+        if (el.srcObject !== remoteStream) {
+          el.srcObject = remoteStream;
+          console.log('✅ VIDEO REF CALLBACK: Stream attached to video element');
+          el.play().catch(() => {
+            console.log('ℹ️ Autoplay blocked - will play on user interaction');
+          });
+        }
+      } else if (remoteStream) {
+        console.log('⚠️ VIDEO REF CALLBACK: Remote stream exists but has no tracks yet');
+      } else {
+        console.log('ℹ️ VIDEO REF CALLBACK: No remote stream yet - will be attached when tracks arrive');
       }
     } else {
       console.warn('⚠️ VIDEO REF CALLBACK: Element is null!');
