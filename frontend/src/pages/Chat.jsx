@@ -92,8 +92,7 @@ const IntroScreen = React.memo(({
   activeTab,
   setActiveTab,
   isMatchHistoryOpen,
-  setIsMatchHistoryOpen,
-  children
+  setIsMatchHistoryOpen
 }) => {
   console.log("Dashboard render");
   
@@ -230,8 +229,7 @@ const IntroScreen = React.memo(({
           </div>
         </aside>
 
-        {/* RIGHT PANEL - Camera Feed (always visible) */}
-        {children}
+        {/* RIGHT PANEL - Removed children, camera is now mounted separately at top level */}
       </div>
     );
   }
@@ -367,9 +365,8 @@ const IntroScreen = React.memo(({
           <span className="relative z-10">{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
         </button>
 
-        {/* Camera Preview */}
+        {/* Camera Preview - Removed children, camera mounted separately */}
         <div className="w-full flex-1 min-h-[220px] rounded-3xl overflow-hidden relative border border-gray-300 dark:border-primary/30 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] group">
-          {children}
           <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white/90 text-xs font-bold py-1.5 px-3 rounded-full flex items-center gap-2 border border-white/10 shadow-lg ring-1 ring-white/5">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
             YOU
@@ -2142,26 +2139,37 @@ const Chat = () => {
         iceServers = data.v;
         console.log('✅ TURN servers found in data.v directly (array)');
       }
-      // Format 4: data.v.iceServers is an object containing iceServers array (THIS IS THE ACTUAL FORMAT)
+      // Format 4: data.v.iceServers is an OBJECT with urls array (ACTUAL FORMAT FROM XIRSYS)
       else if (data?.v?.iceServers && typeof data.v.iceServers === 'object' && !Array.isArray(data.v.iceServers)) {
-        console.log('   data.v.iceServers is an object. Checking for nested array...');
-        console.log('   data.v.iceServers keys:', Object.keys(data.v.iceServers));
+        console.log('🔍 data.v.iceServers is an object. Structure:', Object.keys(data.v.iceServers));
         
-        // Check if it has an iceServers property with an array
-        if (Array.isArray(data.v.iceServers.iceServers)) {
+        // The actual structure from Xirsys: { username: "...", urls: [...], credential: "..." }
+        // We need to convert this to RTCPeerConnection format
+        if (Array.isArray(data.v.iceServers.urls)) {
+          console.log('✅ Found urls array in data.v.iceServers.urls');
+          // Convert { username, urls, credential } to RTCIceServer format
+          iceServers = [{
+            urls: data.v.iceServers.urls,
+            username: data.v.iceServers.username,
+            credential: data.v.iceServers.credential
+          }];
+          console.log('✅ Converted to RTCIceServer format');
+          console.log('   URLs:', data.v.iceServers.urls.length, 'entries');
+        }
+        // Check if it has nested iceServers array
+        else if (Array.isArray(data.v.iceServers.iceServers)) {
           iceServers = data.v.iceServers.iceServers;
-          console.log('✅ TURN servers found in data.v.iceServers.iceServers (nested array)');
-          console.log('   Found', iceServers.length, 'TURN servers');
+          console.log('✅ TURN servers found in data.v.iceServers.iceServers');
         }
         // Check if it has a v property with an array
         else if (Array.isArray(data.v.iceServers.v)) {
           iceServers = data.v.iceServers.v;
-          console.log('✅ TURN servers found in data.v.iceServers.v (nested array)');
+          console.log('✅ TURN servers found in data.v.iceServers.v');
         }
         // Check if it has a servers property
         else if (Array.isArray(data.v.iceServers.servers)) {
           iceServers = data.v.iceServers.servers;
-          console.log('✅ TURN servers found in data.v.iceServers.servers (nested array)');
+          console.log('✅ TURN servers found in data.v.iceServers.servers');
         }
       }
       // Format 5: Check if response is wrapped differently
@@ -2726,28 +2734,30 @@ const Chat = () => {
       {console.log('🎨 [RENDER] UI STATE →', { isSearching, partnerFound }, 'Should show:', isSearching && !partnerFound ? 'WAITING SCREEN' : partnerFound ? 'VIDEO CHAT' : 'DASHBOARD')}
 
       {/* ✅ CRITICAL FIX: ALWAYS keep IntroScreen mounted (with Camera) */}
-      {/* The camera panel is inside IntroScreen, never unmounted */}
+      {/* The camera panel is ALWAYS mounted separately, never unmounted */}
       {/* Other screens overlay on top with absolute positioning */}
       <div className="w-full h-screen overflow-hidden bg-black relative" style={{ display: partnerFound ? 'none' : 'block' }}>
-          {/* Dashboard with Camera - ALWAYS MOUNTED in background */}
+          {/* Camera Panel - ALWAYS MOUNTED at module level, NEVER as child of IntroScreen */}
+          <CameraPanel />
+          
+          {/* Dashboard WITHOUT Camera as children */}
           {console.log('🎨 [RENDER] Showing DASHBOARD')}
-          <IntroScreen 
-            user={user}
-            isLoading={isLoading}
-            activeMode={activeMode}
-            setActiveMode={setActiveMode}
-            openDuoSquad={openDuoSquad}
-            startVideoChat={startVideoChat}
-            isProfileOpen={isProfileOpen}
-            setIsProfileOpen={setIsProfileOpen}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            isMatchHistoryOpen={isMatchHistoryOpen}
-            setIsMatchHistoryOpen={setIsMatchHistoryOpen}
-          >
-            {/* ✅ Pass CameraPanel as children - prevents unmounting on prop changes */}
-            <CameraPanel />
-          </IntroScreen>
+          <div className="absolute inset-0 z-0 pointer-events-none">
+            <IntroScreen 
+              user={user}
+              isLoading={isLoading}
+              activeMode={activeMode}
+              setActiveMode={setActiveMode}
+              openDuoSquad={openDuoSquad}
+              startVideoChat={startVideoChat}
+              isProfileOpen={isProfileOpen}
+              setIsProfileOpen={setIsProfileOpen}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              isMatchHistoryOpen={isMatchHistoryOpen}
+              setIsMatchHistoryOpen={setIsMatchHistoryOpen}
+            />
+          </div>
 
           {/* WAITING SCREEN - overlays on top (absolute positioning) */}
           {isSearching && (
