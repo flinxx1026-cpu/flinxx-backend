@@ -2375,6 +2375,7 @@ const Chat = () => {
 
   const endChat = () => {
     setHasPartner(false);
+    setPartnerFound(false);  // ✅ Hide video chat screen
     setIsConnected(false);
     setPartnerInfo(null);
     setMessages([]);
