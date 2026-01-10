@@ -1534,12 +1534,18 @@ const Chat = () => {
       // The peer with the LOWER socket ID (lexicographically) is the OFFERER
       const mySocketId = socket.id;
       const partnerSocketId = data.socketId;
-      const amIOfferer = mySocketId < partnerSocketId;
+      let amIOfferer = mySocketId < partnerSocketId;
       
-      console.log('🔍 SOCKET ID COMPARISON:');
-      console.log('   My socket ID:', mySocketId);
-      console.log('   Partner socket ID:', partnerSocketId);
-      console.log('   Am I offerer? (myID < partnerID):', amIOfferer);
+      // ✅ SAFETY: If socket IDs are somehow equal or invalid, use user ID as tiebreaker
+      if (mySocketId === partnerSocketId || !mySocketId || !partnerSocketId) {
+        console.warn('⚠️ WARNING: Socket ID comparison invalid, using user ID as tiebreaker');
+        const myUserId = userIdRef.current || '';
+        const partnerUserId = data.partnerId || '';
+        amIOfferer = String(myUserId) < String(partnerUserId);
+        console.log('   Fallback: My user ID:', myUserId, 'Partner:', partnerUserId);
+      }
+      
+      console.log('✅ OFFERER DECISION MADE: I am the', amIOfferer ? 'OFFERER' : 'ANSWERER');
       
       // ✅ CRITICAL DEFENSIVE CHECK: Verify local stream exists before proceeding
       console.log('\n🔐 ===== CRITICAL STREAM VERIFICATION =====');
