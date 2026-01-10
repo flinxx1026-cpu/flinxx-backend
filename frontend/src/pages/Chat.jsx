@@ -2592,7 +2592,7 @@ const Chat = () => {
         </div>
       </>
     );
-  }, [partnerInfo, currentUser, hasPartner, isLocalCameraReady, messageInput, skipUser, sendMessage]);
+  }, [partnerInfo, hasPartner, isLocalCameraReady, messageInput]);
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
