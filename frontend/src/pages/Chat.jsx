@@ -1757,19 +1757,9 @@ const Chat = () => {
           peerConnectionRef.current = pc;
           console.log('✅ ANSWERER: Peer connection created');
           
-          // ✅ FIX: Flush any buffered ICE candidates that arrived while PC was being created
-          console.log('🧊 ANSWERER: Flushing', iceCandidateBufferRef.current.length, 'buffered ICE candidates');
-          while (iceCandidateBufferRef.current.length > 0) {
-            const bufferedCandidate = iceCandidateBufferRef.current.shift();
-            try {
-              await peerConnectionRef.current.addIceCandidate(
-                new RTCIceCandidate(bufferedCandidate)
-              );
-              console.log('✅ ANSWERER: Buffered ICE candidate added');
-            } catch (err) {
-              console.error('❌ ANSWERER: Error adding buffered ICE candidate:', err);
-            }
-          }
+          // ⚠️ NOTE: Do NOT flush buffer yet! Remote description not set
+          // Flushing now would fail with "remote description is null"
+          // We'll flush after setRemoteDescription() succeeds
         } else {
           console.log('⚠️ ANSWERER: WARNING - peerConnectionRef already exists (should be null for answerer)');
         }
@@ -1875,6 +1865,21 @@ const Chat = () => {
           new RTCSessionDescription(data.offer)
         );
         console.log('✅ ANSWERER: Remote description set successfully');
+        
+        // ✅ NOW it's safe to flush buffered ICE candidates
+        // Remote description is now set, so addIceCandidate will work
+        console.log('🧊 ANSWERER: Flushing', iceCandidateBufferRef.current.length, 'buffered ICE candidates');
+        while (iceCandidateBufferRef.current.length > 0) {
+          const bufferedCandidate = iceCandidateBufferRef.current.shift();
+          try {
+            await peerConnectionRef.current.addIceCandidate(
+              new RTCIceCandidate(bufferedCandidate)
+            );
+            console.log('✅ ANSWERER: Buffered ICE candidate added');
+          } catch (err) {
+            console.error('❌ ANSWERER: Error adding buffered ICE candidate:', err);
+          }
+        }
 
         console.log('🎬 ANSWERER: Creating answer');
         // ✅ CRITICAL: Answer also needs offerToReceiveVideo constraints!
