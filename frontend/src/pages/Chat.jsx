@@ -2384,7 +2384,20 @@ const Chat = () => {
                   </div>
                   {/* Remote Video - Desktop */}
                   <video
-                    ref={remoteVideoRef}
+                    ref={(el) => {
+                      if (el && peerConnectionRef.current?._remoteStream) {
+                        // Attach stream immediately when video element is available
+                        const remoteStream = peerConnectionRef.current._remoteStream;
+                        if (el.srcObject !== remoteStream) {
+                          el.srcObject = remoteStream;
+                          el.muted = false;
+                          el.play().catch(() => {});
+                          console.log('📹 [VIDEO REF CALLBACK] Remote stream attached via ref callback');
+                        }
+                      }
+                      // Always update the ref
+                      remoteVideoRef.current = el;
+                    }}
                     autoPlay
                     playsInline
                     muted
@@ -2477,7 +2490,19 @@ const Chat = () => {
                 {/* Local Video for Desktop */}
                 <div style={{ position: 'absolute', inset: 0, backgroundColor: '#000', display: 'block', width: '100%', height: '100%' }}>
                   <video
-                    ref={localVideoRef}
+                    ref={(el) => {
+                      if (el && localStreamRef.current) {
+                        // Attach stream immediately when video element is available
+                        if (el.srcObject !== localStreamRef.current) {
+                          el.srcObject = localStreamRef.current;
+                          el.muted = true;
+                          el.play().catch(() => {});
+                          console.log('📹 [VIDEO REF CALLBACK] Local stream attached via ref callback');
+                        }
+                      }
+                      // Always update the ref
+                      localVideoRef.current = el;
+                    }}
                     autoPlay
                     muted
                     playsInline
