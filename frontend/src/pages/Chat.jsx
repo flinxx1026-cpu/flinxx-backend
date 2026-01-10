@@ -1708,6 +1708,20 @@ const Chat = () => {
         await pc.setLocalDescription(offer);
         console.log('✅ OFFERER: Local description set');
         
+        // ✅ CRITICAL: Flush buffered ICE candidates after local description is set
+        console.log('🧊 OFFERER: Flushing', iceCandidateBufferRef.current.length, 'buffered ICE candidates after local description');
+        while (iceCandidateBufferRef.current.length > 0) {
+          const bufferedCandidate = iceCandidateBufferRef.current.shift();
+          try {
+            await pc.addIceCandidate(
+              new RTCIceCandidate(bufferedCandidate)
+            );
+            console.log('✅ OFFERER: Buffered ICE candidate added after local description');
+          } catch (err) {
+            console.error('❌ OFFERER: Error adding buffered ICE candidate after local description:', err);
+          }
+        }
+        
         console.log('\n📤 OFFERER: Sending offer with tracks:', pc.getSenders().map(s => ({
           kind: s.track?.kind,
           id: s.track?.id,
@@ -1904,6 +1918,20 @@ const Chat = () => {
         await peerConnectionRef.current.setLocalDescription(answer);
         console.log('✅ ANSWERER: Local description set successfully');
 
+        // ✅ CRITICAL: Flush buffered ICE candidates after local description is set
+        console.log('🧊 ANSWERER: Flushing', iceCandidateBufferRef.current.length, 'buffered ICE candidates after local description');
+        while (iceCandidateBufferRef.current.length > 0) {
+          const bufferedCandidate = iceCandidateBufferRef.current.shift();
+          try {
+            await peerConnectionRef.current.addIceCandidate(
+              new RTCIceCandidate(bufferedCandidate)
+            );
+            console.log('✅ ANSWERER: Buffered ICE candidate added after local description');
+          } catch (err) {
+            console.error('❌ ANSWERER: Error adding buffered ICE candidate after local description:', err);
+          }
+        }
+
         console.log('\n📋 ===== ANSWERER SENDING ANSWER =====');
         const finalSenders = peerConnectionRef.current.getSenders();
         console.log('📤 ANSWERER: Final senders count:', finalSenders.length);
@@ -1985,11 +2013,25 @@ const Chat = () => {
       
       try {
         if (peerConnectionRef.current) {
-          console.log('🧊 Peer connection ready - adding ICE candidate immediately');
-          await peerConnectionRef.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-          console.log('✅ ICE candidate added successfully\n');
+          console.log('🧊 Peer connection exists - checking if ready for ICE candidates');
+          console.log('   connectionState:', peerConnectionRef.current.connectionState);
+          console.log('   signalingState:', peerConnectionRef.current.signalingState);
+          
+          try {
+            console.log('🧊 Attempting to add ICE candidate immediately');
+            await peerConnectionRef.current.addIceCandidate(
+              new RTCIceCandidate(data.candidate)
+            );
+            console.log('✅ ICE candidate added successfully\n');
+          } catch (addErr) {
+            // addIceCandidate can fail if remote description not set yet
+            // In this case, buffer it for later
+            console.warn('⚠️ addIceCandidate failed (likely remote description not ready yet)');
+            console.warn('   Error:', addErr.message);
+            console.warn('   Buffering candidate for later - Buffer size will be:', iceCandidateBufferRef.current.length + 1);
+            iceCandidateBufferRef.current.push(data.candidate);
+            console.log('🧊 Candidate buffered - will be added when remote description is ready');
+          }
         } else {
           // ✅ CRITICAL FIX: Buffer the candidate if PC isn't ready yet
           console.warn('⚠️ Peer connection NOT ready yet - buffering ICE candidate');
@@ -1998,7 +2040,7 @@ const Chat = () => {
           console.log('🧊 Candidate buffered - will be added when peer connection is ready');
         }
       } catch (err) {
-        console.error('❌ Error adding ICE candidate:', err);
+        console.error('❌ Unexpected error in ICE candidate handler:', err);
       }
     });
 
