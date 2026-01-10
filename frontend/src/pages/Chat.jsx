@@ -776,6 +776,34 @@ const Chat = () => {
     }
   }, [partnerFound]);
 
+  // ✅ Monitor if stream gets lost
+  useEffect(() => {
+    if (!partnerFound || !localVideoRef.current) return;
+    
+    const interval = setInterval(() => {
+      if (localVideoRef.current?.srcObject === null) {
+        console.error('❌ [MONITOR] Local video srcObject became null! Re-attaching stream...');
+        if (localStreamRef.current) {
+          localVideoRef.current.srcObject = localStreamRef.current;
+          localVideoRef.current.play().catch(() => {});
+          console.log('✅ [MONITOR] Stream re-attached');
+        }
+      }
+      
+      if (localStreamRef.current) {
+        const tracks = localStreamRef.current.getTracks();
+        const allEnabled = tracks.every(t => t.enabled && t.readyState === 'live');
+        if (!allEnabled) {
+          console.warn('⚠️ [MONITOR] Some local tracks are disabled or ended:', 
+            tracks.map(t => ({ kind: t.kind, enabled: t.enabled, state: t.readyState }))
+          );
+        }
+      }
+    }, 1000); // Check every second
+    
+    return () => clearInterval(interval);
+  }, [partnerFound]);
+
   // ✅ Debug remote video ref
   useEffect(() => {
     console.log('📹 [REMOTE STREAM DEBUG] Remote video ref status:', {
