@@ -2113,14 +2113,34 @@ const Chat = () => {
       const data = await res.json();
 
       console.log('📡 Xirsys API Response:', data);
+      console.log('   data.v type:', typeof data?.v);
+      console.log('   data.v.iceServers exists?:', !!data?.v?.iceServers);
+      console.log('   Is array?:', Array.isArray(data?.v?.iceServers));
 
+      // Try multiple possible response formats
+      let iceServers = null;
+      
+      // Format 1: data.v.iceServers (expected format)
       if (data?.v?.iceServers && Array.isArray(data.v.iceServers)) {
-        console.log('✅ TURN servers fetched from Xirsys API');
-        console.log('✅ iceServers is an array with', data.v.iceServers.length, 'entries');
-        console.log('📋 ICE Servers:', data.v.iceServers);
-        
-        // data.v.iceServers is already the correct array format for RTCPeerConnection
-        return data.v.iceServers;
+        iceServers = data.v.iceServers;
+        console.log('✅ TURN servers found in data.v.iceServers');
+      }
+      // Format 2: data.iceServers (direct)
+      else if (data?.iceServers && Array.isArray(data.iceServers)) {
+        iceServers = data.iceServers;
+        console.log('✅ TURN servers found in data.iceServers');
+      }
+      // Format 3: data.v is the array itself
+      else if (Array.isArray(data?.v)) {
+        iceServers = data.v;
+        console.log('✅ TURN servers found in data.v directly');
+      }
+
+      if (iceServers && iceServers.length > 0) {
+        console.log('✅ TURN servers fetched successfully');
+        console.log('✅ iceServers has', iceServers.length, 'entries');
+        console.log('📋 ICE Servers:', iceServers);
+        return iceServers;
       } else {
         console.warn('⚠️ Invalid Xirsys TURN response format');
         console.log('   Expected: data.v.iceServers as array');
