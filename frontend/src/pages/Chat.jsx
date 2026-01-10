@@ -744,6 +744,18 @@ const Chat = () => {
 
   // ✅ Attach local stream to localVideoRef when in video chat mode
   useEffect(() => {
+    console.log('📹 [LOCAL STREAM ATTACH] Checking conditions:', {
+      partnerFound,
+      localVideoRefExists: !!localVideoRef.current,
+      localStreamRefExists: !!localStreamRef.current,
+      localVideoInDOM: localVideoRef.current?.parentElement ? 'YES' : 'NO',
+      localVideoDisplay: localVideoRef.current?.style?.display,
+      localVideoSize: localVideoRef.current ? {
+        width: localVideoRef.current.offsetWidth,
+        height: localVideoRef.current.offsetHeight
+      } : null
+    });
+
     if (partnerFound && localVideoRef.current && localStreamRef.current) {
       console.log('📹 [VIDEO CHAT] Attaching local stream to localVideoRef');
       
@@ -751,13 +763,31 @@ const Chat = () => {
         localVideoRef.current.srcObject = localStreamRef.current;
         localVideoRef.current.muted = true;
         
+        console.log('📹 [VIDEO CHAT] srcObject set, stream has', localStreamRef.current.getTracks().length, 'tracks');
+        
         localVideoRef.current.play().catch(err => {
           console.warn('📹 [VIDEO CHAT] Local video play warning:', err.message);
         });
         
         console.log('📹 [VIDEO CHAT] ✅ Local stream attached to localVideoRef');
+      } else {
+        console.log('📹 [VIDEO CHAT] Stream already attached');
       }
     }
+  }, [partnerFound]);
+
+  // ✅ Debug remote video ref
+  useEffect(() => {
+    console.log('📹 [REMOTE STREAM DEBUG] Remote video ref status:', {
+      remoteVideoRefExists: !!remoteVideoRef.current,
+      remoteVideoInDOM: remoteVideoRef.current?.parentElement ? 'YES' : 'NO',
+      remoteVideoDisplay: remoteVideoRef.current?.style?.display,
+      remoteVideoSize: remoteVideoRef.current ? {
+        width: remoteVideoRef.current.offsetWidth,
+        height: remoteVideoRef.current.offsetHeight
+      } : null,
+      remoteVideoSrcObject: remoteVideoRef.current?.srcObject ? 'HAS STREAM' : 'NO STREAM'
+    });
   }, [partnerFound]);
   console.log('🎯 CHAT COMPONENT LOADED - BUILD: 895cedd (temporal deadzone fix - move hooks to top)');
 
