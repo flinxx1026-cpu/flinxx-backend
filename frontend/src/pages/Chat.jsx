@@ -1152,14 +1152,12 @@ const Chat = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // CRITICAL: Define createPeerConnection BEFORE socket listeners
-  // This function is called inside socket event handlers
-  // Must be declared before the socket listener setup to avoid TDZ error
-  // When minified, this function gets named 'g', and if not declared before
-  // the socket listeners that reference it, we get:
-  // "Cannot access 'g' before initialization"
   // ========================================
-  const createPeerConnection = async () => {
+  // CRITICAL: Buffer for ICE candidates that arrive before peer connection
+  // ========================================
+  const iceCandidateBufferRef = useRef([]);
+
+  // CRITICAL: Define createPeerConnection BEFORE socket listeners
     console.log('🔧 createPeerConnection called');
     console.log('   Current localStreamRef:', localStreamRef.current);
     
@@ -1600,6 +1598,20 @@ const Chat = () => {
         }
         peerConnectionRef.current = pc;
         console.log('✅ OFFERER: Peer connection created');
+        
+        // ✅ FIX: Flush any buffered ICE candidates that arrived while PC was being created
+        console.log('🧊 OFFERER: Flushing', iceCandidateBufferRef.current.length, 'buffered ICE candidates');
+        while (iceCandidateBufferRef.current.length > 0) {
+          const bufferedCandidate = iceCandidateBufferRef.current.shift();
+          try {
+            await peerConnectionRef.current.addIceCandidate(
+              new RTCIceCandidate(bufferedCandidate)
+            );
+            console.log('✅ OFFERER: Buffered ICE candidate added');
+          } catch (err) {
+            console.error('❌ OFFERER: Error adding buffered ICE candidate:', err);
+          }
+        }
 
         console.log('📊 OFFERER Stream status after peer connection creation:', {
           exists: !!localStreamRef.current,
@@ -1725,6 +1737,20 @@ const Chat = () => {
           }
           peerConnectionRef.current = pc;
           console.log('✅ ANSWERER: Peer connection created');
+          
+          // ✅ FIX: Flush any buffered ICE candidates that arrived while PC was being created
+          console.log('🧊 ANSWERER: Flushing', iceCandidateBufferRef.current.length, 'buffered ICE candidates');
+          while (iceCandidateBufferRef.current.length > 0) {
+            const bufferedCandidate = iceCandidateBufferRef.current.shift();
+            try {
+              await peerConnectionRef.current.addIceCandidate(
+                new RTCIceCandidate(bufferedCandidate)
+              );
+              console.log('✅ ANSWERER: Buffered ICE candidate added');
+            } catch (err) {
+              console.error('❌ ANSWERER: Error adding buffered ICE candidate:', err);
+            }
+          }
         } else {
           console.log('⚠️ ANSWERER: WARNING - peerConnectionRef already exists (should be null for answerer)');
         }
@@ -1915,7 +1941,7 @@ const Chat = () => {
     // ICE candidate
     socket.on('ice_candidate', async (data) => {
       console.log('\n🧊 ICE candidate received from peer:', {
-        candidate: data.candidate,
+        candidate: data.candidate?.candidate?.substring(0, 50) || 'null',
         sdpMLineIndex: data.sdpMLineIndex,
         sdpMid: data.sdpMid
       });
@@ -1929,13 +1955,17 @@ const Chat = () => {
       
       try {
         if (peerConnectionRef.current) {
-          console.log('🧊 Adding ICE candidate to peer connection');
+          console.log('🧊 Peer connection ready - adding ICE candidate immediately');
           await peerConnectionRef.current.addIceCandidate(
             new RTCIceCandidate(data.candidate)
           );
           console.log('✅ ICE candidate added successfully\n');
         } else {
-          console.warn('⚠️ No peer connection available for ICE candidate');
+          // ✅ CRITICAL FIX: Buffer the candidate if PC isn't ready yet
+          console.warn('⚠️ Peer connection NOT ready yet - buffering ICE candidate');
+          console.warn('   Buffer size will be:', iceCandidateBufferRef.current.length + 1);
+          iceCandidateBufferRef.current.push(data.candidate);
+          console.log('🧊 Candidate buffered - will be added when peer connection is ready');
         }
       } catch (err) {
         console.error('❌ Error adding ICE candidate:', err);
@@ -2266,17 +2296,20 @@ const Chat = () => {
   const localVideoRefCallback = useCallback((el) => {
     if (el && localStreamRef.current) {
       if (el.srcObject !== localStreamRef.current) {
+        console.log('🎥 LOCAL VIDEO: Attaching local stream to ref');
         el.srcObject = localStreamRef.current;
         el.muted = true;
         el.play().catch(() => {});
       }
     }
     localVideoRef.current = el;
+    console.log('📍 LOCAL VIDEO REF: Set, srcObject:', el?.srcObject?.id || 'null');
   }, []);
 
   const remoteVideoRefCallback = useCallback((el) => {
     // Just store the ref - the ontrack event handler will attach the stream
     remoteVideoRef.current = el;
+    console.log('📍 REMOTE VIDEO REF: Set, srcObject:', el?.srcObject?.id || 'null');
     if (el) {
       console.log('✅ VIDEO REF CALLBACK: Remote video element mounted');
     }
