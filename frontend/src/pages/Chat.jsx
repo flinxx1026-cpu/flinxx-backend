@@ -2318,7 +2318,7 @@ const Chat = () => {
     }
   }, []);
 
-  const VideoChatScreen = React.memo(() => {
+  const VideoChatScreen = useMemo(() => React.memo(() => {
     // CRITICAL DEBUG: Log partnerInfo to diagnose display issue
     console.log('🎬 VideoChatScreen rendering - partnerInfo:', {
       exists: !!partnerInfo,
@@ -2624,7 +2624,7 @@ const Chat = () => {
         </div>
       </>
     );
-  }, []);
+  }), []);
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
