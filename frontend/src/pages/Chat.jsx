@@ -2379,6 +2379,7 @@ const Chat = () => {
     setPartnerInfo(null);
     setMessages([]);
     setConnectionTime(0);
+    setIsSearching(true);  // ✅ Return to waiting screen
 
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
