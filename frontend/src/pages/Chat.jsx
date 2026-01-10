@@ -2110,38 +2110,60 @@ const Chat = () => {
 
       console.log('📡 Xirsys API Response:', data);
       console.log('   data.v type:', typeof data?.v);
-      console.log('   data.v.iceServers exists?:', !!data?.v?.iceServers);
-      console.log('   Is array?:', Array.isArray(data?.v?.iceServers));
+      console.log('   data.v structure:', JSON.stringify(data?.v, null, 2));
+      console.log('   Is data.v an array?', Array.isArray(data?.v));
+      console.log('   Is data.v.iceServers an array?', Array.isArray(data?.v?.iceServers));
 
       // Try multiple possible response formats
       let iceServers = null;
       
-      // Format 1: data.v.iceServers (expected format)
+      // Format 1: data.v.iceServers as array (expected format)
       if (data?.v?.iceServers && Array.isArray(data.v.iceServers)) {
         iceServers = data.v.iceServers;
-        console.log('✅ TURN servers found in data.v.iceServers');
+        console.log('✅ TURN servers found in data.v.iceServers (array)');
       }
-      // Format 2: data.iceServers (direct)
+      // Format 2: data.iceServers as array (direct)
       else if (data?.iceServers && Array.isArray(data.iceServers)) {
         iceServers = data.iceServers;
-        console.log('✅ TURN servers found in data.iceServers');
+        console.log('✅ TURN servers found in data.iceServers (array)');
       }
       // Format 3: data.v is the array itself
       else if (Array.isArray(data?.v)) {
         iceServers = data.v;
-        console.log('✅ TURN servers found in data.v directly');
+        console.log('✅ TURN servers found in data.v directly (array)');
+      }
+      // Format 4: data.v.iceServers is an object with an iceServers property
+      else if (data?.v?.iceServers && typeof data.v.iceServers === 'object') {
+        if (Array.isArray(data.v.iceServers.iceServers)) {
+          iceServers = data.v.iceServers.iceServers;
+          console.log('✅ TURN servers found in data.v.iceServers.iceServers (nested)');
+        } else if (data.v.iceServers.v && Array.isArray(data.v.iceServers.v)) {
+          iceServers = data.v.iceServers.v;
+          console.log('✅ TURN servers found in data.v.iceServers.v (nested)');
+        }
+      }
+      // Format 5: Check if response is wrapped differently
+      else if (data?.servers && Array.isArray(data.servers)) {
+        iceServers = data.servers;
+        console.log('✅ TURN servers found in data.servers');
+      }
+      // Format 6: Check if v is an object with servers
+      else if (data?.v?.servers && Array.isArray(data.v.servers)) {
+        iceServers = data.v.servers;
+        console.log('✅ TURN servers found in data.v.servers');
       }
 
       if (iceServers && iceServers.length > 0) {
         console.log('✅ TURN servers fetched successfully');
         console.log('✅ iceServers has', iceServers.length, 'entries');
-        console.log('📋 ICE Servers:', iceServers);
+        console.log('📋 First ICE Server:', iceServers[0]);
         return iceServers;
       } else {
-        console.warn('⚠️ Invalid Xirsys TURN response format');
-        console.log('   Expected: data.v.iceServers as array');
-        console.log('   Received:', data);
-        throw new Error("Invalid Xirsys TURN response format");
+        console.warn('⚠️ Invalid Xirsys TURN response format - could not find iceServers array');
+        console.log('   Received full response:', JSON.stringify(data, null, 2));
+        console.log('   Keys in response:', Object.keys(data || {}));
+        console.log('   Keys in data.v:', Object.keys(data?.v || {}));
+        throw new Error("Invalid Xirsys TURN response format - iceServers array not found");
       }
     } catch (error) {
       console.error('❌ Error fetching TURN servers from Xirsys:', error.message);
@@ -2684,8 +2706,7 @@ const Chat = () => {
       {/* ✅ CRITICAL FIX: ALWAYS keep IntroScreen mounted (with Camera) */}
       {/* The camera panel is inside IntroScreen, never unmounted */}
       {/* Other screens overlay on top with absolute positioning */}
-      {!partnerFound && (
-        <div className="w-full h-screen overflow-hidden bg-black relative">
+      <div className="w-full h-screen overflow-hidden bg-black relative" style={{ display: partnerFound ? 'none' : 'block' }}>
           {/* Dashboard with Camera - ALWAYS MOUNTED in background */}
           {console.log('🎨 [RENDER] Showing DASHBOARD')}
           <IntroScreen 
@@ -2707,7 +2728,7 @@ const Chat = () => {
           </IntroScreen>
 
           {/* WAITING SCREEN - overlays on top (absolute positioning) */}
-          {isSearching && !partnerFound && (
+          {isSearching && (
             <div className="absolute inset-0 z-50">
               {console.log('🎨 [RENDER] Showing WAITING SCREEN')}
               <WaitingScreen 
@@ -2717,8 +2738,7 @@ const Chat = () => {
               />
             </div>
           )}
-        </div>
-      )}
+      </div>
 
       {/* VIDEO CHAT - FULL SCREEN (absolute positioning) */}
       {partnerFound && (
