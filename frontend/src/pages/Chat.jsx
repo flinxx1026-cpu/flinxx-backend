@@ -2175,7 +2175,8 @@ const Chat = () => {
     console.log('STATE AFTER CANCEL:', { isSearching: false, partnerFound: false, isLoading: false });
   }, []);
 
-  const sendMessage = () => {
+
+  const sendMessage = useCallback(() => {
     if (messageInput.trim() === '' || !hasPartner) return;
 
     const newMessage = {
@@ -2191,14 +2192,14 @@ const Chat = () => {
       to: partnerSocketIdRef.current   // 🔥 CRITICAL - Route to partner socket
     });
     setMessageInput('');
-  };
+  }, [messageInput, hasPartner]);
 
-  const skipUser = () => {
+  const skipUser = useCallback(() => {
     socket.emit('skip_user', {
       partnerSocketId: partnerSocketIdRef.current
     });
     endChat();
-  };
+  }, []);
 
   const endChat = () => {
     setHasPartner(false);
