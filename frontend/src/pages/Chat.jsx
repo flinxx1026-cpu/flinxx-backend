@@ -636,12 +636,8 @@ const Chat = () => {
   // 🧪 DEBUG TEST - Check if both "RENDER START" and "HOOKS DONE" appear in console
   console.log("HOOKS DONE");
 
-  // ✅ HARD BLOCK: Don't render anything until auth is ready
-  if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
-    console.log('⏳ Chat: Waiting for valid user UUID from AuthContext...');
-    return null;
-  }
   // ✅ CAMERA INIT - MOVE THIS TO FIRST useEffect SO IT RUNS IMMEDIATELY
+  // NOTE: Auth validation moved AFTER all hooks to comply with Rules of Hooks
   useEffect(() => {
     let isMounted = true;
     
@@ -2373,6 +2369,19 @@ const Chat = () => {
       location: currentUser?.location,
       picture: !!currentUser?.picture
     });
+    
+    // ✅ AUTH CHECK (after all hooks) - Don't render chat until auth is ready
+    if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
+      console.log('⏳ Chat: Waiting for valid user UUID from AuthContext...');
+      return (
+        <div style={{ width: '100%', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
+          <div style={{ textAlign: 'center', color: '#fff' }}>
+            <div style={{ fontSize: '18px', marginBottom: '16px' }}>Loading...</div>
+            <div style={{ fontSize: '12px', color: '#999' }}>Initializing authentication...</div>
+          </div>
+        </div>
+      );
+    }
     
     return (
       <>
