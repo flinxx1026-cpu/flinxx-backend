@@ -2275,15 +2275,11 @@ const Chat = () => {
   }, []);
 
   const remoteVideoRefCallback = useCallback((el) => {
-    if (el && peerConnectionRef.current?._remoteStream) {
-      const remoteStream = peerConnectionRef.current._remoteStream;
-      if (el.srcObject !== remoteStream) {
-        el.srcObject = remoteStream;
-        el.muted = false;
-        el.play().catch(() => {});
-      }
-    }
+    // Just store the ref - the ontrack event handler will attach the stream
     remoteVideoRef.current = el;
+    if (el) {
+      console.log('✅ VIDEO REF CALLBACK: Remote video element mounted');
+    }
   }, []);
 
   const VideoChatScreen = React.memo(() => {
@@ -2592,7 +2588,7 @@ const Chat = () => {
         </div>
       </>
     );
-  }, [partnerInfo, hasPartner, isLocalCameraReady, messageInput]);
+  }, [partnerInfo, hasPartner, isLocalCameraReady]);
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
