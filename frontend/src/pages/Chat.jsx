@@ -1343,6 +1343,9 @@ const Chat = () => {
         if (!remoteVideoRef.current) {
             console.error('❌ CRITICAL ERROR: remoteVideoRef.current is NULL!');
             console.error('   Cannot attach remote track - video element not available');
+            console.error('   This happens when ontrack fires before ref callback sets the element');
+            console.error('   remoteVideoRef object:', remoteVideoRef);
+            console.error('   remoteVideoRef.current:', remoteVideoRef.current);
             return;
         }
         
@@ -2631,7 +2634,7 @@ const Chat = () => {
         </div>
       </>
     );
-  }), [streamsReadyTrigger]);
+  }), [streamsReadyTrigger, partnerFound]);
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
