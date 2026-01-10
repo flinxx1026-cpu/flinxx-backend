@@ -1343,6 +1343,11 @@ const Chat = () => {
         // Add track to persistent stream
         remoteStream.addTrack(event.track);
         console.log('✅ Track added to persistent remote stream');
+        
+        // ✅ CRITICAL: Enable the remote track explicitly
+        event.track.enabled = true;
+        console.log('✅ Remote track enabled:', { kind: event.track.kind, enabled: event.track.enabled });
+        
         console.log('📥 Remote stream now has', remoteStream.getTracks().length, 'track(s)');
         console.log('📥 Tracks:', remoteStream.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled })));
         
@@ -2445,12 +2450,57 @@ const Chat = () => {
 
   const remoteVideoRefCallback = useCallback((el) => {
     // Just store the ref - the ontrack event handler will attach the stream
+    console.log('📍 REMOTE VIDEO REF CALLBACK:', {
+      element: !!el,
+      hasSrcObject: !!el?.srcObject,
+      srcObjectId: el?.srcObject?.id || 'null',
+      trackCount: el?.srcObject?.getTracks?.().length || 0
+    });
     remoteVideoRef.current = el;
-    console.log('📍 REMOTE VIDEO REF: Set, srcObject:', el?.srcObject?.id || 'null');
     if (el) {
-      console.log('✅ VIDEO REF CALLBACK: Remote video element mounted');
+      console.log('✅ VIDEO REF CALLBACK: Remote video element mounted and stored in ref');
+      // If stream already attached, log it
+      if (el.srcObject) {
+        console.log('   Stream already attached:', el.srcObject.id);
+        console.log('   Tracks:', el.srcObject.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled })));
+      }
+    } else {
+      console.warn('⚠️ VIDEO REF CALLBACK: Element is null!');
     }
   }, []);
+
+  // ✅ Monitor remote video srcObject changes
+  useEffect(() => {
+    if (!remoteVideoRef.current) {
+      console.log('📺 MONITOR: remoteVideoRef.current is null - element not mounted yet');
+      return;
+    }
+
+    const checkInterval = setInterval(() => {
+      const video = remoteVideoRef.current;
+      if (!video) return;
+
+      console.log('📺 MONITOR: Remote video element status:', {
+        srcObjectExists: !!video.srcObject,
+        srcObjectId: video.srcObject?.id || 'null',
+        trackCount: video.srcObject?.getTracks?.().length || 0,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        paused: video.paused,
+        readyState: video.readyState,
+        networkState: video.networkState
+      });
+
+      if (video.srcObject && video.srcObject.getTracks().length > 0) {
+        const tracks = video.srcObject.getTracks();
+        tracks.forEach(t => {
+          console.log(`   ${t.kind} track: enabled=${t.enabled}, readyState=${t.readyState}`);
+        });
+      }
+    }, 2000);
+
+    return () => clearInterval(checkInterval);
+  }, [hasPartner]);
 
   const VideoChatScreen = useMemo(() => React.memo(() => {
     // CRITICAL DEBUG: Log partnerInfo to diagnose display issue
@@ -2590,7 +2640,6 @@ const Chat = () => {
                     ref={remoteVideoRefCallback}
                     autoPlay
                     playsInline
-                    muted
                     style={{
                       width: '100%',
                       height: '100%',
