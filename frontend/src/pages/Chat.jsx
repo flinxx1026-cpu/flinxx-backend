@@ -2209,7 +2209,7 @@ const Chat = () => {
     }
   };
 
-  const startVideoChat = async () => {
+  const startVideoChat = useCallback(async () => {
     console.log('🎬 [BUTTON CLICK] "Start Video Chat" button clicked');
     console.log('🎬 [BUTTON CLICK] Current state - cameraStarted:', cameraStarted, 'isSearching:', isSearching);
     
@@ -2282,7 +2282,7 @@ const Chat = () => {
       console.log('🎬 [STATE AFTER] Calling setIsSearching(true)');
       console.log('STATE AFTER START SEARCH:', { isStarting: true, isSearching: true, partnerFound: false });
     }
-  };
+  }, [cameraStarted, isSearching, isRequestingCamera, startCamera]);
 
   // ✅ Stable cancel search handler - memoized to prevent unnecessary re-renders
   const handleCancelSearch = useCallback(() => {
