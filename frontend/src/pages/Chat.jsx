@@ -2208,184 +2208,271 @@ const Chat = () => {
     });
     
     return (
-    <div className="dashboard">
+      <>
+        <style>{`
+          :root {
+            --luxury-gold: #c5a059;
+            --gold-glow: rgba(197, 160, 89, 0.25);
+          }
+          body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000;
+          }
+          .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+          }
+          .premium-panel-container {
+            overflow: visible !important;
+            position: relative;
+          }
+          .premium-gold-panel {
+            border: 2px solid var(--luxury-gold);
+            box-shadow: 0 0 12px 1px var(--gold-glow);
+            z-index: 10;
+          }
+          .inner-content-radius {
+            border-radius: calc(1rem - 2px);
+          }
+          @media (max-width: 768px) {
+            .main-layout {
+              flex-direction: column !important;
+              padding: 1rem !important;
+              gap: 1rem !important;
+              overflow: hidden !important;
+            }
+            .panel-top, .panel-bottom {
+              flex: 1 1 50% !important;
+              height: 50% !important;
+              width: 100% !important;
+              min-height: 0;
+            }
+            .panel-top {
+              order: 1;
+            }
+            .panel-bottom {
+              order: 2;
+            }
+            .panel-top .video-container {
+              display: block !important;
+            }
+            .panel-top .chat-messages {
+              display: none !important;
+            }
+            .panel-bottom .chat-messages {
+              display: flex !important;
+            }
+            .panel-bottom .video-container {
+              display: none !important;
+            }
+            .panel-top .user-header {
+              display: none !important;
+            }
+            .panel-bottom .user-header {
+              display: flex !important;
+            }
+          }
+        `}</style>
         
-        {/* DUAL CAMERA LAYOUT - Side by Side */}
-        <div className="w-full max-w-5xl flex gap-6 flex-1">
-          
-          {/* LEFT CAMERA - Remote Video */}
-          <div className="flex-1 rounded-2xl shadow-2xl overflow-hidden relative" style={{ backgroundColor: '#000', border: '1px solid #d9b85f', minHeight: '400px', aspectRatio: '16/9' }}>
-            {/* Remote video wrapper */}
-            <div id="remote-video-wrapper" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 1, overflow: 'hidden', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              
-              {/* Remote video element */}
-              <video
-                id="remote-video-singleton"
-                ref={remoteVideoRef}
-                autoPlay={true}
-                playsInline={true}
-                muted={true}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  backgroundColor: 'black',
-                  display: hasPartner ? 'block' : 'none',
-                  zIndex: 10
-                }}
-              />
-              
-              {/* Placeholder shown when no partner */}
-              {!hasPartner && (
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  backgroundColor: '#000000',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 1
-                }}>
-                  <p style={{ color: '#d9b85f', fontSize: '14px' }}>Waiting for partner video...</p>
-                </div>
-              )}
+        <div className="main-layout flex h-full w-full p-8 gap-8 overflow-visible" style={{ backgroundColor: '#000000' }}>
+          {/* TOP PANEL - Video Feed */}
+          <div className="panel-top flex-1 flex flex-col premium-panel-container">
+            <div className="flex-1 flex flex-col bg-background-dark rounded-2xl premium-gold-panel relative overflow-hidden" style={{ backgroundColor: '#000000' }}>
+              <div className="flex-1 flex flex-col inner-content-radius overflow-hidden relative">
+                {/* Header with Partner Info */}
+                <header className="user-header flex items-center justify-between p-6 border-b border-white/5 z-20" style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
+                  <div className="flex items-center gap-4">
+                    <div className="size-10 md:size-12 rounded-full" style={{ backgroundColor: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {partnerInfo?.picture ? (
+                        <img src={partnerInfo.picture} alt="Partner" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                      ) : (
+                        <span style={{ color: '#d4af37', fontWeight: 'bold', fontSize: '18px' }}>D</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <h2 style={{ color: '#f5f5f5', fontSize: '16px', fontWeight: 500, margin: '0' }}>
+                        {partnerInfo?.userName || 'Partner'}
+                      </h2>
+                      <span style={{ color: '#c8ba93', fontSize: '11px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0' }}>
+                        {partnerInfo?.userLocation || 'Online'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <button style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = '#d4af37'; e.target.style.color = '#000'; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#d4af37'; }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person</span>
+                    </button>
+                    <button style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = '#d4af37'; e.target.style.color = '#000'; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#d4af37'; }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>warning</span>
+                    </button>
+                  </div>
+                </header>
 
-              {/* Partner info overlay - Top Left */}
-              {hasPartner && (
-                <div className="absolute top-4 left-4 flex items-center gap-3 z-50 backdrop-blur-sm px-3 py-2 rounded-xl" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg flex-shrink-0 overflow-hidden">
-                    {partnerInfo && partnerInfo.picture ? (
-                      <img src={partnerInfo.picture} alt="Partner" className="w-full h-full object-cover" />
-                    ) : (
-                      '👤'
+                {/* Video Container */}
+                <div className="flex-1 relative flex items-center justify-center">
+                  <div className="chat-messages md:flex flex-col items-center justify-center opacity-10 pointer-events-none hidden">
+                    <span className="material-symbols-outlined" style={{ fontSize: '100px', color: '#c8ba93' }}>chat_bubble_outline</span>
+                  </div>
+                  <div className="video-container absolute inset-0 md:hidden">
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        backgroundColor: '#000',
+                        display: hasPartner ? 'block' : 'none'
+                      }}
+                    />
+                    {!hasPartner && (
+                      <div style={{ width: '100%', height: '100%', backgroundColor: '#000', opacity: 0.4, grayscale: '100%' }}></div>
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-sm" style={{ color: '#d9b85f' }}>
-                      {partnerInfo ? partnerInfo.userName : 'Partner'}
-                    </p>
-                    <p className="text-xs" style={{ color: '#d9b85f' }}>
-                      {partnerInfo ? partnerInfo.userLocation : 'Online'}
-                    </p>
-                  </div>
                 </div>
-              )}
 
-              {/* Connection status overlay - Top Right */}
-              {isConnected && hasPartner && (
-                <div className="absolute top-4 right-4 flex items-center gap-2 text-xs font-semibold z-50 shadow-lg px-3 py-2 rounded-full" style={{ backgroundColor: 'rgba(217, 184, 95, 0.9)', color: '#0f0f0f' }}>
-                  <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#0f0f0f' }}></span>
-                  {formatTime(connectionTime)}
+                {/* Skip Button - Bottom Right */}
+                <div style={{ position: 'absolute', bottom: '24px', right: '24px', zIndex: 20 }}>
+                  <button
+                    onClick={skipUser}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      border: '1px solid rgba(212, 175, 55, 0.3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#d4af37',
+                      backgroundColor: '#000000',
+                      cursor: 'pointer',
+                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8)',
+                      transition: 'all 0.3s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 0 20px rgba(212, 175, 55, 0.4)';
+                      e.currentTarget.style.borderColor = '#d4af37';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.8)';
+                      e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.3)';
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '28px' }}>skip_next</span>
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
           </div>
 
-          {/* RIGHT CAMERA - Local Video Placeholder */}
-          <div className="flex-1 rounded-2xl shadow-2xl overflow-hidden relative" style={{ backgroundColor: '#000', border: '1px solid #d9b85f', minHeight: '400px', aspectRatio: '16/9' }}>
-            {/* Placeholder - actual video element is in root */}
-            {!isLocalCameraReady && (
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                backgroundColor: '#000',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#666',
-                fontSize: '12px',
-                zIndex: 0
-              }}>
-                Camera loading...
+          {/* BOTTOM PANEL - Chat/Local Video */}
+          <div className="panel-bottom flex-1 flex flex-col premium-panel-container">
+            <div className="flex-1 flex flex-col bg-background-dark rounded-2xl premium-gold-panel relative overflow-hidden" style={{ backgroundColor: '#000000' }}>
+              <div className="flex-1 w-full h-full relative inner-content-radius overflow-hidden flex flex-col">
+                {/* Header for Mobile */}
+                <header className="user-header hidden items-center justify-between p-6 border-b border-white/5 z-20" style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
+                  <div className="flex items-center gap-4">
+                    <div className="size-10 md:size-12 rounded-full" style={{ backgroundColor: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {partnerInfo?.picture ? (
+                        <img src={partnerInfo.picture} alt="Partner" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                      ) : (
+                        <span style={{ color: '#d4af37', fontWeight: 'bold', fontSize: '18px' }}>D</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col">
+                      <h2 style={{ color: '#f5f5f5', fontSize: '16px', fontWeight: 500, margin: '0' }}>
+                        {partnerInfo?.userName || 'Partner'}
+                      </h2>
+                      <span style={{ color: '#c8ba93', fontSize: '11px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0' }}>
+                        {partnerInfo?.userLocation || 'Online'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <button style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = '#d4af37'; e.target.style.color = '#000'; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#d4af37'; }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person</span>
+                    </button>
+                    <button style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = '#d4af37'; e.target.style.color = '#000'; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#d4af37'; }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>warning</span>
+                    </button>
+                  </div>
+                </header>
+
+                {/* Local Video for Desktop */}
+                <div className="video-container absolute inset-0 hidden md:block" style={{ backgroundColor: '#000' }}>
+                  <video
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      backgroundColor: '#000'
+                    }}
+                  />
+                </div>
+
+                {/* Chat Messages Area for Mobile */}
+                <div className="chat-messages flex-1 relative flex items-center justify-center md:hidden">
+                  <div style={{ opacity: 0.1, pointerEvents: 'none' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '60px', color: '#c8ba93' }}>chat_bubble_outline</span>
+                  </div>
+                </div>
+
+                {/* Message Input */}
+                <div style={{ marginTop: 'auto', width: '100%', padding: '16px', zIndex: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: 'rgba(17, 17, 17, 0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', height: '56px', paddingLeft: '12px', paddingRight: '12px' }}>
+                    <input
+                      type="text"
+                      placeholder="Send Message"
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          sendMessage();
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        color: '#f5f5f5',
+                        fontSize: '14px',
+                        fontWeight: 300,
+                        outline: 'none'
+                      }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <button
+                        onClick={sendMessage}
+                        style={{
+                          backgroundColor: '#d4af37',
+                          color: '#000',
+                          paddingLeft: '24px',
+                          paddingRight: '24px',
+                          paddingTop: '8px',
+                          paddingBottom: '8px',
+                          borderRadius: '4px',
+                          fontWeight: 'bold',
+                          fontSize: '10px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.08em',
+                          border: 'none',
+                          cursor: 'pointer',
+                          transition: 'opacity 0.2s'
+                        }}
+                        onMouseEnter={(e) => { e.target.style.opacity = '0.9'; }}
+                        onMouseLeave={(e) => { e.target.style.opacity = '1'; }}
+                      >
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-            
-            {/* You badge */}
-            <div className="you-badge" style={{ zIndex: 2 }}>You</div>
+            </div>
           </div>
         </div>
-
-        {/* BOTTOM CONTROLS - Center aligned */}
-        <div className="w-full max-w-5xl flex items-center justify-center gap-4 pb-4" style={{ backgroundColor: 'transparent' }}>
-          {/* Skip Button */}
-          <button
-            onClick={() => {
-              console.log('Skip pressed');
-              // Skip logic handled by parent
-            }}
-            className="px-6 py-3 rounded-xl font-bold transition-all text-sm"
-            style={{
-              backgroundColor: 'transparent',
-              border: '1px solid #d9b85f',
-              color: '#d9b85f',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = '0 0 20px rgba(217, 184, 95, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            ⏭ Skip
-          </button>
-
-          {/* Next Button */}
-          <button
-            onClick={() => {
-              console.log('Next pressed');
-              // Next logic handled by parent
-            }}
-            className="px-6 py-3 rounded-xl font-bold transition-all text-sm"
-            style={{
-              backgroundColor: 'transparent',
-              border: '1px solid #d9b85f',
-              color: '#d9b85f',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = '0 0 20px rgba(217, 184, 95, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            ⏭ Next
-          </button>
-
-          {/* Report Button */}
-          <button
-            onClick={() => {
-              console.log('Report pressed');
-              // Report logic handled by parent
-            }}
-            className="px-6 py-3 rounded-xl font-bold transition-all text-sm"
-            style={{
-              backgroundColor: 'transparent',
-              border: '1px solid #d9b85f',
-              color: '#d9b85f',
-              cursor: 'pointer'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = '0 0 20px rgba(217, 184, 95, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            ⚠️ Report
-          </button>
-        </div>
-    </div>
+      </>
     );
   };
 
