@@ -776,18 +776,13 @@ const Chat = () => {
     }
   }, [partnerFound]);
 
-  // ✅ Monitor if stream gets lost
+  // ✅ Monitor if stream gets lost (but only log, don't re-attach)
   useEffect(() => {
     if (!partnerFound || !localVideoRef.current) return;
     
     const interval = setInterval(() => {
       if (localVideoRef.current?.srcObject === null) {
-        console.error('❌ [MONITOR] Local video srcObject became null! Re-attaching stream...');
-        if (localStreamRef.current) {
-          localVideoRef.current.srcObject = localStreamRef.current;
-          localVideoRef.current.play().catch(() => {});
-          console.log('✅ [MONITOR] Stream re-attached');
-        }
+        console.warn('⚠️ [MONITOR] Local video srcObject is null - memoization may not be working');
       }
       
       if (localStreamRef.current) {
@@ -799,7 +794,7 @@ const Chat = () => {
           );
         }
       }
-    }, 1000); // Check every second
+    }, 3000); // Check every 3 seconds (less frequent)
     
     return () => clearInterval(interval);
   }, [partnerFound]);
@@ -2266,7 +2261,7 @@ const Chat = () => {
   // Video element is in the camera-frame div (lines ~1680)
   // No need for GlobalLocalVideo - video is already properly placed
 
-  const VideoChatScreen = () => {
+  const VideoChatScreen = React.memo(() => {
     // CRITICAL DEBUG: Log partnerInfo to diagnose display issue
     console.log('🎬 VideoChatScreen rendering - partnerInfo:', {
       exists: !!partnerInfo,
@@ -2572,7 +2567,7 @@ const Chat = () => {
         </div>
       </>
     );
-  };
+  }, [partnerInfo, currentUser, hasPartner, isLocalCameraReady, messageInput, skipUser, sendMessage]);
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
