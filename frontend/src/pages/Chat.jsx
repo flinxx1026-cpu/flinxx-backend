@@ -601,6 +601,7 @@ const Chat = () => {
   const [selectedGender, setSelectedGender] = useState('both');
   const [isRequestingCamera, setIsRequestingCamera] = useState(false);
   const [isLocalCameraReady, setIsLocalCameraReady] = useState(false);
+  const [streamsReadyTrigger, setStreamsReadyTrigger] = useState(0); // ✅ Triggers component re-render when streams ready
   
   // ✅ Unified tab state for all side panels
   const [activeTab, setActiveTab] = useState(null); // 'profile' | 'search' | 'likes' | 'messages' | 'trophy' | 'timer' | null
@@ -695,6 +696,7 @@ const Chat = () => {
                   console.log('📹 [CAMERA INIT] ✅ Video stream is now playing');
                   setCameraStarted(true);
                   setIsLocalCameraReady(true);
+                  setStreamsReadyTrigger(prev => prev + 1); // ✅ Trigger video render
                 }
               })
               .catch(playErr => {
@@ -703,6 +705,7 @@ const Chat = () => {
                   // Still mark as ready - stream might display even with play error
                   setCameraStarted(true);
                   setIsLocalCameraReady(true);
+                  setStreamsReadyTrigger(prev => prev + 1); // ✅ Trigger video render
                 }
               });
           } else if (attempts < 50) {
@@ -714,6 +717,7 @@ const Chat = () => {
             console.error('   sharedVideoRef:', !!sharedVideoRef);
             console.error('   localStreamRef.current:', !!localStreamRef.current);
             setIsLocalCameraReady(true);
+            setStreamsReadyTrigger(prev => prev + 1); // ✅ Trigger video render
           }
         };
         
@@ -1358,6 +1362,9 @@ const Chat = () => {
         }
         
         console.log('✅ ✅ ✅ ONTRACK COMPLETE - Remote stream persisted and attached\n\n');
+        
+        // ✅ Trigger component re-render so video elements can attach stream
+        setStreamsReadyTrigger(prev => prev + 1);
     };
 
     peerConnection.onconnectionstatechange = () => {
@@ -2624,7 +2631,7 @@ const Chat = () => {
         </div>
       </>
     );
-  }), []);
+  }), [streamsReadyTrigger]);
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
