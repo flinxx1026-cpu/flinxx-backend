@@ -455,6 +455,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         {/* Notifications Container - Notifications Mode */}
         {isNotificationMode && (
           <div className="search-results">
+            {console.log('DEBUG: activeChat state =', activeChat, 'isNotificationMode =', isNotificationMode)}
             {activeChat ? (
               // CHAT VIEW in notifications mode
               <ChatBox
