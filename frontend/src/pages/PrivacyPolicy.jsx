@@ -4,7 +4,7 @@ const PrivacyPolicy = () => {
   const navigate = useNavigate()
 
   return (
-    <div className="bg-black text-zinc-200 min-h-screen font-sans antialiased selection:bg-gold-500 selection:text-black relative overflow-hidden" style={{ background: '#000000' }}>
+    <div className="bg-black text-zinc-200 min-h-screen font-sans antialiased selection:bg-gold-500 selection:text-black relative" style={{ background: '#000000' }}>
       {/* Background Blur Elements */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-yellow-900/10 rounded-full blur-[100px] animate-pulse-slow"></div>
@@ -38,9 +38,9 @@ const PrivacyPolicy = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="relative z-10 pt-16 pb-20 px-4 sm:px-6 lg:px-8 min-h-screen flex flex-col items-center justify-center">
+      <main className="relative z-10 pt-32 md:pt-40 pb-20 px-4 sm:px-6 lg:px-8 min-h-screen flex flex-col items-center justify-start">
         <div className="text-center mb-8 max-w-2xl mx-auto">
-          <h1 className="font-bold text-4xl md:text-6xl text-white mb-6 tracking-tight">
+          <h1 className="font-bold text-4xl md:text-6xl text-white mb-6 tracking-tight relative z-20">
             Privacy <span style={{ 
               background: 'linear-gradient(to right, #FBF5D5, #D4AF37, #B29222)',
               WebkitBackgroundClip: 'text',
@@ -48,7 +48,7 @@ const PrivacyPolicy = () => {
               backgroundClip: 'text'
             }}>Policy</span>
           </h1>
-          <p className="text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed">
+          <p className="text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed relative z-20">
             Your privacy is paramount. Experience Flinxx with confidence, knowing how we protect your luxury of connection.
           </p>
         </div>
@@ -174,6 +174,11 @@ const PrivacyPolicy = () => {
         }
         .animate-pulse-slow {
           animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @media (max-width: 768px) {
+          main {
+            padding-top: 8rem !important;
+          }
         }
       `}</style>
     </div>
