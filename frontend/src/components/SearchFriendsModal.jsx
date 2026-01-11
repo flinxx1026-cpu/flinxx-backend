@@ -668,13 +668,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       {req.status === 'accepted' && (
                         <button
                           className="message-btn"
-                          onClick={async () => {
-                            if (currentUser?.uuid && currentUser.uuid.length === 36 && req.sender_id) {
-                              await markMessagesAsRead(currentUser.uuid, req.sender_id);
-                            }
-                            if (markAsRead && req.sender_id) {
-                              markAsRead(req.sender_id);
-                            }
+                          onClick={() => {
+                            console.log('Opening chat with:', req);
                             const chatUser = {
                               ...req,
                               id: req.sender_id
