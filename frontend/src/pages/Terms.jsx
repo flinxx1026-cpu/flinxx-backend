@@ -13,7 +13,7 @@ const Terms = () => {
       </div>
 
       {/* Navigation Bar */}
-      <nav className="fixed top-0 w-full z-50 glass-panel border-b" style={{ 
+      <nav className="fixed top-0 w-full z-10 glass-panel border-b header-divider" style={{ 
         backdropFilter: 'blur(20px)', 
         WebkitBackdropFilter: 'blur(20px)', 
         border: '1px solid rgba(212, 175, 55, 0.15)',
@@ -40,8 +40,9 @@ const Terms = () => {
       {/* Main Content */}
       <main className="relative z-10 pt-16 pb-20 px-4 sm:px-6 lg:px-8 min-h-screen flex flex-col items-center justify-center">
         <div className="text-center mb-8 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 shadow-[0_0_10px_rgba(212,175,55,0.1)]" style={{
-            background: 'rgba(139, 107, 0, 0.2)',
+          <div className="legal-badge inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 shadow-[0_0_10px_rgba(212,175,55,0.1)]" style={{
+            background: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(6px)',
             border: '1px solid rgba(212, 175, 55, 0.3)',
             color: 'rgb(212, 175, 55)'
           }}>
@@ -217,6 +218,19 @@ const Terms = () => {
         }
         .animate-pulse-slow {
           animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .header-divider {
+          z-index: 1;
+        }
+        .legal-badge {
+          margin-top: 32px;
+          position: relative;
+          z-index: 20;
+        }
+        @media (max-width: 768px) {
+          .legal-badge {
+            margin-top: 40px;
+          }
         }
       `}</style>
     </div>
