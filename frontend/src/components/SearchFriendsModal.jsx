@@ -678,9 +678,13 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                             className="message-btn"
                             onClick={() => {
                               console.log('Opening chat with:', req);
+                              // Use req.id if it's a valid UUID (36 chars), otherwise fallback to sender_id
+                              const friendId = (req.id && typeof req.id === 'string' && req.id.length === 36) 
+                                ? req.id 
+                                : req.sender_id;
                               const chatUser = {
                                 ...req,
-                                id: req.sender_id
+                                id: friendId
                               };
                               setActiveChat(chatUser);
                             }}
