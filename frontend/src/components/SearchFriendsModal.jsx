@@ -62,10 +62,11 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       const storedUser = JSON.parse(localStorage.getItem('user'));
       if (!storedUser) return null;
 
-      // Normalize publicId from all possible sources
+      // Normalize publicId and id from all possible sources
       return {
         ...storedUser,
-        publicId: storedUser.publicId || storedUser.public_id || storedUser.id
+        publicId: storedUser.publicId || storedUser.public_id || storedUser.id,
+        id: storedUser.uuid || storedUser.id || storedUser.publicId || storedUser.public_id
       };
     } catch (e) {
       return null;
@@ -264,7 +265,10 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     try {
       const currentUserData = getCurrentUser();
 
-      if (!currentUserData?.id) {
+      // Use uuid or publicId for sender - try multiple possible fields
+      const senderId = currentUserData?.uuid || currentUserData?.id || currentUserData?.publicId || currentUserData?.public_id;
+      
+      if (!senderId) {
         console.error('Current user id not found', currentUserData);
         return;
       }
@@ -276,7 +280,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ 
-          senderPublicId: String(currentUserData.id),
+          senderPublicId: String(senderId),
           receiverPublicId: String(targetUserId)
         })
       });
