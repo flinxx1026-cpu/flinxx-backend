@@ -90,19 +90,20 @@ router.get('/status', async (req, res) => {
 
     console.log('🔍 Checking friend status:', { senderPublicId, receiverPublicId });
 
-    // Look up sender by publicId to get UUID
+    // Look up sender by publicId (handle both UUID and numeric formats)
     const senderResult = await db.query(
-      `SELECT id FROM users WHERE id = $1 OR public_id = $2 LIMIT 1`,
-      [senderPublicId, String(senderPublicId)]
+      `SELECT id FROM users WHERE id::text = $1 OR public_id::text = $1`,
+      [String(senderPublicId)]
     );
 
-    // Look up receiver by publicId to get UUID
+    // Look up receiver by publicId (handle both UUID and numeric formats)
     const receiverResult = await db.query(
-      `SELECT id FROM users WHERE id = $1 OR public_id = $2 LIMIT 1`,
-      [receiverPublicId, String(receiverPublicId)]
+      `SELECT id FROM users WHERE id::text = $1 OR public_id::text = $1`,
+      [String(receiverPublicId)]
     );
 
     if (senderResult.rows.length === 0 || receiverResult.rows.length === 0) {
+      console.warn('❌ User not found:', { senderFound: senderResult.rows.length > 0, receiverFound: receiverResult.rows.length > 0 });
       return res.json({ status: 'none' });
     }
 
@@ -140,20 +141,26 @@ router.post('/send', async (req, res) => {
 
     console.log('📬 Sending friend request:', { senderPublicId, receiverPublicId });
 
-    // Look up sender by publicId to get UUID
+    // Look up sender by publicId (handle both UUID and numeric formats)
     const senderResult = await db.query(
-      `SELECT id FROM users WHERE id = $1 OR public_id = $2 LIMIT 1`,
-      [senderPublicId, String(senderPublicId)]
+      `SELECT id FROM users WHERE id::text = $1 OR public_id::text = $1`,
+      [String(senderPublicId)]
     );
 
-    // Look up receiver by publicId to get UUID
+    // Look up receiver by publicId (handle both UUID and numeric formats)
     const receiverResult = await db.query(
-      `SELECT id FROM users WHERE id = $1 OR public_id = $2 LIMIT 1`,
-      [receiverPublicId, String(receiverPublicId)]
+      `SELECT id FROM users WHERE id::text = $1 OR public_id::text = $1`,
+      [String(receiverPublicId)]
     );
 
-    if (senderResult.rows.length === 0 || receiverResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    if (senderResult.rows.length === 0) {
+      console.error('❌ Sender not found:', senderPublicId);
+      return res.status(404).json({ error: 'Sender not found' });
+    }
+
+    if (receiverResult.rows.length === 0) {
+      console.error('❌ Receiver not found:', receiverPublicId);
+      return res.status(404).json({ error: 'Receiver not found' });
     }
 
     const senderId = senderResult.rows[0].id;
@@ -173,6 +180,7 @@ router.post('/send', async (req, res) => {
     );
 
     if (existing.rows.length > 0) {
+      console.warn('⚠️ Friend request already exists:', existing.rows[0].status);
       return res.status(400).json({ error: `Friend request already ${existing.rows[0].status}` });
     }
 
@@ -183,11 +191,11 @@ router.post('/send', async (req, res) => {
       [senderId, receiverId]
     );
 
-    console.log('✅ Friend request sent');
+    console.log('✅ Friend request sent successfully');
     res.json({ success: true, data: result.rows[0] });
 
   } catch (err) {
-    console.error('❌ Send friend request error:', err);
+    console.error('❌ Send friend request error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
