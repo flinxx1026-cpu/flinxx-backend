@@ -90,9 +90,24 @@ router.get('/status', async (req, res) => {
 
     console.log('🔍 Checking friend status:', { senderPublicId, receiverPublicId });
 
-    // Convert to string to handle both numeric and UUID formats
-    const senderId = String(senderPublicId);
-    const receiverId = String(receiverPublicId);
+    // Look up sender by publicId to get UUID
+    const senderResult = await db.query(
+      `SELECT id FROM users WHERE id = $1 OR public_id = $2 LIMIT 1`,
+      [senderPublicId, String(senderPublicId)]
+    );
+
+    // Look up receiver by publicId to get UUID
+    const receiverResult = await db.query(
+      `SELECT id FROM users WHERE id = $1 OR public_id = $2 LIMIT 1`,
+      [receiverPublicId, String(receiverPublicId)]
+    );
+
+    if (senderResult.rows.length === 0 || receiverResult.rows.length === 0) {
+      return res.json({ status: 'none' });
+    }
+
+    const senderId = senderResult.rows[0].id;
+    const receiverId = receiverResult.rows[0].id;
 
     const result = await db.query(
       `SELECT status FROM friend_requests
@@ -123,15 +138,30 @@ router.post('/send', async (req, res) => {
       return res.status(400).json({ error: 'Missing senderPublicId or receiverPublicId' });
     }
 
-    // Convert to string to handle both numeric and UUID formats
-    const senderId = String(senderPublicId);
-    const receiverId = String(receiverPublicId);
+    console.log('📬 Sending friend request:', { senderPublicId, receiverPublicId });
+
+    // Look up sender by publicId to get UUID
+    const senderResult = await db.query(
+      `SELECT id FROM users WHERE id = $1 OR public_id = $2 LIMIT 1`,
+      [senderPublicId, String(senderPublicId)]
+    );
+
+    // Look up receiver by publicId to get UUID
+    const receiverResult = await db.query(
+      `SELECT id FROM users WHERE id = $1 OR public_id = $2 LIMIT 1`,
+      [receiverPublicId, String(receiverPublicId)]
+    );
+
+    if (senderResult.rows.length === 0 || receiverResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const senderId = senderResult.rows[0].id;
+    const receiverId = receiverResult.rows[0].id;
 
     if (senderId === receiverId) {
       return res.status(400).json({ error: 'Cannot send friend request to yourself' });
     }
-
-    console.log('📬 Sending friend request:', { senderId, receiverId });
 
     // Check if request already exists
     const existing = await db.query(
