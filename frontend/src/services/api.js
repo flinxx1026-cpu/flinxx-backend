@@ -169,8 +169,12 @@ export const markMessagesAsRead = async (userUUID, senderOrChatId, receiverId) =
 
     let chatId = null;
 
+    // If only one argument provided and it contains underscore, treat it as chatId
+    if (!senderOrChatId && !receiverId && typeof userUUID === 'string' && userUUID.includes('_')) {
+      chatId = userUUID;
+    }
     // If caller provided already a chatId like 'uuid1_uuid2'
-    if (typeof senderOrChatId === 'string' && senderOrChatId.includes('_')) {
+    else if (typeof senderOrChatId === 'string' && senderOrChatId.includes('_')) {
       chatId = senderOrChatId;
     } else {
       // Build chatId from userUUID + senderOrChatId
