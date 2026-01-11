@@ -1126,6 +1126,65 @@ const getGoogleUserInfo = async (accessToken) => {
   }
 }
 
+// ===== FACEBOOK OAUTH FUNCTIONS =====
+
+// Get Facebook tokens
+const getFacebookTokens = async (code) => {
+  try {
+    const callbackUrl = process.env.FACEBOOK_CALLBACK_URL
+    if (!callbackUrl) {
+      throw new Error('FACEBOOK_CALLBACK_URL environment variable is not set')
+    }
+    console.log(`🔐 Exchanging Facebook code with callback_url: ${callbackUrl}`)
+    const response = await fetch('https://graph.facebook.com/v18.0/oauth/access_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.FACEBOOK_APP_ID,
+        client_secret: process.env.FACEBOOK_APP_SECRET,
+        code: code,
+        redirect_uri: callbackUrl
+      })
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to get tokens: ${response.status} - ${errorText}`)
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('❌ Error getting Facebook tokens:', error)
+    throw error
+  }
+}
+
+// Get Facebook user info
+const getFacebookUserInfo = async (accessToken) => {
+  try {
+    const response = await fetch('https://graph.facebook.com/v18.0/me?fields=id,name,email,picture', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get user info: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      picture: data.picture?.data?.url || null
+    }
+  } catch (error) {
+    console.error('❌ Error getting Facebook user info:', error)
+    throw error
+  }
+}
+
 // Search user by ID (short_id field - 8-digit user ID)
 app.get('/api/search-user', async (req, res) => {
   try {
@@ -1638,6 +1697,144 @@ app.get('/auth/google/success', (req, res) => {
       success: false,
       error: 'Invalid token'
     })
+  }
+})
+
+// ===== FACEBOOK OAUTH ROUTES =====
+
+// Step 1: Initiate Facebook OAuth
+app.get('/auth/facebook', (req, res) => {
+  try {
+    const callbackUrl = process.env.FACEBOOK_CALLBACK_URL
+    if (!callbackUrl) {
+      throw new Error('FACEBOOK_CALLBACK_URL environment variable is not set')
+    }
+    console.log(`🔗 Facebook OAuth initiated with callback_url: ${callbackUrl}`)
+    const params = new URLSearchParams({
+      client_id: process.env.FACEBOOK_APP_ID,
+      redirect_uri: callbackUrl,
+      scope: 'public_profile,email',
+      response_type: 'code'
+    })
+    
+    const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`
+    console.log(`🔗 Redirecting to Facebook consent screen`)
+    res.redirect(authUrl)
+  } catch (error) {
+    console.error('❌ Error in /auth/facebook:', error)
+    res.status(500).json({ error: 'Failed to initiate Facebook login' })
+  }
+})
+
+// Step 2: Handle Facebook OAuth callback
+app.get('/auth/facebook/callback', async (req, res) => {
+  try {
+    const { code, error } = req.query
+    
+    if (error) {
+      console.error(`❌ Facebook OAuth error: ${error}`)
+      const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
+      return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=${error}`)
+    }
+    
+    if (!code) {
+      console.error('❌ No authorization code received')
+      const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
+      return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=no_code`)
+    }
+    
+    console.log(`📝 Received Facebook authorization code: ${code.substring(0, 10)}...`)
+    
+    // Exchange code for tokens
+    const tokens = await getFacebookTokens(code)
+    console.log(`✅ Got access token from Facebook`)
+    
+    // Get user info
+    const userInfo = await getFacebookUserInfo(tokens.access_token)
+    console.log(`✅ Retrieved user info:`, userInfo.email)
+    
+    // Check if user already exists
+    let existingUser = await prisma.users.findUnique({
+      where: { email: userInfo.email }
+    })
+    
+    let isNewUser = false
+    let user
+    
+    if (!existingUser) {
+      // NEW USER - Generate unique public ID
+      console.log(`📝 New user detected, creating account...`)
+      const publicId = await generateUniquePublicId()
+      console.log(`✅ Generated public_id:`, publicId)
+      
+      user = await prisma.users.create({
+        data: {
+          email: userInfo.email,
+          display_name: userInfo.name || 'User',
+          photo_url: userInfo.picture || null,
+          auth_provider: 'facebook',
+          provider_id: userInfo.id,
+          public_id: publicId,
+          profileCompleted: false,
+          termsAccepted: false
+        }
+      })
+      
+      isNewUser = true
+      console.log(`✅ New user created:`, user.email)
+    } else {
+      // EXISTING USER
+      console.log(`✅ Existing user found:`, existingUser.email)
+      
+      // Ensure existing user has a public_id (migrate if needed)
+      if (!existingUser.public_id) {
+        console.log(`⚠️ Existing user missing public_id, generating one...`)
+        const publicId = await generateUniquePublicId()
+        user = await prisma.users.update({
+          where: { id: existingUser.id },
+          data: { public_id: publicId }
+        })
+        console.log(`✅ Generated and saved public_id for existing user:`, publicId)
+      } else {
+        user = existingUser
+      }
+      isNewUser = false
+    }
+    
+    // Create a JWT token with user data
+    const token = Buffer.from(JSON.stringify({
+      userId: user.id,
+      email: user.email,
+      publicId: user.public_id,
+      timestamp: Date.now()
+    })).toString('base64')
+    
+    // Build response data
+    const responseData = {
+      isNewUser: isNewUser,
+      profileCompleted: user.profileCompleted || false,
+      user: {
+        uuid: user.id,
+        publicId: user.public_id,
+        email: user.email,
+        name: user.display_name,
+        picture: user.photo_url
+      }
+    }
+    
+    // Encode response data in URL
+    const encodedResponse = encodeURIComponent(JSON.stringify(responseData))
+    
+    // Redirect to frontend with token and response data
+    const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
+    const redirectUrl = `${baseUrl}/auth-success?token=${token}&data=${encodedResponse}`
+    
+    console.log(`🔗 Redirecting to frontend: ${redirectUrl}`)
+    res.redirect(redirectUrl)
+  } catch (error) {
+    console.error('❌ Error in /auth/facebook/callback:', error)
+    const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
+    res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=${encodeURIComponent(error.message)}`)
   }
 })
 
