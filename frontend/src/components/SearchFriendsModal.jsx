@@ -324,11 +324,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           ...prev,
           [senderId]: 'accepted'
         }));
-        setPendingRequests(prev =>
-          prev.map(req =>
-            req.id === requestId ? { ...req, status: 'accepted' } : req
-          )
-        );
         console.log('Friend request accepted');
         
         // Refresh notifications to notify the sender
@@ -353,7 +348,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       });
 
       if (response.ok) {
-        setPendingRequests(prev => prev.filter(req => req.id !== requestId));
         console.log('Friend request rejected');
         
         // Refresh notifications to notify the sender
