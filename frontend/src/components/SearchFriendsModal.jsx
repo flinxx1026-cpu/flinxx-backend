@@ -669,15 +669,15 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                         <button
                           className="message-btn"
                           onClick={async () => {
-                            if (user?.uuid && user.uuid.length === 36 && req.user_id) {
-                              await markMessagesAsRead(user.uuid, req.user_id);
+                            if (currentUser?.uuid && currentUser.uuid.length === 36 && req.sender_id) {
+                              await markMessagesAsRead(currentUser.uuid, req.sender_id);
                             }
-                            if (markAsRead && req.user_id) {
-                              markAsRead(req.user_id);
+                            if (markAsRead && req.sender_id) {
+                              markAsRead(req.sender_id);
                             }
                             const chatUser = {
                               ...req,
-                              id: req.user_id
+                              id: req.sender_id
                             };
                             setActiveChat(chatUser);
                           }}
