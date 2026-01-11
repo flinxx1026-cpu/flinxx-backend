@@ -90,12 +90,16 @@ router.get('/status', async (req, res) => {
 
     console.log('🔍 Checking friend status:', { senderPublicId, receiverPublicId });
 
+    // Convert to string to handle both numeric and UUID formats
+    const senderId = String(senderPublicId);
+    const receiverId = String(receiverPublicId);
+
     const result = await db.query(
       `SELECT status FROM friend_requests
        WHERE (sender_id = $1 AND receiver_id = $2)
           OR (sender_id = $2 AND receiver_id = $1)
        LIMIT 1`,
-      [senderPublicId, receiverPublicId]
+      [senderId, receiverId]
     );
 
     if (result.rows.length === 0) {
@@ -119,11 +123,15 @@ router.post('/send', async (req, res) => {
       return res.status(400).json({ error: 'Missing senderPublicId or receiverPublicId' });
     }
 
-    if (senderPublicId === receiverPublicId) {
+    // Convert to string to handle both numeric and UUID formats
+    const senderId = String(senderPublicId);
+    const receiverId = String(receiverPublicId);
+
+    if (senderId === receiverId) {
       return res.status(400).json({ error: 'Cannot send friend request to yourself' });
     }
 
-    console.log('📬 Sending friend request:', { senderPublicId, receiverPublicId });
+    console.log('📬 Sending friend request:', { senderId, receiverId });
 
     // Check if request already exists
     const existing = await db.query(
@@ -131,7 +139,7 @@ router.post('/send', async (req, res) => {
        WHERE (sender_id = $1 AND receiver_id = $2)
           OR (sender_id = $2 AND receiver_id = $1)
        LIMIT 1`,
-      [senderPublicId, receiverPublicId]
+      [senderId, receiverId]
     );
 
     if (existing.rows.length > 0) {
@@ -142,7 +150,7 @@ router.post('/send', async (req, res) => {
       `INSERT INTO friend_requests (sender_id, receiver_id, status, created_at)
        VALUES ($1, $2, 'pending', NOW())
        RETURNING id, status`,
-      [senderPublicId, receiverPublicId]
+      [senderId, receiverId]
     );
 
     console.log('✅ Friend request sent');
