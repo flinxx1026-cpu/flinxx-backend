@@ -45,6 +45,20 @@ const Matching = () => {
     return () => clearTimeout(countdownRef.current)
   }, [countdown, isAutoNext])
 
+  // Listen for skip event from other user
+  useEffect(() => {
+    const handleSkipFromOtherUser = (data) => {
+      console.log('Other user skipped, moving to next profile')
+      handleNext()
+    }
+
+    socket.on('user_skipped', handleSkipFromOtherUser)
+
+    return () => {
+      socket.off('user_skipped', handleSkipFromOtherUser)
+    }
+  }, [])
+
   const handleNext = () => {
     if (currentIndex < userProfiles.length - 1) {
       setCurrentIndex(prev => prev + 1)
@@ -64,6 +78,11 @@ const Matching = () => {
   }
 
   const handleSkip = () => {
+    // Emit skip event to notify the other user
+    const skippedUserId = userProfiles[currentIndex]?.id
+    if (skippedUserId) {
+      socket.emit('skip_user', { skippedUserId })
+    }
     handleNext()
   }
 
