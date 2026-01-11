@@ -164,6 +164,7 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
         <button onClick={onBack}>←</button>
         <img src={friend.photo_url} alt={friend.display_name} />
         <span>{friend.display_name}</span>
+        <button className="call-button" title="Call">📞</button>
       </div>
 
       {/* BODY */}
