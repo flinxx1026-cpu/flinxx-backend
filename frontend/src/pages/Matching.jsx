@@ -48,14 +48,14 @@ const Matching = () => {
   // Listen for skip event from other user
   useEffect(() => {
     const handleSkipFromOtherUser = (data) => {
-      console.log('Other user skipped, moving to next profile')
+      console.log('Other user skipped profile at index:', data.currentProfileIndex)
       handleNext()
     }
 
-    socket.on('user_skipped', handleSkipFromOtherUser)
+    socket.on('profile_skipped', handleSkipFromOtherUser)
 
     return () => {
-      socket.off('user_skipped', handleSkipFromOtherUser)
+      socket.off('profile_skipped', handleSkipFromOtherUser)
     }
   }, [])
 
@@ -78,10 +78,10 @@ const Matching = () => {
   }
 
   const handleSkip = () => {
-    // Emit skip event to notify the other user
+    // Emit skip event to notify other users viewing profiles
     const skippedUserId = userProfiles[currentIndex]?.id
     if (skippedUserId) {
-      socket.emit('skip_user', { skippedUserId })
+      socket.emit('skip_profile', { skippedUserId, currentProfileIndex: currentIndex })
     }
     handleNext()
   }

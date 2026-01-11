@@ -2035,6 +2035,19 @@ io.on('connection', (socket) => {
     }
   })
 
+  // Handle skip profile event from matching page
+  socket.on('skip_profile', (data) => {
+    const userId = userSockets.get(socket.id)
+    console.log(`[skip_profile] User ${userId} skipped profile at index ${data.currentProfileIndex}`)
+    
+    // Broadcast to all connected clients that this profile was skipped
+    io.emit('profile_skipped', {
+      skippedUserId: data.skippedUserId,
+      currentProfileIndex: data.currentProfileIndex,
+      skippedBy: userId
+    })
+  })
+
   // Handle disconnect
   socket.on('disconnect', async () => {
     console.log(`\n\n\n========================================`)
