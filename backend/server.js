@@ -229,7 +229,7 @@ app.options('*', cors())
 app.use(express.json())
 
 // ===== MOUNT ROUTES =====
-app.use('/api', friendsRoutes)
+app.use('/api/friends', friendsRoutes)
 setNotificationsPool(pool)
 app.use('/api', notificationsRoutes)
 app.use('/api/messages', messagesRoutes)
