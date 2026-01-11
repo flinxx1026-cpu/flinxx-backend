@@ -79,6 +79,144 @@ router.get('/friends', async (req, res) => {
   }
 });
 
+// ✅ Check friend request status
+router.get('/status', async (req, res) => {
+  try {
+    const { senderPublicId, receiverPublicId } = req.query;
+
+    if (!senderPublicId || !receiverPublicId) {
+      return res.status(400).json({ error: 'Missing senderPublicId or receiverPublicId' });
+    }
+
+    console.log('🔍 Checking friend status:', { senderPublicId, receiverPublicId });
+
+    const result = await db.query(
+      `SELECT status FROM friend_requests
+       WHERE (sender_id = $1 AND receiver_id = $2)
+          OR (sender_id = $2 AND receiver_id = $1)
+       LIMIT 1`,
+      [senderPublicId, receiverPublicId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ status: 'none' });
+    }
+
+    res.json({ status: result.rows[0].status });
+
+  } catch (err) {
+    console.error('❌ Friend status error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Send friend request
+router.post('/send', async (req, res) => {
+  try {
+    const { senderPublicId, receiverPublicId } = req.body;
+
+    if (!senderPublicId || !receiverPublicId) {
+      return res.status(400).json({ error: 'Missing senderPublicId or receiverPublicId' });
+    }
+
+    if (senderPublicId === receiverPublicId) {
+      return res.status(400).json({ error: 'Cannot send friend request to yourself' });
+    }
+
+    console.log('📬 Sending friend request:', { senderPublicId, receiverPublicId });
+
+    // Check if request already exists
+    const existing = await db.query(
+      `SELECT id, status FROM friend_requests
+       WHERE (sender_id = $1 AND receiver_id = $2)
+          OR (sender_id = $2 AND receiver_id = $1)
+       LIMIT 1`,
+      [senderPublicId, receiverPublicId]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: `Friend request already ${existing.rows[0].status}` });
+    }
+
+    const result = await db.query(
+      `INSERT INTO friend_requests (sender_id, receiver_id, status, created_at)
+       VALUES ($1, $2, 'pending', NOW())
+       RETURNING id, status`,
+      [senderPublicId, receiverPublicId]
+    );
+
+    console.log('✅ Friend request sent');
+    res.json({ success: true, data: result.rows[0] });
+
+  } catch (err) {
+    console.error('❌ Send friend request error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Accept friend request
+router.post('/accept', async (req, res) => {
+  try {
+    const { requestId } = req.body;
+
+    if (!requestId) {
+      return res.status(400).json({ error: 'Missing requestId' });
+    }
+
+    console.log('✅ Accepting friend request:', requestId);
+
+    const result = await db.query(
+      `UPDATE friend_requests
+       SET status = 'accepted', updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, status`,
+      [requestId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Friend request not found' });
+    }
+
+    console.log('✅ Friend request accepted');
+    res.json({ success: true, data: result.rows[0] });
+
+  } catch (err) {
+    console.error('❌ Accept friend request error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Reject friend request
+router.post('/reject', async (req, res) => {
+  try {
+    const { requestId } = req.body;
+
+    if (!requestId) {
+      return res.status(400).json({ error: 'Missing requestId' });
+    }
+
+    console.log('❌ Rejecting friend request:', requestId);
+
+    const result = await db.query(
+      `DELETE FROM friend_requests
+       WHERE id = $1
+       RETURNING id`,
+      [requestId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Friend request not found' });
+    }
+
+    console.log('✅ Friend request rejected');
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error('❌ Reject friend request error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ✅ Unfriend a user
 router.post('/unfriend', authMiddleware, async (req, res) => {
   try {
