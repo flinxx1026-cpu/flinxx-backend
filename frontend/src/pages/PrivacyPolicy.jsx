@@ -59,8 +59,8 @@ const PrivacyPolicy = () => {
           border: '1px solid rgba(212, 175, 55, 0.15)',
           boxShadow: '0 4px 30px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 0, 0, 0.9)'
         }}>
-          <div className="bg-black/80 rounded-2xl h-[650px] overflow-hidden relative backdrop-blur-sm">
-            <div className="h-full w-full p-8 md:p-12 overflow-y-auto custom-scrollbar relative bg-gradient-to-br from-black to-[#050505]">
+          <div className="bg-black/80 rounded-2xl overflow-hidden relative backdrop-blur-sm">
+            <div className="w-full p-8 md:p-12 overflow-y-auto custom-scrollbar relative bg-gradient-to-br from-black to-[#050505] max-h-[70vh]">
               <div className="max-w-3xl mx-auto space-y-8">
                 {/* Introduction */}
                 <div>
