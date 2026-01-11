@@ -455,7 +455,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         {/* Notifications Container - Notifications Mode */}
         {isNotificationMode && (
           <div className="search-results">
-            {console.log('DEBUG: activeChat state =', activeChat, 'isNotificationMode =', isNotificationMode)}
             {activeChat ? (
               // CHAT VIEW in notifications mode
               <ChatBox
@@ -598,108 +597,117 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         {/* Likes Container - Shows Friend Requests + Friends List */}
         {isLikesMode && (
           <div className="message-panel-body">
-            <div className="search-results">
-              {/* SECTION 1: Friend Requests (Incoming) */}
-              {pendingRequests && pendingRequests.length > 0 && (
-                <div style={{ marginBottom: '20px' }}>
-                  <h3 style={{ 
-                    color: '#fff', 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
-                    padding: '10px 0',
-                    borderBottom: '1px solid rgba(255,255,255,0.1)'
-                  }}>
-                    📬 {pendingRequests.length} Friend Request{pendingRequests.length !== 1 ? 's' : ''}
-                  </h3>
-                  {pendingRequests.map(req => (
-                    <div key={req.id} className="notification-item" style={{ marginTop: '10px' }}>
-                      <div className="notification-avatar">
-                        {req.photo_url ? (
-                          <img src={req.photo_url} alt={req.display_name} />
-                        ) : (
-                          <div className="text-avatar">
-                            {req.display_name?.charAt(0).toUpperCase() || '?'}
+            {activeChat ? (
+              // CHAT VIEW in likes mode
+              <ChatBox
+                friend={activeChat}
+                onBack={() => setActiveChat(null)}
+                onMessageSent={updateChatListOnMessage}
+              />
+            ) : (
+              <div className="search-results">
+                {/* SECTION 1: Friend Requests (Incoming) */}
+                {pendingRequests && pendingRequests.length > 0 && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <h3 style={{ 
+                      color: '#fff', 
+                      fontSize: '14px', 
+                      fontWeight: '600', 
+                      padding: '10px 0',
+                      borderBottom: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                      📬 {pendingRequests.length} Friend Request{pendingRequests.length !== 1 ? 's' : ''}
+                    </h3>
+                    {pendingRequests.map(req => (
+                      <div key={req.id} className="notification-item" style={{ marginTop: '10px' }}>
+                        <div className="notification-avatar">
+                          {req.photo_url ? (
+                            <img src={req.photo_url} alt={req.display_name} />
+                          ) : (
+                            <div className="text-avatar">
+                              {req.display_name?.charAt(0).toUpperCase() || '?'}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="notification-text">
+                          <strong>{req.display_name}</strong>
+                          {req.status !== 'accepted' && (
+                            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                              {req.status === 'pending' ? 'Pending' : 'Request received'}
+                            </p>
+                          )}
+                        </div>
+
+                        {req.status !== 'accepted' && (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => handleAcceptRequest(req.id, req.sender_id)}
+                              style={{
+                                padding: '6px 12px',
+                                background: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: '600'
+                              }}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleRejectRequest(req.id)}
+                              style={{
+                                padding: '6px 12px',
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: '600'
+                              }}
+                            >
+                              Decline
+                            </button>
                           </div>
                         )}
-                      </div>
-
-                      <div className="notification-text">
-                        <strong>{req.display_name}</strong>
-                        {req.status !== 'accepted' && (
-                          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
-                            {req.status === 'pending' ? 'Pending' : 'Request received'}
-                          </p>
+                        {req.status === 'accepted' && (
+                          <button
+                            className="message-btn"
+                            onClick={() => {
+                              console.log('Opening chat with:', req);
+                              const chatUser = {
+                                ...req,
+                                id: req.sender_id
+                              };
+                              setActiveChat(chatUser);
+                            }}
+                          >
+                            Message
+                          </button>
                         )}
                       </div>
+                    ))}
+                  </div>
+                )}
 
-                      {req.status !== 'accepted' && (
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => handleAcceptRequest(req.id, req.sender_id)}
-                            style={{
-                              padding: '6px 12px',
-                              background: '#10b981',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '600'
-                            }}
-                          >
-                            Accept
-                          </button>
-                          <button
-                            onClick={() => handleRejectRequest(req.id)}
-                            style={{
-                              padding: '6px 12px',
-                              background: '#ef4444',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              fontWeight: '600'
-                            }}
-                          >
-                            Decline
-                          </button>
-                        </div>
-                      )}
-                      {req.status === 'accepted' && (
-                        <button
-                          className="message-btn"
-                          onClick={() => {
-                            console.log('Opening chat with:', req);
-                            const chatUser = {
-                              ...req,
-                              id: req.sender_id
-                            };
-                            setActiveChat(chatUser);
-                          }}
-                        >
-                          Message
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Empty State */}
-              {(!pendingRequests || pendingRequests.length === 0) && (
-                <p
-                  style={{
-                    textAlign: 'center',
-                    color: 'rgba(255,255,255,0.6)',
-                    marginTop: '40px',
-                    padding: '20px'
-                  }}
-                >
-                  No friend requests yet
-                </p>
-              )}
-            </div>
+                {/* Empty State */}
+                {(!pendingRequests || pendingRequests.length === 0) && (
+                  <p
+                    style={{
+                      textAlign: 'center',
+                      color: 'rgba(255,255,255,0.6)',
+                      marginTop: '40px',
+                      padding: '20px'
+                    }}
+                  >
+                    No friend requests yet
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
