@@ -213,7 +213,7 @@ router.post('/accept', async (req, res) => {
 
     const result = await db.query(
       `UPDATE friend_requests
-       SET status = 'accepted', updated_at = NOW()
+       SET status = 'accepted'
        WHERE id = $1
        RETURNING id, status`,
       [requestId]
@@ -227,7 +227,7 @@ router.post('/accept', async (req, res) => {
     res.json({ success: true, data: result.rows[0] });
 
   } catch (err) {
-    console.error('❌ Accept friend request error:', err);
+    console.error('❌ Accept friend request error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
