@@ -19,7 +19,7 @@ export default defineConfig({
   server: {
     port: 3003,
     proxy: {
-      '/api': 'https://flinxx-backend.onrender.com'
+      '/api': 'https://flinxx-admin-backend.onrender.com'
     },
     headers: {
       'Cross-Origin-Opener-Policy': 'unsafe-none',

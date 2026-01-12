@@ -2162,7 +2162,7 @@ const Chat = () => {
   const getTurnServers = async () => {
     try {
       console.log('🔄 Fetching TURN servers from Xirsys via backend API...');
-      const res = await fetch("https://flinxx-backend.onrender.com/api/turn");
+      const res = await fetch("https://flinxx-admin-backend.onrender.com/api/turn");
       const data = await res.json();
 
       console.log('📡 Xirsys API Response:', data);

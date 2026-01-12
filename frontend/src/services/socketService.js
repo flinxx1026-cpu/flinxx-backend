@@ -1,6 +1,6 @@
 import io from 'socket.io-client'
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://flinxx-backend.onrender.com'
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://flinxx-admin-backend.onrender.com'
 
 console.log('🔌 Socket.IO connecting to:', SOCKET_URL)
 
