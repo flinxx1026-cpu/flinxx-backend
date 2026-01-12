@@ -37,9 +37,10 @@ function LayoutContent() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 9999,
+            zIndex: 99999,
             visibility: 'visible',
-            opacity: 1
+            opacity: 1,
+            pointerEvents: 'auto'
           }}
         >
           <DuoPanel isOpen={isDuoSquadOpen} onClose={closeDuoSquad} />
