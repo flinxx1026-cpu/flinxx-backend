@@ -4,7 +4,7 @@
   height: auto !important;
   max-height: 80vh !important;
   background-color: #131313 !important;
-  border: 1px solid #d9b85f !important;
+  border: 2px solid #d9b85f !important;
   border-radius: 12px !important;
   overflow: hidden !important;
   display: flex !important;
@@ -12,6 +12,9 @@
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8) !important;
   padding: 32px !important;
   position: relative !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 10000 !important;
 }
 
 .modal-close-btn {
