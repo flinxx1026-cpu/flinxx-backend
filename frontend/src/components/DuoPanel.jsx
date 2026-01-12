@@ -106,7 +106,7 @@ const DuoPanel = ({ isOpen = true, onClose }) => {
   };
 
   return (
-    <div className="duo-panel w-full h-full rounded-3xl p-8 flex flex-col items-start justify-start text-left relative" style={{ backgroundColor: '#131313', border: '1px solid #d9b85f', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div className="duo-panel" style={{ backgroundColor: '#131313', border: '1px solid #d9b85f', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {/* Close Button */}
       <button
         className="modal-close-btn"
