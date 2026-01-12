@@ -74,7 +74,7 @@ async function initializeDatabase() {
         auth_provider VARCHAR(50),
         provider_id VARCHAR(255),
         google_id VARCHAR(255) UNIQUE,
-        short_id VARCHAR(8) UNIQUE,
+        public_id VARCHAR(8) UNIQUE,
         birthday DATE,
         gender VARCHAR(50),
         age INTEGER,
@@ -84,7 +84,7 @@ async function initializeDatabase() {
       );
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
-      CREATE INDEX IF NOT EXISTS idx_users_short_id ON users(short_id);
+      CREATE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id);
       CREATE INDEX IF NOT EXISTS idx_users_provider ON users(auth_provider, provider_id);
       CREATE INDEX IF NOT EXISTS idx_users_profile_completed ON users(profileCompleted);
     `)
