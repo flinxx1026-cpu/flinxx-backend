@@ -17,6 +17,8 @@ import './Layout.css'
 
 function LayoutContent() {
   const { isDuoSquadOpen, closeDuoSquad } = useDuoSquad();
+  
+  console.log('🔍 [LAYOUT] isDuoSquadOpen:', isDuoSquadOpen);
 
   return (
     <>
