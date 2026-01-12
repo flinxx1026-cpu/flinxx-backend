@@ -12,6 +12,7 @@ import { authMiddleware } from './middleware/auth.js'
 import friendsRoutes from './routes/friends.js'
 import notificationsRoutes, { setPool as setNotificationsPool } from './routes/notifications.js'
 import messagesRoutes from './routes/messages.js'
+import matchesRoutes, { setMatchesPool } from './routes/matches.js'
 
 dotenv.config()
 
@@ -151,6 +152,22 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(sender_id, receiver_id);
     `)
 
+    // Create matches table for match history
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS matches (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        matched_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        matched_user_name VARCHAR(255),
+        matched_user_country VARCHAR(255),
+        duration_seconds INTEGER DEFAULT 0,
+        is_liked BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_matches_user_id ON matches(user_id);
+      CREATE INDEX IF NOT EXISTS idx_matches_created_at ON matches(created_at);
+    `)
+
     console.log('✅ PostgreSQL tables initialized')
   } catch (error) {
     console.error('❌ Error initializing database tables:', error)
@@ -231,8 +248,10 @@ app.use(express.json())
 // ===== MOUNT ROUTES =====
 app.use('/api/friends', friendsRoutes)
 setNotificationsPool(pool)
+setMatchesPool(pool)
 app.use('/api', notificationsRoutes)
 app.use('/api/messages', messagesRoutes)
+app.use('/api/matches', matchesRoutes)
 
 // User Management (now using Redis for online presence)
 // In-memory maps kept for socket connections during session
@@ -2211,6 +2230,40 @@ io.on('connection', (socket) => {
     if (userId && partnerSocketId) {
       console.log(`[skip_user] ${userId} skipping ${partnerSocketId}`)
       
+      // ✅ CRITICAL: Save match to database when skipping
+      if (socket.callStartTime && socket.partner) {
+        try {
+          const durationSeconds = Math.floor(
+            (Date.now() - socket.callStartTime) / 1000
+          )
+          
+          console.log(`\n💾 Saving match history for user ${userId} (skip)`)
+          console.log(`   Partner: ${socket.partner.id}`)
+          console.log(`   Duration: ${durationSeconds}s`)
+          
+          await pool.query(
+            `INSERT INTO matches
+             (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [
+              userId,
+              socket.partner.id,
+              socket.partner.name,
+              socket.partner.country,
+              durationSeconds
+            ]
+          )
+          
+          console.log(`✅ Match saved successfully for user ${userId} (skip)`)
+          
+          // Clear tracking
+          socket.callStartTime = null
+          socket.partner = null
+        } catch (error) {
+          console.error(`❌ Error saving match to database:`, error)
+        }
+      }
+      
       // Notify partner
       io.to(partnerSocketId).emit('user_skipped')
       
@@ -2259,6 +2312,36 @@ io.on('connection', (socket) => {
     console.log(`   partnerSocketId: ${partnerSocketId || 'NOT FOUND'}`)
     console.log(`   partnerSockets size: ${partnerSockets.size}`)
     console.log(`   All tracked partners:`, Array.from(partnerSockets.entries()))
+    
+    // ✅ CRITICAL: Save match to database if call was active
+    if (userId && socket.callStartTime && socket.partner) {
+      try {
+        const durationSeconds = Math.floor(
+          (Date.now() - socket.callStartTime) / 1000
+        )
+        
+        console.log(`\n💾 Saving match history for user ${userId}`)
+        console.log(`   Partner: ${socket.partner.id}`)
+        console.log(`   Duration: ${durationSeconds}s`)
+        
+        await pool.query(
+          `INSERT INTO matches
+           (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            userId,
+            socket.partner.id,
+            socket.partner.name,
+            socket.partner.country,
+            durationSeconds
+          ]
+        )
+        
+        console.log(`✅ Match saved successfully for user ${userId}`)
+      } catch (error) {
+        console.error(`❌ Error saving match to database:`, error)
+      }
+    }
     
     if (userId) {
       // Mark user as offline in Redis
@@ -2381,6 +2464,18 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   })
   console.log('✅ partner_found emitted to socketId1:', socketId1)
   
+  // ✅ Track call start time and partner info for userId2 (socket1)
+  if (io.sockets.sockets.has(socketId1)) {
+    const socket1 = io.sockets.sockets.get(socketId1)
+    socket1.callStartTime = Date.now()
+    socket1.partner = {
+      id: userId2,
+      name: userData2?.userName || 'Anonymous',
+      country: userData2?.userLocation || 'Unknown'
+    }
+    console.log(`✅ Call tracking started for user ${userId1}`)
+  }
+  
   io.to(socketId2).emit('partner_found', {
     partnerId: userId1,
     sessionId: sessionId,
@@ -2391,6 +2486,18 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     userPicture: userData1?.userPicture || null
   })
   console.log('✅ partner_found emitted to socketId2:', socketId2)
+  
+  // ✅ Track call start time and partner info for userId1 (socket2)
+  if (io.sockets.sockets.has(socketId2)) {
+    const socket2 = io.sockets.sockets.get(socketId2)
+    socket2.callStartTime = Date.now()
+    socket2.partner = {
+      id: userId1,
+      name: userData1?.userName || 'Anonymous',
+      country: userData1?.userLocation || 'Unknown'
+    }
+    console.log(`✅ Call tracking started for user ${userId2}`)
+  }
 
   console.log(`✅ Matched: ${userId1} <-> ${userId2}`)
 }
