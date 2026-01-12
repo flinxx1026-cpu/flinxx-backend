@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import './MatchHistory.css';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
 const MatchHistory = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const [matches, setMatches] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const getToken = () => localStorage.getItem('token');
 
   // Fetch match history from API
   const fetchMatches = async () => {
@@ -15,14 +19,16 @@ const MatchHistory = ({ isOpen, onClose }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/matches', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token || ''}`,
-          'X-User-Id': user.uuid
+      const response = await fetch(
+        `${BACKEND_URL}/api/matches?userId=${user.uuid}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`,
+          }
         }
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to fetch matches: ${response.statusText}`);
@@ -86,15 +92,17 @@ const MatchHistory = ({ isOpen, onClose }) => {
 
   const toggleLike = async (matchId) => {
     try {
-      const response = await fetch('/api/matches/like', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token || ''}`,
-          'X-User-Id': user.uuid
-        },
-        body: JSON.stringify({ matchId })
-      });
+      const response = await fetch(
+        `${BACKEND_URL}/api/matches/like`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({ matchId })
+        }
+      );
 
       if (!response.ok) {
         throw new Error('Failed to like match');
@@ -112,14 +120,16 @@ const MatchHistory = ({ isOpen, onClose }) => {
 
   const deleteMatch = async (matchId) => {
     try {
-      const response = await fetch(`/api/matches/${matchId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token || ''}`,
-          'X-User-Id': user.uuid
+      const response = await fetch(
+        `${BACKEND_URL}/api/matches/${matchId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`,
+          }
         }
-      });
+      );
 
       if (!response.ok) {
         throw new Error('Failed to delete match');

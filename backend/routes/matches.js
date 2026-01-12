@@ -13,10 +13,17 @@ export function setMatchesPool(dbPool) {
 // GET /api/matches - Get match history for logged-in user
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user?.id || req.query.userId
+    // Try to get userId from auth middleware first, then fallback to query param
+    let userId = req.user?.id
+    
+    // If authMiddleware didn't set req.user.id, try query parameter
+    if (!userId) {
+      userId = req.query.userId
+    }
     
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' })
+      console.error('❌ [GET /api/matches] No userId found in auth or query params')
+      return res.status(401).json({ error: 'Unauthorized - missing userId' })
     }
 
     console.log(`📋 [GET /api/matches] Fetching match history for user ${userId}`)
