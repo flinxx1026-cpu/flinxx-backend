@@ -1,3 +1,16 @@
+.duo-panel {
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  background-color: #131313;
+  border: 1px solid #d9b85f;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
 .modal-close-btn {
   position: absolute;
   top: 16px;
