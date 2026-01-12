@@ -117,12 +117,12 @@ const DuoPanel = ({ isOpen = true, onClose }) => {
       </button>
       
       {/* Header */}
-      <div className="w-full mb-6">
-        <h3 className="text-2xl font-bold" style={{ color: '#d9b85f' }}>My Duo Squad</h3>
+      <div style={{ width: '100%', marginBottom: '24px' }}>
+        <h3 style={{ color: '#d9b85f', fontSize: '24px', fontWeight: 'bold', margin: 0 }}>My Duo Squad</h3>
       </div>
 
       {/* Friends List - Shows Accepted Friends */}
-      <div className="duo-friends-list" style={{ flex: 1, width: '100%', overflowY: 'auto' }}>
+      <div className="duo-friends-list" style={{ flex: 1, width: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {activeChat ? (
           // Chat view
           <ChatBox
