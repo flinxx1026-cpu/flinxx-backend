@@ -1111,12 +1111,12 @@ app.get('/api/user/profile', async (req, res) => {
     let result
     if (userId) {
       result = await pool.query(
-        'SELECT id, email, display_name, photo_url, auth_provider, created_at, updated_at FROM users WHERE id = $1',
+        'SELECT id, public_id, email, display_name, photo_url, auth_provider, created_at, updated_at FROM users WHERE id = $1',
         [userId]
       )
     } else {
       result = await pool.query(
-        'SELECT id, email, display_name, photo_url, auth_provider, created_at, updated_at FROM users WHERE email = $1',
+        'SELECT id, public_id, email, display_name, photo_url, auth_provider, created_at, updated_at FROM users WHERE email = $1',
         [email]
       )
     }
