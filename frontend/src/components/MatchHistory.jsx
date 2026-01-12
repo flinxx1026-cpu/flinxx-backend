@@ -1,73 +1,136 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import './MatchHistory.css';
 
 const MatchHistory = ({ isOpen, onClose }) => {
-  const [matches, setMatches] = useState([
-    {
-      id: 1,
-      username: 'Up ke 😊',
-      name: 'Up ke',
-      location: 'National Capital Territory of Delhi',
-      duration: '00:05',
-      date: '11/27/2025',
-      time: '9:24PM',
-      avatar: '😊',
-      liked: false
-    },
-    {
-      id: 2,
-      username: 'Loup 😊',
-      name: 'Loup',
-      location: 'Algeria',
-      duration: '00:06',
-      date: '11/27/2025',
-      time: '9:24PM',
-      avatar: '😊',
-      liked: false
-    },
-    {
-      id: 3,
-      username: 'Nish 😊',
-      name: 'Nish',
-      location: 'Maharashtra',
-      duration: '00:04',
-      date: '11/27/2025',
-      time: '9:24PM',
-      avatar: '😊',
-      liked: false
-    },
-    {
-      id: 4,
-      username: 'Priya 😊',
-      name: 'Priya',
-      location: 'Gujarat',
-      duration: '00:02',
-      date: '11/27/2025',
-      time: '9:23PM',
-      avatar: 'M',
-      liked: false
-    },
-    {
-      id: 5,
-      username: 'pagbigyamnmako 😊',
-      name: 'pagbigyamnmako',
-      location: 'Philippines',
-      duration: '00:08',
-      date: '11/27/2025',
-      time: '9:23PM',
-      avatar: '😊',
-      liked: false
-    }
-  ]);
+  const { user } = useAuth();
+  const [matches, setMatches] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const toggleLike = (id) => {
-    setMatches(matches.map(match =>
-      match.id === id ? { ...match, liked: !match.liked } : match
-    ));
+  // Fetch match history from API
+  const fetchMatches = async () => {
+    if (!user?.uuid) return;
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/matches', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token || ''}`,
+          'X-User-Id': user.uuid
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch matches: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data.success && data.data) {
+        // Transform API response to match UI format
+        const formattedMatches = data.data.map((match) => {
+          const date = new Date(match.created_at);
+          const dateStr = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+          const timeStr = date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          });
+
+          // Format duration as MM:SS
+          const totalSeconds = match.duration_seconds || 0;
+          const minutes = Math.floor(totalSeconds / 60);
+          const seconds = totalSeconds % 60;
+          const durationStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+          // Get first letter of name for avatar
+          const avatarLetter = match.matched_user_name?.charAt(0).toUpperCase() || 'U';
+
+          return {
+            id: match.id,
+            username: match.matched_user_name,
+            name: match.matched_user_name,
+            location: match.matched_user_country || 'Unknown',
+            duration: durationStr,
+            date: dateStr,
+            time: timeStr,
+            avatar: avatarLetter,
+            liked: match.is_liked || false,
+            matched_user_id: match.matched_user_id
+          };
+        });
+
+        setMatches(formattedMatches);
+        console.log('✅ Match history loaded:', formattedMatches.length, 'matches');
+      } else {
+        setMatches([]);
+      }
+    } catch (err) {
+      console.error('❌ Error fetching matches:', err);
+      setError(err.message);
+      setMatches([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const deleteMatch = (id) => {
-    setMatches(matches.filter(match => match.id !== id));
+  // Fetch matches when modal opens
+  useEffect(() => {
+    if (isOpen && user?.uuid) {
+      fetchMatches();
+    }
+  }, [isOpen, user?.uuid]);
+
+  const toggleLike = async (matchId) => {
+    try {
+      const response = await fetch('/api/matches/like', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token || ''}`,
+          'X-User-Id': user.uuid
+        },
+        body: JSON.stringify({ matchId })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to like match');
+      }
+
+      // Update local state
+      setMatches(matches.map(match =>
+        match.id === matchId ? { ...match, liked: !match.liked } : match
+      ));
+      console.log('❤️ Match liked:', matchId);
+    } catch (err) {
+      console.error('❌ Error liking match:', err);
+    }
+  };
+
+  const deleteMatch = async (matchId) => {
+    try {
+      const response = await fetch(`/api/matches/${matchId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token || ''}`,
+          'X-User-Id': user.uuid
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete match');
+      }
+
+      // Update local state
+      setMatches(matches.filter(match => match.id !== matchId));
+      console.log('🗑️ Match deleted:', matchId);
+    } catch (err) {
+      console.error('❌ Error deleting match:', err);
+    }
   };
 
   if (!isOpen) return null;
@@ -85,13 +148,27 @@ const MatchHistory = ({ isOpen, onClose }) => {
 
         {/* Matches List */}
         <div className="match-history-list">
-          {matches.length === 0 ? (
+          {isLoading && (
+            <div className="match-history-empty">
+              <p>Loading your matches...</p>
+              <p className="match-history-empty-sub">Please wait</p>
+            </div>
+          )}
+          
+          {error && !isLoading && (
+            <div className="match-history-empty">
+              <p>Error loading matches</p>
+              <p className="match-history-empty-sub">{error}</p>
+            </div>
+          )}
+          
+          {!isLoading && !error && matches.length === 0 ? (
             <div className="match-history-empty">
               <p>No match history yet</p>
               <p className="match-history-empty-sub">Start video chatting to build your history!</p>
             </div>
           ) : (
-            matches.map(match => (
+            !isLoading && matches.map(match => (
               <div key={match.id} className="match-card">
                 {/* Left: Date & Time */}
                 <div className="match-card-date">
