@@ -25,8 +25,19 @@ try {
   prisma = new PrismaClient()
   console.log('✅ Prisma Client initialized')
 } catch (error) {
-  console.error('❌ Failed to initialize Prisma:', error.message)
+  console.error('❌ CRITICAL: Failed to initialize Prisma:', error.message)
+  console.error('❌ Database operations will fail! Check DATABASE_URL and Prisma setup')
   prisma = null
+}
+
+// Helper function to check Prisma is available
+function ensurePrismaAvailable() {
+  if (!prisma) {
+    const msg = 'CRITICAL: Prisma Client not initialized. Cannot perform database operations.'
+    console.error('❌', msg)
+    throw new Error(msg)
+  }
+  return prisma
 }
 
 // ===== DATABASE CONFIGURATION =====
@@ -609,24 +620,66 @@ app.post('/api/users/save', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: uid, email' })
     }
 
-    console.log(`📝 Saving user to database: ${email}`)
+    console.log(`📝 [/api/users/save] Saving user to database: ${email}`)
+    console.log(`   - UID: ${uid}`)
+    console.log(`   - Auth Provider: ${authProvider}`)
 
-    // Use INSERT ... ON CONFLICT for upsert behavior
-    const result = await pool.query(
-      `INSERT INTO users (id, email, display_name, photo_url, auth_provider)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (id) DO UPDATE SET
-         email = EXCLUDED.email,
-         display_name = EXCLUDED.display_name,
-         photo_url = EXCLUDED.photo_url,
-         auth_provider = EXCLUDED.auth_provider,
-         updated_at = CURRENT_TIMESTAMP
-       RETURNING *`,
-      [uid, email, displayName || 'User', photoURL || null, authProvider || 'unknown']
-    )
-
-    const user = result.rows[0]
-    console.log(`✅ User saved/updated in database:`, user)
+    // CRITICAL: Use Prisma for consistency with OAuth flow
+    ensurePrismaAvailable()
+    
+    // Check if user already exists
+    let user = await prisma.users.findUnique({
+      where: { email: email }
+    })
+    
+    let isNewUser = false
+    if (!user) {
+      console.log(`📝 [/api/users/save] New user detected, creating account...`)
+      
+      // Generate unique public ID
+      const publicId = await generateUniquePublicId()
+      console.log(`✅ [/api/users/save] Generated public_id:`, publicId)
+      
+      // Create user with Prisma
+      console.log(`💾 [/api/users/save] Calling prisma.users.create()...`)
+      user = await prisma.users.create({
+        data: {
+          email: email,
+          display_name: displayName || 'User',
+          photo_url: photoURL || null,
+          auth_provider: authProvider || 'unknown',
+          provider_id: uid,
+          public_id: publicId,
+          profileCompleted: false,
+          termsAccepted: false
+        }
+      })
+      isNewUser = true
+      console.log(`✅ [/api/users/save] New user created in database:`, user.email)
+    } else {
+      console.log(`✅ [/api/users/save] Existing user found:`, user.email)
+      // Ensure they have a public_id
+      if (!user.public_id) {
+        const publicId = await generateUniquePublicId()
+        user = await prisma.users.update({
+          where: { id: user.id },
+          data: { public_id: publicId }
+        })
+        console.log(`✅ [/api/users/save] Generated public_id for existing user:`, publicId)
+      }
+    }
+    
+    // Verify user was actually saved
+    console.log(`🔍 [/api/users/save] Verifying user was saved to database...`)
+    const verifyUser = await prisma.users.findUnique({
+      where: { id: user.id }
+    })
+    
+    if (!verifyUser) {
+      throw new Error('CRITICAL: User creation failed - could not verify user in database')
+    }
+    
+    console.log(`✅ [/api/users/save] Database verification successful:`, verifyUser.email)
 
     res.json({
       success: true,
@@ -643,7 +696,9 @@ app.post('/api/users/save', async (req, res) => {
       }
     })
   } catch (error) {
-    console.error('❌ Error saving user:', error)
+    console.error('\n❌ [/api/users/save] CRITICAL ERROR:', error.message)
+    console.error('   Stack:', error.stack)
+    console.error('   This user signup will FAIL\n')
     res.status(500).json({ error: 'Failed to save user', details: error.message })
   }
 })
@@ -1523,42 +1578,52 @@ app.get('/auth/google/callback', async (req, res) => {
   try {
     const { code, error } = req.query
     
+    console.log(`\n🔐 [AUTH/GOOGLE/CALLBACK] Starting Google OAuth callback...`)
+    
     if (error) {
-      console.error(`❌ Google OAuth error: ${error}`)
+      console.error(`❌ [AUTH/GOOGLE/CALLBACK] Google OAuth error: ${error}`)
       const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
       return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=${error}`)
     }
     
     if (!code) {
-      console.error('❌ No authorization code received')
+      console.error('❌ [AUTH/GOOGLE/CALLBACK] No authorization code received')
       const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
       return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=no_code`)
     }
     
-    console.log(`📝 Received authorization code: ${code.substring(0, 10)}...`)
+    console.log(`📝 [AUTH/GOOGLE/CALLBACK] Received authorization code: ${code.substring(0, 10)}...`)
+    
+    // Verify Prisma is available
+    ensurePrismaAvailable()
     
     // Exchange code for tokens
+    console.log(`🔐 [AUTH/GOOGLE/CALLBACK] Exchanging code for tokens...`)
     const tokens = await getGoogleTokens(code)
-    console.log(`✅ Got access token from Google`)
+    console.log(`✅ [AUTH/GOOGLE/CALLBACK] Got access token from Google`)
     
     // Get user info
+    console.log(`🔐 [AUTH/GOOGLE/CALLBACK] Retrieving user info...`)
     const userInfo = await getGoogleUserInfo(tokens.access_token)
-    console.log(`✅ Retrieved user info:`, userInfo.email)
+    console.log(`✅ [AUTH/GOOGLE/CALLBACK] Retrieved user info:`, userInfo.email)
     
     // Check if user already exists
+    console.log(`🔍 [AUTH/GOOGLE/CALLBACK] Checking if user exists in database...`)
     let existingUser = await prisma.users.findUnique({
       where: { email: userInfo.email }
     })
+    console.log(`${existingUser ? '✅' : '📝'} [AUTH/GOOGLE/CALLBACK] User exists: ${!!existingUser}`)
     
     let isNewUser = false
     let user
     
     if (!existingUser) {
       // NEW USER - Generate unique public ID
-      console.log(`📝 New user detected, creating account...`)
+      console.log(`📝 [AUTH/GOOGLE/CALLBACK] New user detected, creating account...`)
       const publicId = await generateUniquePublicId()
-      console.log(`✅ Generated public_id:`, publicId)
+      console.log(`✅ [AUTH/GOOGLE/CALLBACK] Generated public_id:`, publicId)
       
+      console.log(`💾 [AUTH/GOOGLE/CALLBACK] Calling prisma.users.create()...`)
       user = await prisma.users.create({
         data: {
           email: userInfo.email,
@@ -1573,21 +1638,35 @@ app.get('/auth/google/callback', async (req, res) => {
         }
       })
       
+      console.log(`✅ [AUTH/GOOGLE/CALLBACK] User created in database:`, user.email)
+      console.log(`✅ [AUTH/GOOGLE/CALLBACK] User ID: ${user.id}`)
+      console.log(`✅ [AUTH/GOOGLE/CALLBACK] Email: ${user.email}`)
+      console.log(`✅ [AUTH/GOOGLE/CALLBACK] Public ID: ${user.public_id}`)
+      
+      // CRITICAL: Verify user was actually saved before proceeding
+      console.log(`🔍 [AUTH/GOOGLE/CALLBACK] Verifying user was saved to database...`)
+      const verifyUser = await prisma.users.findUnique({
+        where: { id: user.id }
+      })
+      if (!verifyUser) {
+        throw new Error('CRITICAL: User creation failed - user not found after create()')
+      }
+      console.log(`✅ [AUTH/GOOGLE/CALLBACK] Database verification successful`)
+      
       isNewUser = true
-      console.log(`✅ New user created:`, user.email)
     } else {
       // EXISTING USER
-      console.log(`✅ Existing user found:`, existingUser.email)
+      console.log(`✅ [AUTH/GOOGLE/CALLBACK] Existing user found:`, existingUser.email)
       
       // Ensure existing user has a public_id (migrate if needed)
       if (!existingUser.public_id) {
-        console.log(`⚠️ Existing user missing public_id, generating one...`)
+        console.log(`⚠️ [AUTH/GOOGLE/CALLBACK] Existing user missing public_id, generating one...`)
         const publicId = await generateUniquePublicId()
         user = await prisma.users.update({
           where: { id: existingUser.id },
           data: { public_id: publicId }
         })
-        console.log(`✅ Generated and saved public_id for existing user:`, publicId)
+        console.log(`✅ [AUTH/GOOGLE/CALLBACK] Generated and saved public_id for existing user:`, publicId)
       } else {
         user = existingUser
       }
@@ -1622,10 +1701,13 @@ app.get('/auth/google/callback', async (req, res) => {
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
     const redirectUrl = `${baseUrl}/auth-success?token=${token}&data=${encodedResponse}`
     
-    console.log(`🔗 Redirecting to frontend: ${redirectUrl}`)
+    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] Redirecting to frontend: ${redirectUrl}`)
+    console.log(`✅ [AUTH/GOOGLE/CALLBACK] OAuth flow complete - user saved and verified\n`)
     res.redirect(redirectUrl)
   } catch (error) {
-    console.error('❌ Error in /auth/google/callback:', error)
+    console.error('\n❌ [AUTH/GOOGLE/CALLBACK] CRITICAL ERROR in callback:', error.message)
+    console.error('   Stack:', error.stack)
+    console.error('   This user signup will FAIL\n')
     const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
     res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=${encodeURIComponent(error.message)}`)
   }
@@ -1637,27 +1719,39 @@ app.get('/auth-success', async (req, res) => {
     const token = req.query.token
     
     if (!token) {
+      console.error('❌ [AUTH-SUCCESS] No token provided')
       return res.status(400).json({
         success: false,
         error: 'No token provided'
       })
     }
     
-    // Decode token
-    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
-    console.log('✅ Token decoded for user:', decoded.email)
+    // Verify Prisma is available
+    ensurePrismaAvailable()
     
-    // Fetch full user data from database using userId string (not parseInt)
+    // Decode token
+    console.log(`🔐 [AUTH-SUCCESS] Decoding token: ${token.substring(0, 10)}...`)
+    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
+    console.log(`✅ [AUTH-SUCCESS] Token decoded for user: ${decoded.email}`)
+    console.log(`   - User ID: ${decoded.userId}`)
+    
+    // Fetch full user data from database using userId string
+    console.log(`🔍 [AUTH-SUCCESS] Fetching user from database...`)
     const user = await prisma.users.findUnique({
       where: { id: decoded.userId }
     })
     
     if (!user) {
+      console.error(`❌ [AUTH-SUCCESS] CRITICAL: User ${decoded.userId} not found in database!`)
+      console.error(`   Email was: ${decoded.email}`)
+      console.error(`   This user was NOT saved during OAuth callback`)
       return res.status(404).json({
         success: false,
-        error: 'User not found'
+        error: 'User not found in database - signup may have failed'
       })
     }
+    
+    console.log(`✅ [AUTH-SUCCESS] User found in database: ${user.email}`)
     
     // Return user data with profileCompleted and termsAccepted flags
     console.log('[AUTH-SUCCESS] About to return user with:', {
@@ -1750,42 +1844,52 @@ app.get('/auth/facebook/callback', async (req, res) => {
   try {
     const { code, error } = req.query
     
+    console.log(`\n🔐 [AUTH/FACEBOOK/CALLBACK] Starting Facebook OAuth callback...`)
+    
     if (error) {
-      console.error(`❌ Facebook OAuth error: ${error}`)
+      console.error(`❌ [AUTH/FACEBOOK/CALLBACK] Facebook OAuth error: ${error}`)
       const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
       return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=${error}`)
     }
     
     if (!code) {
-      console.error('❌ No authorization code received')
+      console.error('❌ [AUTH/FACEBOOK/CALLBACK] No authorization code received')
       const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
       return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=no_code`)
     }
     
-    console.log(`📝 Received Facebook authorization code: ${code.substring(0, 10)}...`)
+    console.log(`📝 [AUTH/FACEBOOK/CALLBACK] Received Facebook authorization code: ${code.substring(0, 10)}...`)
+    
+    // Verify Prisma is available
+    ensurePrismaAvailable()
     
     // Exchange code for tokens
+    console.log(`🔐 [AUTH/FACEBOOK/CALLBACK] Exchanging code for tokens...`)
     const tokens = await getFacebookTokens(code)
-    console.log(`✅ Got access token from Facebook`)
+    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Got access token from Facebook`)
     
     // Get user info
+    console.log(`🔐 [AUTH/FACEBOOK/CALLBACK] Retrieving user info...`)
     const userInfo = await getFacebookUserInfo(tokens.access_token)
-    console.log(`✅ Retrieved user info:`, userInfo.email)
+    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Retrieved user info:`, userInfo.email)
     
     // Check if user already exists
+    console.log(`🔍 [AUTH/FACEBOOK/CALLBACK] Checking if user exists in database...`)
     let existingUser = await prisma.users.findUnique({
       where: { email: userInfo.email }
     })
+    console.log(`${existingUser ? '✅' : '📝'} [AUTH/FACEBOOK/CALLBACK] User exists: ${!!existingUser}`)
     
     let isNewUser = false
     let user
     
     if (!existingUser) {
       // NEW USER - Generate unique public ID
-      console.log(`📝 New user detected, creating account...`)
+      console.log(`📝 [AUTH/FACEBOOK/CALLBACK] New user detected, creating account...`)
       const publicId = await generateUniquePublicId()
-      console.log(`✅ Generated public_id:`, publicId)
+      console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Generated public_id:`, publicId)
       
+      console.log(`💾 [AUTH/FACEBOOK/CALLBACK] Calling prisma.users.create()...`)
       user = await prisma.users.create({
         data: {
           email: userInfo.email,
@@ -1799,15 +1903,29 @@ app.get('/auth/facebook/callback', async (req, res) => {
         }
       })
       
+      console.log(`✅ [AUTH/FACEBOOK/CALLBACK] User created in database:`, user.email)
+      console.log(`✅ [AUTH/FACEBOOK/CALLBACK] User ID: ${user.id}`)
+      console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Email: ${user.email}`)
+      console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Public ID: ${user.public_id}`)
+      
+      // CRITICAL: Verify user was actually saved before proceeding
+      console.log(`🔍 [AUTH/FACEBOOK/CALLBACK] Verifying user was saved to database...`)
+      const verifyUser = await prisma.users.findUnique({
+        where: { id: user.id }
+      })
+      if (!verifyUser) {
+        throw new Error('CRITICAL: User creation failed - user not found after create()')
+      }
+      console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Database verification successful`)
+      
       isNewUser = true
-      console.log(`✅ New user created:`, user.email)
     } else {
       // EXISTING USER
-      console.log(`✅ Existing user found:`, existingUser.email)
+      console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Existing user found:`, existingUser.email)
       
       // Ensure existing user has a public_id (migrate if needed)
       if (!existingUser.public_id) {
-        console.log(`⚠️ Existing user missing public_id, generating one...`)
+        console.log(`⚠️ [AUTH/FACEBOOK/CALLBACK] Existing user missing public_id, generating one...`)
         const publicId = await generateUniquePublicId()
         user = await prisma.users.update({
           where: { id: existingUser.id },
@@ -1848,10 +1966,13 @@ app.get('/auth/facebook/callback', async (req, res) => {
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
     const redirectUrl = `${baseUrl}/auth-success?token=${token}&data=${encodedResponse}`
     
-    console.log(`🔗 Redirecting to frontend: ${redirectUrl}`)
+    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] Redirecting to frontend: ${redirectUrl}`)
+    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] OAuth flow complete - user saved and verified\n`)
     res.redirect(redirectUrl)
   } catch (error) {
-    console.error('❌ Error in /auth/facebook/callback:', error)
+    console.error('\n❌ [AUTH/FACEBOOK/CALLBACK] CRITICAL ERROR in callback:', error.message)
+    console.error('   Stack:', error.stack)
+    console.error('   This user signup will FAIL\n')
     const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
     res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=${encodeURIComponent(error.message)}`)
   }
