@@ -50,6 +50,13 @@ socket.on('connect_timeout', () => {
   console.error('⏱️ Socket connection timeout')
 })
 
+// ✅ HANDLE FORCE LOGOUT (when user is banned)
+socket.on('force_logout', () => {
+  alert('You have been banned by admin')
+  localStorage.clear()
+  window.location.href = '/login'
+})
+
 // ✅ JOIN USER ROOM (Call this when user is authenticated)
 export const joinUserRoom = (userId) => {
   console.log(`📍 Joining room for user: ${userId}`)
