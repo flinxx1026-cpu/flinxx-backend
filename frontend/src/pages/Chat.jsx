@@ -1207,20 +1207,13 @@ const Chat = () => {
           "turn:global.xirsys.net:3478?transport=udp",
           "turn:global.xirsys.net:3478?transport=tcp"
         ],
-        username: "nkhlvdv",
+        username: "nkhlydv",
         credential: "a8e244b8-cf5b-11f0-8771-0242ac140002"
       },
       ...turnServers // Add servers from API as backup
     ];
     
-    console.log('🔧 ICE Servers Configuration:', {
-      count: iceServers.length,
-      servers: iceServers.map(s => ({
-        urls: s.urls,
-        username: s.username ? '***' : undefined,
-        credential: s.credential ? '***' : undefined
-      }))
-    });
+
 
     const peerConnection = new RTCPeerConnection({ 
       iceServers,
@@ -1326,56 +1319,33 @@ const Chat = () => {
     }
 
     peerConnection.ontrack = (event) => {
-        console.log('\n\n🔴🔴🔴 ===== CRITICAL: ONTRACK HANDLER FIRING! =====');
-        console.log('🔴 ONTRACK CALLED AT:', new Date().toISOString());
-        console.log('🔴 Track received:', { kind: event.track.kind, id: event.track.id, enabled: event.track.enabled });
-        console.log('🔴 Streams in event:', event.streams);
-        
         // ✅ FIX #1: Use persistent remote MediaStream
         let remoteStream = peerConnectionRef.current._remoteStream;
         if (!remoteStream) {
-          console.log('⚠️ ONTRACK: Remote stream not initialized, creating new one');
           remoteStream = new MediaStream();
           peerConnectionRef.current._remoteStream = remoteStream;
         }
-        console.log('🔴 Using persistent remote stream ID:', remoteStream.id);
         
         // Add track to persistent stream
         remoteStream.addTrack(event.track);
-        console.log('✅ Track added to persistent remote stream');
         
         // ✅ CRITICAL: Enable the remote track explicitly
         event.track.enabled = true;
-        console.log('✅ Remote track enabled:', { kind: event.track.kind, enabled: event.track.enabled });
-        
-        console.log('📥 Remote stream now has', remoteStream.getTracks().length, 'track(s)');
-        console.log('📥 Tracks:', remoteStream.getTracks().map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled })));
         
         if (!remoteVideoRef.current) {
-            console.error('❌ CRITICAL ERROR: remoteVideoRef.current is NULL!');
-            console.error('   Cannot attach remote track - video element not available');
-            console.error('   This happens when ontrack fires before ref callback sets the element');
-            console.error('   remoteVideoRef object:', remoteVideoRef);
-            console.error('   remoteVideoRef.current:', remoteVideoRef.current);
+            // Video element not ready yet - will attach when ref callback fires
             return;
         }
         
         // ✅ FIX #1: Attach srcObject ONLY ONCE, never overwrite
         if (remoteVideoRef.current.srcObject !== remoteStream) {
-          console.log('📺 ATTACHING PERSISTENT STREAM to remoteVideoRef');
           remoteVideoRef.current.srcObject = remoteStream;
           remoteVideoRef.current.muted = false;
           
-          console.log('📺 srcObject attached, attempting play()...');
           remoteVideoRef.current.play().catch(() => {
-            console.log('ℹ️ Autoplay blocked - will play on user interaction');
+            // Autoplay may be blocked
           });
-        } else {
-          console.log('📺 STREAM ALREADY ATTACHED - skipping re-attachment');
-          console.log('   Stream has', remoteStream.getTracks().length, 'tracks now');
         }
-        
-        console.log('✅ ✅ ✅ ONTRACK COMPLETE - Remote stream persisted and attached\n\n');
         
         // ✅ Trigger component re-render so video elements can attach stream
         setStreamsReadyTrigger(prev => prev + 1);
@@ -1630,16 +1600,14 @@ const Chat = () => {
         console.log('✅ OFFERER: Peer connection created');
         
         // ✅ FIX: Flush any buffered ICE candidates that arrived while PC was being created
-        console.log('🧊 OFFERER: Flushing', iceCandidateBufferRef.current.length, 'buffered ICE candidates');
         while (iceCandidateBufferRef.current.length > 0) {
           const bufferedCandidate = iceCandidateBufferRef.current.shift();
           try {
             await peerConnectionRef.current.addIceCandidate(
               new RTCIceCandidate(bufferedCandidate)
             );
-            console.log('✅ OFFERER: Buffered ICE candidate added');
           } catch (err) {
-            console.error('❌ OFFERER: Error adding buffered ICE candidate:', err);
+            // Candidate may have already been processed or is invalid
           }
         }
 
@@ -1714,16 +1682,14 @@ const Chat = () => {
         console.log('✅ OFFERER: Local description set');
         
         // ✅ CRITICAL: Flush buffered ICE candidates after local description is set
-        console.log('🧊 OFFERER: Flushing', iceCandidateBufferRef.current.length, 'buffered ICE candidates after local description');
         while (iceCandidateBufferRef.current.length > 0) {
           const bufferedCandidate = iceCandidateBufferRef.current.shift();
           try {
             await pc.addIceCandidate(
               new RTCIceCandidate(bufferedCandidate)
             );
-            console.log('✅ OFFERER: Buffered ICE candidate added after local description');
           } catch (err) {
-            console.error('❌ OFFERER: Error adding buffered ICE candidate after local description:', err);
+            // Candidate may have already been processed or is invalid
           }
         }
         
@@ -1893,16 +1859,14 @@ const Chat = () => {
         
         // ✅ NOW it's safe to flush buffered ICE candidates
         // Remote description is now set, so addIceCandidate will work
-        console.log('🧊 ANSWERER: Flushing', iceCandidateBufferRef.current.length, 'buffered ICE candidates');
         while (iceCandidateBufferRef.current.length > 0) {
           const bufferedCandidate = iceCandidateBufferRef.current.shift();
           try {
             await peerConnectionRef.current.addIceCandidate(
               new RTCIceCandidate(bufferedCandidate)
             );
-            console.log('✅ ANSWERER: Buffered ICE candidate added');
           } catch (err) {
-            console.error('❌ ANSWERER: Error adding buffered ICE candidate:', err);
+            // Candidate may have already been processed or is invalid
           }
         }
 
@@ -1924,16 +1888,14 @@ const Chat = () => {
         console.log('✅ ANSWERER: Local description set successfully');
 
         // ✅ CRITICAL: Flush buffered ICE candidates after local description is set
-        console.log('🧊 ANSWERER: Flushing', iceCandidateBufferRef.current.length, 'buffered ICE candidates after local description');
         while (iceCandidateBufferRef.current.length > 0) {
           const bufferedCandidate = iceCandidateBufferRef.current.shift();
           try {
             await peerConnectionRef.current.addIceCandidate(
               new RTCIceCandidate(bufferedCandidate)
             );
-            console.log('✅ ANSWERER: Buffered ICE candidate added after local description');
           } catch (err) {
-            console.error('❌ ANSWERER: Error adding buffered ICE candidate after local description:', err);
+            // Candidate may have already been processed or is invalid
           }
         }
 
@@ -2018,31 +1980,18 @@ const Chat = () => {
       
       try {
         if (peerConnectionRef.current) {
-          console.log('🧊 Peer connection exists - checking if ready for ICE candidates');
-          console.log('   connectionState:', peerConnectionRef.current.connectionState);
-          console.log('   signalingState:', peerConnectionRef.current.signalingState);
-          
           try {
-            console.log('🧊 Attempting to add ICE candidate immediately');
             await peerConnectionRef.current.addIceCandidate(
               new RTCIceCandidate(data.candidate)
             );
-            console.log('✅ ICE candidate added successfully\n');
           } catch (addErr) {
             // addIceCandidate can fail if remote description not set yet
-            // In this case, buffer it for later
-            console.warn('⚠️ addIceCandidate failed (likely remote description not ready yet)');
-            console.warn('   Error:', addErr.message);
-            console.warn('   Buffering candidate for later - Buffer size will be:', iceCandidateBufferRef.current.length + 1);
+            // In this case, buffer it for later - this is expected behavior
             iceCandidateBufferRef.current.push(data.candidate);
-            console.log('🧊 Candidate buffered - will be added when remote description is ready');
           }
         } else {
-          // ✅ CRITICAL FIX: Buffer the candidate if PC isn't ready yet
-          console.warn('⚠️ Peer connection NOT ready yet - buffering ICE candidate');
-          console.warn('   Buffer size will be:', iceCandidateBufferRef.current.length + 1);
+          // Buffer the candidate if PC isn't ready yet - this is normal
           iceCandidateBufferRef.current.push(data.candidate);
-          console.log('🧊 Candidate buffered - will be added when peer connection is ready');
         }
       } catch (err) {
         console.error('❌ Unexpected error in ICE candidate handler:', err);
@@ -2161,15 +2110,8 @@ const Chat = () => {
 
   const getTurnServers = async () => {
     try {
-      console.log('🔄 Fetching TURN servers from Xirsys via backend API...');
       const res = await fetch("https://flinxx-admin-backend.onrender.com/api/turn");
       const data = await res.json();
-
-      console.log('📡 Xirsys API Response:', data);
-      console.log('   data.v type:', typeof data?.v);
-      console.log('   Is data.v an array?', Array.isArray(data?.v));
-      console.log('   Is data.v.iceServers an array?', Array.isArray(data?.v?.iceServers));
-      console.log('   Is data.v.iceServers an object?', typeof data?.v?.iceServers === 'object' && !Array.isArray(data?.v?.iceServers));
 
       // Try multiple possible response formats
       let iceServers = null;
@@ -2177,81 +2119,60 @@ const Chat = () => {
       // Format 1: data.v.iceServers as array (expected format)
       if (Array.isArray(data?.v?.iceServers)) {
         iceServers = data.v.iceServers;
-        console.log('✅ TURN servers found in data.v.iceServers (array)');
       }
       // Format 2: data.iceServers as array (direct)
       else if (Array.isArray(data?.iceServers)) {
         iceServers = data.iceServers;
-        console.log('✅ TURN servers found in data.iceServers (array)');
       }
       // Format 3: data.v is the array itself
       else if (Array.isArray(data?.v)) {
         iceServers = data.v;
-        console.log('✅ TURN servers found in data.v directly (array)');
       }
       // Format 4: data.v.iceServers is an OBJECT with urls array (ACTUAL FORMAT FROM XIRSYS)
       else if (data?.v?.iceServers && typeof data.v.iceServers === 'object' && !Array.isArray(data.v.iceServers)) {
-        console.log('🔍 data.v.iceServers is an object. Structure:', Object.keys(data.v.iceServers));
-        
         // The actual structure from Xirsys: { username: "...", urls: [...], credential: "..." }
         // We need to convert this to RTCPeerConnection format
         if (Array.isArray(data.v.iceServers.urls)) {
-          console.log('✅ Found urls array in data.v.iceServers.urls');
           // Convert { username, urls, credential } to RTCIceServer format
           iceServers = [{
             urls: data.v.iceServers.urls,
             username: data.v.iceServers.username,
             credential: data.v.iceServers.credential
           }];
-          console.log('✅ Converted to RTCIceServer format');
-          console.log('   URLs:', data.v.iceServers.urls.length, 'entries');
         }
         // Check if it has nested iceServers array
         else if (Array.isArray(data.v.iceServers.iceServers)) {
           iceServers = data.v.iceServers.iceServers;
-          console.log('✅ TURN servers found in data.v.iceServers.iceServers');
         }
         // Check if it has a v property with an array
         else if (Array.isArray(data.v.iceServers.v)) {
           iceServers = data.v.iceServers.v;
-          console.log('✅ TURN servers found in data.v.iceServers.v');
         }
         // Check if it has a servers property
         else if (Array.isArray(data.v.iceServers.servers)) {
           iceServers = data.v.iceServers.servers;
-          console.log('✅ TURN servers found in data.v.iceServers.servers');
         }
       }
       // Format 5: Check if response is wrapped differently
       else if (Array.isArray(data?.servers)) {
         iceServers = data.servers;
-        console.log('✅ TURN servers found in data.servers');
       }
       // Format 6: Check if v is an object with servers
       else if (Array.isArray(data?.v?.servers)) {
         iceServers = data.v.servers;
-        console.log('✅ TURN servers found in data.v.servers');
       }
 
       if (iceServers && iceServers.length > 0) {
-        console.log('✅ TURN servers fetched successfully');
-        console.log('✅ iceServers has', iceServers.length, 'entries');
-        console.log('📋 First ICE Server:', iceServers[0]);
         return iceServers;
       } else {
-        console.warn('⚠️ Invalid Xirsys TURN response format - could not find iceServers array');
-        console.log('   Received full response:', JSON.stringify(data, null, 2));
-        console.log('   Keys in response:', Object.keys(data || {}));
-        console.log('   Keys in data.v:', Object.keys(data?.v || {}));
         throw new Error("Invalid Xirsys TURN response format - iceServers array not found");
       }
     } catch (error) {
-      console.error('❌ Error fetching TURN servers from Xirsys:', error.message);
-      console.log('🔄 Falling back to static STUN/TURN configuration');
+      // Silently fail - the static TURN servers will be used as fallback
+      // This is expected and normal behavior
       
       // Fallback to static configuration - returns array directly
       const fallbackServers = getIceServers();
-      console.log('📋 Using fallback ICE servers:', fallbackServers);
       return fallbackServers;
     }
   };
@@ -2452,42 +2373,25 @@ const Chat = () => {
 
   const remoteVideoRefCallback = useCallback((el) => {
     // Store the ref
-    console.log('📍 REMOTE VIDEO REF CALLBACK:', {
-      element: !!el,
-      hasSrcObject: !!el?.srcObject,
-      srcObjectId: el?.srcObject?.id || 'null',
-      trackCount: el?.srcObject?.getTracks?.().length || 0
-    });
     remoteVideoRef.current = el;
     
     if (el) {
-      console.log('✅ VIDEO REF CALLBACK: Remote video element mounted and stored in ref');
-      
       // ✅ CRITICAL FIX: If stream already exists on peerConnection, attach it now
       const remoteStream = peerConnectionRef.current?._remoteStream;
       if (remoteStream && remoteStream.getTracks().length > 0) {
-        console.log('✅ VIDEO REF CALLBACK: Remote stream already exists with', remoteStream.getTracks().length, 'tracks - attaching to element now');
         if (el.srcObject !== remoteStream) {
           el.srcObject = remoteStream;
-          console.log('✅ VIDEO REF CALLBACK: Stream attached to video element');
           el.play().catch(() => {
-            console.log('ℹ️ Autoplay blocked - will play on user interaction');
+            // Autoplay may be blocked
           });
         }
-      } else if (remoteStream) {
-        console.log('⚠️ VIDEO REF CALLBACK: Remote stream exists but has no tracks yet');
-      } else {
-        console.log('ℹ️ VIDEO REF CALLBACK: No remote stream yet - will be attached when tracks arrive');
       }
-    } else {
-      console.warn('⚠️ VIDEO REF CALLBACK: Element is null!');
     }
   }, []);
 
   // ✅ Monitor remote video srcObject changes
   useEffect(() => {
     if (!remoteVideoRef.current) {
-      console.log('📺 MONITOR: remoteVideoRef.current is null - element not mounted yet');
       return;
     }
 
@@ -2495,23 +2399,7 @@ const Chat = () => {
       const video = remoteVideoRef.current;
       if (!video) return;
 
-      console.log('📺 MONITOR: Remote video element status:', {
-        srcObjectExists: !!video.srcObject,
-        srcObjectId: video.srcObject?.id || 'null',
-        trackCount: video.srcObject?.getTracks?.().length || 0,
-        videoWidth: video.videoWidth,
-        videoHeight: video.videoHeight,
-        paused: video.paused,
-        readyState: video.readyState,
-        networkState: video.networkState
-      });
-
-      if (video.srcObject && video.srcObject.getTracks().length > 0) {
-        const tracks = video.srcObject.getTracks();
-        tracks.forEach(t => {
-          console.log(`   ${t.kind} track: enabled=${t.enabled}, readyState=${t.readyState}`);
-        });
-      }
+      // Silently monitor without logging every 2 seconds
     }, 2000);
 
     return () => clearInterval(checkInterval);

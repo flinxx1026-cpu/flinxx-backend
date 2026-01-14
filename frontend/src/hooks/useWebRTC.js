@@ -95,35 +95,16 @@ export const useWebRTC = (socketId, onRemoteStream) => {
     }
 
     peerConnection.ontrack = (event) => {
-      console.log('\n🔴🔴🔴 ===== CRITICAL: ONTRACK HANDLER FIRING! =====');
-      console.log('🔴 ONTRACK CALLED AT:', new Date().toISOString());
-      console.log('🔴 This is the REMOTE TRACK RECEIVER - the most important handler!');
-      console.log('\n📥 ===== REMOTE TRACK RECEIVED =====' );
-      console.log('📥 Track:', event.track.kind, 'ID:', event.track.id);
-      console.log('📥 Streams count:', event.streams.length);
-      
       if (!event.streams || event.streams.length === 0) {
-        console.error('❌ No streams in ontrack');
         return;
       }
       
       const stream = event.streams[0];
-      console.log('✅ Remote stream ready:', {
-        active: stream.active,
-        trackCount: stream.getTracks().length,
-        tracks: stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState }))
-      });
-      
-      // ✅ FIX #2: Properly attach stream to remote video ref AND guarantee playback
-      console.log('📥 Attaching remote stream to video element');
       
       // ✅ CRITICAL ARCHITECTURE: Hook ONLY sends stream to parent via callback
       // Hook does NOT touch video DOM - that's Chat.jsx's responsibility
       // This prevents dual DOM control which causes black screen
-      console.log('📥 Sending remote stream to parent component via onRemoteStream callback');
       onRemoteStream(stream);
-      
-      console.log('✅ ontrack handler complete - video control delegated to Chat.jsx');
     }
 
     if (localStreamRef.current) {
