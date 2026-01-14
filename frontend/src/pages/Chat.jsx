@@ -2539,12 +2539,19 @@ const Chat = () => {
               display: none !important;
             }
             .panel-top .user-header {
-              height: 0 !important;
-              padding: 0 !important;
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              right: 0 !important;
+              height: auto !important;
+              padding: 16px 24px !important;
               margin: 0 !important;
               border: none !important;
-              overflow: hidden !important;
-              visibility: collapse !important;
+              overflow: visible !important;
+              visibility: visible !important;
+              z-index: 20 !important;
+              background: rgba(0, 0, 0, 0.4) !important;
+              backdrop-filter: blur(8px) !important;
             }
             .panel-bottom .user-header {
               display: flex !important;
