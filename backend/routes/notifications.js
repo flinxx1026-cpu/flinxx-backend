@@ -40,7 +40,7 @@ router.get('/notifications', async (req, res) => {
         ON u.id = f.sender_id
       WHERE 
         f.receiver_id = $1
-        AND f.status = 'pending'
+        AND f.status IN ('pending', 'accepted')
       ORDER BY f.created_at DESC
     `;
 
