@@ -1156,6 +1156,8 @@ const Chat = () => {
   // CRITICAL: Buffer for ICE candidates that arrive before peer connection
   // ========================================
   const iceCandidateBufferRef = useRef([]);
+  const turnServersCacheRef = useRef(null);
+  const turnServersFetchingRef = useRef(false);
 
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
   // This function is called inside socket event handlers
@@ -2109,8 +2111,38 @@ const Chat = () => {
   }, []);
 
   const getTurnServers = async () => {
+    // ✅ Return cached servers immediately if available
+    if (turnServersCacheRef.current) {
+      return turnServersCacheRef.current;
+    }
+
+    // ✅ If already fetching, wait for it to complete instead of fetching again
+    if (turnServersFetchingRef.current) {
+      // Wait up to 5 seconds for the fetch to complete
+      const startTime = Date.now();
+      while (turnServersFetchingRef.current && Date.now() - startTime < 5000) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (turnServersCacheRef.current) {
+          return turnServersCacheRef.current;
+        }
+      }
+      // If fetch took too long, return fallback
+      return getIceServers();
+    }
+
+    // ✅ Mark that we're fetching to prevent parallel requests
+    turnServersFetchingRef.current = true;
+
     try {
-      const res = await fetch("https://flinxx-admin-backend.onrender.com/api/turn");
+      // Fetch with a 3-second timeout to avoid hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      const res = await fetch("https://flinxx-admin-backend.onrender.com/api/turn", {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
       const data = await res.json();
 
       // Try multiple possible response formats
@@ -2163,6 +2195,9 @@ const Chat = () => {
       }
 
       if (iceServers && iceServers.length > 0) {
+        // ✅ Cache the servers for future peer connections
+        turnServersCacheRef.current = iceServers;
+        turnServersFetchingRef.current = false;
         return iceServers;
       } else {
         throw new Error("Invalid Xirsys TURN response format - iceServers array not found");
@@ -2173,6 +2208,9 @@ const Chat = () => {
       
       // Fallback to static configuration - returns array directly
       const fallbackServers = getIceServers();
+      // ✅ Cache the fallback servers too
+      turnServersCacheRef.current = fallbackServers;
+      turnServersFetchingRef.current = false;
       return fallbackServers;
     }
   };
