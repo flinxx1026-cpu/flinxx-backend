@@ -37,13 +37,10 @@ router.get('/notifications', async (req, res) => {
         u.photo_url
       FROM friend_requests f
       JOIN users u
-        ON u.id = CASE
-          WHEN f.sender_id = $1 THEN f.receiver_id
-          ELSE f.sender_id
-        END
+        ON u.id = f.sender_id
       WHERE 
-        f.sender_id = $1
-        OR f.receiver_id = $1
+        f.receiver_id = $1
+        AND f.status = 'pending'
       ORDER BY f.created_at DESC
     `;
 
