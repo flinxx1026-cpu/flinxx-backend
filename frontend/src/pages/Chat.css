@@ -1,5 +1,36 @@
 /* Chat page specific styles */
 
+/* CRITICAL: HIDE VIDEO HEADER COMPLETELY - NO BLACK BAR */
+.user-header {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+}
+
+/* Ensure video containers take full available space */
+.inner-content-radius {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.panel-top .inner-content-radius {
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 100% !important;
+}
+
+.panel-bottom .inner-content-radius {
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 100% !important;
+}
+
 /* CRITICAL: Safeguard custom Tailwind sizes from purging */
 /* Note: These custom sizes must be present in JSX to prevent purging */
 /* max-w-[700px] max-w-[550px] aspect-[4/3] */
