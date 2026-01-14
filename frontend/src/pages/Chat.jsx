@@ -1433,6 +1433,7 @@ const Chat = () => {
     socket.off('ice_candidate');
     socket.off('receive_message');
     socket.off('partner_disconnected');
+    socket.off('user_skipped');
     socket.off('disconnect');
     console.log('🔌 Removed old listeners (if any existed)');
     
@@ -2034,6 +2035,12 @@ const Chat = () => {
       console.log('🔴🔴🔴 Cleanup complete - ready for new partner');
     });
 
+    // ✅ Handle partner skip
+    socket.on('user_skipped', () => {
+      console.log('⏭️ Partner skipped - returning to waiting screen');
+      endChat();
+    });
+
     // Disconnect
     socket.on('disconnect', () => {
       console.log('Socket disconnected');
@@ -2046,6 +2053,7 @@ const Chat = () => {
     console.log('🔌 ✅ webrtc_answer listener active');
     console.log('🔌 ✅ ice_candidate listener active');
     console.log('🔌 ✅ partner_disconnected listener active (CRITICAL FOR DISCONNECT)');
+    console.log('🔌 ✅ user_skipped listener active (CRITICAL FOR SKIP)');
     console.log('🔌 ✅ disconnect listener active');
     console.log('🔌 Ready to receive WebRTC signaling messages\n\n');
     
@@ -2057,6 +2065,7 @@ const Chat = () => {
       socket.off('webrtc_answer');
       socket.off('ice_candidate');
       socket.off('partner_disconnected');
+      socket.off('user_skipped');
       socket.off('disconnect');
     };
   }, []); // Empty dependency array - runs ONCE on component mount
