@@ -1334,6 +1334,10 @@ const Chat = () => {
         // ✅ CRITICAL: Enable the remote track explicitly
         event.track.enabled = true;
         
+        // ✅ ALWAYS trigger component re-render - even if video element isn't ready yet
+        // This ensures the video element gets rendered so ref callback can attach the stream
+        setStreamsReadyTrigger(prev => prev + 1);
+        
         if (!remoteVideoRef.current) {
             // Video element not ready yet - will attach when ref callback fires
             return;
@@ -1348,9 +1352,6 @@ const Chat = () => {
             // Autoplay may be blocked
           });
         }
-        
-        // ✅ Trigger component re-render so video elements can attach stream
-        setStreamsReadyTrigger(prev => prev + 1);
     };
 
     peerConnection.onconnectionstatechange = () => {
