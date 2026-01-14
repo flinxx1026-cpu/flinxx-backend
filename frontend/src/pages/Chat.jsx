@@ -2539,32 +2539,25 @@ const Chat = () => {
               display: none !important;
             }
             .panel-top .user-header {
-              display: none !important;
               height: 0 !important;
               padding: 0 !important;
               margin: 0 !important;
               border: none !important;
+              overflow: hidden !important;
+              visibility: collapse !important;
             }
             .panel-bottom .user-header {
               display: flex !important;
             }
-            /* Hide headers completely during video chat */
-            .user-header {
-              display: none !important;
-              height: 0 !important;
-              padding: 0 !important;
-              margin: 0 !important;
-              overflow: hidden !important;
-              border: none !important;
-            }
-            /* Ensure video takes full space */
-            .panel-top .inner-content-radius {
-              padding: 0 !important;
-              margin: 0 !important;
-            }
-            .panel-bottom .inner-content-radius {
-              padding: 0 !important;
-              margin: 0 !important;
+            @media (min-width: 769px) {
+              .panel-bottom .user-header {
+                height: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border: none !important;
+                overflow: hidden !important;
+                visibility: collapse !important;
+              }
             }
           }
         `}</style>
