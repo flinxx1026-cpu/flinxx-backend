@@ -256,6 +256,58 @@ app.options('*', cors())
 
 app.use(express.json())
 
+// ===== VERIFY USER TOKEN MIDDLEWARE =====
+const verifyUserToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    console.log("🔐 [verifyUserToken] Authorization header:", authHeader ? "Present" : "Missing");
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error("🔐 [verifyUserToken] Invalid or missing authorization header");
+      return res.status(401).json({ error: 'Missing or invalid authorization header' });
+    }
+    
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    console.log("🔐 [verifyUserToken] Token received, attempting decode...");
+    
+    let decoded;
+    try {
+      decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
+      console.log("🔐 [verifyUserToken] Token decoded successfully");
+      console.log("🔐 [verifyUserToken] Decoded userId:", decoded.userId);
+    } catch (e) {
+      console.error("🔐 [verifyUserToken] Failed to decode token:", e.message);
+      return res.status(401).json({ error: 'Invalid token format' });
+    }
+    
+    // Fetch user from database
+    const user = await prisma.users.findUnique({
+      where: { id: decoded.userId }
+    });
+    
+    if (!user) {
+      console.error("🔐 [verifyUserToken] User not found in database for id:", decoded.userId);
+      return res.status(401).json({ error: 'User not found' });
+    }
+    
+    console.log("🔐 [verifyUserToken] User found:", user.email);
+    console.log("🔐 [verifyUserToken] User UUID:", user.id);
+    
+    // Set req.decoded for use in route handler
+    req.decoded = {
+      id: user.id,
+      userId: decoded.userId,
+      email: user.email
+    };
+    
+    next();
+  } catch (error) {
+    console.error('🔐 [verifyUserToken] Middleware error:', error);
+    res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
 // ===== MOUNT ROUTES =====
 app.use('/api/friends', friendsRoutes)
 setNotificationsPool(pool)
@@ -1104,16 +1156,25 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
   try {
     const decoded = req.decoded;
     
-    console.log("UPDATING last_seen for user:", decoded.id);
+    console.log("\n🌐 [/api/user/profile] REQUEST RECEIVED");
+    console.log("🌐 [/api/user/profile] User UUID:", decoded.id);
+    console.log("🌐 [/api/user/profile] User email:", decoded.email);
+    
+    console.log("\n📝 [UPDATE LAST_SEEN] Updating last_seen for user:", decoded.id);
+    const startTime = Date.now();
 
-    await prisma.users.update({
+    const updateResult = await prisma.users.update({
       where: { id: decoded.id },
       data: { last_seen: new Date() }
     });
 
-    console.log("last_seen UPDATED for user:", decoded.id);
+    const updateTime = Date.now() - startTime;
+    console.log("✅ [UPDATE LAST_SEEN] Successfully updated last_seen");
+    console.log("✅ [UPDATE LAST_SEEN] Update took:", updateTime, "ms");
+    console.log("✅ [UPDATE LAST_SEEN] New last_seen value:", updateResult.last_seen);
 
     // Fetch updated user profile
+    console.log("\n📖 [FETCH PROFILE] Fetching user profile from database...");
     const user = await prisma.users.findUnique({
       where: { id: decoded.id },
       select: {
@@ -1130,10 +1191,16 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
     });
 
     if (!user) {
+      console.error("📖 [FETCH PROFILE] User not found in database!");
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log(`✅ Profile fetched for user: ${user.email}, last_seen updated`);
+    console.log("📖 [FETCH PROFILE] Profile fetched successfully");
+    console.log("📖 [FETCH PROFILE] Email:", user.email);
+    console.log("📖 [FETCH PROFILE] Last_seen in DB:", user.last_seen);
+    
+    console.log("\n✅ [/api/user/profile] RESPONSE SUCCESS");
+    console.log("✅ [/api/user/profile] Sending response to frontend...\n");
     
     res.json({
       success: true,
@@ -1149,7 +1216,8 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Error fetching user profile:', error);
+    console.error('❌ [/api/user/profile] ERROR:', error.message);
+    console.error('❌ [/api/user/profile] Full error:', error);
     res.status(500).json({ error: 'Failed to fetch profile', details: error.message });
   }
 });
