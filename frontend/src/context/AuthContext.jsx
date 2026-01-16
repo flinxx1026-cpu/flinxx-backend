@@ -74,20 +74,21 @@ export const AuthProvider = ({ children }) => {
         // The /auth-success page will save token to localStorage and trigger a re-render
         if (window.location.pathname === '/auth-success') {
           console.log('🔵 [AuthContext] ⏸ On /auth-success page - waiting for token to be saved');
+          // Still need to set isLoading to false but don't return early
+          // We'll skip the full auth flow but set up listeners below
           setIsLoading(false);
-          return;
-        }
-        
-        console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
-        
-        // ✅ CLEANUP STEP: Remove invalid users from old builds (numeric IDs)
-        const storedUserRaw = localStorage.getItem('user');
-        if (storedUserRaw) {
-          try {
-            const parsed = JSON.parse(storedUserRaw);
-            
-            // ❌ Remove if UUID is invalid or numeric
-            if (!parsed.uuid || (typeof parsed.uuid === 'string' && parsed.uuid.length !== 36)) {
+          // Don't return - continue to set up listeners
+        } else {
+          console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
+          
+          // ✅ CLEANUP STEP: Remove invalid users from old builds (numeric IDs)
+          const storedUserRaw = localStorage.getItem('user');
+          if (storedUserRaw) {
+            try {
+              const parsed = JSON.parse(storedUserRaw);
+              
+              // ❌ Remove if UUID is invalid or numeric
+              if (!parsed.uuid || (typeof parsed.uuid === 'string' && parsed.uuid.length !== 36)) {
               console.warn('🧹 [AuthContext] Removing invalid user from localStorage:', {
                 uuid: parsed.uuid,
                 id: parsed.id,
@@ -235,6 +236,7 @@ export const AuthProvider = ({ children }) => {
             console.error('[AuthContext] Error parsing saved user:', err)
           }
         }
+        }
         
         console.log('\n🔵 [AuthContext] STEP 3: No stored token or user, checking Firebase...');
         
@@ -361,6 +363,7 @@ export const AuthProvider = ({ children }) => {
         })
 
         return unsubscribe
+        } // End of else block - Firebase auth check only if NOT on /auth-success
       } catch (err) {
         console.error('[AuthContext] Error initializing auth:', err)
         setIsLoading(false)
