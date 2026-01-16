@@ -115,11 +115,36 @@ export default function AuthSuccess() {
 
           setUserData(user);
 
-          // ✅ CRITICAL: Navigate immediately - don't wait
-          // The storage change will trigger AuthContext anyway
-          console.log("🔗 Redirecting to /chat");
-          navigate("/chat", { replace: true });
+          // ✅ CRITICAL: Reload page to force AuthContext to reinitialize
+          // with the token now in localStorage
+          console.log("🔗 Token saved - reloading page to trigger AuthContext initialization");
+          setTimeout(() => {
+            window.location.href = '/chat';
+          }, 500);
         } else {
+          console.error('❌ Backend response was not successful:', data);
+          // Fallback: still save the token from the URL if we have a token
+          if (token) {
+            console.warn('⚠️ Backend response failed, but using token from URL anyway');
+            const fallbackUser = {
+              uuid: responseData?.user?.uuid || 'unknown',
+              name: responseData?.user?.name || 'User',
+              email: responseData?.user?.email || 'unknown@example.com',
+              picture: responseData?.user?.picture || null,
+              profileCompleted: responseData?.user?.profileCompleted || false
+            };
+            
+            localStorage.setItem("token", token);
+            localStorage.setItem("authToken", token);
+            localStorage.setItem("user", JSON.stringify(fallbackUser));
+            localStorage.setItem("authProvider", "google");
+            
+            console.log('⚠️ Saved fallback user and redirecting...');
+            setTimeout(() => {
+              window.location.href = '/chat';
+            }, 500);
+            return;
+          }
           setError(data.error || "Failed to authenticate");
         }
       } catch (err) {
