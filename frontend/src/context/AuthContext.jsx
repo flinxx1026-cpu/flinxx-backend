@@ -68,81 +68,37 @@ export const AuthProvider = ({ children }) => {
       try {
         console.log('\n\n🔵 [AuthContext] ═══════════════════════════════════════════');
         console.log('🔵 [AuthContext] INITIALIZATION STARTED');
-        console.log('🔵 [AuthContext] Current path:', window.location.pathname);
+        console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
         
-        // ⚠️ CRITICAL: Skip auth check if we're on /auth-success page
-        // The /auth-success page will save token to localStorage and trigger a re-render
-        if (window.location.pathname === '/auth-success') {
-          console.log('🔵 [AuthContext] ⏸ On /auth-success page - waiting for token to be saved');
-          // Still need to set isLoading to false but don't return early
-          // We'll skip the full auth flow but set up listeners below
-          setIsLoading(false);
-          // Don't return - continue to set up listeners
-        } else {
-          console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
-          
-          // ✅ FAST PATH: Check localStorage FIRST before any backend calls
-          const storedToken = localStorage.getItem('token')
-          const storedUser = localStorage.getItem('user')
-          
-          console.log('🔵 [AuthContext] STEP 1: Quick check for stored token/user');
-          console.log('🔵 [AuthContext]   - token:', storedToken ? '✓ Found' : '✗ Not found')
-          console.log('🔵 [AuthContext]   - user:', storedUser ? '✓ Found' : '✗ Not found')
-          
-          // If we have BOTH token and user in localStorage, try to use them immediately
-          if (storedToken && storedUser) {
-            try {
-              console.log('\n🔵 [AuthContext] FAST PATH: Both token and user found in localStorage');
-              const user = JSON.parse(storedUser);
-              
-              // Validate UUID format first
-              if (user.uuid && typeof user.uuid === 'string' && user.uuid.length === 36) {
-                console.log('🔵 [AuthContext] ✅ Valid UUID found in localStorage:', user.uuid.substring(0, 8) + '...');
-                console.log('🔵 [AuthContext] Setting user from localStorage without backend validation');
-                setUser(user)
-                setIsAuthenticated(true)
-                setIsLoading(false)
-                console.log('🔵 [AuthContext] ✅ FAST PATH COMPLETE - User loaded from localStorage')
-                return
-              } else {
-                console.warn('🧹 [AuthContext] Invalid UUID in localStorage:', {
-                  uuid: user.uuid,
-                  length: user.uuid?.length,
-                  type: typeof user.uuid
-                });
-                localStorage.removeItem('user');
-                localStorage.removeItem('token');
-              }
-            } catch (err) {
-              console.error('🔵 [AuthContext] Error parsing localStorage user:', err);
+        // ✅ CLEANUP STEP: Remove invalid users from old builds (numeric IDs)
+        const storedUserRaw = localStorage.getItem('user');
+        if (storedUserRaw) {
+          try {
+            const parsed = JSON.parse(storedUserRaw);
+            
+            // ❌ Remove if UUID is invalid or numeric
+            if (!parsed.uuid || (typeof parsed.uuid === 'string' && parsed.uuid.length !== 36)) {
+              console.warn('🧹 [AuthContext] Removing invalid user from localStorage:', {
+                uuid: parsed.uuid,
+                id: parsed.id,
+                email: parsed.email
+              });
               localStorage.removeItem('user');
               localStorage.removeItem('token');
             }
-          } else {
-            console.log('🔵 [AuthContext] Skipping fast path (missing token or user from localStorage)');
+          } catch (e) {
+            console.warn('🧹 [AuthContext] Invalid JSON in localStorage user, removing');
+            localStorage.removeItem('user');
           }
-          
-          // ✅ CLEANUP STEP: Remove invalid users from old builds (numeric IDs)
-          const storedUserRaw = localStorage.getItem('user');
-          if (storedUserRaw) {
-            try {
-              const parsed = JSON.parse(storedUserRaw);
-              
-              // ❌ Remove if UUID is invalid or numeric
-              if (!parsed.uuid || (typeof parsed.uuid === 'string' && parsed.uuid.length !== 36)) {
-                console.warn('🧹 [AuthContext] Removing invalid user from localStorage:', {
-                  uuid: parsed.uuid,
-                  id: parsed.id,
-                  email: parsed.email
-                });
-                localStorage.removeItem('user');
-                localStorage.removeItem('token');
-              }
-            } catch (e) {
-              console.warn('🧹 [AuthContext] Invalid JSON in localStorage user, removing');
-              localStorage.removeItem('user');
-            }
-          }
+        }
+        
+        // Check for stored JWT token from Google OAuth
+        const storedToken = localStorage.getItem('token')
+        const storedUser = localStorage.getItem('user')
+        
+        console.log('🔵 [AuthContext] STEP 1: Check localStorage');
+        console.log('🔵 [AuthContext]   - token:', storedToken ? '✓ Found' : '✗ Not found')
+        console.log('🔵 [AuthContext]   - user:', storedUser ? '✓ Found' : '✗ Not found')
         
         // If we have a token, validate it and restore user data
         if (storedToken && storedUser) {
@@ -395,7 +351,6 @@ export const AuthProvider = ({ children }) => {
         })
 
         return unsubscribe
-        } // End of else block - Firebase auth check only if NOT on /auth-success
       } catch (err) {
         console.error('[AuthContext] Error initializing auth:', err)
         setIsLoading(false)
@@ -403,23 +358,6 @@ export const AuthProvider = ({ children }) => {
     }
     
     initializeAuth()
-
-    // ✅ CRITICAL: Listen for localStorage changes
-    // When /auth-success page saves the token, this will trigger
-    const handleStorageChange = (e) => {
-      if (e.key === 'token' || e.key === 'user') {
-        console.log('🔵 [AuthContext] Storage changed:', e.key);
-        console.log('🔵 [AuthContext] Reinitializing due to storage event');
-        // Reinitialize to pick up the new token/user
-        initializeAuth();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
   }, [])
 
   const logout = () => {
