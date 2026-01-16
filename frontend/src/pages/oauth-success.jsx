@@ -1,101 +1,218 @@
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, useContext } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
 
-/**
- * OAuth Success Page - CRITICAL FIX
- * 
- * Backend redirects here after OAuth: /oauth-success?token=JWT
- * This page MUST save token and user data to localStorage immediately
- * Then redirect to /chat so AuthContext can find the saved data
- */
 export default function OAuthSuccess() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const { setAuthToken } = useContext(AuthContext) || {};
+  const [searchParams] = useSearchParams();
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Log that we've reached this page
+  console.log('🔐 [OAuthSuccess PAGE LOADED]');
+  console.log('🔐 Token from URL:', searchParams.get('token')?.substring(0, 20) + '...');
 
   useEffect(() => {
-    const processOAuthSuccess = async () => {
+    const handleAuthSuccess = async () => {
       try {
-        console.log('\n🟢 [OAuthSuccess] PAGE LOADED')
-        const params = new URLSearchParams(window.location.search)
-        const token = params.get('token')
+        const token = searchParams.get("token");
+        const data_param = searchParams.get("data");
         
-        console.log('🟢 [OAuthSuccess] Token from URL:', token ? '✓ Found (length: ' + token.length + ')' : '✗ Missing')
-
         if (!token) {
-          console.error('❌ [OAuthSuccess] No token in URL - redirecting to login')
-          navigate('/login', { replace: true })
-          return
+          setError("No authentication token received");
+          setLoading(false);
+          return;
         }
 
-        // ✅ STEP 1: Save token to localStorage IMMEDIATELY
-        console.log('🟢 [OAuthSuccess] STEP 1: Saving token to localStorage...')
-        localStorage.setItem('token', token)
-        localStorage.setItem('authToken', token)
-        console.log('✅ [OAuthSuccess] Token saved:', token.substring(0, 20) + '...')
-        
-        // ✅ STEP 2: Fetch user profile from backend
-        console.log('🟢 [OAuthSuccess] STEP 2: Fetching user profile from backend...')
-        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
-        
-        try {
-          const profileResponse = await fetch(`${BACKEND_URL}/api/profile`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          })
+        console.log("🔐 OAuth Success - Token received:", token.substring(0, 10) + "...");
 
-          console.log('🟢 [OAuthSuccess] Profile response status:', profileResponse.status)
-
-          if (profileResponse.ok) {
-            const profileData = await profileResponse.json()
-            console.log('✅ [OAuthSuccess] User profile fetched:', profileData.user?.email)
-            
-            if (profileData.user) {
-              // ✅ STEP 3: Save user data to localStorage
-              const userData = {
-                uuid: profileData.user.uuid,
-                id: profileData.user.id,
-                email: profileData.user.email,
-                name: profileData.user.name || profileData.user.display_name || 'User',
-                picture: profileData.user.picture || profileData.user.photo_url,
-                profileCompleted: profileData.user.profileCompleted || false
-              }
-              
-              console.log('🟢 [OAuthSuccess] STEP 3: Saving user data to localStorage...')
-              localStorage.setItem('user', JSON.stringify(userData))
-              console.log('✅ [OAuthSuccess] User data saved:', userData.email)
-            }
-          } else {
-            console.warn('⚠️ [OAuthSuccess] Profile fetch failed with status:', profileResponse.status)
+        // Parse the data parameter if available (from Google callback redirect)
+        let responseData = null;
+        if (data_param) {
+          try {
+            responseData = JSON.parse(decodeURIComponent(data_param));
+            console.log("✅ Response data from backend:", responseData);
+          } catch (e) {
+            console.warn("⚠️ Could not parse response data:", e);
           }
-        } catch (profileError) {
-          console.warn('⚠️ [OAuthSuccess] Could not fetch user profile, but continuing with token:', profileError.message)
         }
+
+        // Fetch full user data from backend using the JWT token
+        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        console.log("📡 Fetching from backend:", `${BACKEND_URL}/auth-success?token=${encodeURIComponent(token).substring(0, 20)}...`);
         
-        // ✅ VERIFY what we saved
-        console.log('✅ [OAuthSuccess] VERIFICATION:')
-        console.log('   - token in localStorage:', localStorage.getItem('token') ? '✓ YES' : '✗ NO')
-        console.log('   - user in localStorage:', localStorage.getItem('user') ? '✓ YES' : '✗ NO')
+        const response = await fetch(`${BACKEND_URL}/auth-success?token=${encodeURIComponent(token)}`);
         
-        // ✅ STEP 4: Clean up URL
-        console.log('🟢 [OAuthSuccess] STEP 4: Cleaning URL...')
-        window.history.replaceState({}, document.title, '/oauth-success')
-        
-        // ✅ STEP 5: Redirect to chat
-        console.log('🟢 [OAuthSuccess] STEP 5: Redirecting to /chat in 1 second...')
-        setTimeout(() => {
-          console.log('🟢 [OAuthSuccess] Now navigating to /chat')
-          navigate('/chat', { replace: true })
-        }, 1000)
-      } catch (error) {
-        console.error('❌ [OAuthSuccess] Unexpected error:', error)
-        navigate('/login', { replace: true })
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("❌ Backend response not OK:", response.status, errorText);
+          throw new Error(`Failed to fetch user data: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log("✅ User data received:", data.user?.email);
+        console.log("✅ Full response:", JSON.stringify(data, null, 2));
+
+        if (data.success && data.user) {
+          const user = data.user;
+
+          // ✅ CRITICAL: Extract ONLY valid 36-char UUID for localStorage
+          // Backend returns: { id: "8-digit", uuid: "36-char-uuid", ... }
+          let validUUID = null;
+          
+          // Check for valid UUID (36 chars with hyphens)
+          if (user.uuid && typeof user.uuid === 'string' && user.uuid.length === 36) {
+            validUUID = user.uuid;
+            console.log('✅ Valid UUID found in user.uuid:', validUUID.substring(0, 8) + '...');
+          } else if (user.id && typeof user.id === 'string' && user.id.length === 36) {
+            // Fallback: if uuid is missing, try id (may contain UUID from some endpoints)
+            validUUID = user.id;
+            console.log('✅ Valid UUID found in user.id (fallback):', validUUID.substring(0, 8) + '...');
+          } else {
+            console.error('❌ CRITICAL: No valid 36-char UUID found in backend response');
+            console.error('   user.uuid:', user.uuid, '(type:', typeof user.uuid + ', length:', user.uuid?.length + ')');
+            console.error('   user.id:', user.id, '(type:', typeof user.id + ', length:', user.id?.length + ')');
+            console.error('   Full response:', user);
+            setError('Authentication failed: Invalid UUID from server');
+            setLoading(false);
+            return;
+          }
+          
+          // ✅ Store ONLY UUID - NO numeric id at all
+          const normalizedUser = {
+            uuid: validUUID,           // ✅ ONLY the 36-char UUID
+            name: user.name || user.display_name || 'User',
+            email: user.email,
+            picture: user.picture || user.photo_url,
+            profileCompleted: user.profileCompleted || false
+          };
+          
+          console.log('✅ User data normalized for storage (UUID ONLY):', { 
+            uuid: normalizedUser.uuid.substring(0, 8) + '...',
+            email: normalizedUser.email 
+          });
+          
+          // Store user data and token DIRECTLY to localStorage
+          // Don't wait for AuthContext updates
+          console.log('[OAuthSuccess] Storing token and user directly to localStorage');
+          localStorage.setItem("token", token);
+          localStorage.setItem("authToken", token);
+          localStorage.setItem("user", JSON.stringify(normalizedUser));
+          localStorage.setItem("authProvider", "google");
+          
+          // Also try using setAuthToken if available
+          if (setAuthToken) {
+            console.log('[OAuthSuccess] Also calling setAuthToken');
+            setAuthToken(token, normalizedUser);
+          }
+
+          // ✅ VERIFY: Confirm what was stored in localStorage
+          const stored = JSON.parse(localStorage.getItem('user') || '{}');
+          console.log('✅ VERIFICATION - localStorage.user contents:', {
+            has_uuid: !!stored.uuid,
+            uuid_length: stored.uuid?.length,
+            has_token: !!localStorage.getItem('token'),
+            has_email: !!stored.email
+          });
+
+          setUserData(user);
+
+          // ✅ CRITICAL: Use window.location.href to force full page reload
+          // This ensures AuthContext reinitializes with the token now in localStorage
+          console.log("🔗 Token saved - navigating to /chat");
+          setTimeout(() => {
+            window.location.href = '/chat';
+          }, 500);
+        } else {
+          console.error('❌ Backend response was not successful:', data);
+          // Fallback: still save the token from the URL if we have a token
+          if (token) {
+            console.warn('⚠️ Backend response failed, but using token from URL anyway');
+            const fallbackUser = {
+              uuid: responseData?.user?.uuid || 'unknown',
+              name: responseData?.user?.name || 'User',
+              email: responseData?.user?.email || 'unknown@example.com',
+              picture: responseData?.user?.picture || null,
+              profileCompleted: responseData?.user?.profileCompleted || false
+            };
+            
+            localStorage.setItem("token", token);
+            localStorage.setItem("authToken", token);
+            localStorage.setItem("user", JSON.stringify(fallbackUser));
+            localStorage.setItem("authProvider", "google");
+            
+            console.log('⚠️ Saved fallback user and redirecting...');
+            setTimeout(() => {
+              window.location.href = '/chat';
+            }, 500);
+            return;
+          }
+          setError(data.error || "Failed to authenticate");
+        }
+      } catch (err) {
+        console.error("❌ OAuth Success Error:", err);
+        setError(err.message || "An error occurred during authentication");
+      } finally {
+        setLoading(false);
       }
-    }
-    
-    processOAuthSuccess()
-  }, [navigate])
+    };
+
+    handleAuthSuccess();
+  }, [searchParams, navigate, setAuthToken]);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="text-white text-2xl font-bold mb-4">❌ Authentication Error</div>
+          <p className="text-white/70 text-lg mb-6">{error}</p>
+          <button
+            onClick={() => navigate("/login", { replace: true })}
+            className="px-6 py-2 bg-white text-purple-600 font-bold rounded-lg hover:bg-gray-100"
+          >
+            Back to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Show loading screen while redirecting to /chat
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#000000',
+      paddingLeft: '1rem',
+      paddingRight: '1rem'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          display: 'inline-block',
+          width: '48px',
+          height: '48px',
+          border: '2px solid rgba(255, 215, 0, 0.1)',
+          borderTopColor: '#FFD700',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '1rem'
+        }}></div>
+        <p style={{ color: 'white', fontSize: '1.125rem', fontWeight: '600', marginTop: '1rem' }}>Completing your login...</p>
+        <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.875rem', marginTop: '0.5rem' }}>Please wait while we set up your session</p>
+      </div>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
 
   return (
     <div style={{
