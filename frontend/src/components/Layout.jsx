@@ -9,6 +9,7 @@ import AuthCallback from '../pages/AuthCallback'
 import Callback from '../pages/callback'
 import AuthSuccess from '../pages/auth-success'
 import OAuthHandler from '../pages/OAuthHandler'
+import OAuthSuccess from '../pages/oauth-success'
 import Terms from '../pages/Terms'
 import PrivacyPolicy from '../pages/PrivacyPolicy'
 import ProtectedChatRoute from './ProtectedChatRoute'
@@ -59,6 +60,7 @@ function LayoutContent() {
           <Route path="/callback" element={<Callback />} />
           <Route path="/auth-success" element={<AuthSuccess />} />
           <Route path="/oauth-handler" element={<OAuthHandler />} />
+          <Route path="/oauth-success" element={<OAuthSuccess />} />
           <Route path="/chat" element={<ProtectedChatRoute><Chat /></ProtectedChatRoute>} />
           <Route path="/matching" element={<Matching />} />
           <Route path="/profile" element={<Profile />} />

@@ -1829,21 +1829,13 @@ app.get('/auth/google/callback', async (req, res) => {
     // Redirect to frontend with token and response data
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
     
-    // Encode token and user data in URL
+    // ✅ SIMPLE APPROACH: Just pass token in URL
     const tokenParam = encodeURIComponent(token);
-    const userParam = encodeURIComponent(JSON.stringify({
-      uuid: user.id,
-      email: user.email,
-      name: user.display_name,
-      picture: user.photo_url,
-      profileCompleted: user.profileCompleted || false
-    }));
-    const providerParam = 'google';
     
-    // Redirect to /oauth-handler page (not /chat) so it can save to localStorage first
-    const redirectUrl = `${baseUrl}/oauth-handler?token=${tokenParam}&user=${userParam}&provider=${providerParam}`;
+    // Redirect to /oauth-success with token in URL
+    const redirectUrl = `${baseUrl}/oauth-success?token=${tokenParam}`;
     
-    console.log(`✅ [AUTH/GOOGLE/CALLBACK] Redirecting to /oauth-handler with token`)
+    console.log(`✅ [AUTH/GOOGLE/CALLBACK] Redirecting to /oauth-success with token`)
     res.redirect(redirectUrl)
   } catch (error) {
     console.error('\n❌ [AUTH/GOOGLE/CALLBACK] CRITICAL ERROR in callback:', error.message)
@@ -2117,24 +2109,16 @@ app.get('/auth/facebook/callback', async (req, res) => {
     // Encode response data in URL
     const encodedResponse = encodeURIComponent(JSON.stringify(responseData))
     
-    // Redirect to frontend with token and response data
+    // Redirect to frontend with token
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
     
-    // Encode token and user data in URL
+    // ✅ SIMPLE APPROACH: Just pass token in URL
     const tokenParam = encodeURIComponent(token);
-    const userParam = encodeURIComponent(JSON.stringify({
-      uuid: user.id,
-      email: user.email,
-      name: user.display_name,
-      picture: user.photo_url,
-      profileCompleted: user.profileCompleted || false
-    }));
-    const providerParam = 'facebook';
     
-    // Redirect to /oauth-handler page (not /chat) so it can save to localStorage first
-    const redirectUrl = `${baseUrl}/oauth-handler?token=${tokenParam}&user=${userParam}&provider=${providerParam}`;
+    // Redirect to /oauth-success with token in URL
+    const redirectUrl = `${baseUrl}/oauth-success?token=${tokenParam}`;
     
-    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Redirecting to /oauth-handler with token`)
+    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Redirecting to /oauth-success with token`)
     res.redirect(redirectUrl)
   } catch (error) {
     console.error('\n❌ [AUTH/FACEBOOK/CALLBACK] CRITICAL ERROR in callback:', error.message)

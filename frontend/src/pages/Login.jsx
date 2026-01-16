@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { jwtDecode } from 'jwt-decode'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 import googleIcon from '../assets/google-icon.svg'
-import { signInWithGoogle, signInWithFacebook, checkRedirectResult } from '../config/firebase'
+import { signInWithGoogle, signInWithFacebook } from '../config/firebase'
 import TermsConfirmationModal from '../components/TermsConfirmationModal'
 import './Login.css'
 
@@ -68,22 +68,8 @@ const Login = () => {
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [pendingLoginProvider, setPendingLoginProvider] = useState(null)
 
-  useEffect(() => {
-    // Check if user was redirected back from OAuth
-    const checkLogin = async () => {
-      try {
-        const result = await checkRedirectResult()
-        if (result) {
-          console.log('✅ Login successful:', result.email)
-          navigate('/chat')
-        }
-      } catch (err) {
-        console.error('❌ Login check failed:', err)
-      }
-    }
-    
-    checkLogin()
-  }, [navigate])
+  // ✅ OAuth redirect is now handled by /oauth-success page
+  // No need for checkRedirectResult() here
 
   // Handle showing terms modal before login
   const handleShowTermsModal = (provider) => {
