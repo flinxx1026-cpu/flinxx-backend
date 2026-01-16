@@ -565,7 +565,7 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
 const Chat = () => {
   // ✅ UPDATE LAST SEEN - MUST BE FIRST - Call immediately on mount
   useEffect(() => {
-    const userToken = localStorage.getItem("userToken");
+    const userToken = localStorage.getItem("token") || localStorage.getItem("authToken");
 
     console.log("USER TOKEN:", userToken);
 
@@ -574,7 +574,9 @@ const Chat = () => {
       return;
     }
 
-    fetch("https://flinxx-backend.onrender.com/api/user/profile", {
+    const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://flinxx-backend.onrender.com';
+
+    fetch(`${API_BASE_URL}/api/user/profile`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${userToken}`,
