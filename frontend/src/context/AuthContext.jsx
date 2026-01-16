@@ -81,6 +81,47 @@ export const AuthProvider = ({ children }) => {
         } else {
           console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
           
+          // ✅ FAST PATH: Check localStorage FIRST before any backend calls
+          const storedToken = localStorage.getItem('token')
+          const storedUser = localStorage.getItem('user')
+          
+          console.log('🔵 [AuthContext] STEP 1: Quick check for stored token/user');
+          console.log('🔵 [AuthContext]   - token:', storedToken ? '✓ Found' : '✗ Not found')
+          console.log('🔵 [AuthContext]   - user:', storedUser ? '✓ Found' : '✗ Not found')
+          
+          // If we have BOTH token and user in localStorage, try to use them immediately
+          if (storedToken && storedUser) {
+            try {
+              console.log('\n🔵 [AuthContext] FAST PATH: Both token and user found in localStorage');
+              const user = JSON.parse(storedUser);
+              
+              // Validate UUID format first
+              if (user.uuid && typeof user.uuid === 'string' && user.uuid.length === 36) {
+                console.log('🔵 [AuthContext] ✅ Valid UUID found in localStorage:', user.uuid.substring(0, 8) + '...');
+                console.log('🔵 [AuthContext] Setting user from localStorage without backend validation');
+                setUser(user)
+                setIsAuthenticated(true)
+                setIsLoading(false)
+                console.log('🔵 [AuthContext] ✅ FAST PATH COMPLETE - User loaded from localStorage')
+                return
+              } else {
+                console.warn('🧹 [AuthContext] Invalid UUID in localStorage:', {
+                  uuid: user.uuid,
+                  length: user.uuid?.length,
+                  type: typeof user.uuid
+                });
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
+              }
+            } catch (err) {
+              console.error('🔵 [AuthContext] Error parsing localStorage user:', err);
+              localStorage.removeItem('user');
+              localStorage.removeItem('token');
+            }
+          } else {
+            console.log('🔵 [AuthContext] Skipping fast path (missing token or user from localStorage)');
+          }
+          
           // ✅ CLEANUP STEP: Remove invalid users from old builds (numeric IDs)
           const storedUserRaw = localStorage.getItem('user');
           if (storedUserRaw) {
@@ -102,14 +143,6 @@ export const AuthProvider = ({ children }) => {
               localStorage.removeItem('user');
             }
           }
-        
-        // Check for stored JWT token from Google OAuth
-        const storedToken = localStorage.getItem('token')
-        const storedUser = localStorage.getItem('user')
-        
-        console.log('🔵 [AuthContext] STEP 1: Check localStorage');
-        console.log('🔵 [AuthContext]   - token:', storedToken ? '✓ Found' : '✗ Not found')
-        console.log('🔵 [AuthContext]   - user:', storedUser ? '✓ Found' : '✗ Not found')
         
         // If we have a token, validate it and restore user data
         if (storedToken && storedUser) {
