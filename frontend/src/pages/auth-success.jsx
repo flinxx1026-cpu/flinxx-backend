@@ -116,9 +116,14 @@ export default function AuthSuccess() {
 
           // ✅ UNIFIED ROUTING: All users go to /chat (new unified dashboard)
           console.log("🔗 Routing all users to /chat (unified dashboard)");
+          console.log("⏳ Giving AuthContext time to detect the saved token...");
+          
+          // Give AuthContext time to detect the token change via a storage event
+          // AuthContext will detect the localStorage change and update itself
           setTimeout(() => {
+            console.log("🔗 Now navigating to /chat");
             navigate("/chat");
-          }, 500);
+          }, 1000);
         } else {
           setError(data.error || "Failed to authenticate");
         }

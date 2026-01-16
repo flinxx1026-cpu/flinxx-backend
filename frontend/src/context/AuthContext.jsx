@@ -68,6 +68,16 @@ export const AuthProvider = ({ children }) => {
       try {
         console.log('\n\n🔵 [AuthContext] ═══════════════════════════════════════════');
         console.log('🔵 [AuthContext] INITIALIZATION STARTED');
+        console.log('🔵 [AuthContext] Current path:', window.location.pathname);
+        
+        // ⚠️ CRITICAL: Skip auth check if we're on /auth-success page
+        // The /auth-success page will save token to localStorage and trigger a re-render
+        if (window.location.pathname === '/auth-success') {
+          console.log('🔵 [AuthContext] ⏸ On /auth-success page - waiting for token to be saved');
+          setIsLoading(false);
+          return;
+        }
+        
         console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
         
         // ✅ CLEANUP STEP: Remove invalid users from old builds (numeric IDs)
@@ -358,6 +368,23 @@ export const AuthProvider = ({ children }) => {
     }
     
     initializeAuth()
+
+    // ✅ CRITICAL: Listen for localStorage changes
+    // When /auth-success page saves the token, this will trigger
+    const handleStorageChange = (e) => {
+      if (e.key === 'token' || e.key === 'user') {
+        console.log('🔵 [AuthContext] Storage changed:', e.key);
+        console.log('🔵 [AuthContext] Reinitializing due to storage event');
+        // Reinitialize to pick up the new token/user
+        initializeAuth();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [])
 
   const logout = () => {
