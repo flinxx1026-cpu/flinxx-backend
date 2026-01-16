@@ -37,14 +37,19 @@ export default function AuthSuccess() {
 
         // Fetch full user data from backend using the JWT token
         const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-        const response = await fetch(`${BACKEND_URL}/auth-success?token=${token}`);
+        console.log("📡 Fetching from backend:", `${BACKEND_URL}/auth-success?token=${encodeURIComponent(token).substring(0, 20)}...`);
+        
+        const response = await fetch(`${BACKEND_URL}/auth-success?token=${encodeURIComponent(token)}`);
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch user data: ${response.statusText}`);
+          const errorText = await response.text();
+          console.error("❌ Backend response not OK:", response.status, errorText);
+          throw new Error(`Failed to fetch user data: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
-        console.log("✅ User data received:", data.user.email);
+        console.log("✅ User data received:", data.user?.email);
+        console.log("✅ Full response:", JSON.stringify(data, null, 2));
 
         if (data.success && data.user) {
           const user = data.user;
