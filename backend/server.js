@@ -259,52 +259,89 @@ app.use(express.json())
 // ===== VERIFY USER TOKEN MIDDLEWARE =====
 const verifyUserToken = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    console.log("\n🔐 [verifyUserToken] ═══════════════════════════════════════════");
+    console.log("🔐 [verifyUserToken] MIDDLEWARE CALLED");
+    console.log("🔐 [verifyUserToken] AUTH HEADER:", req.headers.authorization);
     
-    console.log("🔐 [verifyUserToken] Authorization header:", authHeader ? "Present" : "Missing");
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error("🔐 [verifyUserToken] Invalid or missing authorization header");
-      return res.status(401).json({ error: 'Missing or invalid authorization header' });
+    if (!req.headers.authorization) {
+      console.error("🔐 [verifyUserToken] ❌ NO AUTHORIZATION HEADER");
+      return res.status(401).json({ error: 'Missing authorization header' });
     }
     
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    console.log("🔐 [verifyUserToken] Token received, attempting decode...");
+    const token = req.headers.authorization?.split(" ")[1];
+    console.log("🔐 [verifyUserToken] TOKEN EXTRACTED:", token ? "✓ Present" : "✗ Missing");
+    
+    if (!token) {
+      console.error("🔐 [verifyUserToken] ❌ TOKEN NOT FOUND IN HEADER");
+      return res.status(401).json({ error: 'Missing token' });
+    }
+    
+    console.log("🔐 [verifyUserToken] Token length:", token.length);
     
     let decoded;
     try {
-      decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
-      console.log("🔐 [verifyUserToken] Token decoded successfully");
-      console.log("🔐 [verifyUserToken] Decoded userId:", decoded.userId);
-    } catch (e) {
-      console.error("🔐 [verifyUserToken] Failed to decode token:", e.message);
-      return res.status(401).json({ error: 'Invalid token format' });
+      // Try JWT verification first
+      const jwt = require('jsonwebtoken');
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log("🔐 [verifyUserToken] ✓ JWT VERIFIED SUCCESSFULLY");
+      console.log("🔐 [verifyUserToken] DECODED USER:", JSON.stringify(decoded, null, 2));
+    } catch (jwtError) {
+      console.warn("🔐 [verifyUserToken] ⚠️ JWT verification failed, trying base64 decode...");
+      console.warn("🔐 [verifyUserToken] JWT Error:", jwtError.message);
+      
+      // Fallback to base64 decoding
+      try {
+        decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
+        console.log("🔐 [verifyUserToken] ✓ BASE64 DECODE SUCCESSFUL");
+        console.log("🔐 [verifyUserToken] DECODED USER:", JSON.stringify(decoded, null, 2));
+      } catch (base64Error) {
+        console.error("🔐 [verifyUserToken] ❌ BOTH METHODS FAILED");
+        console.error("🔐 [verifyUserToken] Base64 error:", base64Error.message);
+        return res.status(401).json({ error: 'Invalid token format' });
+      }
     }
     
+    // Check if user ID exists
+    if (!decoded?.id && !decoded?.userId) {
+      console.error("🔐 [verifyUserToken] ❌ USER ID NOT FOUND IN TOKEN");
+      console.error("🔐 [verifyUserToken] Decoded payload:", JSON.stringify(decoded, null, 2));
+      return res.status(401).json({ message: "Invalid token payload" });
+    }
+    
+    const userId = decoded.id || decoded.userId;
+    console.log("🔐 [verifyUserToken] User ID from token:", userId);
+    
     // Fetch user from database
+    console.log("🔐 [verifyUserToken] Fetching user from database...");
     const user = await prisma.users.findUnique({
-      where: { id: decoded.userId }
+      where: { id: userId }
     });
     
     if (!user) {
-      console.error("🔐 [verifyUserToken] User not found in database for id:", decoded.userId);
+      console.error("🔐 [verifyUserToken] ❌ USER NOT FOUND IN DATABASE");
+      console.error("🔐 [verifyUserToken] Searched for ID:", userId);
       return res.status(401).json({ error: 'User not found' });
     }
     
-    console.log("🔐 [verifyUserToken] User found:", user.email);
+    console.log("🔐 [verifyUserToken] ✓ USER FOUND IN DATABASE");
+    console.log("🔐 [verifyUserToken] User email:", user.email);
     console.log("🔐 [verifyUserToken] User UUID:", user.id);
     
     // Set req.decoded for use in route handler
     req.decoded = {
       id: user.id,
-      userId: decoded.userId,
+      userId: userId,
       email: user.email
     };
     
+    console.log("🔐 [verifyUserToken] ✓ MIDDLEWARE COMPLETE - Calling next()");
+    console.log("🔐 [verifyUserToken] ═══════════════════════════════════════════\n");
+    
     next();
   } catch (error) {
-    console.error('🔐 [verifyUserToken] Middleware error:', error);
-    res.status(401).json({ error: 'Invalid token' });
+    console.error('🔐 [verifyUserToken] ❌ MIDDLEWARE ERROR:', error.message);
+    console.error('🔐 [verifyUserToken] Full error:', error);
+    res.status(401).json({ error: 'Invalid token', details: error.message });
   }
 };
 
@@ -1156,11 +1193,19 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
   try {
     const decoded = req.decoded;
     
-    console.log("\n🌐 [/api/user/profile] REQUEST RECEIVED");
-    console.log("🌐 [/api/user/profile] User UUID:", decoded.id);
-    console.log("🌐 [/api/user/profile] User email:", decoded.email);
+    console.log("\n📡 [/api/user/profile] ═══════════════════════════════════════════");
+    console.log("📡 [/api/user/profile] ENDPOINT CALLED");
+    console.log("📡 [/api/user/profile] User UUID:", decoded.id);
+    console.log("📡 [/api/user/profile] User email:", decoded.email);
     
-    console.log("\n📝 [UPDATE LAST_SEEN] Updating last_seen for user:", decoded.id);
+    // Check if user ID exists
+    if (!decoded?.id) {
+      console.error("📡 [/api/user/profile] ❌ USER ID NOT FOUND IN TOKEN");
+      return res.status(401).json({ message: "Invalid token payload" });
+    }
+    
+    console.log("\n📝 [UPDATE LAST_SEEN] ═══════════════════════════════════════════");
+    console.log("📝 [UPDATE LAST_SEEN] Updating last_seen for user:", decoded.id);
     const startTime = Date.now();
 
     const updateResult = await prisma.users.update({
@@ -1169,7 +1214,7 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
     });
 
     const updateTime = Date.now() - startTime;
-    console.log("✅ [UPDATE LAST_SEEN] Successfully updated last_seen");
+    console.log("✅ [UPDATE LAST_SEEN] last_seen updated for user:", decoded.id);
     console.log("✅ [UPDATE LAST_SEEN] Update took:", updateTime, "ms");
     console.log("✅ [UPDATE LAST_SEEN] New last_seen value:", updateResult.last_seen);
 
@@ -1191,15 +1236,16 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
     });
 
     if (!user) {
-      console.error("📖 [FETCH PROFILE] User not found in database!");
+      console.error("📖 [FETCH PROFILE] ❌ User not found in database!");
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log("📖 [FETCH PROFILE] Profile fetched successfully");
+    console.log("📖 [FETCH PROFILE] ✓ Profile fetched successfully");
     console.log("📖 [FETCH PROFILE] Email:", user.email);
     console.log("📖 [FETCH PROFILE] Last_seen in DB:", user.last_seen);
     
-    console.log("\n✅ [/api/user/profile] RESPONSE SUCCESS");
+    console.log("\n✅ [/api/user/profile] ═══════════════════════════════════════════");
+    console.log("✅ [/api/user/profile] RESPONSE SUCCESS");
     console.log("✅ [/api/user/profile] Sending response to frontend...\n");
     
     res.json({
@@ -1218,6 +1264,7 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
   } catch (error) {
     console.error('❌ [/api/user/profile] ERROR:', error.message);
     console.error('❌ [/api/user/profile] Full error:', error);
+    console.error('❌ [/api/user/profile] ═══════════════════════════════════════════\n');
     res.status(500).json({ error: 'Failed to fetch profile', details: error.message });
   }
 });
