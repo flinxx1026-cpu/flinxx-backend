@@ -1,6 +1,20 @@
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
+/**
+ * Get auth token from localStorage
+ * ✅ Used by ALL protected API endpoints
+ */
 const getToken = () => localStorage.getItem('token');
+
+/**
+ * Create headers with Authorization token
+ * ✅ Use this for consistency across all API calls
+ */
+const getAuthHeaders = (customHeaders = {}) => ({
+  'Authorization': `Bearer ${getToken()}`,
+  'Content-Type': 'application/json',
+  ...customHeaders
+});
 
 /**
  * Fetch accepted friends for the message panel
@@ -18,10 +32,7 @@ export const getFriends = async (userUUID) => {
       `${BACKEND_URL}/api/friends?userId=${userUUID}`,
       {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       }
     );
 
@@ -54,10 +65,7 @@ export const getNotifications = async (userUUID) => {
       `${BACKEND_URL}/api/notifications?userId=${userUUID}`,
       {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       }
     );
 
@@ -95,10 +103,7 @@ export const unfriendUser = async (userUUID, friendId) => {
       `${BACKEND_URL}/api/friends/unfriend`,
       {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ friendId })
       }
     );
@@ -161,12 +166,6 @@ export const getUnreadCount = async (userUUID) => {
  */
 export const markMessagesAsRead = async (userUUID, senderOrChatId, receiverId) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('No auth token in markMessagesAsRead');
-      return { success: false };
-    }
-
     let chatId = null;
 
     // If only one argument provided and it contains underscore, treat it as chatId
@@ -196,10 +195,7 @@ export const markMessagesAsRead = async (userUUID, senderOrChatId, receiverId) =
 
     const response = await fetch(`${BACKEND_URL}/api/messages/mark-read/${encodeURIComponent(chatId)}`, {
       method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      }
+      headers: getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -221,18 +217,9 @@ export const markMessagesAsRead = async (userUUID, senderOrChatId, receiverId) =
  */
 export const acceptFriendRequest = async (requestId) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('No auth token');
-      return { success: false };
-    }
-
     const response = await fetch(`${BACKEND_URL}/api/friends/accept`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ requestId })
     });
 
@@ -255,18 +242,9 @@ export const acceptFriendRequest = async (requestId) => {
  */
 export const rejectFriendRequest = async (requestId) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('No auth token');
-      return { success: false };
-    }
-
     const response = await fetch(`${BACKEND_URL}/api/friends/reject`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ requestId })
     });
 
