@@ -667,6 +667,15 @@ const Chat = () => {
   // 🧪 DEBUG TEST - Check if both "RENDER START" and "HOOKS DONE" appear in console
   console.log("HOOKS DONE");
 
+  // 🔥 FIX 4: AUTH VALIDATION - Redirect if not authenticated
+  useEffect(() => {
+    if (isLoading) return
+    if (!user) {
+      console.log('🔐 No user in context - redirecting to login')
+      navigate('/')
+    }
+  }, [user, isLoading, navigate])
+
   // ✅ CAMERA INIT - MOVE THIS TO FIRST useEffect SO IT RUNS IMMEDIATELY
   // NOTE: Auth validation moved AFTER all hooks to comply with Rules of Hooks
   useEffect(() => {

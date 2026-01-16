@@ -175,21 +175,19 @@ const Login = () => {
         const dbResponse = await saveResponse.json()
         console.log('✅ User saved to backend:', dbResponse.user)
         
-        // CRITICAL: Merge database response with googleUser to get profileCompleted status
+        // CRITICAL: Create CLEAN user object with ONLY needed fields
         if (dbResponse.user) {
           userDataToStore = {
-            ...googleUser,
-            ...dbResponse.user,
-            // Ensure both field names are present for compatibility
-            id: dbResponse.user.id,
             uuid: dbResponse.user.uuid,
-            profileCompleted: dbResponse.user.profileCompleted,
-            isProfileCompleted: dbResponse.user.profileCompleted
+            name: dbResponse.user.name || googleUser.name || 'User',
+            email: dbResponse.user.email || googleUser.email,
+            picture: dbResponse.user.picture || googleUser.picture,
+            profileCompleted: dbResponse.user.profileCompleted || false,
+            token: googleUser.token
           }
-          console.log('[LOGIN] 🎯 Merged user data with profile status:', {
+          console.log('[LOGIN] 🎯 Cleaned user data with profile status:', {
             profileCompleted: userDataToStore.profileCompleted,
-            isProfileCompleted: userDataToStore.isProfileCompleted,
-            uuid: userDataToStore.uuid
+            uuid: userDataToStore.uuid.substring(0, 8) + '...'
           })
         }
       } catch (dbError) {
@@ -207,11 +205,20 @@ const Login = () => {
       localStorage.setItem('authToken', userDataToStore.token || credential)
       console.log('✅ [LOGIN] Token saved to localStorage');
       
-      // Save user profile
-      localStorage.setItem('user', JSON.stringify(userDataToStore))
+      // ✅ CLEAN USER: Create CLEAN object with ONLY needed fields
+      const cleanUser = {
+        uuid: userDataToStore.uuid,
+        name: userDataToStore.name || 'User',
+        email: userDataToStore.email,
+        picture: userDataToStore.picture,
+        profileCompleted: userDataToStore.profileCompleted || false
+      }
+      
+      // Save CLEAN user profile
+      localStorage.setItem('user', JSON.stringify(cleanUser))
       localStorage.setItem('authProvider', 'google')
-      localStorage.setItem('userInfo', JSON.stringify(userDataToStore))
-      console.log('✅ [LOGIN] User data stored in localStorage with profileCompleted status')
+      localStorage.setItem('userInfo', JSON.stringify(cleanUser))
+      console.log('✅ [LOGIN] CLEAN user data stored in localStorage with profileCompleted status')
       
       // 🔥 VERIFICATION
       console.log('🔥 [LOGIN] VERIFICATION - Check localStorage:');

@@ -169,6 +169,7 @@ export const AuthProvider = ({ children }) => {
               const idToken = await firebaseUser.getIdToken()
               console.log('🔵 [AuthContext] ✓ ID token obtained');
               localStorage.setItem('idToken', idToken)
+              localStorage.setItem('token', idToken) // 🔥 CRITICAL: Store as token too
               console.log('🔐 Firebase ID token stored for Socket.IO')
               
               // Fetch full profile from backend
@@ -254,9 +255,16 @@ export const AuthProvider = ({ children }) => {
               setUser(userInfo)
               setIsAuthenticated(true)
             } else {
-              console.log('🔵 [AuthContext] ❌ No authentication found, user will be redirected to login')
-              setUser(null)
-              setIsAuthenticated(false)
+              const storedToken = localStorage.getItem('token')
+              const storedUser = localStorage.getItem('user')
+              
+              if (storedToken && storedUser) {
+                console.log('🔵 [AuthContext] 🔐 Skipping logout – local session exists')
+              } else {
+                console.log('🔵 [AuthContext] ❌ No authentication found, user will be redirected to login')
+                setUser(null)
+                setIsAuthenticated(false)
+              }
             }
           }
           console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
