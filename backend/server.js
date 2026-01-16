@@ -1828,14 +1828,43 @@ app.get('/auth/google/callback', async (req, res) => {
     
     // Redirect to frontend with token and response data
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
-    const redirectUrl = `${baseUrl}/auth-success?token=${encodeURIComponent(token)}&data=${encodedResponse}`
     
-    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] FULL REDIRECT URL: ${redirectUrl}`)
-    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] baseUrl: ${baseUrl}`)
-    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] FRONTEND_URL env var: ${process.env.FRONTEND_URL}`)
-    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] CLIENT_URL env var: ${process.env.CLIENT_URL}`)
-    console.log(`✅ [AUTH/GOOGLE/CALLBACK] OAuth flow complete - redirecting now\n`)
-    res.redirect(redirectUrl)
+    // Create HTML response that saves token and redirects
+    const htmlResponse = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Logging in...</title>
+    </head>
+    <body>
+      <p>Logging in...</p>
+      <script>
+        // Save token to localStorage
+        const token = "${token.replace(/"/g, '\\"')}";
+        const user = ${JSON.stringify({
+          uuid: user.id,
+          email: user.email,
+          name: user.display_name,
+          picture: user.photo_url,
+          profileCompleted: user.profileCompleted || false
+        })};
+        
+        console.log('✅ [OAuth Callback] Saving token to localStorage');
+        localStorage.setItem('token', token);
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('authProvider', 'google');
+        
+        console.log('✅ [OAuth Callback] Redirecting to /chat');
+        window.location.href = '${baseUrl}/chat';
+      </script>
+    </body>
+    </html>
+    `;
+    
+    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] Sending HTML response to redirect to /chat`)
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.send(htmlResponse)
   } catch (error) {
     console.error('\n❌ [AUTH/GOOGLE/CALLBACK] CRITICAL ERROR in callback:', error.message)
     console.error('   Stack:', error.stack)
@@ -2110,14 +2139,43 @@ app.get('/auth/facebook/callback', async (req, res) => {
     
     // Redirect to frontend with token and response data
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
-    const redirectUrl = `${baseUrl}/auth-success?token=${encodeURIComponent(token)}&data=${encodedResponse}`
     
-    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] FULL REDIRECT URL: ${redirectUrl}`)
-    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] baseUrl: ${baseUrl}`)
-    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] FRONTEND_URL env var: ${process.env.FRONTEND_URL}`)
-    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] CLIENT_URL env var: ${process.env.CLIENT_URL}`)
-    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] OAuth flow complete - redirecting now\n`)
-    res.redirect(redirectUrl)
+    // Create HTML response that saves token and redirects
+    const htmlResponse = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Logging in...</title>
+    </head>
+    <body>
+      <p>Logging in...</p>
+      <script>
+        // Save token to localStorage
+        const token = "${token.replace(/"/g, '\\"')}";
+        const user = ${JSON.stringify({
+          uuid: user.id,
+          email: user.email,
+          name: user.display_name,
+          picture: user.photo_url,
+          profileCompleted: user.profileCompleted || false
+        })};
+        
+        console.log('✅ [OAuth Callback] Saving token to localStorage');
+        localStorage.setItem('token', token);
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('authProvider', 'facebook');
+        
+        console.log('✅ [OAuth Callback] Redirecting to /chat');
+        window.location.href = '${baseUrl}/chat';
+      </script>
+    </body>
+    </html>
+    `;
+    
+    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] Sending HTML response to redirect to /chat`)
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.send(htmlResponse)
   } catch (error) {
     console.error('\n❌ [AUTH/FACEBOOK/CALLBACK] CRITICAL ERROR in callback:', error.message)
     console.error('   Stack:', error.stack)
