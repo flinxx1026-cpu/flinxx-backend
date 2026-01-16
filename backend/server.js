@@ -1829,7 +1829,7 @@ app.get('/auth/google/callback', async (req, res) => {
     // Redirect to frontend with token and response data
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
     
-    // Encode token and user data in URL as backup
+    // Encode token and user data in URL
     const tokenParam = encodeURIComponent(token);
     const userParam = encodeURIComponent(JSON.stringify({
       uuid: user.id,
@@ -1840,55 +1840,11 @@ app.get('/auth/google/callback', async (req, res) => {
     }));
     const providerParam = 'google';
     
-    // Create redirect URL with token and user as query params (backup method)
-    const redirectUrl = `${baseUrl}/chat?token=${tokenParam}&user=${userParam}&provider=${providerParam}&oauth=true`;
+    // Redirect to /oauth-handler page (not /chat) so it can save to localStorage first
+    const redirectUrl = `${baseUrl}/oauth-handler?token=${tokenParam}&user=${userParam}&provider=${providerParam}`;
     
-    // Create HTML response that saves token and reloads
-    const htmlResponse = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Logging in...</title>
-      <meta charset="UTF-8">
-      <script>
-        // Save token to localStorage IMMEDIATELY (before redirect)
-        const token = "${token.replace(/"/g, '\\"')}";
-        const user = ${JSON.stringify({
-          uuid: user.id,
-          email: user.email,
-          name: user.display_name,
-          picture: user.photo_url,
-          profileCompleted: user.profileCompleted || false
-        })};
-        
-        console.log('[OAuth HTML] Script started');
-        try {
-          console.log('💾 [OAuth HTML] Attempting to save token to localStorage');
-          localStorage.setItem('token', token);
-          localStorage.setItem('authToken', token);
-          localStorage.setItem('user', JSON.stringify(user));
-          localStorage.setItem('authProvider', 'google');
-          console.log('✅ [OAuth HTML] Token saved successfully to localStorage');
-        } catch (e) {
-          console.error('❌ [OAuth HTML] Error saving to localStorage:', e);
-          console.error('Will proceed with URL parameters instead');
-        }
-      </script>
-    </head>
-    <body>
-      <p>Logging in...</p>
-      <script>
-        // Redirect to chat with token and user in URL as backup
-        console.log('[OAuth HTML] Redirecting to /chat');
-        window.location.href = '${redirectUrl}';
-      </script>
-    </body>
-    </html>
-    `;
-    
-    console.log(`✅ [AUTH/GOOGLE/CALLBACK] HTML response ready, redirecting to /chat`)
-    res.setHeader('Content-Type', 'text/html; charset=utf-8')
-    res.send(htmlResponse)
+    console.log(`✅ [AUTH/GOOGLE/CALLBACK] Redirecting to /oauth-handler with token`)
+    res.redirect(redirectUrl)
   } catch (error) {
     console.error('\n❌ [AUTH/GOOGLE/CALLBACK] CRITICAL ERROR in callback:', error.message)
     console.error('   Stack:', error.stack)
@@ -2164,7 +2120,7 @@ app.get('/auth/facebook/callback', async (req, res) => {
     // Redirect to frontend with token and response data
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
     
-    // Encode token and user data in URL as backup
+    // Encode token and user data in URL
     const tokenParam = encodeURIComponent(token);
     const userParam = encodeURIComponent(JSON.stringify({
       uuid: user.id,
@@ -2175,55 +2131,11 @@ app.get('/auth/facebook/callback', async (req, res) => {
     }));
     const providerParam = 'facebook';
     
-    // Create redirect URL with token and user as query params (backup method)
-    const redirectUrl = `${baseUrl}/chat?token=${tokenParam}&user=${userParam}&provider=${providerParam}&oauth=true`;
+    // Redirect to /oauth-handler page (not /chat) so it can save to localStorage first
+    const redirectUrl = `${baseUrl}/oauth-handler?token=${tokenParam}&user=${userParam}&provider=${providerParam}`;
     
-    // Create HTML response that saves token and reloads
-    const htmlResponse = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Logging in...</title>
-      <meta charset="UTF-8">
-      <script>
-        // Save token to localStorage IMMEDIATELY (before redirect)
-        const token = "${token.replace(/"/g, '\\"')}";
-        const user = ${JSON.stringify({
-          uuid: user.id,
-          email: user.email,
-          name: user.display_name,
-          picture: user.photo_url,
-          profileCompleted: user.profileCompleted || false
-        })};
-        
-        console.log('[OAuth HTML] Script started');
-        try {
-          console.log('💾 [OAuth HTML] Attempting to save token to localStorage');
-          localStorage.setItem('token', token);
-          localStorage.setItem('authToken', token);
-          localStorage.setItem('user', JSON.stringify(user));
-          localStorage.setItem('authProvider', 'facebook');
-          console.log('✅ [OAuth HTML] Token saved successfully to localStorage');
-        } catch (e) {
-          console.error('❌ [OAuth HTML] Error saving to localStorage:', e);
-          console.error('Will proceed with URL parameters instead');
-        }
-      </script>
-    </head>
-    <body>
-      <p>Logging in...</p>
-      <script>
-        // Redirect to chat with token and user in URL as backup
-        console.log('[OAuth HTML] Redirecting to /chat');
-        window.location.href = '${redirectUrl}';
-      </script>
-    </body>
-    </html>
-    `;
-    
-    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] HTML response ready, redirecting to /chat`)
-    res.setHeader('Content-Type', 'text/html; charset=utf-8')
-    res.send(htmlResponse)
+    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Redirecting to /oauth-handler with token`)
+    res.redirect(redirectUrl)
   } catch (error) {
     console.error('\n❌ [AUTH/FACEBOOK/CALLBACK] CRITICAL ERROR in callback:', error.message)
     console.error('   Stack:', error.stack)

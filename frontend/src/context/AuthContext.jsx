@@ -70,30 +70,6 @@ export const AuthProvider = ({ children }) => {
         console.log('🔵 [AuthContext] INITIALIZATION STARTED');
         console.log('🔵 [AuthContext] Current path:', window.location.pathname);
         
-        // ⚠️ CRITICAL: Check URL query params for OAuth token (backup method)
-        // OAuth callbacks pass token as ?token=... if localStorage fails
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlToken = urlParams.get('token');
-        const urlUser = urlParams.get('user');
-        const urlProvider = urlParams.get('provider');
-        const isOAuthRedirect = urlParams.get('oauth') === 'true';
-        
-        if (isOAuthRedirect && urlToken && urlUser) {
-          console.log('🔵 [AuthContext] 🔗 OAUTH REDIRECT detected via URL parameters');
-          console.log('🔵 [AuthContext] Saving OAuth data from URL to localStorage');
-          try {
-            localStorage.setItem('token', urlToken);
-            localStorage.setItem('authToken', urlToken);
-            localStorage.setItem('user', urlUser);
-            if (urlProvider) localStorage.setItem('authProvider', urlProvider);
-            console.log('✅ [AuthContext] OAuth data saved from URL to localStorage');
-            // Clean up URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-          } catch (e) {
-            console.error('❌ [AuthContext] Error saving URL oauth data to localStorage:', e);
-          }
-        }
-        
         // ⚠️ CRITICAL: Skip auth check if we're on /auth-success page
         // The /auth-success page will save token to localStorage and trigger a re-render
         if (window.location.pathname === '/auth-success') {
