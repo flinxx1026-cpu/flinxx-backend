@@ -1830,8 +1830,11 @@ app.get('/auth/google/callback', async (req, res) => {
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
     const redirectUrl = `${baseUrl}/auth-success?token=${encodeURIComponent(token)}&data=${encodedResponse}`
     
-    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] Redirecting to frontend: ${baseUrl}/auth-success`)
-    console.log(`✅ [AUTH/GOOGLE/CALLBACK] OAuth flow complete - user saved and verified\n`)
+    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] FULL REDIRECT URL: ${redirectUrl}`)
+    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] baseUrl: ${baseUrl}`)
+    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] FRONTEND_URL env var: ${process.env.FRONTEND_URL}`)
+    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] CLIENT_URL env var: ${process.env.CLIENT_URL}`)
+    console.log(`✅ [AUTH/GOOGLE/CALLBACK] OAuth flow complete - redirecting now\n`)
     res.redirect(redirectUrl)
   } catch (error) {
     console.error('\n❌ [AUTH/GOOGLE/CALLBACK] CRITICAL ERROR in callback:', error.message)
@@ -2109,8 +2112,11 @@ app.get('/auth/facebook/callback', async (req, res) => {
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
     const redirectUrl = `${baseUrl}/auth-success?token=${encodeURIComponent(token)}&data=${encodedResponse}`
     
-    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] Redirecting to frontend: ${baseUrl}/auth-success`)
-    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] OAuth flow complete - user saved and verified\n`)
+    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] FULL REDIRECT URL: ${redirectUrl}`)
+    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] baseUrl: ${baseUrl}`)
+    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] FRONTEND_URL env var: ${process.env.FRONTEND_URL}`)
+    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] CLIENT_URL env var: ${process.env.CLIENT_URL}`)
+    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] OAuth flow complete - redirecting now\n`)
     res.redirect(redirectUrl)
   } catch (error) {
     console.error('\n❌ [AUTH/FACEBOOK/CALLBACK] CRITICAL ERROR in callback:', error.message)

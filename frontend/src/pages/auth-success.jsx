@@ -10,6 +10,10 @@ export default function AuthSuccess() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Log that we've reached this page
+  console.log('🔐 [AuthSuccess PAGE LOADED]');
+  console.log('🔐 Token from URL:', searchParams.get('token')?.substring(0, 20) + '...');
+
   useEffect(() => {
     const handleAuthSuccess = async () => {
       try {
