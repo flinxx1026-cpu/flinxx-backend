@@ -90,17 +90,18 @@ export default function AuthSuccess() {
             email: normalizedUser.email 
           });
           
-          // Store user data and token
+          // Store user data and token DIRECTLY to localStorage
+          // Don't wait for AuthContext updates
+          console.log('[AuthSuccess] Storing token and user directly to localStorage');
+          localStorage.setItem("token", token);
+          localStorage.setItem("authToken", token);
+          localStorage.setItem("user", JSON.stringify(normalizedUser));
+          localStorage.setItem("authProvider", "google");
+          
+          // Also try using setAuthToken if available
           if (setAuthToken) {
-            console.log('[AuthSuccess] Storing token and user via AuthContext');
+            console.log('[AuthSuccess] Also calling setAuthToken');
             setAuthToken(token, normalizedUser);
-          } else {
-            // Fallback: save directly to localStorage
-            console.log('[AuthSuccess] AuthContext not available, saving to localStorage directly');
-            localStorage.setItem("token", token);
-            localStorage.setItem("authToken", token);
-            localStorage.setItem("user", JSON.stringify(normalizedUser));
-            localStorage.setItem("authProvider", "google");
           }
 
           // ✅ VERIFY: Confirm what was stored in localStorage
@@ -108,22 +109,16 @@ export default function AuthSuccess() {
           console.log('✅ VERIFICATION - localStorage.user contents:', {
             has_uuid: !!stored.uuid,
             uuid_length: stored.uuid?.length,
-            has_id: !!stored.id,
+            has_token: !!localStorage.getItem('token'),
             has_email: !!stored.email
           });
 
           setUserData(user);
 
-          // ✅ UNIFIED ROUTING: All users go to /chat (new unified dashboard)
-          console.log("🔗 Routing all users to /chat (unified dashboard)");
-          console.log("⏳ Giving AuthContext time to detect the saved token...");
-          
-          // Give AuthContext time to detect the token change via a storage event
-          // AuthContext will detect the localStorage change and update itself
-          setTimeout(() => {
-            console.log("🔗 Now navigating to /chat");
-            navigate("/chat");
-          }, 1000);
+          // ✅ CRITICAL: Navigate immediately - don't wait
+          // The storage change will trigger AuthContext anyway
+          console.log("🔗 Redirecting to /chat");
+          navigate("/chat", { replace: true });
         } else {
           setError(data.error || "Failed to authenticate");
         }
