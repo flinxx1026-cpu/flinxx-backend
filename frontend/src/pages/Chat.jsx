@@ -563,6 +563,26 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
 });
 
 const Chat = () => {
+  // ✅ UPDATE LAST SEEN - MUST BE FIRST - Call immediately on mount
+  useEffect(() => {
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("authToken");
+
+    console.log("PROFILE PING TOKEN:", token);
+
+    if (!token) return;
+
+    fetch("https://flinxx-backend.onrender.com/api/user/profile", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(() => console.log("PROFILE API CALLED"))
+      .catch((e) => console.error("PROFILE API ERROR", e));
+  }, []);
+
   console.log("RENDER START");
 
   // ✅ Get DuoSquad context (manages state at Layout level to prevent remounting)
@@ -635,36 +655,6 @@ const Chat = () => {
 
   // 🧪 DEBUG TEST - Check if both "RENDER START" and "HOOKS DONE" appear in console
   console.log("HOOKS DONE");
-
-  // ✅ UPDATE LAST SEEN - Call API on first authenticated page load
-  useEffect(() => {
-    console.log("📡 [UPDATE LAST SEEN] useEffect triggered");
-    const token = localStorage.getItem("token") || localStorage.getItem("authToken");
-    console.log("📡 [UPDATE LAST SEEN] Token found:", !!token);
-
-    if (!token) {
-      console.log("📡 [UPDATE LAST SEEN] No token available, skipping API call");
-      return;
-    }
-
-    console.log("📡 [UPDATE LAST SEEN] Calling GET /api/user/profile...");
-    fetch("https://flinxx-backend.onrender.com/api/user/profile", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then(res => {
-        console.log("📡 [UPDATE LAST SEEN] Response status:", res.status);
-        return res.json();
-      })
-      .then(data => {
-        console.log("📡 [UPDATE LAST SEEN] Response data:", data);
-      })
-      .catch(err => {
-        console.error("📡 [UPDATE LAST SEEN] API call failed:", err);
-      });
-  }, []);
 
   // ✅ CAMERA INIT - MOVE THIS TO FIRST useEffect SO IT RUNS IMMEDIATELY
   // NOTE: Auth validation moved AFTER all hooks to comply with Rules of Hooks
