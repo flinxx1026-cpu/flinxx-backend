@@ -213,21 +213,3 @@ export default function OAuthSuccess() {
     </div>
   );
 }
-
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100vh',
-      backgroundColor: '#000',
-      color: '#fff',
-      fontFamily: 'system-ui'
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <h1>Logging in...</h1>
-        <p>Redirecting to dashboard</p>
-      </div>
-    </div>
-  )
-}
