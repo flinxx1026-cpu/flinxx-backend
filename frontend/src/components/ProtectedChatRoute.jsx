@@ -13,11 +13,15 @@ const ProtectedChatRoute = ({ children }) => {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Add a flag to track if we've already redirected to avoid infinite loops
+  const [redirectedToLogin, setRedirectedToLogin] = useState(false)
+
   console.log('\n[ProtectedChatRoute] 🟢 RENDER CALLED');
   console.log('[ProtectedChatRoute]   - isLoading:', isLoading);
   console.log('[ProtectedChatRoute]   - showProfileSetup:', showProfileSetup);
   console.log('[ProtectedChatRoute]   - authLoading:', authLoading);
   console.log('[ProtectedChatRoute]   - authUser:', authUser ? authUser.email : 'null');
+  console.log('[ProtectedChatRoute]   - redirectedToLogin:', redirectedToLogin);
 
   useEffect(() => {
     console.log('\n\n🔴 [ProtectedChatRoute] ═══════════════════════════════════════════');
@@ -43,12 +47,37 @@ const ProtectedChatRoute = ({ children }) => {
 
       console.log('🔴 [ProtectedChatRoute] ✓ AuthContext finished loading (isLoading=false)');
 
-      // If AuthContext finished loading but no user, redirect to login
+      // If AuthContext finished loading but no user, check localStorage before redirecting
       if (!authUser) {
-        console.log('🔴 [ProtectedChatRoute] ❌ AuthContext finished loading but NO USER found');
-        console.log('🔴 [ProtectedChatRoute] Redirecting to /login');
-        setIsLoading(false);
-        navigate('/login', { replace: true });
+        console.log('🔴 [ProtectedChatRoute] ❌ AuthContext finished loading but NO USER in context');
+        
+        // Fallback: Check if token exists in localStorage
+        // This can happen if AuthContext fast path worked but user object didn't populate yet
+        const storedToken = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+        
+        if (storedToken && storedUser) {
+          console.log('🔴 [ProtectedChatRoute] ⚠️ BUT - Token and user ARE in localStorage');
+          console.log('🔴 [ProtectedChatRoute] Parsing localStorage user...');
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            if (parsedUser && parsedUser.uuid && parsedUser.uuid.length === 36) {
+              console.log('🔴 [ProtectedChatRoute] ✅ RECOVERY: Using user from localStorage:', parsedUser.email);
+              setUser(parsedUser);
+              setIsLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.error('🔴 [ProtectedChatRoute] Failed to parse stored user:', e);
+          }
+        }
+        
+        console.log('🔴 [ProtectedChatRoute] No token/user in localStorage either - redirecting to /login');
+        if (!redirectedToLogin) {
+          setRedirectedToLogin(true);
+          setIsLoading(false);
+          navigate('/login', { replace: true });
+        }
         return;
       }
 
@@ -133,9 +162,12 @@ const ProtectedChatRoute = ({ children }) => {
       console.error('[ProtectedChatRoute] ❌ ERROR in profile check:', error);
       console.error('[ProtectedChatRoute] Stack:', error.stack);
       setIsLoading(false);
-      navigate('/login', { replace: true });
+      if (!redirectedToLogin) {
+        setRedirectedToLogin(true);
+        navigate('/login', { replace: true });
+      }
     }
-  }, [navigate, authUser, authLoading]);
+  }, [navigate, authUser, authLoading, redirectedToLogin]);
 
   const handleProfileComplete = (completedUser) => {
     console.log('Profile completed:', completedUser)
