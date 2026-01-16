@@ -261,7 +261,7 @@ const verifyUserToken = async (req, res, next) => {
   try {
     console.log("\n🔐 [verifyUserToken] ═══════════════════════════════════════════");
     console.log("🔐 [verifyUserToken] MIDDLEWARE CALLED");
-    console.log("🔐 [verifyUserToken] AUTH HEADER:", req.headers.authorization);
+    console.log("AUTH HEADER:", req.headers.authorization);
     
     if (!req.headers.authorization) {
       console.error("🔐 [verifyUserToken] ❌ NO AUTHORIZATION HEADER");
@@ -284,6 +284,7 @@ const verifyUserToken = async (req, res, next) => {
       const jwt = require('jsonwebtoken');
       decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log("🔐 [verifyUserToken] ✓ JWT VERIFIED SUCCESSFULLY");
+      console.log("DECODED TOKEN:", decoded);
       console.log("🔐 [verifyUserToken] DECODED USER:", JSON.stringify(decoded, null, 2));
     } catch (jwtError) {
       console.warn("🔐 [verifyUserToken] ⚠️ JWT verification failed, trying base64 decode...");
@@ -293,6 +294,7 @@ const verifyUserToken = async (req, res, next) => {
       try {
         decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
         console.log("🔐 [verifyUserToken] ✓ BASE64 DECODE SUCCESSFUL");
+        console.log("DECODED TOKEN:", decoded);
         console.log("🔐 [verifyUserToken] DECODED USER:", JSON.stringify(decoded, null, 2));
       } catch (base64Error) {
         console.error("🔐 [verifyUserToken] ❌ BOTH METHODS FAILED");
@@ -1206,6 +1208,7 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
     
     console.log("\n📝 [UPDATE LAST_SEEN] ═══════════════════════════════════════════");
     console.log("📝 [UPDATE LAST_SEEN] Updating last_seen for user:", decoded.id);
+    console.log("USER ID USED FOR UPDATE:", decoded.id);
     const startTime = Date.now();
 
     const updateResult = await prisma.users.update({
@@ -1216,7 +1219,7 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
     const updateTime = Date.now() - startTime;
     console.log("✅ [UPDATE LAST_SEEN] last_seen updated for user:", decoded.id);
     console.log("✅ [UPDATE LAST_SEEN] Update took:", updateTime, "ms");
-    console.log("✅ [UPDATE LAST_SEEN] New last_seen value:", updateResult.last_seen);
+    console.log("✅ last_seen updated:", updateResult.id, updateResult.last_seen);
 
     // Fetch updated user profile
     console.log("\n📖 [FETCH PROFILE] Fetching user profile from database...");
