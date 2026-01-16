@@ -75,23 +75,26 @@ export const AuthProvider = ({ children }) => {
         const storedUser = localStorage.getItem('user')
         
         console.log('🔵 [AuthContext] STEP 1: Quick check for stored token/user');
-        console.log('🔵 [AuthContext]   - token:', storedToken ? '✓ Found' : '✗ Not found')
+        console.log('🔵 [AuthContext]   - token:', storedToken ? '✓ Found (length: ' + storedToken.length + ')' : '✗ Not found')
         console.log('🔵 [AuthContext]   - user:', storedUser ? '✓ Found' : '✗ Not found')
         
         // If we have BOTH token and user in localStorage, restore immediately
         if (storedToken && storedUser) {
           try {
-            console.log('\n🔵 [AuthContext] FAST PATH: Both token and user found');
+            console.log('\n🔵 [AuthContext] ✅ FAST PATH: Both token and user found');
             const user = JSON.parse(storedUser);
+            console.log('🔵 [AuthContext]   Parsed user:', user.email)
             
             // Validate UUID format
             if (user.uuid && typeof user.uuid === 'string' && user.uuid.length === 36) {
               console.log('🔵 [AuthContext] ✅ Valid UUID found:', user.uuid.substring(0, 8) + '...');
-              console.log('🔵 [AuthContext] ✅ Setting user from localStorage (FAST PATH)');
+              console.log('🔵 [AuthContext] ✅ IMMEDIATELY setting user from localStorage');
               setUser(user)
               setIsAuthenticated(true)
               setIsLoading(false)
-              console.log('🔵 [AuthContext] ✅ FAST PATH COMPLETE - User authenticated and ready')
+              console.log('🔵 [AuthContext] ═══════════════════════════════════════════')
+              console.log('🔵 [AuthContext] ✅✅✅ USER AUTHENTICATED - FAST PATH COMPLETE ✅✅✅');
+              console.log('🔵 [AuthContext] ═══════════════════════════════════════════\n')
               return
             } else {
               console.warn('🧹 [AuthContext] Invalid UUID in localStorage:', user.uuid?.length);
@@ -105,41 +108,11 @@ export const AuthProvider = ({ children }) => {
           }
         }
         
-        // ✅ CLEANUP STEP: Remove invalid users from old builds (numeric IDs)
-        const storedUserRaw = localStorage.getItem('user');
-        if (storedUserRaw) {
+        // If we have just a token (user might still be loading from api)
+        if (storedToken && !storedUser) {
+          console.log('\n🔵 [AuthContext] Token found but user not yet saved, fetching from backend...')
           try {
-            const parsed = JSON.parse(storedUserRaw);
-            
-            // ❌ Remove if UUID is invalid or numeric
-            if (!parsed.uuid || (typeof parsed.uuid === 'string' && parsed.uuid.length !== 36)) {
-              console.warn('🧹 [AuthContext] Removing invalid user from localStorage:', {
-                uuid: parsed.uuid,
-                id: parsed.id,
-                email: parsed.email
-              });
-              localStorage.removeItem('user');
-              localStorage.removeItem('token');
-            }
-          } catch (e) {
-            console.warn('🧹 [AuthContext] Invalid JSON in localStorage user, removing');
-            localStorage.removeItem('user');
-          }
-        }
-        
-        // If we have a token, validate it and restore user data
-        if (storedToken && storedUser) {
-          try {
-            console.log('\n🔵 [AuthContext] STEP 2: Parse localStorage user');
-            const user = JSON.parse(storedUser)
-            console.log('🔵 [AuthContext]   - Parsed user email:', user.email)
-            console.log('🔵 [AuthContext]   - profileCompleted from localStorage:', user.profileCompleted, '(type:', typeof user.profileCompleted + ')')
-            
-            // Optionally validate token with backend
             const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
-            console.log('\n🔵 [AuthContext] STEP 3: Validate token with backend');
-            console.log('🔵 [AuthContext]   - Backend URL:', BACKEND_URL)
-            
             const response = await fetch(`${BACKEND_URL}/api/profile`, {
               method: 'GET',
               headers: {
@@ -148,83 +121,35 @@ export const AuthProvider = ({ children }) => {
               }
             })
             
-            console.log('🔵 [AuthContext]   - Response status:', response.status)
-            
             if (response.ok) {
               const data = await response.json()
-              console.log('🔵 [AuthContext]   - Response OK')
-              
               if (data.success && data.user) {
-                console.log('🔵 [AuthContext] ✅ Token validated, user restored from backend')
-                
-                // ✅ CRITICAL: Create CLEAN user object with ONLY needed fields
-                const normalizedUser = {
+                const user = {
                   uuid: data.user.uuid,
-                  name: data.user.name || 'User',
+                  id: data.user.id,
                   email: data.user.email,
-                  picture: data.user.picture,
+                  name: data.user.name || data.user.display_name || 'User',
+                  picture: data.user.picture || data.user.photo_url,
                   profileCompleted: data.user.profileCompleted || false
-                };
-                
-                // ✅ STRICT VALIDATION: UUID must be exactly 36 chars
-                if (!normalizedUser.uuid || typeof normalizedUser.uuid !== 'string' || normalizedUser.uuid.length !== 36) {
-                  console.error('❌ INVALID UUID FROM BACKEND:', normalizedUser.uuid);
-                  setIsLoading(false);
-                  return;
                 }
                 
-                console.log('🔵 [AuthContext] Setting user state with UUID-only:', { 
-                  uuid: normalizedUser.uuid.substring(0, 8) + '...', 
-                  email: normalizedUser.email 
-                });
-                setUser(normalizedUser);
-                localStorage.setItem('user', JSON.stringify(normalizedUser));
-                setIsAuthenticated(true);
-                setIsLoading(false);
-                console.log('🔵 [AuthContext] ✅ COMPLETE - UUID-only user set');
-                return;
-              } else {
-                console.log('🔵 [AuthContext] ⚠️  Response OK but data.success or data.user missing')
+                console.log('🔵 [AuthContext] ✅ Fetched user from backend:', user.email)
+                localStorage.setItem('user', JSON.stringify(user))
+                setUser(user)
+                setIsAuthenticated(true)
+                setIsLoading(false)
+                console.log('🔵 [AuthContext] ═══════════════════════════════════════════')
+                console.log('🔵 [AuthContext] ✅✅✅ USER AUTHENTICATED - FROM BACKEND ✅✅✅');
+                console.log('🔵 [AuthContext] ═══════════════════════════════════════════\n')
+                return
               }
-            } else {
-              console.log('🔵 [AuthContext] ⚠️ Token validation response not OK:', response.status)
             }
           } catch (err) {
-            console.error('🔵 [AuthContext] ❌ Error validating token:', err)
-          }
-        } else {
-          console.log('\n🔵 [AuthContext] STEP 2: Skip token validation (missing token or user)')
-        }
-        
-        // Fall back to checking localStorage user without token validation
-        if (storedUser) {
-          try {
-            console.log('\n🔵 [AuthContext] STEP 3: Restore from localStorage (no token validation)');
-            const user = JSON.parse(storedUser);
-            
-            // ✅ STRICT VALIDATION: UUID must be 36-char string
-            if (!user.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
-              console.warn('🧹 [AuthContext] Invalid UUID in localStorage, removing:', user.uuid?.length);
-              localStorage.removeItem('user');
-              localStorage.removeItem('token');
-              setIsLoading(false);
-              return;
-            }
-            
-            console.log('🔵 [AuthContext]   - Email:', user.email);
-            console.log('🔵 [AuthContext]   - UUID:', user.uuid.substring(0, 8) + '...');
-            console.log('🔵 [AuthContext] ✅ User loaded from localStorage (UUID valid):', user.email);
-            setUser(user)
-            setIsAuthenticated(true)
-            setIsLoading(false)
-            console.log('🔵 [AuthContext] ✅ COMPLETE - Returning from localStorage fallback path')
-            return
-          } catch (err) {
-            console.error('[AuthContext] Error parsing saved user:', err)
+            console.error('🔵 [AuthContext] Error fetching user profile:', err)
           }
         }
         
-        console.log('\n🔵 [AuthContext] STEP 3: No stored token or user, checking Firebase...');
+        console.log('\n🔵 [AuthContext] No stored token/user, checking Firebase...');
         
         // Check Firebase authentication state
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
