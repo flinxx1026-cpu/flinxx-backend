@@ -121,11 +121,11 @@ export default function OAuthSuccess() {
 
           // ✅ CRITICAL: Use window.location.href to force full page reload
           // This ensures AuthContext reinitializes with the token now in localStorage
-          console.log("🔗 Token saved - navigating to /chat");
+          console.log("🔗 Token saved - navigating to /dashboard");
           // Wait 1 second to ensure localStorage writes are synced to disk
           setTimeout(() => {
-            console.log('🔗 Now redirecting to /chat after localStorage sync');
-            window.location.href = '/chat';
+            console.log('🔗 Now redirecting to /dashboard after localStorage sync');
+            window.location.href = '/dashboard';
           }, 1000);
         } else {
           console.error('❌ Backend response was not successful:', data);
@@ -147,7 +147,7 @@ export default function OAuthSuccess() {
             
             console.log('⚠️ Saved fallback user and redirecting...');
             setTimeout(() => {
-              window.location.href = '/chat';
+              window.location.href = '/dashboard';
             }, 1000);
             return;
           }
