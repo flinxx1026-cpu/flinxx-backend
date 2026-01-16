@@ -1835,6 +1835,7 @@ app.get('/auth/google/callback', async (req, res) => {
     <html>
     <head>
       <title>Logging in...</title>
+      <meta charset="UTF-8">
     </head>
     <body>
       <p>Logging in...</p>
@@ -1849,15 +1850,21 @@ app.get('/auth/google/callback', async (req, res) => {
           profileCompleted: user.profileCompleted || false
         })};
         
-        localStorage.setItem('token', token);
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('authProvider', 'google');
+        try {
+          console.log('💾 [OAuth HTML] Saving token to localStorage');
+          localStorage.setItem('token', token);
+          localStorage.setItem('authToken', token);
+          localStorage.setItem('user', JSON.stringify(user));
+          localStorage.setItem('authProvider', 'google');
+          localStorage.setItem('oauth_redirect_timestamp', Date.now().toString());
+          console.log('✅ [OAuth HTML] Token saved successfully');
+        } catch (e) {
+          console.error('❌ [OAuth HTML] Error saving to localStorage:', e);
+        }
         
         // Redirect to chat and let it load with token in localStorage
-        setTimeout(() => {
-          window.location.href = '${baseUrl}/chat';
-        }, 100);
+        console.log('🔄 [OAuth HTML] Redirecting to /chat...');
+        window.location.href = '${baseUrl}/chat';
       </script>
     </body>
     </html>
@@ -2147,6 +2154,7 @@ app.get('/auth/facebook/callback', async (req, res) => {
     <html>
     <head>
       <title>Logging in...</title>
+      <meta charset="UTF-8">
     </head>
     <body>
       <p>Logging in...</p>
@@ -2161,15 +2169,21 @@ app.get('/auth/facebook/callback', async (req, res) => {
           profileCompleted: user.profileCompleted || false
         })};
         
-        localStorage.setItem('token', token);
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('authProvider', 'facebook');
+        try {
+          console.log('💾 [OAuth HTML] Saving token to localStorage');
+          localStorage.setItem('token', token);
+          localStorage.setItem('authToken', token);
+          localStorage.setItem('user', JSON.stringify(user));
+          localStorage.setItem('authProvider', 'facebook');
+          localStorage.setItem('oauth_redirect_timestamp', Date.now().toString());
+          console.log('✅ [OAuth HTML] Token saved successfully');
+        } catch (e) {
+          console.error('❌ [OAuth HTML] Error saving to localStorage:', e);
+        }
         
         // Redirect to chat and let it load with token in localStorage
-        setTimeout(() => {
-          window.location.href = '${baseUrl}/chat';
-        }, 100);
+        console.log('🔄 [OAuth HTML] Redirecting to /chat...');
+        window.location.href = '${baseUrl}/chat';
       </script>
     </body>
     </html>
