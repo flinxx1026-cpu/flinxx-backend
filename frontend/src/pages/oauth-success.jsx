@@ -122,9 +122,11 @@ export default function OAuthSuccess() {
           // ✅ CRITICAL: Use window.location.href to force full page reload
           // This ensures AuthContext reinitializes with the token now in localStorage
           console.log("🔗 Token saved - navigating to /chat");
+          // Wait 1 second to ensure localStorage writes are synced to disk
           setTimeout(() => {
+            console.log('🔗 Now redirecting to /chat after localStorage sync');
             window.location.href = '/chat';
-          }, 500);
+          }, 1000);
         } else {
           console.error('❌ Backend response was not successful:', data);
           // Fallback: still save the token from the URL if we have a token
@@ -146,7 +148,7 @@ export default function OAuthSuccess() {
             console.log('⚠️ Saved fallback user and redirecting...');
             setTimeout(() => {
               window.location.href = '/chat';
-            }, 500);
+            }, 1000);
             return;
           }
           setError(data.error || "Failed to authenticate");
