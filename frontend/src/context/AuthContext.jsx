@@ -70,6 +70,41 @@ export const AuthProvider = ({ children }) => {
         console.log('🔵 [AuthContext] INITIALIZATION STARTED');
         console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
         
+        // ✅ FAST PATH: Check localStorage FIRST before any backend calls
+        const storedToken = localStorage.getItem('token')
+        const storedUser = localStorage.getItem('user')
+        
+        console.log('🔵 [AuthContext] STEP 1: Quick check for stored token/user');
+        console.log('🔵 [AuthContext]   - token:', storedToken ? '✓ Found' : '✗ Not found')
+        console.log('🔵 [AuthContext]   - user:', storedUser ? '✓ Found' : '✗ Not found')
+        
+        // If we have BOTH token and user in localStorage, restore immediately
+        if (storedToken && storedUser) {
+          try {
+            console.log('\n🔵 [AuthContext] FAST PATH: Both token and user found');
+            const user = JSON.parse(storedUser);
+            
+            // Validate UUID format
+            if (user.uuid && typeof user.uuid === 'string' && user.uuid.length === 36) {
+              console.log('🔵 [AuthContext] ✅ Valid UUID found:', user.uuid.substring(0, 8) + '...');
+              console.log('🔵 [AuthContext] ✅ Setting user from localStorage (FAST PATH)');
+              setUser(user)
+              setIsAuthenticated(true)
+              setIsLoading(false)
+              console.log('🔵 [AuthContext] ✅ FAST PATH COMPLETE - User authenticated and ready')
+              return
+            } else {
+              console.warn('🧹 [AuthContext] Invalid UUID in localStorage:', user.uuid?.length);
+              localStorage.removeItem('user');
+              localStorage.removeItem('token');
+            }
+          } catch (err) {
+            console.error('🔵 [AuthContext] Error in fast path:', err);
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+          }
+        }
+        
         // ✅ CLEANUP STEP: Remove invalid users from old builds (numeric IDs)
         const storedUserRaw = localStorage.getItem('user');
         if (storedUserRaw) {
@@ -92,14 +127,6 @@ export const AuthProvider = ({ children }) => {
           }
         }
         
-        // Check for stored JWT token from Google OAuth
-        const storedToken = localStorage.getItem('token')
-        const storedUser = localStorage.getItem('user')
-        
-        console.log('🔵 [AuthContext] STEP 1: Check localStorage');
-        console.log('🔵 [AuthContext]   - token:', storedToken ? '✓ Found' : '✗ Not found')
-        console.log('🔵 [AuthContext]   - user:', storedUser ? '✓ Found' : '✗ Not found')
-        
         // If we have a token, validate it and restore user data
         if (storedToken && storedUser) {
           try {
@@ -107,19 +134,11 @@ export const AuthProvider = ({ children }) => {
             const user = JSON.parse(storedUser)
             console.log('🔵 [AuthContext]   - Parsed user email:', user.email)
             console.log('🔵 [AuthContext]   - profileCompleted from localStorage:', user.profileCompleted, '(type:', typeof user.profileCompleted + ')')
-            console.log('🔵 [AuthContext] 🔍 Attempting to restore Google OAuth user from localStorage:', user.email)
-            console.log('🔵 [AuthContext] User data from localStorage:', {
-              id: user.id,
-              email: user.email,
-              profileCompleted: user.profileCompleted,
-              isProfileCompleted: user.isProfileCompleted
-            })
             
             // Optionally validate token with backend
             const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
             console.log('\n🔵 [AuthContext] STEP 3: Validate token with backend');
             console.log('🔵 [AuthContext]   - Backend URL:', BACKEND_URL)
-            console.log('🔵 [AuthContext]   - Making request to /api/profile...')
             
             const response = await fetch(`${BACKEND_URL}/api/profile`, {
               method: 'GET',
@@ -133,24 +152,14 @@ export const AuthProvider = ({ children }) => {
             
             if (response.ok) {
               const data = await response.json()
-              console.log('🔵 [AuthContext]   - Response OK, parsing data...')
-              console.log('🔵 [AuthContext]   - data.success:', data.success)
-              console.log('🔵 [AuthContext]   - data.user available:', !!data.user)
+              console.log('🔵 [AuthContext]   - Response OK')
               
               if (data.success && data.user) {
                 console.log('🔵 [AuthContext] ✅ Token validated, user restored from backend')
-                console.log('🔵 [AuthContext] Backend user data:', {
-                  id: data.user.id,
-                  email: data.user.email,
-                  profileCompleted: data.user.profileCompleted,
-                  birthday: data.user.birthday,
-                  gender: data.user.gender
-                })
                 
                 // ✅ CRITICAL: Create CLEAN user object with ONLY needed fields
-                // ❌ DO NOT spread data.user (it contains numeric id)
                 const normalizedUser = {
-                  uuid: data.user.uuid,           // ✅ ONLY 36-char UUID
+                  uuid: data.user.uuid,
                   name: data.user.name || 'User',
                   email: data.user.email,
                   picture: data.user.picture,
@@ -160,8 +169,6 @@ export const AuthProvider = ({ children }) => {
                 // ✅ STRICT VALIDATION: UUID must be exactly 36 chars
                 if (!normalizedUser.uuid || typeof normalizedUser.uuid !== 'string' || normalizedUser.uuid.length !== 36) {
                   console.error('❌ INVALID UUID FROM BACKEND:', normalizedUser.uuid);
-                  console.error('   Expected 36-char UUID, got:', normalizedUser.uuid?.length || 'undefined');
-                  // Don't set user if UUID is invalid
                   setIsLoading(false);
                   return;
                 }
@@ -181,28 +188,19 @@ export const AuthProvider = ({ children }) => {
               }
             } else {
               console.log('🔵 [AuthContext] ⚠️ Token validation response not OK:', response.status)
-              const errorText = await response.text()
-              console.log('🔵 [AuthContext] Error response:', errorText)
             }
           } catch (err) {
             console.error('🔵 [AuthContext] ❌ Error validating token:', err)
           }
         } else {
           console.log('\n🔵 [AuthContext] STEP 2: Skip token validation (missing token or user)')
-          console.log('🔵 [AuthContext]   - Skipping /api/profile call')
         }
         
         // Fall back to checking localStorage user without token validation
         if (storedUser) {
           try {
             console.log('\n🔵 [AuthContext] STEP 3: Restore from localStorage (no token validation)');
-            console.log('🔵 [AuthContext] Raw stored user string:', storedUser);
             const user = JSON.parse(storedUser);
-            console.log('🔵 [AuthContext] Parsed user object:', user);
-            console.log('🔵 [AuthContext] User keys:', Object.keys(user));
-            console.log('🔵 [AuthContext] user.uuid value:', user.uuid);
-            console.log('🔵 [AuthContext] user.uuid type:', typeof user.uuid);
-            console.log('🔵 [AuthContext] user.uuid length:', user.uuid?.length);
             
             // ✅ STRICT VALIDATION: UUID must be 36-char string
             if (!user.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
@@ -264,24 +262,20 @@ export const AuthProvider = ({ children }) => {
               if (profileResponse.ok) {
                 const profileData = await profileResponse.json()
                 console.log('🔵 [AuthContext] /api/profile response OK');
-                console.log('🔵 [AuthContext]   - success:', profileData.success);
-                console.log('🔵 [AuthContext]   - user.profileCompleted:', profileData.user?.profileCompleted);
                 
                 if (profileData.success && profileData.user) {
                   console.log('🔵 [AuthContext] ✅ Fetched full user profile from database:', {
                     email: profileData.user.email,
                     profileCompleted: profileData.user.profileCompleted
                   })
-                  console.log('🔵 [AuthContext] Setting user state with profileCompleted:', profileData.user.profileCompleted);
                   
                   // Ensure publicId and uuid are included in user object
                   const userWithIds = {
                     ...profileData.user,
                     publicId: profileData.user.public_id || profileData.user.publicId,
-                    uuid: profileData.user.uuid // ✅ Use UUID from backend ONLY
+                    uuid: profileData.user.uuid
                   }
                   
-                  // Safe error check - DO NOT auto-fill
                   if (!userWithIds.uuid) {
                     console.error('❌ UUID missing from backend user object');
                   }
@@ -296,7 +290,6 @@ export const AuthProvider = ({ children }) => {
               }
             } catch (error) {
               console.warn('[AuthContext] ⚠️ Failed to fetch profile from database:', error)
-              // Fall back to minimal user info
             }
             
             // Fallback: Create minimal userInfo if profile fetch failed
@@ -305,13 +298,12 @@ export const AuthProvider = ({ children }) => {
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
-              publicId: firebaseUser.uid, // Use UID as temporary publicId
+              publicId: firebaseUser.uid,
               authProvider: authProvider,
-              profileCompleted: false  // Default to false if not found
+              profileCompleted: false
             }
             
             console.log('[AuthContext] Using fallback userInfo (database fetch failed):', userInfo.email)
-            console.log('[AuthContext] ⚠️ WARNING: profileCompleted not loaded from database, defaulting to false');
             setUser(userInfo)
             setIsAuthenticated(true)
             localStorage.setItem('userInfo', JSON.stringify(userInfo))
@@ -329,7 +321,6 @@ export const AuthProvider = ({ children }) => {
             if (authToken && authProvider === 'guest') {
               const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
               
-              // Ensure publicId exists
               if (!userInfo.publicId && userInfo.public_id) {
                 userInfo.publicId = userInfo.public_id
               }
@@ -338,7 +329,6 @@ export const AuthProvider = ({ children }) => {
               setUser(userInfo)
               setIsAuthenticated(true)
             } else {
-              // No auth found, redirect to login
               console.log('🔵 [AuthContext] ❌ No authentication found, user will be redirected to login')
               setUser(null)
               setIsAuthenticated(false)
