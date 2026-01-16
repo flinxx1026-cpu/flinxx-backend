@@ -1799,13 +1799,16 @@ app.get('/auth/google/callback', async (req, res) => {
       isNewUser = false
     }
     
-    // Create a JWT token with user data
-    const token = Buffer.from(JSON.stringify({
+    // Create a proper JWT token (NOT base64)
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({
+      id: user.id,
       userId: user.id,
       email: user.email,
-      publicId: user.public_id,
-      timestamp: Date.now()
-    })).toString('base64')
+      publicId: user.public_id
+    }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    
+    console.log("✅ [AUTH/GOOGLE/CALLBACK] JWT token created with id:", user.id);
     
     // Build response data
     const responseData = {
@@ -2064,13 +2067,16 @@ app.get('/auth/facebook/callback', async (req, res) => {
       isNewUser = false
     }
     
-    // Create a JWT token with user data
-    const token = Buffer.from(JSON.stringify({
+    // Create a proper JWT token (NOT base64)
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({
+      id: user.id,
       userId: user.id,
       email: user.email,
-      publicId: user.public_id,
-      timestamp: Date.now()
-    })).toString('base64')
+      publicId: user.public_id
+    }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    
+    console.log("✅ [AUTH/FACEBOOK/CALLBACK] JWT token created with id:", user.id);
     
     // Build response data
     const responseData = {
