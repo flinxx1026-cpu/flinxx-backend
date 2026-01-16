@@ -1100,51 +1100,59 @@ app.get('/api/users/email/:email', async (req, res) => {
 })
 
 // Get user profile by ID or email (for frontend)
-app.get('/api/user/profile', async (req, res) => {
+app.get('/api/user/profile', verifyUserToken, async (req, res) => {
   try {
-    const { userId, email } = req.query
+    const decoded = req.decoded;
+    
+    console.log("UPDATING last_seen for user:", decoded.id);
 
-    if (!userId && !email) {
-      return res.status(400).json({ error: 'Missing userId or email parameter' })
+    await prisma.users.update({
+      where: { id: decoded.id },
+      data: { last_seen: new Date() }
+    });
+
+    console.log("last_seen UPDATED for user:", decoded.id);
+
+    // Fetch updated user profile
+    const user = await prisma.users.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        public_id: true,
+        email: true,
+        display_name: true,
+        photo_url: true,
+        auth_provider: true,
+        created_at: true,
+        updated_at: true,
+        last_seen: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    let result
-    if (userId) {
-      result = await pool.query(
-        'SELECT id, public_id, email, display_name, photo_url, auth_provider, created_at, updated_at FROM users WHERE id = $1',
-        [userId]
-      )
-    } else {
-      result = await pool.query(
-        'SELECT id, public_id, email, display_name, photo_url, auth_provider, created_at, updated_at FROM users WHERE email = $1',
-        [email]
-      )
-    }
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' })
-    }
-
-    const user = result.rows[0]
-    console.log(`✅ Profile fetched for user: ${user.email}`)
+    console.log(`✅ Profile fetched for user: ${user.email}, last_seen updated`);
     
     res.json({
       success: true,
-      profile: {
+      user: {
         id: user.public_id,
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
         authProvider: user.auth_provider,
         createdAt: user.created_at,
-        updatedAt: user.updated_at
+        updatedAt: user.updated_at,
+        lastSeen: user.last_seen
       }
-    })
+    });
   } catch (error) {
-    console.error('❌ Error fetching user profile:', error)
-    res.status(500).json({ error: 'Failed to fetch profile', details: error.message })
+    console.error('❌ Error fetching user profile:', error);
+    res.status(500).json({ error: 'Failed to fetch profile', details: error.message });
   }
-})
+});
 
 // ===== GOOGLE OAUTH ROUTES =====
 
