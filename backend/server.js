@@ -1858,20 +1858,30 @@ app.get('/auth-success', async (req, res) => {
     // Verify Prisma is available
     ensurePrismaAvailable()
     
-    // Decode token
-    console.log(`🔐 [AUTH-SUCCESS] Decoding token: ${token.substring(0, 10)}...`)
-    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
-    console.log(`✅ [AUTH-SUCCESS] Token decoded for user: ${decoded.email}`)
-    console.log(`   - User ID: ${decoded.userId}`)
+    // Decode JWT token
+    console.log(`🔐 [AUTH-SUCCESS] Verifying JWT token: ${token.substring(0, 10)}...`)
+    let decoded;
+    try {
+      const jwt = require('jsonwebtoken');
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log(`✅ [AUTH-SUCCESS] JWT verified for user: ${decoded.email}`)
+      console.log(`   - User ID: ${decoded.id}`)
+    } catch (jwtError) {
+      console.error('❌ [AUTH-SUCCESS] JWT verification failed:', jwtError.message);
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid token'
+      })
+    }
     
     // Fetch full user data from database using userId string
     console.log(`🔍 [AUTH-SUCCESS] Fetching user from database...`)
     const user = await prisma.users.findUnique({
-      where: { id: decoded.userId }
+      where: { id: decoded.id }
     })
     
     if (!user) {
-      console.error(`❌ [AUTH-SUCCESS] CRITICAL: User ${decoded.userId} not found in database!`)
+      console.error(`❌ [AUTH-SUCCESS] CRITICAL: User ${decoded.id} not found in database!`)
       console.error(`   Email was: ${decoded.email}`)
       console.error(`   This user was NOT saved during OAuth callback`)
       return res.status(404).json({
@@ -1921,15 +1931,16 @@ app.get('/auth/google/success', (req, res) => {
       })
     }
     
-    // Decode token
-    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
-    console.log('✅ Token decoded:', decoded.email)
+    // Verify JWT token
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('✅ JWT decoded:', decoded.email)
     
     res.json({
       success: true,
       token: token,
       user: {
-        uuid: decoded.userId,
+        uuid: decoded.id,
         email: decoded.email
       }
     })
