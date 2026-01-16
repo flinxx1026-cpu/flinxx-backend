@@ -565,22 +565,31 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
 const Chat = () => {
   // ✅ UPDATE LAST SEEN - MUST BE FIRST - Call immediately on mount
   useEffect(() => {
-    const token =
-      localStorage.getItem("token") ||
-      localStorage.getItem("authToken");
+    const userToken = localStorage.getItem("userToken");
 
-    console.log("PROFILE PING TOKEN:", token);
+    console.log("USER TOKEN:", userToken);
 
-    if (!token) return;
+    if (!userToken) {
+      console.error("NO USER TOKEN FOUND");
+      return;
+    }
 
     fetch("https://flinxx-backend.onrender.com/api/user/profile", {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${userToken}`,
       },
     })
-      .then(() => console.log("PROFILE API CALLED"))
-      .catch((e) => console.error("PROFILE API ERROR", e));
+      .then((res) => {
+        console.log("PROFILE STATUS:", res.status);
+        return res.json();
+      })
+      .then((data) => {
+        console.log("PROFILE SUCCESS", data);
+      })
+      .catch((err) => {
+        console.error("PROFILE ERROR", err);
+      });
   }, []);
 
   console.log("RENDER START");
