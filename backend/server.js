@@ -1829,7 +1829,7 @@ app.get('/auth/google/callback', async (req, res) => {
     // Redirect to frontend with token and response data
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
     
-    // Create HTML response that saves token and redirects
+    // Create HTML response that saves token and reloads
     const htmlResponse = `
     <!DOCTYPE html>
     <html>
@@ -1839,7 +1839,7 @@ app.get('/auth/google/callback', async (req, res) => {
     <body>
       <p>Logging in...</p>
       <script>
-        // Save token to localStorage
+        // Save token to localStorage IMMEDIATELY
         const token = "${token.replace(/"/g, '\\"')}";
         const user = ${JSON.stringify({
           uuid: user.id,
@@ -1849,20 +1849,21 @@ app.get('/auth/google/callback', async (req, res) => {
           profileCompleted: user.profileCompleted || false
         })};
         
-        console.log('✅ [OAuth Callback] Saving token to localStorage');
         localStorage.setItem('token', token);
         localStorage.setItem('authToken', token);
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('authProvider', 'google');
         
-        console.log('✅ [OAuth Callback] Redirecting to /chat');
-        window.location.href = '${baseUrl}/chat';
+        // Redirect to chat and let it load with token in localStorage
+        setTimeout(() => {
+          window.location.href = '${baseUrl}/chat';
+        }, 100);
       </script>
     </body>
     </html>
     `;
     
-    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] Sending HTML response to redirect to /chat`)
+    console.log(`✅ [AUTH/GOOGLE/CALLBACK] Token saved, redirecting to /chat`)
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     res.send(htmlResponse)
   } catch (error) {
@@ -2140,7 +2141,7 @@ app.get('/auth/facebook/callback', async (req, res) => {
     // Redirect to frontend with token and response data
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
     
-    // Create HTML response that saves token and redirects
+    // Create HTML response that saves token and reloads
     const htmlResponse = `
     <!DOCTYPE html>
     <html>
@@ -2150,7 +2151,7 @@ app.get('/auth/facebook/callback', async (req, res) => {
     <body>
       <p>Logging in...</p>
       <script>
-        // Save token to localStorage
+        // Save token to localStorage IMMEDIATELY
         const token = "${token.replace(/"/g, '\\"')}";
         const user = ${JSON.stringify({
           uuid: user.id,
@@ -2160,20 +2161,21 @@ app.get('/auth/facebook/callback', async (req, res) => {
           profileCompleted: user.profileCompleted || false
         })};
         
-        console.log('✅ [OAuth Callback] Saving token to localStorage');
         localStorage.setItem('token', token);
         localStorage.setItem('authToken', token);
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('authProvider', 'facebook');
         
-        console.log('✅ [OAuth Callback] Redirecting to /chat');
-        window.location.href = '${baseUrl}/chat';
+        // Redirect to chat and let it load with token in localStorage
+        setTimeout(() => {
+          window.location.href = '${baseUrl}/chat';
+        }, 100);
       </script>
     </body>
     </html>
     `;
     
-    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] Sending HTML response to redirect to /chat`)
+    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Token saved, redirecting to /chat`)
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     res.send(htmlResponse)
   } catch (error) {
@@ -2201,16 +2203,33 @@ app.get('/api/profile', async (req, res) => {
     }
     
     const token = authHeader.substring(7) // Remove 'Bearer ' prefix
-    console.log('[PROFILE API] Token received, decoding...')
+    console.log('[PROFILE API] Token received, verifying as JWT...')
     
-    // Decode token
-    const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
-    console.log('[PROFILE API] ✅ Token decoded for user:', decoded.email, 'userId:', decoded.userId)
+    // Verify JWT token (not base64)
+    const jwt = require('jsonwebtoken')
+    let decoded
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET)
+      console.log('[PROFILE API] ✅ JWT token verified for user:', decoded.email, 'userId:', decoded.userId || decoded.id)
+    } catch (jwtErr) {
+      console.log('[PROFILE API] JWT verification failed, trying base64 decode as fallback...')
+      try {
+        decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
+        console.log('[PROFILE API] ✅ Token decoded (base64) for user:', decoded.email, 'userId:', decoded.userId)
+      } catch (b64Err) {
+        console.error('[PROFILE API] ❌ Both JWT and base64 decode failed')
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid token format'
+        })
+      }
+    }
     
     // Fetch full user data from database
-    console.log('[PROFILE API] Fetching user from database with id:', decoded.userId)
+    const userId = decoded.userId || decoded.id
+    console.log('[PROFILE API] Fetching user from database with id:', userId)
     const user = await prisma.users.findUnique({
-      where: { id: decoded.userId },
+      where: { id: userId },
       select: {
         id: true,
         public_id: true,
@@ -2228,7 +2247,7 @@ app.get('/api/profile', async (req, res) => {
     console.log('[PROFILE API] User fetch result:', user ? 'Found' : 'Not found')
     
     if (!user) {
-      console.log('[PROFILE API] ❌ User not found in database:', decoded.userId)
+      console.log('[PROFILE API] ❌ User not found in database:', userId)
       return res.status(404).json({
         success: false,
         error: 'User not found in database'
