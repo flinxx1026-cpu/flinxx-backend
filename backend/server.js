@@ -1828,9 +1828,9 @@ app.get('/auth/google/callback', async (req, res) => {
     
     // Redirect to frontend with token and response data
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
-    const redirectUrl = `${baseUrl}/auth-success?token=${token}&data=${encodedResponse}`
+    const redirectUrl = `${baseUrl}/auth-success?token=${encodeURIComponent(token)}&data=${encodedResponse}`
     
-    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] Redirecting to frontend: ${redirectUrl}`)
+    console.log(`🔗 [AUTH/GOOGLE/CALLBACK] Redirecting to frontend: ${baseUrl}/auth-success`)
     console.log(`✅ [AUTH/GOOGLE/CALLBACK] OAuth flow complete - user saved and verified\n`)
     res.redirect(redirectUrl)
   } catch (error) {
@@ -2107,9 +2107,9 @@ app.get('/auth/facebook/callback', async (req, res) => {
     
     // Redirect to frontend with token and response data
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
-    const redirectUrl = `${baseUrl}/auth-success?token=${token}&data=${encodedResponse}`
+    const redirectUrl = `${baseUrl}/auth-success?token=${encodeURIComponent(token)}&data=${encodedResponse}`
     
-    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] Redirecting to frontend: ${redirectUrl}`)
+    console.log(`🔗 [AUTH/FACEBOOK/CALLBACK] Redirecting to frontend: ${baseUrl}/auth-success`)
     console.log(`✅ [AUTH/FACEBOOK/CALLBACK] OAuth flow complete - user saved and verified\n`)
     res.redirect(redirectUrl)
   } catch (error) {
