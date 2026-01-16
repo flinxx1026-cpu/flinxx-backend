@@ -213,11 +213,26 @@ const Login = () => {
       }
       
       // Save user profile to localStorage
-      console.log('[LOGIN] Storing user to localStorage:', userDataToStore)
+      console.log('[LOGIN] 🔥 SAVING TOKEN AND USER TO LOCALSTORAGE');
+      console.log('[LOGIN] Token to save:', userDataToStore.token ? userDataToStore.token.substring(0, 20) + '...' : 'MISSING');
+      
+      // 🔥 MANDATORY: Save token with standard keys
+      localStorage.setItem('token', userDataToStore.token || credential)
+      localStorage.setItem('authToken', userDataToStore.token || credential)
+      console.log('✅ [LOGIN] Token saved to localStorage');
+      
+      // Save user profile
       localStorage.setItem('user', JSON.stringify(userDataToStore))
       localStorage.setItem('authProvider', 'google')
       localStorage.setItem('userInfo', JSON.stringify(userDataToStore))
-      console.log('✅ User data stored in localStorage with profileCompleted status')
+      console.log('✅ [LOGIN] User data stored in localStorage with profileCompleted status')
+      
+      // 🔥 VERIFICATION
+      console.log('🔥 [LOGIN] VERIFICATION - Check localStorage:');
+      console.log('   - token:', localStorage.getItem('token') ? '✓ FOUND' : '✗ MISSING');
+      console.log('   - authToken:', localStorage.getItem('authToken') ? '✓ FOUND' : '✗ MISSING');
+      console.log('   - user:', localStorage.getItem('user') ? '✓ FOUND' : '✗ MISSING');
+      console.log('   - authProvider:', localStorage.getItem('authProvider'));
       
       // Redirect to chat after a brief delay
       setTimeout(() => {
