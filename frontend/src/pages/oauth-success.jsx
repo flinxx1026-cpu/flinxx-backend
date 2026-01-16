@@ -11,8 +11,8 @@ export default function OAuthSuccess() {
   const [error, setError] = useState(null);
 
   // Log that we've reached this page
-  console.log('🔐 [OAuthSuccess PAGE LOADED]');
-  console.log('🔐 Token from URL:', searchParams.get('token')?.substring(0, 20) + '...');
+  console.error('🔥🔥🔥 [OAuthSuccess PAGE LOADED] 🔥🔥🔥');
+  console.error('🔥 Token from URL:', searchParams.get('token')?.substring(0, 20) + '...');
 
   useEffect(() => {
     const handleAuthSuccess = async () => {
@@ -104,29 +104,30 @@ export default function OAuthSuccess() {
           
           // Also try using setAuthToken if available
           if (setAuthToken) {
-            console.log('[OAuthSuccess] Also calling setAuthToken');
+            console.error('🔥🔥🔥 [OAuthSuccess] Also calling setAuthToken');
             setAuthToken(token, normalizedUser);
           }
 
           // ✅ VERIFY: Confirm what was stored in localStorage
           const stored = JSON.parse(localStorage.getItem('user') || '{}');
-          console.log('✅ VERIFICATION - localStorage.user contents:', {
+          console.error('🔥🔥🔥 [OAuthSuccess] VERIFICATION - localStorage.user contents:', {
             has_uuid: !!stored.uuid,
             uuid_length: stored.uuid?.length,
             has_token: !!localStorage.getItem('token'),
-            has_email: !!stored.email
+            has_email: !!stored.email,
+            full_user: stored
           });
 
           setUserData(user);
 
           // ✅ CRITICAL: Use window.location.href to force full page reload
           // This ensures AuthContext reinitializes with the token now in localStorage
-          console.log("🔗 Token saved - navigating to /dashboard");
-          // Wait 1 second to ensure localStorage writes are synced to disk
+          console.error("🔥🔥🔥 [OAuthSuccess] Token saved - navigating to /chat in 2 seconds");
+          // Wait 2 seconds to ensure localStorage writes are synced to disk
           setTimeout(() => {
-            console.log('🔗 Now redirecting to /dashboard after localStorage sync');
-            window.location.href = '/dashboard';
-          }, 1000);
+            console.error('🔥🔥🔥 [OAuthSuccess] NOW REDIRECTING to /chat after localStorage sync');
+            window.location.href = '/chat';
+          }, 2000);
         } else {
           console.error('❌ Backend response was not successful:', data);
           // Fallback: still save the token from the URL if we have a token
@@ -147,7 +148,7 @@ export default function OAuthSuccess() {
             
             console.log('⚠️ Saved fallback user and redirecting...');
             setTimeout(() => {
-              window.location.href = '/dashboard';
+              window.location.href = '/chat';
             }, 1000);
             return;
           }

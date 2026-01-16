@@ -55,8 +55,14 @@ const ProtectedChatRoute = ({ children }) => {
         // This can happen if AuthContext fast path worked but user object didn't populate yet
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
+        const authToken = localStorage.getItem('authToken');
         
-        if (storedToken && storedUser) {
+        console.log('🔴 [ProtectedChatRoute] Checking localStorage for recovery:');
+        console.log('🔴 [ProtectedChatRoute]   - token:', !!storedToken);
+        console.log('🔴 [ProtectedChatRoute]   - authToken:', !!authToken);
+        console.log('🔴 [ProtectedChatRoute]   - user:', !!storedUser);
+        
+        if ((storedToken || authToken) && storedUser) {
           console.log('🔴 [ProtectedChatRoute] ⚠️ BUT - Token and user ARE in localStorage');
           console.log('🔴 [ProtectedChatRoute] Parsing localStorage user...');
           try {
@@ -66,13 +72,15 @@ const ProtectedChatRoute = ({ children }) => {
               setUser(parsedUser);
               setIsLoading(false);
               return;
+            } else {
+              console.error('🔴 [ProtectedChatRoute] ❌ Parsed user but UUID invalid:', parsedUser.uuid?.length);
             }
           } catch (e) {
             console.error('🔴 [ProtectedChatRoute] Failed to parse stored user:', e);
           }
         }
         
-        console.log('🔴 [ProtectedChatRoute] No token/user in localStorage either - redirecting to /login');
+        console.log('🔴 [ProtectedChatRoute] No valid token/user in localStorage - redirecting to /login');
         if (!redirectedToLogin) {
           setRedirectedToLogin(true);
           setIsLoading(false);

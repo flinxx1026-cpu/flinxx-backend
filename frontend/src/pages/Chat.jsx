@@ -563,6 +563,29 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
 });
 
 const Chat = () => {
+  const navigate = useNavigate();
+  const authContext = useContext(AuthContext);
+  
+  // ✅ CHECK AUTH - Redirect to login if not authenticated
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token') || localStorage.getItem('authToken');
+    const storedUser = localStorage.getItem('user');
+    
+    console.log('🔐 [Chat] Checking authentication on load:');
+    console.log('🔐 [Chat]   - token:', !!storedToken);
+    console.log('🔐 [Chat]   - user:', !!storedUser);
+    console.log('🔐 [Chat]   - authContext.isLoading:', authContext?.isLoading);
+    console.log('🔐 [Chat]   - authContext.user:', authContext?.user?.email);
+    
+    // If no token/user and authContext finished loading, redirect to login
+    if (!storedToken || !storedUser) {
+      if (authContext?.isLoading === false) {
+        console.log('🔐 [Chat] ❌ No auth found - redirecting to /login');
+        navigate('/login', { replace: true });
+      }
+    }
+  }, [authContext?.isLoading, navigate]);
+  
   // ✅ UPDATE LAST SEEN - MUST BE FIRST - Call immediately on mount
   useEffect(() => {
     const userToken = localStorage.getItem("token") || localStorage.getItem("authToken");

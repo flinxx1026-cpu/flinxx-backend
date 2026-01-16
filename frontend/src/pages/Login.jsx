@@ -227,10 +227,10 @@ const Login = () => {
       console.log('   - user:', localStorage.getItem('user') ? '✓ FOUND' : '✗ MISSING');
       console.log('   - authProvider:', localStorage.getItem('authProvider'));
       
-      // Redirect to dashboard after a brief delay
+      // Redirect to chat after a brief delay
       setTimeout(() => {
         setIsSigningIn(false)
-        navigate('/dashboard')
+        navigate('/chat')
       }, 1000)
     } catch (err) {
       console.error('❌ Google login error:', err)

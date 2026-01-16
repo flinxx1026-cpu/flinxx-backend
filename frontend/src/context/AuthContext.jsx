@@ -66,7 +66,17 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // ✅ CRITICAL: Skip initialization while on oauth-success page
+        // oauth-success will handle saving token/user to localStorage
+        // Then after redirect to /chat, this will initialize with the saved data
+        if (window.location.pathname === '/oauth-success') {
+          console.log('🔵 [AuthContext] Skipping auth initialization - on /oauth-success page');
+          // Keep loading=true so nothing tries to use auth state yet
+          return;
+        }
+        
         console.log('\n\n🔵 [AuthContext] ═══════════════════════════════════════════');
+        console.log('🔵 [AuthContext] ⏰ VERSION: v2.6 - SKIP OAUTH-SUCCESS PATH');
         console.log('🔵 [AuthContext] INITIALIZATION STARTED');
         console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
         
@@ -95,6 +105,7 @@ export const AuthProvider = ({ children }) => {
               console.log('🔵 [AuthContext] ═══════════════════════════════════════════')
               console.log('🔵 [AuthContext] ✅✅✅ USER AUTHENTICATED - FAST PATH COMPLETE ✅✅✅');
               console.log('🔵 [AuthContext] ═══════════════════════════════════════════\n')
+              // ✅ CRITICAL: Don't set up Firebase listener - user already authenticated
               return
             } else {
               console.warn('🧹 [AuthContext] Invalid UUID in localStorage:', user.uuid?.length);
@@ -141,11 +152,45 @@ export const AuthProvider = ({ children }) => {
                 console.log('🔵 [AuthContext] ═══════════════════════════════════════════')
                 console.log('🔵 [AuthContext] ✅✅✅ USER AUTHENTICATED - FROM BACKEND ✅✅✅');
                 console.log('🔵 [AuthContext] ═══════════════════════════════════════════\n')
+                // ✅ CRITICAL: Don't set up Firebase listener - user already authenticated
                 return
               }
             }
           } catch (err) {
             console.error('🔵 [AuthContext] Error fetching user profile:', err)
+          }
+        }
+        
+        console.error('🔴 🔴 🔴 [AuthContext] STARTING 500MS WAIT FOR OAUTH-SUCCESS 🔴 🔴 🔴');
+        console.error('🔴 [AuthContext] Waiting 500ms for oauth-success to finish localStorage writes...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Check localStorage AGAIN after the wait
+        const storedToken2 = localStorage.getItem('token')
+        const storedUser2 = localStorage.getItem('user')
+        
+        console.error('🔴 [AuthContext] STEP 2: After 500ms wait, checking localStorage again');
+        console.error('🔴 [AuthContext]   - token:', storedToken2 ? '✓ Found' : '✗ Not found')
+        console.error('🔴 [AuthContext]   - user:', storedUser2 ? '✓ Found' : '✗ Not found')
+        
+        if (storedToken2 && storedUser2) {
+          try {
+            console.error('\n🔴 [AuthContext] ✅ DELAYED PATH: Token and user found after 500ms wait!');
+            const user = JSON.parse(storedUser2);
+            console.error('🔴 [AuthContext]   Parsed user:', user.email)
+            
+            if (user.uuid && typeof user.uuid === 'string' && user.uuid.length === 36) {
+              console.error('🔴 [AuthContext] ✅ Valid UUID found:', user.uuid.substring(0, 8) + '...');
+              setUser(user)
+              setIsAuthenticated(true)
+              setIsLoading(false)
+              console.error('🔴 [AuthContext] ═══════════════════════════════════════════')
+              console.error('🔴 [AuthContext] ✅✅✅ USER AUTHENTICATED - DELAYED PATH COMPLETE ✅✅✅');
+              console.error('🔴 [AuthContext] ═══════════════════════════════════════════\n')
+              return
+            }
+          } catch (err) {
+            console.error('🔴 [AuthContext] Error in delayed path:', err)
           }
         }
         
@@ -260,6 +305,16 @@ export const AuthProvider = ({ children }) => {
               
               if (storedToken && storedUser) {
                 console.log('🔵 [AuthContext] 🔐 Skipping logout – local session exists')
+                try {
+                  const user = JSON.parse(storedUser)
+                  if (user.uuid && user.uuid.length === 36) {
+                    console.log('🔵 [AuthContext] ✅ RESTORING USER FROM LOCALSTORAGE after Firebase check:',user.email)
+                    setUser(user)
+                    setIsAuthenticated(true)
+                  }
+                } catch (e) {
+                  console.error('🔵 [AuthContext] Failed to parse stored user:', e)
+                }
               } else {
                 console.log('🔵 [AuthContext] ❌ No authentication found, user will be redirected to login')
                 setUser(null)
