@@ -2953,7 +2953,7 @@ const PORT = process.env.PORT || 10000;
     console.log("[STARTUP] STEP 2.2 - Database init complete");
 
     console.log("[STARTUP] STEP 3.1 - Starting server...");
-    httpServer.listen(PORT, () => {
+    httpServer.listen(PORT, '0.0.0.0', () => {
       console.log("[STARTUP] STEP 3.2 - Server running on PORT:", PORT);
     });
 
