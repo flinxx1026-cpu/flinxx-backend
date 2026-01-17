@@ -86,7 +86,7 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
       CREATE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id);
       CREATE INDEX IF NOT EXISTS idx_users_provider ON users(auth_provider, provider_id);
-      CREATE INDEX IF NOT EXISTS idx_users_profile_completed ON users(profileCompleted);
+      CREATE INDEX IF NOT EXISTS idx_users_profile_completed ON users("profileCompleted");
     `)
 
     // Create premium table

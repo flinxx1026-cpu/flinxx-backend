@@ -673,8 +673,16 @@ const Chat = () => {
   useEffect(() => {
     if (authLoading) return
     if (!user) {
-      console.log('🔐 No user in context - redirecting to home')
-      navigate('/', { replace: true })
+      // Check localStorage as fallback before redirecting to login
+      const storedToken = localStorage.getItem('token')
+      const storedUser = localStorage.getItem('user')
+      
+      if (!storedToken && !storedUser) {
+        console.log('🔐 No user in context or localStorage - redirecting to login')
+        navigate('/login', { replace: true })
+      } else {
+        console.log('🔐 User not in context yet but found in localStorage - waiting for context to populate')
+      }
     }
   }, [user, authLoading, navigate])
 
