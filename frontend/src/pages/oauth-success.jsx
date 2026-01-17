@@ -4,166 +4,149 @@ import { AuthContext } from "../context/AuthContext";
 
 export default function OAuthSuccess() {
   const navigate = useNavigate();
-  const { setAuthToken } = useContext(AuthContext) || {};
   const [searchParams] = useSearchParams();
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Log that we've reached this page
   console.error('🔥🔥🔥 [OAuthSuccess PAGE LOADED] 🔥🔥🔥');
-  console.error('🔥 Token from URL:', searchParams.get('token')?.substring(0, 20) + '...');
 
   useEffect(() => {
     const handleAuthSuccess = async () => {
       try {
-        const token = searchParams.get("token");
-        const data_param = searchParams.get("data");
+        // Get token from URL (backend should have set it)
+        let token = searchParams.get("token");
         
+        console.log("🔐 [OAuthSuccess] Page loaded, checking for token in URL...");
+        console.log("🔐 [OAuthSuccess] Token from URL:", token ? token.substring(0, 20) + "..." : "NOT FOUND");
+
+        // CRITICAL: If no token in URL params, the backend redirect might have failed
         if (!token) {
-          setError("No authentication token received");
-          setLoading(false);
+          console.error("❌ [OAuthSuccess] No token in URL - backend OAuth callback issue");
+          setError("No authentication token received. Please try logging in again.");
+          // Wait 2 seconds then redirect to login
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000);
           return;
         }
 
-        console.log("🔐 OAuth Success - Token received:", token.substring(0, 10) + "...");
+        console.log("✅ [OAuthSuccess] Token found, decoding JWT...");
 
-        // Parse the data parameter if available (from Google callback redirect)
-        let responseData = null;
-        if (data_param) {
-          try {
-            responseData = JSON.parse(decodeURIComponent(data_param));
-            console.log("✅ Response data from backend:", responseData);
-          } catch (e) {
-            console.warn("⚠️ Could not parse response data:", e);
-          }
+        // Decode the token to extract user data
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+          throw new Error('Invalid JWT format - token must have 3 parts');
         }
 
-        // Fetch full user data from backend using the JWT token
+        let decoded = {};
+        try {
+          decoded = JSON.parse(atob(parts[1]));
+          console.log("🔐 [OAuthSuccess] JWT decoded successfully:", {
+            id: decoded.id,
+            email: decoded.email,
+            iat: decoded.iat
+          });
+        } catch (e) {
+          throw new Error('Failed to decode JWT token: ' + e.message);
+        }
+
+        // Now try to fetch full user data from backend for additional fields
+        // But don't fail if this doesn't work - we have what we need from the JWT
         const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-        console.log("📡 Fetching from backend:", `${BACKEND_URL}/auth-success?token=${encodeURIComponent(token).substring(0, 20)}...`);
+        console.log("📡 [OAuthSuccess] Attempting to fetch full user profile from backend...");
         
-        const response = await fetch(`${BACKEND_URL}/auth-success?token=${encodeURIComponent(token)}`);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("❌ Backend response not OK:", response.status, errorText);
-          throw new Error(`Failed to fetch user data: ${response.status} - ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log("✅ User data received:", data.user?.email);
-        console.log("✅ Full response:", JSON.stringify(data, null, 2));
-
-        if (data.success && data.user) {
-          const user = data.user;
-
-          // ✅ CRITICAL: Extract ONLY valid 36-char UUID for localStorage
-          // Backend returns: { id: "8-digit", uuid: "36-char-uuid", ... }
-          let validUUID = null;
+        let userFromBackend = null;
+        try {
+          const response = await fetch(`${BACKEND_URL}/auth-success?token=${encodeURIComponent(token)}`, {
+            timeout: 5000
+          });
           
-          // Check for valid UUID (36 chars with hyphens)
-          if (user.uuid && typeof user.uuid === 'string' && user.uuid.length === 36) {
-            validUUID = user.uuid;
-            console.log('✅ Valid UUID found in user.uuid:', validUUID.substring(0, 8) + '...');
-          } else if (user.id && typeof user.id === 'string' && user.id.length === 36) {
-            // Fallback: if uuid is missing, try id (may contain UUID from some endpoints)
-            validUUID = user.id;
-            console.log('✅ Valid UUID found in user.id (fallback):', validUUID.substring(0, 8) + '...');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.user) {
+              userFromBackend = data.user;
+              console.log("✅ [OAuthSuccess] Backend provided additional user data:", userFromBackend.email);
+            }
           } else {
-            console.error('❌ CRITICAL: No valid 36-char UUID found in backend response');
-            console.error('   user.uuid:', user.uuid, '(type:', typeof user.uuid + ', length:', user.uuid?.length + ')');
-            console.error('   user.id:', user.id, '(type:', typeof user.id + ', length:', user.id?.length + ')');
-            console.error('   Full response:', user);
-            setError('Authentication failed: Invalid UUID from server');
-            setLoading(false);
-            return;
+            console.warn("⚠️ [OAuthSuccess] Backend response not OK:", response.status);
           }
-          
-          // ✅ Store ONLY UUID - NO numeric id at all
-          const normalizedUser = {
-            uuid: validUUID,           // ✅ ONLY the 36-char UUID
-            name: user.name || user.display_name || 'User',
-            email: user.email,
-            picture: user.picture || user.photo_url,
-            profileCompleted: user.profileCompleted || false
-          };
-          
-          console.log('✅ User data normalized for storage (UUID ONLY):', { 
-            uuid: normalizedUser.uuid.substring(0, 8) + '...',
-            email: normalizedUser.email 
-          });
-          
-          // Store user data and token DIRECTLY to localStorage
-          // Don't wait for AuthContext updates
-          console.log('[OAuthSuccess] Storing token and user directly to localStorage');
-          localStorage.setItem("token", token);
-          localStorage.setItem("authToken", token);
-          localStorage.setItem("user", JSON.stringify(normalizedUser));
-          localStorage.setItem("authProvider", "google");
-          
-          // Also try using setAuthToken if available
-          if (setAuthToken) {
-            console.error('🔥🔥🔥 [OAuthSuccess] Also calling setAuthToken');
-            setAuthToken(token, normalizedUser);
-          }
-
-          // ✅ VERIFY: Confirm what was stored in localStorage
-          const stored = JSON.parse(localStorage.getItem('user') || '{}');
-          console.error('🔥🔥🔥 [OAuthSuccess] VERIFICATION - localStorage.user contents:', {
-            has_uuid: !!stored.uuid,
-            uuid_length: stored.uuid?.length,
-            has_token: !!localStorage.getItem('token'),
-            has_email: !!stored.email,
-            full_user: stored
-          });
-
-          setUserData(user);
-
-          // ✅ CRITICAL: Use window.location.href to force full page reload
-          // This ensures AuthContext reinitializes with the token now in localStorage
-          console.error("🔥🔥🔥 [OAuthSuccess] Token saved - navigating to /chat in 2 seconds");
-          // Wait 2 seconds to ensure localStorage writes are synced to disk
-          setTimeout(() => {
-            console.error('🔥🔥🔥 [OAuthSuccess] NOW REDIRECTING to /chat after localStorage sync');
-            window.location.href = '/chat';
-          }, 2000);
-        } else {
-          console.error('❌ Backend response was not successful:', data);
-          // Fallback: still save the token from the URL if we have a token
-          if (token) {
-            console.warn('⚠️ Backend response failed, but using token from URL anyway');
-            const fallbackUser = {
-              uuid: responseData?.user?.uuid || 'unknown',
-              name: responseData?.user?.name || 'User',
-              email: responseData?.user?.email || 'unknown@example.com',
-              picture: responseData?.user?.picture || null,
-              profileCompleted: responseData?.user?.profileCompleted || false
-            };
-            
-            localStorage.setItem("token", token);
-            localStorage.setItem("authToken", token);
-            localStorage.setItem("user", JSON.stringify(fallbackUser));
-            localStorage.setItem("authProvider", "google");
-            
-            console.log('⚠️ Saved fallback user and redirecting...');
-            setTimeout(() => {
-              window.location.href = '/chat';
-            }, 1000);
-            return;
-          }
-          setError(data.error || "Failed to authenticate");
+        } catch (fetchErr) {
+          console.warn("⚠️ [OAuthSuccess] Backend fetch failed, using JWT data only:", fetchErr.message);
         }
+
+        // Build normalized user object from either backend data or JWT
+        let validUUID;
+        let normalizedUser;
+
+        if (userFromBackend) {
+          validUUID = userFromBackend.uuid || userFromBackend.id;
+          if (validUUID && typeof validUUID === 'string' && validUUID.length === 36) {
+            normalizedUser = {
+              uuid: validUUID,
+              id: validUUID,
+              name: userFromBackend.name || userFromBackend.display_name || 'User',
+              email: userFromBackend.email,
+              picture: userFromBackend.picture || userFromBackend.photo_url,
+              profileCompleted: userFromBackend.profileCompleted || false
+            };
+            console.log('✅ [OAuthSuccess] Using backend user data');
+          } else {
+            console.warn('⚠️ [OAuthSuccess] Backend UUID invalid, falling back to JWT');
+            userFromBackend = null;
+          }
+        }
+
+        // If no valid backend user, use JWT data
+        if (!userFromBackend) {
+          // Generate a valid UUID if needed (use the id from JWT)
+          validUUID = decoded.id;
+          if (!validUUID || typeof validUUID !== 'string' || validUUID.length !== 36) {
+            console.error('❌ [OAuthSuccess] Invalid UUID in JWT:', validUUID);
+            setError('Authentication failed: Invalid user ID in token');
+            return;
+          }
+
+          normalizedUser = {
+            uuid: validUUID,
+            id: validUUID,
+            name: decoded.name || 'User',
+            email: decoded.email,
+            picture: decoded.picture || null,
+            profileCompleted: decoded.profileCompleted || false
+          };
+          console.log('✅ [OAuthSuccess] Using JWT user data');
+        }
+
+        console.log('✅ [OAuthSuccess] Saving to localStorage - user:', normalizedUser.email);
+        localStorage.setItem("token", token);
+        localStorage.setItem("authToken", token);
+        localStorage.setItem("user", JSON.stringify(normalizedUser));
+        localStorage.setItem("authProvider", decoded.provider || "google");
+
+        // Verify storage was successful
+        const storedToken = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+        console.log('✅ [OAuthSuccess] Verification after save:');
+        console.log('   - token saved:', !!storedToken);
+        console.log('   - user saved:', !!storedUser);
+
+        if (!storedToken || !storedUser) {
+          throw new Error('Failed to save authentication data to localStorage');
+        }
+
+        // Add a small delay to ensure localStorage is fully synced before redirect
+        console.log('✅ [OAuthSuccess] All data saved successfully - redirecting to /chat in 500ms');
+        setTimeout(() => {
+          console.log('✅ [OAuthSuccess] NOW REDIRECTING to /chat');
+          window.location.href = '/chat';
+        }, 500);
       } catch (err) {
-        console.error("❌ OAuth Success Error:", err);
+        console.error("❌ [OAuthSuccess] Error:", err.message);
         setError(err.message || "An error occurred during authentication");
-      } finally {
-        setLoading(false);
       }
     };
 
     handleAuthSuccess();
-  }, [searchParams, navigate, setAuthToken]);
+  }, [searchParams]);
 
   if (error) {
     return (

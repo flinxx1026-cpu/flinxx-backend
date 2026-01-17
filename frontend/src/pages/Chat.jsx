@@ -566,26 +566,6 @@ const Chat = () => {
   const navigate = useNavigate();
   const authContext = useContext(AuthContext);
   
-  // ✅ CHECK AUTH - Redirect to login if not authenticated
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token') || localStorage.getItem('authToken');
-    const storedUser = localStorage.getItem('user');
-    
-    console.log('🔐 [Chat] Checking authentication on load:');
-    console.log('🔐 [Chat]   - token:', !!storedToken);
-    console.log('🔐 [Chat]   - user:', !!storedUser);
-    console.log('🔐 [Chat]   - authContext.isLoading:', authContext?.isLoading);
-    console.log('🔐 [Chat]   - authContext.user:', authContext?.user?.email);
-    
-    // If no token/user and authContext finished loading, redirect to login
-    if (!storedToken || !storedUser) {
-      if (authContext?.isLoading === false) {
-        console.log('🔐 [Chat] ❌ No auth found - redirecting to /login');
-        navigate('/login', { replace: true });
-      }
-    }
-  }, [authContext?.isLoading, navigate]);
-  
   // ✅ UPDATE LAST SEEN - MUST BE FIRST - Call immediately on mount
   useEffect(() => {
     const userToken = localStorage.getItem("token") || localStorage.getItem("authToken");
@@ -623,9 +603,8 @@ const Chat = () => {
   const { activeMode, setActiveMode, handleModeChange, openDuoSquad } = useDuoSquad();
 
   // ✅ ALL HOOKS FIRST - BEFORE ANY LOGIC OR RETURNS
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useContext(AuthContext) || {};
+  const { user, isLoading: authLoading } = useContext(AuthContext) || {};
 
   // CRITICAL: Terms acceptance state
   const [showTermsModal, setShowTermsModal] = useState(false);
@@ -692,12 +671,12 @@ const Chat = () => {
 
   // 🔥 FIX 4: AUTH VALIDATION - Redirect if not authenticated
   useEffect(() => {
-    if (isLoading) return
+    if (authLoading) return
     if (!user) {
-      console.log('🔐 No user in context - redirecting to login')
-      navigate('/')
+      console.log('🔐 No user in context - redirecting to home')
+      navigate('/', { replace: true })
     }
-  }, [user, isLoading, navigate])
+  }, [user, authLoading, navigate])
 
   // ✅ CAMERA INIT - MOVE THIS TO FIRST useEffect SO IT RUNS IMMEDIATELY
   // NOTE: Auth validation moved AFTER all hooks to comply with Rules of Hooks

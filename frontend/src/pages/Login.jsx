@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { jwtDecode } from 'jwt-decode'
+import { getRedirectResult } from 'firebase/auth'
+import { auth } from '../config/firebase'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 import googleIcon from '../assets/google-icon.svg'
 import { signInWithGoogle, signInWithFacebook } from '../config/firebase'
@@ -29,24 +31,18 @@ const acceptTerms = () => {
 }
 
 // Custom Google Login Button Component
-const GoogleCustomButton = ({ isSigningIn, onShowTermsModal }) => {
+const GoogleCustomButton = ({ isSigningIn, onShowTermsModal, onGoogleLogin }) => {
   const handleGoogleClick = () => {
     console.log('🔐 Google login clicked - checking terms acceptance')
     
     // Check if terms are already accepted
     if (isTermsAccepted()) {
       console.log('✅ Terms already accepted - proceeding with Google login')
-      triggerGoogleLogin()
+      onGoogleLogin()
     } else {
       console.log('⚠️ Terms not accepted - showing modal first')
       onShowTermsModal('google')
     }
-  }
-
-  const triggerGoogleLogin = () => {
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
-    console.log('🔗 Redirecting to Google OAuth:', `${BACKEND_URL}/auth/google`)
-    window.location.href = `${BACKEND_URL}/auth/google`
   }
 
   return (
@@ -68,8 +64,27 @@ const Login = () => {
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [pendingLoginProvider, setPendingLoginProvider] = useState(null)
 
-  // ✅ OAuth redirect is now handled by /oauth-success page
-  // No need for checkRedirectResult() here
+  // ✅ Check for redirect login result when page loads
+  // This handles cases where Firebase redirect login happened
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log("✅ Redirect login success:", result.user.email);
+          console.log("🔐 Firebase user authenticated, navigating to /chat");
+          // Firebase persistence will handle auth state, just navigate
+          navigate('/chat', { replace: true });
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Redirect login error:", error.code, error.message);
+        // Only show error if it's not a popup/redirect dismissal
+        if (error.code !== 'auth/popup-closed-by-user' && 
+            error.code !== 'auth/cancelled-popup-request') {
+          setError(`Authentication error: ${error.message}`);
+        }
+      });
+  }, [navigate]);
 
   // Handle showing terms modal before login
   const handleShowTermsModal = (provider) => {
@@ -98,15 +113,23 @@ const Login = () => {
     // Trigger the pending login provider
     if (pendingLoginProvider === 'google') {
       console.log('🔐 Proceeding with Google login after terms acceptance')
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
-      window.location.href = `${BACKEND_URL}/auth/google`
+      setIsSigningIn(true)
+      try {
+        await signInWithGoogle()
+      } catch (err) {
+        console.error('❌ Google login error:', err)
+        setError('Google login failed. Please try again.')
+        setIsSigningIn(false)
+      }
     } else if (pendingLoginProvider === 'facebook') {
       console.log('🔐 Proceeding with Facebook login after terms acceptance')
+      setIsSigningIn(true)
       try {
         await signInWithFacebook()
       } catch (err) {
         console.error('❌ Facebook login error:', err)
         setError('Facebook login failed. Please try again.')
+        setIsSigningIn(false)
       }
     }
     
@@ -291,13 +314,19 @@ const Login = () => {
       <div className="w-full space-y-4 mb-11">
         {/* Google Login Button */}
         <button
-          onClick={() => {
+          type="button"
+          onClick={async () => {
             console.log('🔐 Google login clicked - checking terms acceptance')
             if (isTermsAccepted()) {
               console.log('✅ Terms already accepted - proceeding with Google login')
-              const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
-              console.log('🔗 Redirecting to Google OAuth:', `${BACKEND_URL}/auth/google`)
-              window.location.href = `${BACKEND_URL}/auth/google`
+              setIsSigningIn(true)
+              try {
+                await signInWithGoogle()
+              } catch (err) {
+                console.error('❌ Google login error:', err?.message || err)
+                setError(err?.message || 'Google login failed. Please try again.')
+                setIsSigningIn(false)
+              }
             } else {
               console.log('⚠️ Terms not accepted - showing modal first')
               handleShowTermsModal('google')
@@ -319,13 +348,19 @@ const Login = () => {
 
         {/* Facebook Login Button */}
         <button
-          onClick={() => {
+          type="button"
+          onClick={async () => {
             console.log('🔐 Facebook login clicked - checking terms acceptance')
             if (isTermsAccepted()) {
               console.log('✅ Terms already accepted - proceeding with Facebook login')
-              const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
-              console.log('🔗 Redirecting to Facebook OAuth:', `${BACKEND_URL}/auth/facebook`)
-              window.location.href = `${BACKEND_URL}/auth/facebook`
+              setIsSigningIn(true)
+              try {
+                await signInWithFacebook()
+              } catch (err) {
+                console.error('❌ Facebook login error:', err?.message || err)
+                setError(err?.message || 'Facebook login failed. Please try again.')
+                setIsSigningIn(false)
+              }
             } else {
               console.log('⚠️ Terms not accepted - showing modal first')
               handleShowTermsModal('facebook')

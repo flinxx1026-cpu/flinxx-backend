@@ -61,7 +61,7 @@ function LayoutContent() {
           <Route path="/auth-success" element={<AuthSuccess />} />
           <Route path="/oauth-handler" element={<OAuthHandler />} />
           <Route path="/oauth-success" element={<OAuthSuccess />} />
-          <Route path="/chat" element={<Chat />} />
+          <Route path="/chat" element={<ProtectedChatRoute><Chat /></ProtectedChatRoute>} />
           <Route path="/matching" element={<Matching />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />

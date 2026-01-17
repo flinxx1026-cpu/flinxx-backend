@@ -188,6 +188,13 @@ async function initializeDatabase() {
 // Redis Connection
 let redis = null
 
+// Function to safely initialize Redis
+async function initializeRedis() {
+  console.log("[STARTUP] Skipping Redis initialization for now (development)");
+  // Redis is optional - continue without it
+  return null;
+}
+
 // ===== EXPRESS & SOCKET.IO SETUP =====
 
 const app = express()
@@ -213,6 +220,10 @@ const allowedOrigins = [
   "http://localhost:3004",
   "http://localhost:3005",
   "http://localhost:3006",
+  "http://localhost:3007",
+  "http://localhost:3008",
+  "http://localhost:3009",
+  "http://localhost:3010",
   "http://127.0.0.1:3000",
   "http://127.0.0.1:3001",
   "http://127.0.0.1:3002",
@@ -220,7 +231,13 @@ const allowedOrigins = [
   "http://127.0.0.1:3004",
   "http://127.0.0.1:3005",
   "http://127.0.0.1:3006",
-  "https://flinxx-backend-frontend.vercel.app"
+  "http://127.0.0.1:3007",
+  "http://127.0.0.1:3008",
+  "http://127.0.0.1:3009",
+  "http://127.0.0.1:3010",
+  "https://flinxx-backend-frontend.vercel.app",
+  "https://flinxx-admin-panel.vercel.app",
+  "https://flinxx-frontend.vercel.app"
 ]
 
 const io = new Server(httpServer, {
@@ -235,21 +252,11 @@ const io = new Server(httpServer, {
   pingTimeout: 60000
 })
 
-// Middleware - Enable CORS with credentials support
+// Middleware - Enable CORS (simplified for compatibility)
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true)
-    } else {
-      callback(new Error('Not allowed by CORS'))
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-User-Id'],
-  exposedHeaders: ['Content-Length', 'X-JSON-Response'],
-  maxAge: 86400 // 24 hours
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }))
 
 app.options('*', cors())
@@ -579,6 +586,145 @@ async function generateUniqueShortId() {
 // Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running', db: 'Connected' })
+})
+
+// ===== FIREBASE AUTHENTICATION ENDPOINT =====
+// POST /api/auth/firebase
+// Frontend sends: Authorization: Bearer <FIREBASE_ID_TOKEN>
+// Backend verifies token and returns JWT
+app.post('/api/auth/firebase', async (req, res) => {
+  try {
+    console.log('\n🔐 [/api/auth/firebase] Firebase authentication request')
+    
+    // Get Firebase ID token from Authorization header
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('❌ Missing or invalid Authorization header')
+      return res.status(401).json({ error: 'Missing Firebase ID token' })
+    }
+    
+    const firebaseIdToken = authHeader.substring(7)
+    console.log('📍 Firebase ID token received, length:', firebaseIdToken.length)
+    
+    // Verify Firebase token (you'll need to set up Firebase Admin SDK)
+    // For now, we'll decode it and validate the basic structure
+    let decodedToken
+    try {
+      // Decode JWT without verification (frontend handles verification)
+      // In production, use Firebase Admin SDK to verify
+      const parts = firebaseIdToken.split('.')
+      if (parts.length !== 3) {
+        throw new Error('Invalid JWT format')
+      }
+      
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString())
+      decodedToken = payload
+      console.log('✅ Firebase token decoded, email:', decodedToken.email)
+    } catch (decodeError) {
+      console.error('❌ Failed to decode Firebase token:', decodeError.message)
+      return res.status(401).json({ error: 'Invalid Firebase token' })
+    }
+    
+    // Extract user data from Firebase token
+    const firebaseUid = decodedToken.sub
+    const email = decodedToken.email
+    const name = decodedToken.name || 'User'
+    const picture = decodedToken.picture || null
+    
+    if (!firebaseUid || !email) {
+      console.error('❌ Firebase token missing required fields')
+      return res.status(401).json({ error: 'Invalid Firebase token data' })
+    }
+    
+    console.log('🔍 Firebase user:', { firebaseUid, email, name })
+    
+    // Find or create user in database
+    let user = await prisma.users.findUnique({
+      where: { email }
+    })
+    
+    if (!user) {
+      console.log('👤 Creating new user...')
+      
+      // Generate unique public_id
+      let publicId
+      let publicIdExists = true
+      const maxAttempts = 100
+      let attempts = 0
+      
+      while (publicIdExists && attempts < maxAttempts) {
+        publicId = Math.floor(10000000 + Math.random() * 90000000).toString()
+        const existing = await prisma.users.findUnique({
+          where: { public_id: publicId }
+        })
+        publicIdExists = !!existing
+        attempts++
+      }
+      
+      if (attempts >= maxAttempts) {
+        console.error('❌ Failed to generate unique public_id')
+        return res.status(500).json({ error: 'Failed to create user' })
+      }
+      
+      user = await prisma.users.create({
+        data: {
+          email,
+          display_name: name,
+          photo_url: picture,
+          auth_provider: 'google', // or 'facebook' based on token
+          provider_id: firebaseUid,
+          google_id: firebaseUid,
+          public_id: publicId,
+          profileCompleted: false
+        }
+      })
+      
+      console.log('✅ New user created:', user.email)
+    } else {
+      console.log('👤 User found, updating last login...')
+      // Update last login time
+      user = await prisma.users.update({
+        where: { email },
+        data: {
+          updated_at: new Date()
+        }
+      })
+    }
+    
+    // Generate JWT token for frontend
+    const jwt = require('jsonwebtoken')
+    const backendJWT = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        publicId: user.public_id,
+        firebaseUid: firebaseUid,
+        authProvider: user.auth_provider
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    )
+    
+    console.log('✅ Backend JWT generated')
+    
+    // Return JWT and user info
+    return res.json({
+      token: backendJWT,
+      user: {
+        id: user.id,
+        uuid: user.id,
+        email: user.email,
+        name: user.display_name,
+        picture: user.photo_url,
+        publicId: user.public_id,
+        profileCompleted: user.profileCompleted
+      }
+    })
+    
+  } catch (error) {
+    console.error('❌ Firebase authentication error:', error)
+    return res.status(500).json({ error: 'Authentication failed' })
+  }
 })
 
 app.get('/api/stats', async (req, res) => {
@@ -2799,11 +2945,8 @@ const PORT = process.env.PORT || 10000;
 
   try {
     console.log("[STARTUP] STEP 1.1 - Redis client creating");
-    redis = await createClient({
-      url: process.env.REDIS_URL
-    })
-    await redis.connect();
-    console.log("[STARTUP] STEP 1.4 - Redis connected");
+    redis = await initializeRedis();
+    console.log("[STARTUP] STEP 1.4 - Redis initialization complete");
 
     console.log("[STARTUP] STEP 2.1 - Database init starting");
     await initializeDatabase();

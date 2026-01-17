@@ -20,48 +20,34 @@ const Auth = () => {
   }, [user, authLoading, navigate])
 
   const handleGoogleLogin = async () => {
-    // Redirect to backend OAuth instead of Firebase
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
-    console.log('🔗 Redirecting to Google OAuth:', `${BACKEND_URL}/auth/google`)
-    window.location.href = `${BACKEND_URL}/auth/google`
+    setIsLoading(true)
+    setAuthMethod('google')
+    setError(null)
+    
+    try {
+      console.log('📱 Starting Google login...')
+      await signInWithGoogle()
+      console.log('✅ Google login successful, AuthContext will handle redirect')
+    } catch (error) {
+      console.error('❌ Google login failed:', error?.message || error)
+      setError(error?.message || 'Google login failed. Please try again.')
+      setIsLoading(false)
+      setAuthMethod(null)
+    }
   }
 
   const handleFacebookLogin = async () => {
     setIsLoading(true)
     setAuthMethod('facebook')
     setError(null)
-    // ⚠️ DO NOT set authPending here - Firebase popup must complete without interference
-    // Firebase will handle window.closed() check internally
     
     try {
-      console.log('📱 Starting Facebook login popup...')
-      const userInfo = await signInWithFacebook()
-      console.log('✅ Facebook login successful:', userInfo)
-      
-      // Navigate after successful login
-      navigate('/chat')
+      console.log('📱 Starting Facebook login...')
+      await signInWithFacebook()
+      console.log('✅ Facebook login successful, AuthContext will handle redirect')
     } catch (error) {
-      console.error('❌ Facebook login failed:', error)
-      
-      let errorMessage = 'Facebook login failed. Please try again.'
-      
-      if (error.code === 'auth/popup-blocked') {
-        errorMessage = 'Login popup was blocked. Please allow popups and try again.'
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        errorMessage = 'Login was cancelled. Please try again.'
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        errorMessage = 'Login was cancelled. Please try again.'
-      } else if (error.code === 'auth/account-exists-with-different-credential') {
-        errorMessage = 'An account already exists with this email. Try a different sign-in method.'
-      } else if (error.code === 'auth/operation-not-allowed') {
-        errorMessage = 'Facebook login is not available at this time.'
-      } else if (error.code === 'auth/unauthorized-domain') {
-        errorMessage = 'This domain is not authorized for Facebook login.'
-      } else if (error.message && error.message.includes('popup')) {
-        errorMessage = 'Login popup issue. Please check your browser settings and try again.'
-      }
-      
-      setError(errorMessage)
+      console.error('❌ Facebook login failed:', error?.message || error)
+      setError(error?.message || 'Facebook login failed. Please try again.')
       setIsLoading(false)
       setAuthMethod(null)
     }
@@ -98,6 +84,7 @@ const Auth = () => {
             <h1 className="text-2xl font-bold text-white">Flinxx</h1>
           </div>
           <button
+            type="button"
             onClick={() => navigate('/')}
             className="text-white font-semibold hover:text-white/80 transition"
           >

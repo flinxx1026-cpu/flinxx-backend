@@ -161,45 +161,19 @@ export const AuthProvider = ({ children }) => {
           }
         }
         
-        console.error('🔴 🔴 🔴 [AuthContext] STARTING 500MS WAIT FOR OAUTH-SUCCESS 🔴 🔴 🔴');
-        console.error('🔴 [AuthContext] Waiting 500ms for oauth-success to finish localStorage writes...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Check localStorage AGAIN after the wait
-        const storedToken2 = localStorage.getItem('token')
-        const storedUser2 = localStorage.getItem('user')
-        
-        console.error('🔴 [AuthContext] STEP 2: After 500ms wait, checking localStorage again');
-        console.error('🔴 [AuthContext]   - token:', storedToken2 ? '✓ Found' : '✗ Not found')
-        console.error('🔴 [AuthContext]   - user:', storedUser2 ? '✓ Found' : '✗ Not found')
-        
-        if (storedToken2 && storedUser2) {
-          try {
-            console.error('\n🔴 [AuthContext] ✅ DELAYED PATH: Token and user found after 500ms wait!');
-            const user = JSON.parse(storedUser2);
-            console.error('🔴 [AuthContext]   Parsed user:', user.email)
-            
-            if (user.uuid && typeof user.uuid === 'string' && user.uuid.length === 36) {
-              console.error('🔴 [AuthContext] ✅ Valid UUID found:', user.uuid.substring(0, 8) + '...');
-              setUser(user)
-              setIsAuthenticated(true)
-              setIsLoading(false)
-              console.error('🔴 [AuthContext] ═══════════════════════════════════════════')
-              console.error('🔴 [AuthContext] ✅✅✅ USER AUTHENTICATED - DELAYED PATH COMPLETE ✅✅✅');
-              console.error('🔴 [AuthContext] ═══════════════════════════════════════════\n')
-              return
-            }
-          } catch (err) {
-            console.error('🔴 [AuthContext] Error in delayed path:', err)
-          }
-        }
-        
-        console.log('\n🔵 [AuthContext] No stored token/user, checking Firebase...');
+
         
         // Check Firebase authentication state
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
           console.log('\n🔵 [AuthContext] Firebase onAuthStateChanged fired');
           console.log('🔵 [AuthContext]   - firebaseUser:', firebaseUser ? firebaseUser.email : 'null');
+          
+          // ✅ SAFETY GUARD: Don't process immediately if loading
+          // Firebase needs time to restore user from persistence
+          if (isLoading) {
+            console.log('🔵 [AuthContext] ⏳ Still loading - waiting before processing Firebase user');
+            return;
+          }
           
           if (firebaseUser) {
             // User is logged in via Firebase (Google or Facebook)

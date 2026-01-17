@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
 import { getAnalytics } from 'firebase/analytics'
 
@@ -29,6 +29,16 @@ if (typeof window !== 'undefined') {
 
 // Initialize Firebase Authentication
 export const auth = getAuth(app)
+
+// ✅ SET FIREBASE PERSISTENCE - MOST IMPORTANT!
+// This ensures user stays logged in after page reload
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log("✅ Firebase persistence set to LOCAL - user will stay logged in after reload");
+  })
+  .catch((err) => {
+    console.error("❌ Firebase persistence error:", err);
+  });
 
 // Initialize Firestore Database
 export const db = getFirestore(app)
@@ -103,124 +113,94 @@ export const signInWithGoogle = async () => {
 const handleLoginSuccess = async (user, provider) => {
   console.log(`📝 Processing ${provider} login for user:`, user.email)
   
-  // Extract user data - format depends on provider
-  let facebookId = null
-  if (provider === 'facebook' && user.providerData[0]?.uid) {
-    facebookId = user.providerData[0].uid
+  // 🔥 STEP 1: Get Firebase ID token
+  let firebaseIdToken = null
+  try {
+    firebaseIdToken = await user.getIdToken()
+    console.log('✅ Firebase ID token obtained')
+  } catch (tokenError) {
+    console.error('❌ Failed to get Firebase ID token:', tokenError)
+    throw new Error('Could not get Firebase ID token')
   }
   
-  const userInfo = {
+  // 🔥 STEP 2: Send Firebase ID token to backend to get JWT
+  console.log('📡 Sending Firebase ID token to backend...')
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+  
+  let backendJWT = null
+  let userInfo = null
+  
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/auth/firebase`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${firebaseIdToken}`
+      }
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Backend auth failed: ${response.status} - ${errorText}`)
+    }
+    
+    const authResponse = await response.json()
+    console.log('✅ Backend authentication successful')
+    
+    backendJWT = authResponse.token
+    userInfo = authResponse.user
+    
+    if (!backendJWT) {
+      throw new Error('No JWT token returned from backend')
+    }
+    
+    console.log('🔐 Backend JWT obtained, user:', userInfo?.email)
+  } catch (authError) {
+    console.error('❌ Failed to authenticate with backend:', authError)
+    throw authError
+  }
+  
+  // 🔥 STEP 3: Save backend JWT to localStorage
+  console.log('💾 Saving backend JWT to localStorage...')
+  localStorage.setItem('token', backendJWT)
+  localStorage.setItem('authToken', backendJWT)
+  localStorage.setItem('idToken', firebaseIdToken)
+  console.log('✅ JWT and Firebase ID token saved')
+  
+  // 🔥 STEP 4: Save user info to localStorage
+  const userToStore = {
     uid: user.uid,
     email: user.email,
     name: user.displayName || 'User',
     picture: user.photoURL || null,
     authProvider: provider,
-    googleId: provider === 'google' ? user.providerData[0]?.uid : null,
-    facebookId: provider === 'facebook' ? facebookId : null,
-    createdAt: new Date().toISOString(),
-    lastLogin: new Date().toISOString()
-  }
-  
-  console.log('✅ User info extracted:', { 
-    email: userInfo.email, 
-    name: userInfo.name, 
-    authProvider: userInfo.authProvider 
-  })
-  
-  // Get Firebase ID token for Socket.IO authentication
-  try {
-    const idToken = await user.getIdToken()
-    localStorage.setItem('idToken', idToken)
-    console.log('🔐 Firebase ID token stored for Socket.IO')
-  } catch (tokenError) {
-    console.error('❌ Failed to get Firebase ID token:', tokenError)
-  }
-  
-  // ===== SAVE USER TO BACKEND DATABASE (Neon PostgreSQL) =====
-  try {
-    const API_URL = import.meta.env.VITE_API_URL || 'https://flinxx-admin-backend.onrender.com'
-    const response = await fetch(`${API_URL}/api/users/save`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',  // ✅ Send cookies with request
-      body: JSON.stringify({
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName || 'User',
-        photoURL: user.photoURL || null,
-        authProvider: provider
-      })
+    ...(userInfo && {
+      uuid: userInfo.uuid,
+      id: userInfo.id,
+      profileCompleted: userInfo.profileCompleted
     })
-
-    if (!response.ok) {
-      throw new Error(`Failed to save user: ${response.status}`)
-    }
-
-    const dbResponse = await response.json()
-    console.log('✅ User saved to Neon PostgreSQL:', dbResponse.user)
-    
-    // CRITICAL: Update userInfo with profile completion status from database
-    if (dbResponse.user) {
-      userInfo.profileCompleted = dbResponse.user.profileCompleted
-      userInfo.isProfileCompleted = dbResponse.user.profileCompleted
-      userInfo.id = dbResponse.user.id
-      userInfo.uuid = dbResponse.user.uuid
-      console.log('[FIREBASE] 🎯 Updated userInfo with profileCompleted:', dbResponse.user.profileCompleted)
-    }
-    
-    // Store the database user ID
-    localStorage.setItem('dbUserId', dbResponse.user.id)
-  } catch (dbError) {
-    console.error('⚠️ Error saving user to backend database:', dbError)
   }
   
-  // Save user details to Firestore
+  localStorage.setItem('user', JSON.stringify(userToStore))
+  localStorage.setItem('authProvider', provider)
+  localStorage.setItem('userInfo', JSON.stringify(userToStore))
+  console.log('✅ User info saved to localStorage')
+  
+  // 🔥 STEP 5: Save to Firestore (optional)
   try {
     await setDoc(doc(db, 'users', user.uid), {
       email: user.email,
       displayName: user.displayName,
       photoURL: user.photoURL,
       authProvider: provider,
-      createdAt: new Date().toISOString(),
       lastLogin: new Date().toISOString()
     }, { merge: true })
     console.log('✅ User saved to Firestore')
   } catch (firestoreError) {
-    console.error('⚠️ Error saving user to Firestore:', firestoreError)
+    console.warn('⚠️ Firestore save failed (non-critical):', firestoreError)
   }
   
-  // Store in localStorage in the same format as Google login
-  console.log('\n🟠 [firebase] handleLoginSuccess storing to localStorage');
-  console.log('🟠 [firebase]   - userInfo.profileCompleted =', userInfo.profileCompleted);
-  console.log('🟠 [firebase]   - userInfo.isProfileCompleted =', userInfo.isProfileCompleted);
-  
-  const userToStore = {
-    id: userInfo.id,
-    uuid: userInfo.uuid,
-    uid: userInfo.uid,
-    name: user.displayName,
-    email: user.email,
-    picture: user.photoURL,
-    googleId: provider === 'google' ? user.providerData[0]?.uid : null,
-    facebookId: provider === 'facebook' ? facebookId : null,
-    profileCompleted: userInfo.profileCompleted || false,
-    isProfileCompleted: userInfo.profileCompleted || false,
-    authProvider: provider
-  };
-  
-  console.log('🟠 [firebase] userToStore object:', userToStore);
-  localStorage.setItem('user', JSON.stringify(userToStore))
-  localStorage.setItem('authProvider', provider)
-  localStorage.setItem('userInfo', JSON.stringify(userInfo))
-  
-  console.log('🟠 [firebase] ✅ Stored to localStorage, verifying...');
-  const verifyStored = JSON.parse(localStorage.getItem('user'));
-  console.log('🟠 [firebase]   - Verified profileCompleted:', verifyStored.profileCompleted);
-  console.log('🟠 [firebase] ✅ User data stored in localStorage with profileCompleted:', userInfo.profileCompleted || false)
-  
-  return userInfo
+  return userToStore
 }
 
 // Facebook Sign-In function - try popup first, fallback to redirect
