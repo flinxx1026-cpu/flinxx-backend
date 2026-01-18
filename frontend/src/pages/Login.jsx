@@ -169,7 +169,7 @@ const Login = () => {
       console.log('   - GoogleID:', googleUser.googleId)
       
       // Save user to backend database
-      const API_URL = import.meta.env.VITE_API_URL || 'https://flinxx-admin-backend.onrender.com'
+      const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://13.203.157.116:5000'
       console.log(`🔗 Saving user to backend at: ${API_URL}`)
       
       let userDataToStore = googleUser;
