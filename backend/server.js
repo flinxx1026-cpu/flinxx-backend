@@ -19,6 +19,9 @@ dotenv.config()
 console.log('📍 Backend initialization starting...')
 console.log('📍 NODE_ENV:', process.env.NODE_ENV || 'not set')
 console.log('📍 PORT will be:', process.env.PORT || 10000)
+console.log('📍 GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? '✓ SET' : '✗ NOT SET')
+console.log('📍 GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? '✓ SET' : '✗ NOT SET')
+console.log('📍 GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL || '✗ NOT SET')
 
 let prisma
 try {
@@ -1827,13 +1830,28 @@ app.get('/api/friends/requests', authMiddleware, async (req, res) => {
 // Step 1: Redirect to Google OAuth consent screen
 app.get('/auth/google', (req, res) => {
   try {
+    // Validate all required env vars
+    const clientId = process.env.GOOGLE_CLIENT_ID
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
     const redirectUri = process.env.GOOGLE_CALLBACK_URL
+    
+    console.log(`🔗 [/auth/google] GOOGLE_CLIENT_ID exists:`, !!clientId)
+    console.log(`🔗 [/auth/google] GOOGLE_CLIENT_SECRET exists:`, !!clientSecret)
+    console.log(`🔗 [/auth/google] GOOGLE_CALLBACK_URL exists:`, !!redirectUri)
+    
+    if (!clientId) {
+      throw new Error('GOOGLE_CLIENT_ID environment variable is not set')
+    }
+    if (!clientSecret) {
+      throw new Error('GOOGLE_CLIENT_SECRET environment variable is not set')
+    }
     if (!redirectUri) {
       throw new Error('GOOGLE_CALLBACK_URL environment variable is not set')
     }
-    console.log(`🔗 Google OAuth initiated with redirect_uri: ${redirectUri}`)
+    
+    console.log(`🔗 [/auth/google] Google OAuth initiated with redirect_uri: ${redirectUri}`)
     const params = new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'openid profile email',
@@ -1842,11 +1860,12 @@ app.get('/auth/google', (req, res) => {
     })
     
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
-    console.log(`🔗 Redirecting to Google consent screen`)
+    console.log(`🔗 [/auth/google] Redirecting to Google consent screen`)
     res.redirect(authUrl)
   } catch (error) {
-    console.error('❌ Error in /auth/google:', error)
-    res.status(500).json({ error: 'Failed to initiate Google login' })
+    console.error('❌ [/auth/google] Error:', error.message)
+    console.error('❌ [/auth/google] Full error:', error)
+    res.status(500).json({ error: 'Failed to initiate Google login', details: error.message })
   }
 })
 // Step 2: Handle Google OAuth callback
