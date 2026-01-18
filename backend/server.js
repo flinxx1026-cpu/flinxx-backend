@@ -13,6 +13,7 @@ import friendsRoutes from './routes/friends.js'
 import notificationsRoutes, { setPool as setNotificationsPool } from './routes/notifications.js'
 import messagesRoutes from './routes/messages.js'
 import matchesRoutes, { setMatchesPool } from './routes/matches.js'
+import { initializeFirebaseAdmin, verifyFirebaseToken } from './firebaseAdmin.js'
 
 dotenv.config()
 
@@ -22,6 +23,10 @@ console.log('📍 PORT will be:', process.env.PORT || 10000)
 console.log('📍 GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? '✓ SET' : '✗ NOT SET')
 console.log('📍 GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? '✓ SET' : '✗ NOT SET')
 console.log('📍 GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL || '✗ NOT SET')
+
+// 🔥 Initialize Firebase Admin SDK
+console.log('🔥 Initializing Firebase Admin SDK...')
+initializeFirebaseAdmin()
 
 let prisma
 try {
@@ -598,7 +603,7 @@ app.get('/api/health', (req, res) => {
 // ===== FIREBASE AUTHENTICATION ENDPOINT =====
 // POST /api/auth/firebase
 // Frontend sends: Authorization: Bearer <FIREBASE_ID_TOKEN>
-// Backend verifies token and returns JWT
+// Backend verifies token using Firebase Admin SDK and returns JWT
 app.post('/api/auth/firebase', async (req, res) => {
   try {
     console.log('\n🔐 [/api/auth/firebase] Firebase authentication request')
@@ -613,27 +618,17 @@ app.post('/api/auth/firebase', async (req, res) => {
     const firebaseIdToken = authHeader.substring(7)
     console.log('📍 Firebase ID token received, length:', firebaseIdToken.length)
     
-    // Verify Firebase token (you'll need to set up Firebase Admin SDK)
-    // For now, we'll decode it and validate the basic structure
-    let decodedToken
-    try {
-      // Decode JWT without verification (frontend handles verification)
-      // In production, use Firebase Admin SDK to verify
-      const parts = firebaseIdToken.split('.')
-      if (parts.length !== 3) {
-        throw new Error('Invalid JWT format')
-      }
-      
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString())
-      decodedToken = payload
-      console.log('✅ Firebase token decoded, email:', decodedToken.email)
-    } catch (decodeError) {
-      console.error('❌ Failed to decode Firebase token:', decodeError.message)
-      return res.status(401).json({ error: 'Invalid Firebase token' })
+    // 🔥 VERIFY Firebase token using Firebase Admin SDK
+    console.log('🔥 Verifying Firebase token with Admin SDK...')
+    const decodedToken = await verifyFirebaseToken(firebaseIdToken)
+    
+    if (!decodedToken) {
+      console.error('❌ Firebase token verification failed')
+      return res.status(401).json({ error: 'Invalid or expired Firebase token' })
     }
     
-    // Extract user data from Firebase token
-    const firebaseUid = decodedToken.sub
+    // Extract user data from verified Firebase token
+    const firebaseUid = decodedToken.uid
     const email = decodedToken.email
     const name = decodedToken.name || 'User'
     const picture = decodedToken.picture || null
@@ -643,6 +638,7 @@ app.post('/api/auth/firebase', async (req, res) => {
       return res.status(401).json({ error: 'Invalid Firebase token data' })
     }
     
+    console.log('✅ Firebase token verified successfully')
     console.log('🔍 Firebase user:', { firebaseUid, email, name })
     
     // Find or create user in database
@@ -678,7 +674,7 @@ app.post('/api/auth/firebase', async (req, res) => {
           email,
           display_name: name,
           photo_url: picture,
-          auth_provider: 'google', // or 'facebook' based on token
+          auth_provider: 'google',
           provider_id: firebaseUid,
           google_id: firebaseUid,
           public_id: publicId,
@@ -712,10 +708,11 @@ app.post('/api/auth/firebase', async (req, res) => {
       { expiresIn: '7d' }
     )
     
-    console.log('✅ Backend JWT generated')
+    console.log('✅ Backend JWT generated successfully')
     
     // Return JWT and user info
     return res.json({
+      success: true,
       token: backendJWT,
       user: {
         id: user.id,
@@ -730,7 +727,8 @@ app.post('/api/auth/firebase', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Firebase authentication error:', error)
-    return res.status(500).json({ error: 'Authentication failed' })
+    console.error('📍 Error details:', error.message)
+    return res.status(500).json({ error: 'Authentication failed', details: error.message })
   }
 })
 
