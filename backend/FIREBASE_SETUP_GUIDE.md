@@ -45,13 +45,14 @@ You **MUST** do this on EC2 to make it work:
 
 ```bash
 # On your local machine
-scp -i your-key.pem firebase-service-account.json ec2-user@13.203.157.116:/home/ec2-user/flinxx-backend/
+# For ec2-user
+scp -i your-key.pem firebase-service-account.json ec2-user@13.203.157.116:/home/ec2-user/flinxx-backend/backend/
 
-# Or if using ubuntu user
-scp -i your-key.pem firebase-service-account.json ubuntu@13.203.157.116:/home/ubuntu/flinxx-backend/
+# OR if using ubuntu user
+scp -i your-key.pem firebase-service-account.json ubuntu@13.203.157.116:/home/ubuntu/flinxx-backend/backend/
 ```
 
-**The file MUST be at:** `/path/to/flinxx-backend/firebase-service-account.json`
+**The file MUST be at:** `/home/ec2-user/flinxx-backend/backend/firebase-service-account.json` (or `/home/ubuntu/...`)
 
 ### Step 3: Install Dependencies
 

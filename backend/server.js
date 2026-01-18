@@ -7,6 +7,7 @@ import dotenv from 'dotenv'
 import pg from 'pg'
 import { createClient } from 'redis'
 import fetch from 'node-fetch'
+import jwt from 'jsonwebtoken'
 import { PrismaClient } from '@prisma/client'
 import { authMiddleware } from './middleware/auth.js'
 import friendsRoutes from './routes/friends.js'
@@ -300,7 +301,6 @@ const verifyUserToken = async (req, res, next) => {
     let decoded;
     try {
       // Try JWT verification first
-      const jwt = require('jsonwebtoken');
       decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log("🔐 [verifyUserToken] ✓ JWT VERIFIED SUCCESSFULLY");
       console.log("DECODED TOKEN:", decoded);
@@ -695,7 +695,6 @@ app.post('/api/auth/firebase', async (req, res) => {
     }
     
     // Generate JWT token for frontend
-    const jwt = require('jsonwebtoken')
     const backendJWT = jwt.sign(
       {
         userId: user.id,
@@ -1971,7 +1970,6 @@ app.get('/auth/google/callback', async (req, res) => {
     }
     
     // Create a proper JWT token (NOT base64)
-    const jwt = require('jsonwebtoken');
     const token = jwt.sign({
       id: user.id,
       userId: user.id,
@@ -2037,7 +2035,6 @@ app.get('/auth-success', async (req, res) => {
     console.log(`🔐 [AUTH-SUCCESS] Verifying JWT token: ${token.substring(0, 10)}...`)
     let decoded;
     try {
-      const jwt = require('jsonwebtoken');
       decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log(`✅ [AUTH-SUCCESS] JWT verified for user: ${decoded.email}`)
       console.log(`   - User ID: ${decoded.id}`)
@@ -2107,7 +2104,6 @@ app.get('/auth/google/success', (req, res) => {
     }
     
     // Verify JWT token
-    const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('✅ JWT decoded:', decoded.email)
     
@@ -2254,7 +2250,6 @@ app.get('/auth/facebook/callback', async (req, res) => {
     }
     
     // Create a proper JWT token (NOT base64)
-    const jwt = require('jsonwebtoken');
     const token = jwt.sign({
       id: user.id,
       userId: user.id,
@@ -2319,7 +2314,6 @@ app.get('/api/profile', async (req, res) => {
     console.log('[PROFILE API] Token received, verifying as JWT...')
     
     // Verify JWT token (not base64)
-    const jwt = require('jsonwebtoken')
     let decoded
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET)
