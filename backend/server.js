@@ -1423,9 +1423,9 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
 // Get Google OAuth tokens
 const getGoogleTokens = async (code) => {
   try {
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI
+    const redirectUri = process.env.GOOGLE_CALLBACK_URL
     if (!redirectUri) {
-      throw new Error('GOOGLE_REDIRECT_URI environment variable is not set')
+      throw new Error('GOOGLE_CALLBACK_URL environment variable is not set')
     }
     console.log(`🔐 Exchanging code with redirect_uri: ${redirectUri}`)
     const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -1823,9 +1823,9 @@ app.get('/api/friends/requests', authMiddleware, async (req, res) => {
 // Step 1: Redirect to Google OAuth consent screen
 app.get('/auth/google', (req, res) => {
   try {
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI
+    const redirectUri = process.env.GOOGLE_CALLBACK_URL
     if (!redirectUri) {
-      throw new Error('GOOGLE_REDIRECT_URI environment variable is not set')
+      throw new Error('GOOGLE_CALLBACK_URL environment variable is not set')
     }
     console.log(`🔗 Google OAuth initiated with redirect_uri: ${redirectUri}`)
     const params = new URLSearchParams({
