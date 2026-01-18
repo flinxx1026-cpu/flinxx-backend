@@ -27,7 +27,12 @@ const Auth = () => {
     try {
       console.log('📱 Starting Google login...')
       await signInWithGoogle()
-      console.log('✅ Google login successful, AuthContext will handle redirect')
+      console.log('✅ Google login successful')
+      // Wait a moment for AuthContext to process the login
+      setTimeout(() => {
+        console.log('📍 Navigating to /chat...')
+        navigate('/chat', { replace: true })
+      }, 500)
     } catch (error) {
       console.error('❌ Google login failed:', error?.message || error)
       setError(error?.message || 'Google login failed. Please try again.')
@@ -44,7 +49,12 @@ const Auth = () => {
     try {
       console.log('📱 Starting Facebook login...')
       await signInWithFacebook()
-      console.log('✅ Facebook login successful, AuthContext will handle redirect')
+      console.log('✅ Facebook login successful')
+      // Wait a moment for AuthContext to process the login
+      setTimeout(() => {
+        console.log('📍 Navigating to /chat...')
+        navigate('/chat', { replace: true })
+      }, 500)
     } catch (error) {
       console.error('❌ Facebook login failed:', error?.message || error)
       setError(error?.message || 'Facebook login failed. Please try again.')
