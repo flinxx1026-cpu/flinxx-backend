@@ -254,9 +254,13 @@ const io = new Server(httpServer, {
 
 // Middleware - Enable CORS (simplified for compatibility)
 app.use(cors({
-  origin: "*",
+  origin: [
+    "http://flinxx-frontend-aws.s3-website.ap-south-1.amazonaws.com",
+    "https://flinxx-frontend-aws.s3-website.ap-south-1.amazonaws.com"
+  ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
 }))
 
 app.options('*', cors())
