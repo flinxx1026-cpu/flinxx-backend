@@ -250,11 +250,9 @@ const Login = () => {
       console.log('   - user:', localStorage.getItem('user') ? '✓ FOUND' : '✗ MISSING');
       console.log('   - authProvider:', localStorage.getItem('authProvider'));
       
-      // Redirect to chat after a brief delay
-      setTimeout(() => {
-        setIsSigningIn(false)
-        navigate('/chat', { replace: true })
-      }, 1000)
+      // ✅ FORCE REDIRECT TO CHAT
+      console.log('🚀 [LOGIN] Redirecting to /chat...');
+      navigate('/chat', { replace: true })
     } catch (err) {
       console.error('❌ Google login error:', err)
       setError(`Google login failed: ${err.message}`)

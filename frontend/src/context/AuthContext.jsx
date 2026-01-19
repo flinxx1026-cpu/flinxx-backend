@@ -279,11 +279,11 @@ export const AuthProvider = ({ children }) => {
               const storedUser = localStorage.getItem('user')
               
               if (storedToken && storedUser) {
-                console.log('🔵 [AuthContext] 🔐 Skipping logout – local session exists')
+                console.log('🔵 [AuthContext] 🔐 User has local session, NOT logging out')
                 try {
                   const user = JSON.parse(storedUser)
                   if (user.uuid && user.uuid.length === 36) {
-                    console.log('🔵 [AuthContext] ✅ RESTORING USER FROM LOCALSTORAGE after Firebase check:',user.email)
+                    console.log('🔵 [AuthContext] ✅ RESTORING USER FROM LOCALSTORAGE:',user.email)
                     setUser(user)
                     setIsAuthenticated(true)
                   }
@@ -291,7 +291,7 @@ export const AuthProvider = ({ children }) => {
                   console.error('🔵 [AuthContext] Failed to parse stored user:', e)
                 }
               } else {
-                console.log('🔵 [AuthContext] ❌ No authentication found, user will be redirected to login')
+                console.log('🔵 [AuthContext] ❌ No authentication found, user logged out')
                 setUser(null)
                 setIsAuthenticated(false)
               }
