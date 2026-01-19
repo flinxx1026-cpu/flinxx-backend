@@ -253,7 +253,7 @@ const Login = () => {
       // Redirect to chat after a brief delay
       setTimeout(() => {
         setIsSigningIn(false)
-        navigate('/chat')
+        navigate('/chat', { replace: true })
       }, 1000)
     } catch (err) {
       console.error('❌ Google login error:', err)

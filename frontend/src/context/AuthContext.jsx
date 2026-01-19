@@ -71,7 +71,8 @@ export const AuthProvider = ({ children }) => {
         // Then after redirect to /chat, this will initialize with the saved data
         if (window.location.pathname === '/oauth-success') {
           console.log('🔵 [AuthContext] Skipping auth initialization - on /oauth-success page');
-          // Keep loading=true so nothing tries to use auth state yet
+          // ✅ CRITICAL: Still need to set loading to false
+          setIsLoading(false);
           return;
         }
         
