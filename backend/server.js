@@ -367,6 +367,12 @@ const verifyUserToken = async (req, res, next) => {
 };
 
 // ===== MOUNT ROUTES =====
+
+// Health check for ALB
+app.get("/", (req, res) => {
+  res.status(200).send("OK");
+});
+
 app.use('/api/friends', friendsRoutes)
 setNotificationsPool(pool)
 setMatchesPool(pool)
