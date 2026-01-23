@@ -125,7 +125,7 @@ const handleLoginSuccess = async (user, provider) => {
   
   // 🔥 STEP 2: Send Firebase ID token to backend to get JWT
   console.log('📡 Sending Firebase ID token to backend...')
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
   
   let backendJWT = null
   let userInfo = null
