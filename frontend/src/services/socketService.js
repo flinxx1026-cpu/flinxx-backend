@@ -1,6 +1,6 @@
 import io from 'socket.io-client'
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_BACKEND_URL || 'http://13.203.157.116:5000'
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
 
 console.log('🔌 Socket.IO connecting to:', SOCKET_URL)
 

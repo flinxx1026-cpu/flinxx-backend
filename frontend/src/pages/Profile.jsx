@@ -51,7 +51,7 @@ const Profile = () => {
           return
         }
 
-        const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://13.203.157.116:5000'
+        const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
         console.log(`📋 Profile Component - Fetching from: ${API_URL}/api/user/profile?email=${user.email}`)
 
         const response = await fetch(`${API_URL}/api/user/profile?email=${encodeURIComponent(user.email)}`, {

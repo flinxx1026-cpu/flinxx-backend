@@ -19,7 +19,7 @@ export default defineConfig({
   server: {
     port: 3003,
     proxy: {
-      '/api': 'http://13.203.157.116:5000'
+      '/api': process.env.VITE_BACKEND_URL || 'http://localhost:5000'
     },
     headers: {
       'Cross-Origin-Opener-Policy': 'unsafe-none',
