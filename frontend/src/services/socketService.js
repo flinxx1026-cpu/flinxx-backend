@@ -9,19 +9,15 @@ const socket = io(SOCKET_URL, {
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
   reconnectionAttempts: 10,
-  transports: ['websocket', 'polling'],
-  secure: false,
+  transports: ['websocket'],
+  secure: true,
   rejectUnauthorized: false,
   forceNew: false,
   withCredentials: true,
-  upgrade: true,
+  upgrade: false,
   rememberUpgrade: false,
   multiplex: true,
-  timeout: 60000,
-  extraHeaders: {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Credentials': 'true'
-  }
+  timeout: 60000
 })
 
 socket.on('connect', () => {
