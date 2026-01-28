@@ -262,18 +262,23 @@ const io = new Server(httpServer, {
   pingTimeout: 60000
 })
 
-// Middleware - Enable CORS (simplified for compatibility)
+// Middleware - Enable CORS (MUST include Authorization for Firebase auth)
 app.use(cors({
-  origin: [
-    "http://flinxx-frontend-aws.s3-website.ap-south-1.amazonaws.com",
-    "https://flinxx-frontend-aws.s3-website.ap-south-1.amazonaws.com"
-  ],
+  origin: allowedOrigins,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+  allowedHeaders: ["Content-Type", "Authorization", "X-User-Id"],
+  credentials: true,
+  optionsSuccessStatus: 200
 }))
 
-app.options('*', cors())
+// CRITICAL: Handle preflight requests (OPTIONS) for all routes
+app.options('*', cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-User-Id"],
+  credentials: true,
+  optionsSuccessStatus: 200
+}))
 
 app.use(express.json())
 
