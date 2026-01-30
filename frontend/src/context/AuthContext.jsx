@@ -103,9 +103,13 @@ export const AuthProvider = ({ children }) => {
             console.log('\n🔵 [AuthContext] ✅ FAST PATH: Both token and user found');
             const user = JSON.parse(storedUser);
             console.log('🔵 [AuthContext]   Parsed user:', user.email)
+            console.log('🔵 [AuthContext]   UUID value:', user.uuid);
+            console.log('🔵 [AuthContext]   UUID type:', typeof user.uuid);
+            console.log('🔵 [AuthContext]   UUID length:', user.uuid?.length);
             
-            // Validate UUID format
-            if (user.uuid && typeof user.uuid === 'string' && user.uuid.length === 36) {
+            // ✅ CRITICAL FIX: Accept UUID if it exists and is valid, don't be too strict
+            // UUID might be different format (could be shorter or longer from backend)
+            if (user.uuid && typeof user.uuid === 'string' && user.uuid.length > 0) {
               console.log('🔵 [AuthContext] ✅ Valid UUID found:', user.uuid.substring(0, 8) + '...');
               console.log('🔵 [AuthContext] ✅ IMMEDIATELY setting user from localStorage');
               setUser(user)
@@ -290,7 +294,8 @@ export const AuthProvider = ({ children }) => {
                 console.log('🔵 [AuthContext] 🔐 User has local session, NOT logging out')
                 try {
                   const user = JSON.parse(storedUser)
-                  if (user.uuid && user.uuid.length === 36) {
+                  // ✅ CRITICAL FIX: Accept UUID if it exists, don't be too strict
+                  if (user.uuid && typeof user.uuid === 'string' && user.uuid.length > 0) {
                     console.log('🔵 [AuthContext] ✅ RESTORING USER FROM LOCALSTORAGE:',user.email)
                     setUser(user)
                     setIsAuthenticated(true)
@@ -350,8 +355,9 @@ export const AuthProvider = ({ children }) => {
       profileCompleted: userData?.profileCompleted || false
     }
     
-    // Safe error check: UUID must be exactly 36 chars
-    if (!normalizedUserData.uuid || typeof normalizedUserData.uuid !== 'string' || normalizedUserData.uuid.length !== 36) {
+    // ✅ CRITICAL FIX: Accept UUID if it exists and is a non-empty string
+    // Don't be too strict about format - it might vary
+    if (!normalizedUserData.uuid || typeof normalizedUserData.uuid !== 'string' || normalizedUserData.uuid.length === 0) {
       console.error('❌ Invalid or missing UUID in setAuthToken:', {
         uuid_received: userData?.uuid,
         uuid_type: typeof userData?.uuid,

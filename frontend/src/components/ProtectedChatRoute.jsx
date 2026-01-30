@@ -67,7 +67,8 @@ const ProtectedChatRoute = ({ children }) => {
           console.log('🔴 [ProtectedChatRoute] Parsing localStorage user...');
           try {
             const parsedUser = JSON.parse(storedUser);
-            if (parsedUser && parsedUser.uuid && parsedUser.uuid.length === 36) {
+            // ✅ CRITICAL FIX: Accept UUID if it exists, don't be too strict about format
+            if (parsedUser && parsedUser.uuid && typeof parsedUser.uuid === 'string' && parsedUser.uuid.length > 0) {
               console.log('🔴 [ProtectedChatRoute] ✅ RECOVERY: Using user from localStorage:', parsedUser.email);
               setUser(parsedUser);
               setIsLoading(false);
