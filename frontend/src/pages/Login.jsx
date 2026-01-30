@@ -80,8 +80,8 @@ const Login = () => {
           console.log("🚀 [useEffect] Redirecting to /chat after redirect auth");
           // Wait a moment for auth state to propagate
           setTimeout(() => {
-            navigate('/chat', { replace: true });
-          }, 500);
+            window.location.href = '/chat';
+          }, 800);
           return;
         }
         
@@ -94,7 +94,9 @@ const Login = () => {
           if (token && user) {
             console.log('✅ [useEffect] Token and user in localStorage - redirecting to /chat')
             sessionStorage.removeItem('pendingRedirectAfterAuth')
-            navigate('/chat', { replace: true })
+            setTimeout(() => {
+              window.location.href = '/chat'
+            }, 800)
             return
           }
         }
@@ -319,7 +321,9 @@ const Login = () => {
       
       // ✅ FORCE REDIRECT TO CHAT
       console.log('🚀 [LOGIN] Redirecting to /chat...');
-      navigate('/chat', { replace: true })
+      setTimeout(() => {
+        window.location.href = '/chat'
+      }, 800)
     } catch (err) {
       console.error('❌ Google login error:', err)
       setError(`Google login failed: ${err.message}`)
