@@ -669,25 +669,8 @@ const Chat = () => {
   // 🧪 DEBUG TEST - Check if both "RENDER START" and "HOOKS DONE" appear in console
   console.log("HOOKS DONE");
 
-  // 🔥 FIX 4: AUTH VALIDATION - Redirect if not authenticated
-  useEffect(() => {
-    if (authLoading) return
-    if (!user) {
-      // Check localStorage as fallback before redirecting to login
-      const storedToken = localStorage.getItem('token')
-      const storedUser = localStorage.getItem('user')
-      
-      if (!storedToken && !storedUser) {
-        console.log('🔐 No user in context or localStorage - redirecting to login')
-        navigate('/login', { replace: true })
-      } else {
-        console.log('🔐 User not in context yet but found in localStorage - waiting for context to populate')
-      }
-    }
-  }, [user, authLoading, navigate])
-
   // ✅ CAMERA INIT - MOVE THIS TO FIRST useEffect SO IT RUNS IMMEDIATELY
-  // NOTE: Auth validation moved AFTER all hooks to comply with Rules of Hooks
+  // NOTE: Auth validation is handled by ProtectedChatRoute - NO NEED to duplicate here
   useEffect(() => {
     let isMounted = true;
     
