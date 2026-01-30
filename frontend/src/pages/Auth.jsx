@@ -1,16 +1,23 @@
-﻿import { useState, useContext } from 'react'
+﻿import { useState, useContext, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { signInWithGoogle, signInWithFacebook } from '../config/firebase'
 import { AuthContext } from '../context/AuthContext'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 
 const Auth = () => {
+  const navigate = useNavigate()
   const { user, isLoading: authLoading } = useContext(AuthContext)
   const [isLoading, setIsLoading] = useState(false)
   const [authMethod, setAuthMethod] = useState(null)
   const [error, setError] = useState(null)
 
-  // ✅ REMOVED: Redirect logic moved to AuthContext
-  // Auth.jsx should NOT redirect - AuthContext is the single source of truth
+  // ✅ Redirect to /chat if user is already authenticated
+  useEffect(() => {
+    if (user && !authLoading) {
+      console.log('✅ User already authenticated, redirecting to /chat')
+      navigate('/chat', { replace: true })
+    }
+  }, [user, authLoading, navigate])
 
   const handleGoogleLogin = async () => {
     setIsLoading(true)
@@ -21,7 +28,11 @@ const Auth = () => {
       console.log('📱 Starting Google login...')
       await signInWithGoogle()
       console.log('✅ Google login successful')
-      console.log('✅ Token + user saved - AuthContext will handle redirect')
+      // Wait a moment for AuthContext to process the login
+      setTimeout(() => {
+        console.log('📍 Navigating to /chat...')
+        navigate('/chat', { replace: true })
+      }, 500)
     } catch (error) {
       console.error('❌ Google login failed:', error?.message || error)
       setError(error?.message || 'Google login failed. Please try again.')
@@ -39,7 +50,11 @@ const Auth = () => {
       console.log('📱 Starting Facebook login...')
       await signInWithFacebook()
       console.log('✅ Facebook login successful')
-      console.log('✅ Token + user saved - AuthContext will handle redirect')
+      // Wait a moment for AuthContext to process the login
+      setTimeout(() => {
+        console.log('📍 Navigating to /chat...')
+        navigate('/chat', { replace: true })
+      }, 500)
     } catch (error) {
       console.error('❌ Facebook login failed:', error?.message || error)
       setError(error?.message || 'Facebook login failed. Please try again.')
