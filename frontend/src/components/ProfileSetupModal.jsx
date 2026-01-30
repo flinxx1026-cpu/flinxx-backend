@@ -117,8 +117,12 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
     if (onProfileComplete && updatedUserData) {
       onProfileComplete(updatedUserData)
     }
-    // Redirect to chat home screen after accepting community standards
-    navigate('/chat?view=home')
+    // ✅ CRITICAL: Reload the page to ensure AuthContext reads the updated user data from localStorage
+    // This ensures profileCompleted is properly reflected when ProtectedChatRoute checks it
+    console.log('✅ Profile completed - reloading page to sync AuthContext');
+    setTimeout(() => {
+      window.location.href = '/chat?view=home'
+    }, 300);
   }
 
   if (!isOpen && !showCommunityStandards || !user) {
