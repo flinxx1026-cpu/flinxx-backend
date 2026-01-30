@@ -145,17 +145,39 @@ const Login = () => {
       try {
         const result = await signInWithGoogle()
         console.log('✅ Google login returned result:', result?.email)
-        if (result) {
-          console.log('🚀 [Terms Modal] Result received - Redirecting to /chat...')
+        
+        // ✅ CRITICAL: Check localStorage even if result is null (might be redirect flow)
+        const storedToken = localStorage.getItem('token')
+        const storedUser = localStorage.getItem('user')
+        console.log('🔍 [Terms Modal] Checking localStorage after login:')
+        console.log('   - token:', !!storedToken)
+        console.log('   - user:', !!storedUser)
+        
+        if (result || (storedToken && storedUser)) {
+          console.log('🚀 [Terms Modal] Result received or data in storage - Redirecting to /chat...')
           // Small delay to ensure localStorage is fully synced
           setTimeout(() => {
+            console.log('🚀 [Terms Modal] NOW REDIRECTING to /chat')
             navigate('/chat', { replace: true })
           }, 500)
         } else {
-          console.log('🔄 [Terms Modal] Using redirect flow - will redirect after page reloads')
+          console.log('🔄 [Terms Modal] No result and no localStorage data - Using redirect flow')
+          // Will redirect after page reloads
         }
       } catch (err) {
         console.error('❌ Google login error:', err)
+        
+        // ✅ RECOVERY: Even on error, check if data was saved to localStorage
+        const storedToken = localStorage.getItem('token')
+        const storedUser = localStorage.getItem('user')
+        if (storedToken && storedUser) {
+          console.log('⚠️ Error occurred but data is in localStorage - still redirecting')
+          setTimeout(() => {
+            navigate('/chat', { replace: true })
+          }, 500)
+          return
+        }
+        
         setError('Google login failed. Please try again.')
         setIsSigningIn(false)
       }
@@ -371,18 +393,39 @@ const Login = () => {
               try {
                 const result = await signInWithGoogle()
                 console.log('✅ Google login returned result:', result?.email)
-                if (result) {
-                  console.log('🚀 [Google Click] Result received - Redirecting to /chat...')
+                
+                // ✅ CRITICAL: Check localStorage even if result is null
+                const storedToken = localStorage.getItem('token')
+                const storedUser = localStorage.getItem('user')
+                console.log('🔍 [Google Click] Checking localStorage after login:')
+                console.log('   - token:', !!storedToken)
+                console.log('   - user:', !!storedUser)
+                
+                if (result || (storedToken && storedUser)) {
+                  console.log('🚀 [Google Click] Result received or data in storage - Redirecting to /chat...')
                   // Small delay to ensure localStorage is fully synced
                   setTimeout(() => {
+                    console.log('🚀 [Google Click] NOW REDIRECTING to /chat')
                     navigate('/chat', { replace: true })
                   }, 500)
                 } else {
-                  console.log('🔄 [Google Click] Using redirect flow - will redirect after page reloads')
+                  console.log('🔄 [Google Click] No result and no localStorage data - Using redirect flow')
                   // Redirect flow - page will reload and redirect after auth
                 }
               } catch (err) {
                 console.error('❌ Google login error:', err?.message || err)
+                
+                // ✅ RECOVERY: Even on error, check if data was saved
+                const storedToken = localStorage.getItem('token')
+                const storedUser = localStorage.getItem('user')
+                if (storedToken && storedUser) {
+                  console.log('⚠️ Error occurred but data is in localStorage - still redirecting')
+                  setTimeout(() => {
+                    navigate('/chat', { replace: true })
+                  }, 500)
+                  return
+                }
+                
                 setError(err?.message || 'Google login failed. Please try again.')
                 setIsSigningIn(false)
               }
