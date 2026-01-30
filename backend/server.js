@@ -209,13 +209,7 @@ async function initializeRedis() {
 const app = express()
 const httpServer = createServer(app)
 
-// SET COOP/COEP headers FIRST - before everything else
-app.use((req, res, next) => {
-  res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none')
-  res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none')
-  res.removeHeader('Cross-Origin-Resource-Policy')
-  next()
-})
+// ===== SECURITY HEADERS & CORS CONFIGURATION =====
 
 // Get the frontend URL from environment or default to localhost:3000
 const FRONTEND_URL = process.env.CLIENT_URL || 'http://localhost:3000'
@@ -247,38 +241,58 @@ const allowedOrigins = [
   "https://flinxx-backend-frontend.vercel.app",
   "https://flinxx-admin-panel.vercel.app",
   "https://flinxx-frontend.vercel.app",
-  "https://flinxx.in"
+  "https://flinxx.in",
+  "https://www.flinxx.in",
+  "https://d1pphanrf0qsx7.cloudfront.net"
 ]
 
+// CORS Configuration
+const corsOptions = {
+  origin: allowedOrigins,
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-User-Id", "Accept"],
+  credentials: true,
+  optionsSuccessStatus: 200,
+  maxAge: 86400
+}
+
+// Security Headers Middleware
+app.use((req, res, next) => {
+  // CORS headers
+  const origin = req.headers.origin
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, Accept')
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    res.setHeader('Access-Control-Max-Age', '86400')
+  }
+  
+  // Security Headers (COOP/COEP for SharedArrayBuffer support)
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp')
+  
+  // Additional security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN')
+  res.setHeader('X-XSS-Protection', '1; mode=block')
+  
+  next()
+})
+
+// Socket.IO Configuration with CORS
 const io = new Server(httpServer, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "X-User-Id"]
-  },
+  cors: corsOptions,
   transports: ['websocket', 'polling'],
   pingInterval: 25000,
   pingTimeout: 60000
 })
 
-// Middleware - Enable CORS (MUST include Authorization for Firebase auth)
-app.use(cors({
-  origin: allowedOrigins,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-User-Id"],
-  credentials: true,
-  optionsSuccessStatus: 200
-}))
+// Middleware - Enable CORS for all routes
+app.use(cors(corsOptions))
 
 // CRITICAL: Handle preflight requests (OPTIONS) for all routes
-app.options('*', cors({
-  origin: allowedOrigins,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-User-Id"],
-  credentials: true,
-  optionsSuccessStatus: 200
-}))
+app.options('*', cors(corsOptions))
 
 app.use(express.json())
 
@@ -606,6 +620,53 @@ async function generateUniqueShortId() {
 
   return shortId
 }
+
+// ===== ROUTES =====
+
+// Handle preflight requests for all routes (explicit handler)
+app.options('*', (req, res) => {
+  const origin = req.headers.origin
+  const allowedOriginsList = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://localhost:3003",
+    "http://localhost:3004",
+    "http://localhost:3005",
+    "http://localhost:3006",
+    "http://localhost:3007",
+    "http://localhost:3008",
+    "http://localhost:3009",
+    "http://localhost:3010",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:3002",
+    "http://127.0.0.1:3003",
+    "http://127.0.0.1:3004",
+    "http://127.0.0.1:3005",
+    "http://127.0.0.1:3006",
+    "http://127.0.0.1:3007",
+    "http://127.0.0.1:3008",
+    "http://127.0.0.1:3009",
+    "http://127.0.0.1:3010",
+    "https://flinxx-backend-frontend.vercel.app",
+    "https://flinxx-admin-panel.vercel.app",
+    "https://flinxx-frontend.vercel.app",
+    "https://flinxx.in",
+    "https://www.flinxx.in",
+    "https://d1pphanrf0qsx7.cloudfront.net"
+  ]
+  
+  if (allowedOriginsList.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, Accept')
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    res.setHeader('Access-Control-Max-Age', '86400')
+  }
+  
+  res.sendStatus(200)
+})
 
 // Routes
 app.get('/api/health', (req, res) => {

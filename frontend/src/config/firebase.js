@@ -92,18 +92,24 @@ export const signInWithGoogle = async () => {
       providerName = 'google'
     }
     
-    return handleLoginSuccess(result.user, providerName)
+    const userResult = await handleLoginSuccess(result.user, providerName)
+    console.log('✅ [signInWithGoogle] handleLoginSuccess returned:', userResult?.email)
+    return userResult
   } catch (popupError) {
     console.warn('⚠️ Google popup login failed, trying redirect method:', popupError.code)
     
     try {
       console.log('📱 Starting Google login via redirect...')
       // Fallback to redirect if popup fails
+      // 🔥 CRITICAL: Set a flag to trigger redirect after page reloads
+      sessionStorage.setItem('pendingRedirectAfterAuth', 'true')
+      console.log('🔥 [signInWithGoogle] Set redirect flag - will redirect after auth')
       await signInWithRedirect(auth, googleProvider)
-      // Note: This will redirect, so code after this won't execute immediately
+      // Note: This will redirect/reload, so code after this won't execute immediately
       return null
     } catch (redirectError) {
       console.error('❌ Google login failed:', redirectError)
+      sessionStorage.removeItem('pendingRedirectAfterAuth')
       throw redirectError
     }
   }
@@ -217,18 +223,24 @@ export const signInWithFacebook = async () => {
       providerName = 'facebook'
     }
     
-    return handleLoginSuccess(result.user, providerName)
+    const userResult = await handleLoginSuccess(result.user, providerName)
+    console.log('✅ [signInWithFacebook] handleLoginSuccess returned:', userResult?.email)
+    return userResult
   } catch (popupError) {
     console.warn('⚠️ Facebook popup login failed, trying redirect method:', popupError.code)
     
     try {
       console.log('📱 Starting Facebook login via redirect...')
       // Fallback to redirect if popup fails
+      // 🔥 CRITICAL: Set a flag to trigger redirect after page reloads
+      sessionStorage.setItem('pendingRedirectAfterAuth', 'true')
+      console.log('🔥 [signInWithFacebook] Set redirect flag - will redirect after auth')
       await signInWithRedirect(auth, facebookProvider)
-      // Note: This will redirect, so code after this won't execute immediately
+      // Note: This will redirect/reload, so code after this won't execute immediately
       return null
     } catch (redirectError) {
       console.error('❌ Facebook login failed:', redirectError)
+      sessionStorage.removeItem('pendingRedirectAfterAuth')
       throw redirectError
     }
   }

@@ -67,23 +67,50 @@ const Login = () => {
   // ✅ Check for redirect login result when page loads
   // This handles cases where Firebase redirect login happened
   useEffect(() => {
-    getRedirectResult(auth)
-      .then((result) => {
+    const handlePostAuthRedirect = async () => {
+      try {
+        // 🔥 Check if we have a pending redirect from popup/redirect login
+        const pendingRedirect = sessionStorage.getItem('pendingRedirectAfterAuth')
+        
+        // Try to get redirect result (from Firebase redirect flow)
+        const result = await getRedirectResult(auth)
+        
         if (result?.user) {
-          console.log("✅ Redirect login success:", result.user.email);
-          console.log("🔐 Firebase user authenticated, navigating to /chat");
-          // Firebase persistence will handle auth state, just navigate
-          navigate('/chat', { replace: true });
+          console.log("✅ [useEffect] Redirect login success:", result.user.email);
+          console.log("🚀 [useEffect] Redirecting to /chat after redirect auth");
+          // Wait a moment for auth state to propagate
+          setTimeout(() => {
+            navigate('/chat', { replace: true });
+          }, 500);
+          return;
         }
-      })
-      .catch((error) => {
-        console.error("❌ Redirect login error:", error.code, error.message);
+        
+        // 🔥 If we have pending redirect flag but no result yet, check localStorage
+        if (pendingRedirect === 'true') {
+          console.log('🔥 [useEffect] Pending redirect flag found')
+          const token = localStorage.getItem('token')
+          const user = localStorage.getItem('user')
+          
+          if (token && user) {
+            console.log('✅ [useEffect] Token and user in localStorage - redirecting to /chat')
+            sessionStorage.removeItem('pendingRedirectAfterAuth')
+            navigate('/chat', { replace: true })
+            return
+          }
+        }
+        
+      } catch (error) {
+        console.error("❌ [useEffect] Redirect login error:", error.code, error.message);
+        sessionStorage.removeItem('pendingRedirectAfterAuth')
         // Only show error if it's not a popup/redirect dismissal
         if (error.code !== 'auth/popup-closed-by-user' && 
             error.code !== 'auth/cancelled-popup-request') {
           setError(`Authentication error: ${error.message}`);
         }
-      });
+      }
+    }
+    
+    handlePostAuthRedirect()
   }, [navigate]);
 
   // Handle showing terms modal before login
@@ -117,13 +144,15 @@ const Login = () => {
       setError(null)
       try {
         const result = await signInWithGoogle()
-        console.log('✅ Google login successful, result:', result)
+        console.log('✅ Google login returned result:', result?.email)
         if (result) {
-          console.log('🚀 Redirecting to /chat...')
+          console.log('🚀 [Terms Modal] Result received - Redirecting to /chat...')
           // Small delay to ensure localStorage is fully synced
           setTimeout(() => {
             navigate('/chat', { replace: true })
-          }, 300)
+          }, 500)
+        } else {
+          console.log('🔄 [Terms Modal] Using redirect flow - will redirect after page reloads')
         }
       } catch (err) {
         console.error('❌ Google login error:', err)
@@ -136,13 +165,15 @@ const Login = () => {
       setError(null)
       try {
         const result = await signInWithFacebook()
-        console.log('✅ Facebook login successful, result:', result)
+        console.log('✅ Facebook login returned result:', result?.email)
         if (result) {
-          console.log('🚀 Redirecting to /chat...')
+          console.log('🚀 [Terms Modal] Result received - Redirecting to /chat...')
           // Small delay to ensure localStorage is fully synced
           setTimeout(() => {
             navigate('/chat', { replace: true })
-          }, 300)
+          }, 500)
+        } else {
+          console.log('🔄 [Terms Modal] Using redirect flow - will redirect after page reloads')
         }
       } catch (err) {
         console.error('❌ Facebook login error:', err)
@@ -339,13 +370,16 @@ const Login = () => {
               setError(null)
               try {
                 const result = await signInWithGoogle()
-                console.log('✅ Google login successful, result:', result)
+                console.log('✅ Google login returned result:', result?.email)
                 if (result) {
-                  console.log('🚀 Redirecting to /chat...')
+                  console.log('🚀 [Google Click] Result received - Redirecting to /chat...')
                   // Small delay to ensure localStorage is fully synced
                   setTimeout(() => {
                     navigate('/chat', { replace: true })
-                  }, 300)
+                  }, 500)
+                } else {
+                  console.log('🔄 [Google Click] Using redirect flow - will redirect after page reloads')
+                  // Redirect flow - page will reload and redirect after auth
                 }
               } catch (err) {
                 console.error('❌ Google login error:', err?.message || err)
@@ -382,13 +416,16 @@ const Login = () => {
               setError(null)
               try {
                 const result = await signInWithFacebook()
-                console.log('✅ Facebook login successful, result:', result)
+                console.log('✅ Facebook login returned result:', result?.email)
                 if (result) {
-                  console.log('🚀 Redirecting to /chat...')
+                  console.log('🚀 [Facebook Click] Result received - Redirecting to /chat...')
                   // Small delay to ensure localStorage is fully synced
                   setTimeout(() => {
                     navigate('/chat', { replace: true })
-                  }, 300)
+                  }, 500)
+                } else {
+                  console.log('🔄 [Facebook Click] Using redirect flow - will redirect after page reloads')
+                  // Redirect flow - page will reload and redirect after auth
                 }
               } catch (err) {
                 console.error('❌ Facebook login error:', err?.message || err)

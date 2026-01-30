@@ -66,6 +66,14 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        // 🔥 CHECK FOR PENDING REDIRECT AFTER AUTH
+        const pendingRedirect = sessionStorage.getItem('pendingRedirectAfterAuth')
+        if (pendingRedirect === 'true') {
+          console.log('🔥 [AuthContext] PENDING REDIRECT detected - checking if user is loaded')
+          sessionStorage.removeItem('pendingRedirectAfterAuth')
+          // Will redirect after user loads below
+        }
+        
         // ✅ CRITICAL: Skip initialization while on oauth-success page
         // oauth-success will handle saving token/user to localStorage
         // Then after redirect to /chat, this will initialize with the saved data
