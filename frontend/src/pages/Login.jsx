@@ -268,7 +268,7 @@ const Login = () => {
         console.log('✅ User saved to backend:', dbResponse.user)
         
         // CRITICAL: Create CLEAN user object with ONLY needed fields
-        if (dbResponse.user) {
+        if (dbResponse.user && dbResponse.user.uuid) {
           userDataToStore = {
             uuid: dbResponse.user.uuid,
             name: dbResponse.user.name || googleUser.name || 'User',
@@ -281,12 +281,42 @@ const Login = () => {
             profileCompleted: userDataToStore.profileCompleted,
             uuid: userDataToStore.uuid.substring(0, 8) + '...'
           })
+        } else {
+          // Fallback if backend doesn't return user object with uuid
+          console.warn('[LOGIN] ⚠️ Backend response missing user object or uuid')
+          userDataToStore = {
+            uuid: decoded.sub || decoded.id || decoded.email,  // Fallback to Google ID
+            name: googleUser.name || 'User',
+            email: googleUser.email,
+            picture: googleUser.picture,
+            profileCompleted: false,
+            token: googleUser.token
+          }
         }
       } catch (dbError) {
         console.error('⚠️ Error saving user to backend:', dbError)
-        // Continue anyway - data is in localStorage
-        console.log('[LOGIN] ⚠️ Using Google JWT data only (profile status unavailable)')
+        // CRITICAL: Use fallback data if backend fails
+        console.log('[LOGIN] ⚠️ Backend failed, using Google JWT data as fallback')
+        userDataToStore = {
+          uuid: decoded.sub || decoded.id || decoded.email,
+          name: googleUser.name || 'User',
+          email: googleUser.email,
+          picture: googleUser.picture,
+          profileCompleted: false,
+          token: googleUser.token
+        }
+        console.log('[LOGIN] ✅ Fallback user data created:', {
+          uuid: userDataToStore.uuid?.substring(0, 8) + '...',
+          email: userDataToStore.email
+        })
       }
+      
+      // ✅ CRITICAL VALIDATION: uuid MUST exist before saving
+      if (!userDataToStore.uuid || typeof userDataToStore.uuid !== 'string' || userDataToStore.uuid.length === 0) {
+        throw new Error('CRITICAL: No valid UUID available - cannot proceed with login')
+      }
+      
+      console.log('[LOGIN] ✅ UUID validation passed:', userDataToStore.uuid.substring(0, 8) + '...')
       
       // Save user profile to localStorage
       console.log('[LOGIN] 🔥 SAVING TOKEN AND USER TO LOCALSTORAGE');
