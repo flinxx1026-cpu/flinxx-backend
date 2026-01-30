@@ -114,8 +114,17 @@ const Login = () => {
     if (pendingLoginProvider === 'google') {
       console.log('🔐 Proceeding with Google login after terms acceptance')
       setIsSigningIn(true)
+      setError(null)
       try {
-        await signInWithGoogle()
+        const result = await signInWithGoogle()
+        console.log('✅ Google login successful, result:', result)
+        if (result) {
+          console.log('🚀 Redirecting to /chat...')
+          // Small delay to ensure localStorage is fully synced
+          setTimeout(() => {
+            navigate('/chat', { replace: true })
+          }, 300)
+        }
       } catch (err) {
         console.error('❌ Google login error:', err)
         setError('Google login failed. Please try again.')
@@ -124,8 +133,17 @@ const Login = () => {
     } else if (pendingLoginProvider === 'facebook') {
       console.log('🔐 Proceeding with Facebook login after terms acceptance')
       setIsSigningIn(true)
+      setError(null)
       try {
-        await signInWithFacebook()
+        const result = await signInWithFacebook()
+        console.log('✅ Facebook login successful, result:', result)
+        if (result) {
+          console.log('🚀 Redirecting to /chat...')
+          // Small delay to ensure localStorage is fully synced
+          setTimeout(() => {
+            navigate('/chat', { replace: true })
+          }, 300)
+        }
       } catch (err) {
         console.error('❌ Facebook login error:', err)
         setError('Facebook login failed. Please try again.')
@@ -318,8 +336,17 @@ const Login = () => {
             if (isTermsAccepted()) {
               console.log('✅ Terms already accepted - proceeding with Google login')
               setIsSigningIn(true)
+              setError(null)
               try {
-                await signInWithGoogle()
+                const result = await signInWithGoogle()
+                console.log('✅ Google login successful, result:', result)
+                if (result) {
+                  console.log('🚀 Redirecting to /chat...')
+                  // Small delay to ensure localStorage is fully synced
+                  setTimeout(() => {
+                    navigate('/chat', { replace: true })
+                  }, 300)
+                }
               } catch (err) {
                 console.error('❌ Google login error:', err?.message || err)
                 setError(err?.message || 'Google login failed. Please try again.')
@@ -352,8 +379,17 @@ const Login = () => {
             if (isTermsAccepted()) {
               console.log('✅ Terms already accepted - proceeding with Facebook login')
               setIsSigningIn(true)
+              setError(null)
               try {
-                await signInWithFacebook()
+                const result = await signInWithFacebook()
+                console.log('✅ Facebook login successful, result:', result)
+                if (result) {
+                  console.log('🚀 Redirecting to /chat...')
+                  // Small delay to ensure localStorage is fully synced
+                  setTimeout(() => {
+                    navigate('/chat', { replace: true })
+                  }, 300)
+                }
               } catch (err) {
                 console.error('❌ Facebook login error:', err?.message || err)
                 setError(err?.message || 'Facebook login failed. Please try again.')
