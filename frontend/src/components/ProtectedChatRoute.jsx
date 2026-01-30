@@ -34,6 +34,33 @@ const ProtectedChatRoute = ({ children }) => {
     console.log('🔴 [ProtectedChatRoute]   - authUser:', authUser ? authUser.email : 'null');
     console.log('🔴 [ProtectedChatRoute]   - authCheckTimeout:', authCheckTimeout);
     
+    // ✅ IMMEDIATE CHECK: Don't wait for AuthContext - check localStorage first
+    console.log('🔴 [ProtectedChatRoute] IMMEDIATE CHECK: Checking localStorage...');
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    const authToken = localStorage.getItem('authToken');
+    
+    if ((storedToken || authToken) && storedUser) {
+      console.log('🔴 [ProtectedChatRoute] ✅ IMMEDIATE: Token and user found in localStorage!');
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser && parsedUser.uuid && typeof parsedUser.uuid === 'string' && parsedUser.uuid.length > 0) {
+          console.log('🔴 [ProtectedChatRoute] ✅ IMMEDIATE RECOVERY: Using localStorage user directly');
+          setUser(parsedUser);
+          
+          const isProfileComplete = parsedUser.profileCompleted === true;
+          if (!isProfileComplete) {
+            setShowProfileSetup(true);
+          }
+          
+          setIsLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.error('🔴 [ProtectedChatRoute] Failed to parse immediate localStorage:', e);
+      }
+    }
+    
     // Set a timeout to fallback to localStorage if AuthContext takes too long
     const timeoutId = setTimeout(() => {
       console.log('🔴 [ProtectedChatRoute] ⏰ AuthContext timeout - checking localStorage fallback');
