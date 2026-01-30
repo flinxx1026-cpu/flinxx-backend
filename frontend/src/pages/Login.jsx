@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { jwtDecode } from 'jwt-decode'
-import { getRedirectResult } from 'firebase/auth'
 import { auth } from '../config/firebase'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 import googleIcon from '../assets/google-icon.svg'
@@ -58,62 +56,13 @@ const GoogleCustomButton = ({ isSigningIn, onShowTermsModal, onGoogleLogin }) =>
 }
 
 const Login = () => {
-  const navigate = useNavigate()
   const [isSigningIn, setIsSigningIn] = useState(false)
   const [error, setError] = useState(null)
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [pendingLoginProvider, setPendingLoginProvider] = useState(null)
 
-  // ✅ Check for redirect login result when page loads
-  // This handles cases where Firebase redirect login happened
-  useEffect(() => {
-    const handlePostAuthRedirect = async () => {
-      try {
-        // 🔥 Check if we have a pending redirect from popup/redirect login
-        const pendingRedirect = sessionStorage.getItem('pendingRedirectAfterAuth')
-        
-        // Try to get redirect result (from Firebase redirect flow)
-        const result = await getRedirectResult(auth)
-        
-        if (result?.user) {
-          console.log("✅ [useEffect] Redirect login success:", result.user.email);
-          console.log("🚀 [useEffect] Redirecting to /chat after redirect auth");
-          // Wait a moment for auth state to propagate
-          setTimeout(() => {
-            window.location.href = '/chat';
-          }, 800);
-          return;
-        }
-        
-        // 🔥 If we have pending redirect flag but no result yet, check localStorage
-        if (pendingRedirect === 'true') {
-          console.log('🔥 [useEffect] Pending redirect flag found')
-          const token = localStorage.getItem('token')
-          const user = localStorage.getItem('user')
-          
-          if (token && user) {
-            console.log('✅ [useEffect] Token and user in localStorage - redirecting to /chat')
-            sessionStorage.removeItem('pendingRedirectAfterAuth')
-            setTimeout(() => {
-              window.location.href = '/chat'
-            }, 800)
-            return
-          }
-        }
-        
-      } catch (error) {
-        console.error("❌ [useEffect] Redirect login error:", error.code, error.message);
-        sessionStorage.removeItem('pendingRedirectAfterAuth')
-        // Only show error if it's not a popup/redirect dismissal
-        if (error.code !== 'auth/popup-closed-by-user' && 
-            error.code !== 'auth/cancelled-popup-request') {
-          setError(`Authentication error: ${error.message}`);
-        }
-      }
-    }
-    
-    handlePostAuthRedirect()
-  }, [navigate]);
+  // ✅ REMOVED: Redirect logic is now in AuthContext only
+  // Login.jsx only handles Firebase login + localStorage save, NOT redirects
 
   // Handle showing terms modal before login
   const handleShowTermsModal = (provider) => {
@@ -147,26 +96,9 @@ const Login = () => {
       try {
         const result = await signInWithGoogle()
         console.log('✅ Google login returned result:', result?.email)
-        
-        // ✅ CRITICAL: Wait a moment then use window.location.href for hard redirect
-        setTimeout(() => {
-          console.log('🚀 [handleTermsContinue] Forcing hard redirect to /chat')
-          window.location.href = '/chat'
-        }, 800)
+        console.log('✅ Token + user saved to localStorage - AuthContext will handle redirect')
       } catch (err) {
         console.error('❌ Google login error:', err)
-        
-        // ✅ RECOVERY: Even on error, check if data was saved to localStorage
-        const storedToken = localStorage.getItem('token')
-        const storedUser = localStorage.getItem('user')
-        if (storedToken && storedUser) {
-          console.log('⚠️ Error occurred but data is in localStorage - forcing redirect')
-          setTimeout(() => {
-            window.location.href = '/chat'
-          }, 800)
-          return
-        }
-        
         setError('Google login failed. Please try again.')
         setIsSigningIn(false)
       }
@@ -177,26 +109,9 @@ const Login = () => {
       try {
         const result = await signInWithFacebook()
         console.log('✅ Facebook login returned result:', result?.email)
-        
-        // ✅ CRITICAL: Wait a moment then use window.location.href for hard redirect
-        setTimeout(() => {
-          console.log('🚀 [handleTermsContinue] Forcing hard redirect to /chat for Facebook')
-          window.location.href = '/chat'
-        }, 800)
+        console.log('✅ Token + user saved to localStorage - AuthContext will handle redirect')
       } catch (err) {
         console.error('❌ Facebook login error:', err)
-        
-        // ✅ RECOVERY: Even on error, check if data was saved
-        const storedToken = localStorage.getItem('token')
-        const storedUser = localStorage.getItem('user')
-        if (storedToken && storedUser) {
-          console.log('⚠️ Facebook error but data in localStorage - forcing redirect')
-          setTimeout(() => {
-            window.location.href = '/chat'
-          }, 800)
-          return
-        }
-        
         setError('Facebook login failed. Please try again.')
         setIsSigningIn(false)
       }
@@ -319,11 +234,8 @@ const Login = () => {
       console.log('   - user:', localStorage.getItem('user') ? '✓ FOUND' : '✗ MISSING');
       console.log('   - authProvider:', localStorage.getItem('authProvider'));
       
-      // ✅ FORCE REDIRECT TO CHAT
-      console.log('🚀 [LOGIN] Redirecting to /chat...');
-      setTimeout(() => {
-        window.location.href = '/chat'
-      }, 800)
+      // ✅ NO REDIRECT - AuthContext will handle this
+      console.log('✅ [LOGIN] Token + user saved - AuthContext will redirect');
     } catch (err) {
       console.error('❌ Google login error:', err)
       setError(`Google login failed: ${err.message}`)
@@ -393,39 +305,10 @@ const Login = () => {
               try {
                 const result = await signInWithGoogle()
                 console.log('✅ Google login returned result:', result?.email)
-                
-                // ✅ CRITICAL: Check localStorage even if result is null
-                const storedToken = localStorage.getItem('token')
-                const storedUser = localStorage.getItem('user')
-                console.log('🔍 [Google Click] Checking localStorage after login:')
-                console.log('   - token:', !!storedToken)
-                console.log('   - user:', !!storedUser)
-                
-                if (result || (storedToken && storedUser)) {
-                  console.log('🚀 [Google Click] Result received or data in storage - Forcing hard redirect to /chat...')
-                  // Use window.location.href for hard redirect (not React Router navigate)
-                  setTimeout(() => {
-                    console.log('🚀 [Google Click] NOW FORCING HARD REDIRECT to /chat')
-                    window.location.href = '/chat'
-                  }, 800)
-                } else {
-                  console.log('🔄 [Google Click] No result and no localStorage data - Using redirect flow')
-                  // Redirect flow - page will reload and redirect after auth
-                }
+                console.log('✅ [Google Click] Login successful - AuthContext will handle redirect')
+                setIsSigningIn(false)
               } catch (err) {
                 console.error('❌ Google login error:', err?.message || err)
-                
-                // ✅ RECOVERY: Even on error, check if data was saved
-                const storedToken = localStorage.getItem('token')
-                const storedUser = localStorage.getItem('user')
-                if (storedToken && storedUser) {
-                  console.log('⚠️ Error occurred but data is in localStorage - forcing hard redirect')
-                  setTimeout(() => {
-                    window.location.href = '/chat'
-                  }, 800)
-                  return
-                }
-                
                 setError(err?.message || 'Google login failed. Please try again.')
                 setIsSigningIn(false)
               }
@@ -460,16 +343,8 @@ const Login = () => {
               try {
                 const result = await signInWithFacebook()
                 console.log('✅ Facebook login returned result:', result?.email)
-                if (result) {
-                  console.log('🚀 [Facebook Click] Result received - Redirecting to /chat...')
-                  // Small delay to ensure localStorage is fully synced
-                  setTimeout(() => {
-                    navigate('/chat', { replace: true })
-                  }, 500)
-                } else {
-                  console.log('🔄 [Facebook Click] Using redirect flow - will redirect after page reloads')
-                  // Redirect flow - page will reload and redirect after auth
-                }
+                console.log('✅ [Facebook Click] Login successful - AuthContext will handle redirect')
+                setIsSigningIn(false)
               } catch (err) {
                 console.error('❌ Facebook login error:', err?.message || err)
                 setError(err?.message || 'Facebook login failed. Please try again.')

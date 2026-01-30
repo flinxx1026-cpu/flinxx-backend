@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../config/firebase'
 import { checkRedirectResult } from '../config/firebase'
@@ -18,6 +19,7 @@ export const useAuth = () => {
 
 // Auth Provider Component
 export const AuthProvider = ({ children }) => {
+  const navigate = useNavigate()
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -62,6 +64,33 @@ export const AuthProvider = ({ children }) => {
       clearInterval(notifInterval);
     };
   }, [isLoading, user?.uuid]);
+
+  // ✅ GLOBAL REDIRECT LOGIC - SINGLE SOURCE OF TRUTH
+  // This is the ONLY place where redirects happen
+  useEffect(() => {
+    // Skip redirect if:
+    // 1. Still loading
+    // 2. Not on a page that needs auth (login, auth pages are exempt)
+    if (isLoading) {
+      console.log('🔄 [AuthContext] Still loading - not redirecting yet')
+      return
+    }
+
+    // Skip redirect if on login/auth pages (they handle their own flow)
+    const currentPath = window.location.pathname
+    if (currentPath === '/login' || currentPath === '/auth' || currentPath === '/oauth-success') {
+      console.log('🔵 [AuthContext] On auth page - skipping redirect:', currentPath)
+      return
+    }
+
+    // If user is authenticated, redirect to /chat
+    if (!isLoading && isAuthenticated && user) {
+      console.log('🚀 [AuthContext REDIRECT] User authenticated - redirecting to /chat')
+      console.log('   - Email:', user.email)
+      console.log('   - UUID:', user.uuid?.substring(0, 8) + '...')
+      navigate('/chat', { replace: true })
+    }
+  }, [isLoading, isAuthenticated, user, navigate]);
 
   useEffect(() => {
     const initializeAuth = async () => {
