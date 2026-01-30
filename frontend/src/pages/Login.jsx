@@ -78,10 +78,10 @@ const Login = () => {
         if (result?.user) {
           console.log("✅ [useEffect] Redirect login success:", result.user.email);
           console.log("🚀 [useEffect] Redirecting to /chat after redirect auth");
-          // Use navigate instead of window.location.href to keep React state alive
+          // Use full page reload to ensure proper initialization
           setTimeout(() => {
-            navigate('/chat', { replace: true });
-          }, 100);
+            window.location.href = '/chat';
+          }, 500);
           return;
         }
         
@@ -95,8 +95,8 @@ const Login = () => {
             console.log('✅ [useEffect] Token and user in localStorage - redirecting to /chat')
             sessionStorage.removeItem('pendingRedirectAfterAuth')
             setTimeout(() => {
-              navigate('/chat', { replace: true })
-            }, 100)
+              window.location.href = '/chat'
+            }, 500)
             return
           }
         }
@@ -148,11 +148,11 @@ const Login = () => {
         const result = await signInWithGoogle()
         console.log('✅ Google login returned result:', result?.email)
         
-        // ✅ CRITICAL: Use navigate instead of window.location.href to keep React state alive
+        // ✅ CRITICAL: Use full page reload for proper initialization
         setTimeout(() => {
           console.log('🚀 [handleTermsContinue] Redirecting to /chat')
-          navigate('/chat', { replace: true })
-        }, 100)
+          window.location.href = '/chat'
+        }, 500)
       } catch (err) {
         console.error('❌ Google login error:', err)
         
@@ -162,8 +162,8 @@ const Login = () => {
         if (storedToken && storedUser) {
           console.log('⚠️ Error occurred but data is in localStorage - redirecting')
           setTimeout(() => {
-            navigate('/chat', { replace: true })
-          }, 100)
+            window.location.href = '/chat'
+          }, 500)
           return
         }
         
@@ -178,11 +178,11 @@ const Login = () => {
         const result = await signInWithFacebook()
         console.log('✅ Facebook login returned result:', result?.email)
         
-        // ✅ CRITICAL: Use navigate instead of window.location.href to keep React state alive
+        // ✅ CRITICAL: Use full page reload for proper initialization
         setTimeout(() => {
           console.log('🚀 [handleTermsContinue] Redirecting to /chat for Facebook')
-          navigate('/chat', { replace: true })
-        }, 100)
+          window.location.href = '/chat'
+        }, 500)
       } catch (err) {
         console.error('❌ Facebook login error:', err)
         
@@ -192,8 +192,8 @@ const Login = () => {
         if (storedToken && storedUser) {
           console.log('⚠️ Facebook error but data in localStorage - redirecting')
           setTimeout(() => {
-            navigate('/chat', { replace: true })
-          }, 100)
+            window.location.href = '/chat'
+          }, 500)
           return
         }
         
@@ -319,12 +319,12 @@ const Login = () => {
       console.log('   - user:', localStorage.getItem('user') ? '✓ FOUND' : '✗ MISSING');
       console.log('   - authProvider:', localStorage.getItem('authProvider'));
       
-      // ✅ REDIRECT TO CHAT using React Router (no page reload)
+      // ✅ REDIRECT TO CHAT - Use full page reload for proper initialization
       console.log('🚀 [LOGIN] Redirecting to /chat...');
-      // Use navigate instead of window.location.href to keep React state alive
+      // Full page reload ensures AuthContext initializes before ProtectedChatRoute mounts
       setTimeout(() => {
-        navigate('/chat', { replace: true })
-      }, 100)
+        window.location.href = '/chat'
+      }, 500)
     } catch (err) {
       console.error('❌ Google login error:', err)
       setError(`Google login failed: ${err.message}`)
@@ -404,11 +404,11 @@ const Login = () => {
                 
                 if (result || (storedToken && storedUser)) {
                   console.log('🚀 [Google Click] Result received or data in storage - Redirecting to /chat...')
-                  // Use navigate instead of window.location.href to keep React state alive
+                  // Use full page reload to ensure proper initialization
                   setTimeout(() => {
                     console.log('🚀 [Google Click] Redirecting to /chat')
-                    navigate('/chat', { replace: true })
-                  }, 100)
+                    window.location.href = '/chat'
+                  }, 500)
                 } else {
                   console.log('🔄 [Google Click] No result and no localStorage data - Using redirect flow')
                   // Redirect flow - page will reload and redirect after auth
@@ -422,8 +422,8 @@ const Login = () => {
                 if (storedToken && storedUser) {
                   console.log('⚠️ Error occurred but data is in localStorage - redirecting')
                   setTimeout(() => {
-                    navigate('/chat', { replace: true })
-                  }, 100)
+                    window.location.href = '/chat'
+                  }, 500)
                   return
                 }
                 
