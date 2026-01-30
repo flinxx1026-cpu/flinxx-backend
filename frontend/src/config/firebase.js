@@ -206,6 +206,13 @@ const handleLoginSuccess = async (user, provider) => {
     console.warn('⚠️ Firestore save failed (non-critical):', firestoreError)
   }
   
+  // ✅ CRITICAL: Force redirect to /chat after successful login
+  console.log('🚀 [handleLoginSuccess] Login successful - scheduling redirect to /chat')
+  setTimeout(() => {
+    console.log('🚀 [handleLoginSuccess] NOW REDIRECTING to /chat with window.location.href')
+    window.location.href = '/chat'
+  }, 300)
+  
   return userToStore
 }
 
