@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }) => {
             })
             
             // Optionally validate token with backend
-            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+            const BACKEND_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
             console.log('\n🔵 [AuthContext] STEP 3: Validate token with backend');
             console.log('🔵 [AuthContext]   - Backend URL:', BACKEND_URL)
             console.log('🔵 [AuthContext]   - Making request to /api/profile...')
@@ -248,7 +248,7 @@ export const AuthProvider = ({ children }) => {
               console.log('🔐 Firebase ID token stored for Socket.IO')
               
               // Fetch full profile from backend
-              const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+              const BACKEND_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
               console.log('🔵 [AuthContext] Calling /api/profile with ID token...');
               const profileResponse = await fetch(`${BACKEND_URL}/api/profile`, {
                 method: 'GET',

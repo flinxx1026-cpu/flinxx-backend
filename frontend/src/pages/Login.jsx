@@ -58,7 +58,7 @@ const Login = () => {
 
   // Trigger Google OAuth via backend
   const triggerGoogleLogin = () => {
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+    const BACKEND_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
     console.log('🔗 [Google] Redirecting to backend OAuth endpoint:', `${BACKEND_URL}/auth/google`)
     setIsSigningIn(true)
     window.location.href = `${BACKEND_URL}/auth/google`
@@ -66,7 +66,7 @@ const Login = () => {
 
   // Trigger Facebook OAuth via backend
   const triggerFacebookLogin = () => {
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+    const BACKEND_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
     console.log('🔗 [Facebook] Redirecting to backend OAuth endpoint:', `${BACKEND_URL}/auth/facebook`)
     setIsSigningIn(true)
     window.location.href = `${BACKEND_URL}/auth/facebook`
