@@ -99,158 +99,44 @@ export const AuthProvider = ({ children }) => {
         console.log('🔵 [AuthContext]   - token:', storedToken ? '✓ Found' : '✗ Not found')
         console.log('🔵 [AuthContext]   - user:', storedUser ? '✓ Found' : '✗ Not found')
         
-        // 🚨 EARLY RETURN: If JWT exists, use backend auth and SKIP Firebase entirely
+        // 🚨 CRITICAL: JWT AUTH TAKES PRIORITY - NO FIREBASE IF JWT EXISTS
         if (storedToken && storedUser) {
           try {
-            console.log('\n🔵 [AuthContext] ✅ Using backend JWT auth. Firebase disabled.')
-            const user = JSON.parse(storedUser)
-            setUser(user)
-            setIsAuthenticated(true)
-            setIsLoading(false)
-            console.log('🔵 [AuthContext] ✅ User restored from JWT:', user.email)
-            console.log('🔵 [AuthContext] ✅ Firebase auth SKIPPED — using JWT only')
-            return // 🚨 EXIT ENTIRE EFFECT — NO FIREBASE
-          } catch (err) {
-            console.error('🔵 [AuthContext] ❌ Error parsing JWT user:', err)
-          }
-        }
-        
-        // Continue with backend validation only if token exists (legacy path)
-        if (storedToken && storedUser) {
-          try {
-            console.log('\n🔵 [AuthContext] STEP 2: Parse localStorage user');
-            const user = JSON.parse(storedUser)
-            console.log('🔵 [AuthContext]   - Parsed user email:', user.email)
-            console.log('🔵 [AuthContext]   - profileCompleted from localStorage:', user.profileCompleted, '(type:', typeof user.profileCompleted + ')')
-            console.log('🔵 [AuthContext] 🔍 Attempting to restore Google OAuth user from localStorage:', user.email)
-            console.log('🔵 [AuthContext] User data from localStorage:', {
-              id: user.id,
-              email: user.email,
-              profileCompleted: user.profileCompleted,
-              isProfileCompleted: user.isProfileCompleted
-            })
-            
-            // Optionally validate token with backend
-            const BACKEND_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
-            console.log('\n🔵 [AuthContext] STEP 3: Validate token with backend');
-            console.log('🔵 [AuthContext]   - Backend URL:', BACKEND_URL)
-            console.log('🔵 [AuthContext]   - Making request to /api/profile...')
-            
-            const response = await fetch(`${BACKEND_URL}/api/profile`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${storedToken}`,
-                'Content-Type': 'application/json'
-              }
-            })
-            
-            console.log('🔵 [AuthContext]   - Response status:', response.status)
-            
-            if (response.ok) {
-              const data = await response.json()
-              console.log('🔵 [AuthContext]   - Response OK, parsing data...')
-              console.log('🔵 [AuthContext]   - data.success:', data.success)
-              console.log('🔵 [AuthContext]   - data.user available:', !!data.user)
-              
-              if (data.success && data.user) {
-                console.log('🔵 [AuthContext] ✅ Token validated, user restored from backend')
-                console.log('🔵 [AuthContext] Backend user data:', {
-                  id: data.user.id,
-                  email: data.user.email,
-                  profileCompleted: data.user.profileCompleted,
-                  birthday: data.user.birthday,
-                  gender: data.user.gender
-                })
-                
-                // ✅ CRITICAL: Create CLEAN user object with ONLY needed fields
-                // ❌ DO NOT spread data.user (it contains numeric id)
-                const normalizedUser = {
-                  uuid: data.user.uuid,           // ✅ ONLY 36-char UUID
-                  name: data.user.name || 'User',
-                  email: data.user.email,
-                  picture: data.user.picture,
-                  profileCompleted: data.user.profileCompleted || false
-                };
-                
-                // ✅ STRICT VALIDATION: UUID must be exactly 36 chars
-                if (!normalizedUser.uuid || typeof normalizedUser.uuid !== 'string' || normalizedUser.uuid.length !== 36) {
-                  console.error('❌ INVALID UUID FROM BACKEND:', normalizedUser.uuid);
-                  console.error('   Expected 36-char UUID, got:', normalizedUser.uuid?.length || 'undefined');
-                  // Don't set user if UUID is invalid
-                  setIsLoading(false);
-                  return;
-                }
-                
-                console.log('🔵 [AuthContext] Setting user state with UUID-only:', { 
-                  uuid: normalizedUser.uuid.substring(0, 8) + '...', 
-                  email: normalizedUser.email 
-                });
-                setUser(normalizedUser);
-                localStorage.setItem('user', JSON.stringify(normalizedUser));
-                setIsAuthenticated(true);
-                setIsLoading(false);
-                console.log('🔵 [AuthContext] ✅ COMPLETE - UUID-only user set');
-                return;
-              } else {
-                console.log('🔵 [AuthContext] ⚠️  Response OK but data.success or data.user missing')
-              }
-            } else {
-              console.log('🔵 [AuthContext] ⚠️ Token validation response not OK:', response.status)
-              const errorText = await response.text()
-              console.log('🔵 [AuthContext] Error response:', errorText)
-            }
-          } catch (err) {
-            console.error('🔵 [AuthContext] ❌ Error validating token:', err)
-          }
-        } else {
-          console.log('\n🔵 [AuthContext] STEP 2: Skip token validation (missing token or user)')
-          console.log('🔵 [AuthContext]   - Skipping /api/profile call')
-        }
-        
-        // Fall back to checking localStorage user without token validation
-        if (storedUser) {
-          try {
-            console.log('\n🔵 [AuthContext] STEP 3: Restore from localStorage (no token validation)');
-            console.log('🔵 [AuthContext] Raw stored user string:', storedUser);
+            console.log('\n🔵 [AuthContext] ✅ JWT found in localStorage');
             const user = JSON.parse(storedUser);
-            console.log('🔵 [AuthContext] Parsed user object:', user);
-            console.log('🔵 [AuthContext] User keys:', Object.keys(user));
-            console.log('🔵 [AuthContext] user.uuid value:', user.uuid);
-            console.log('🔵 [AuthContext] user.uuid type:', typeof user.uuid);
-            console.log('🔵 [AuthContext] user.uuid length:', user.uuid?.length);
             
-            // ✅ STRICT VALIDATION: UUID must be 36-char string
+            // ✅ STRICT VALIDATION: UUID must be exactly 36 chars
             if (!user.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
-              console.warn('🧹 [AuthContext] Invalid UUID in localStorage, removing:', user.uuid?.length);
+              console.warn('🧹 [AuthContext] Invalid UUID in localStorage, clearing auth');
               localStorage.removeItem('user');
               localStorage.removeItem('token');
               setIsLoading(false);
               return;
             }
             
-            console.log('🔵 [AuthContext]   - Email:', user.email);
-            console.log('🔵 [AuthContext]   - UUID:', user.uuid.substring(0, 8) + '...');
-            console.log('🔵 [AuthContext] ✅ User loaded from localStorage (UUID valid):', user.email);
-            setUser(user)
-            setIsAuthenticated(true)
-            setIsLoading(false)
-            console.log('🔵 [AuthContext] ✅ COMPLETE - Returning from localStorage fallback path')
-            return
+            console.log('🔵 [AuthContext] ✅ User restored from JWT:', user.email);
+            console.log('🔵 [AuthContext] ✅ profileCompleted:', user.profileCompleted);
+            console.log('🔵 [AuthContext] ✅ Firebase auth SKIPPED — using JWT only');
+            
+            setUser(user);
+            setIsAuthenticated(true);
+            setIsLoading(false);
+            console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
+            console.log('🔵 [AuthContext] INITIALIZATION COMPLETE (JWT) - isLoading=false');
+            console.log('🔵 [AuthContext] ═══════════════════════════════════════════\n');
+            
+            // 🚨 RETURN EARLY - DO NOT CONTINUE TO FIREBASE
+            return;
           } catch (err) {
-            console.error('[AuthContext] Error parsing saved user:', err)
+            console.error('🔵 [AuthContext] ❌ Error parsing JWT user:', err);
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+            setIsLoading(false);
+            return;
           }
         }
         
-        console.log('\n🔵 [AuthContext] STEP 3: Check if Firebase auth is needed...');
-        
-        // 🔥 CRITICAL: Skip Firebase if backend JWT login is active
-        if (storedToken && storedUser) {
-          console.log('🔵 [AuthContext] ✅ Skipping Firebase auth — using backend JWT auth');
-          setIsLoading(false);
-          return;
-        }
-        
-        console.log('🔵 [AuthContext] ✅ No backend JWT found, checking Firebase...');
+        console.log('\n🔵 [AuthContext] STEP 2: No JWT found, will check Firebase...');
         
         // Check Firebase authentication state
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
