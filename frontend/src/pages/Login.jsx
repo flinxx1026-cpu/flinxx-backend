@@ -425,23 +425,29 @@ const Login = () => {
                 const result = await signInWithGoogle()
                 console.log('✅ Google login returned result:', result?.email)
                 
-                // ✅ CRITICAL: Check localStorage even if result is null
+                // ✅ CRITICAL: Call handleGoogleLoginSuccess to process and redirect
+                if (result) {
+                  console.log('🚀 [Google Click] Calling handleGoogleLoginSuccess with result')
+                  await handleGoogleLoginSuccess({ credential: result.credential || result.id_token })
+                  return
+                }
+                
+                // Check localStorage fallback
                 const storedToken = localStorage.getItem('token')
                 const storedUser = localStorage.getItem('user')
-                console.log('🔍 [Google Click] Checking localStorage after login:')
+                console.log('🔍 [Google Click] Checking localStorage fallback:')
                 console.log('   - token:', !!storedToken)
                 console.log('   - user:', !!storedUser)
                 
-                if (result || (storedToken && storedUser)) {
-                  console.log('🚀 [Google Click] Result received or data in storage - Redirecting to /chat...')
-                  // Use full page reload to ensure proper initialization
+                if (storedToken && storedUser) {
+                  console.log('🚀 [Google Click] Data in storage - Redirecting to /chat...')
                   setTimeout(() => {
-                    console.log('🚀 [Google Click] Redirecting to /chat')
                     window.location.href = '/chat'
                   }, 500)
                 } else {
-                  console.log('🔄 [Google Click] No result and no localStorage data - Using redirect flow')
-                  // Redirect flow - page will reload and redirect after auth
+                  console.log('❌ [Google Click] No result and no localStorage data')
+                  setError('Google login failed. Please try again.')
+                  setIsSigningIn(false)
                 }
               } catch (err) {
                 console.error('❌ Google login error:', err?.message || err)
@@ -491,18 +497,45 @@ const Login = () => {
               try {
                 const result = await signInWithFacebook()
                 console.log('✅ Facebook login returned result:', result?.email)
+                
+                // ✅ CRITICAL: Call handleFacebookLoginSuccess to process and redirect
                 if (result) {
-                  console.log('🚀 [Facebook Click] Result received - Redirecting to /chat...')
-                  // Small delay to ensure localStorage is fully synced
+                  console.log('🚀 [Facebook Click] Calling handleFacebookLoginSuccess with result')
+                  await handleFacebookLoginSuccess({ credential: result.credential || result.id_token })
+                  return
+                }
+                
+                // Check localStorage fallback
+                const storedToken = localStorage.getItem('token')
+                const storedUser = localStorage.getItem('user')
+                console.log('🔍 [Facebook Click] Checking localStorage fallback:')
+                console.log('   - token:', !!storedToken)
+                console.log('   - user:', !!storedUser)
+                
+                if (storedToken && storedUser) {
+                  console.log('🚀 [Facebook Click] Data in storage - Redirecting to /chat...')
                   setTimeout(() => {
-                    navigate('/chat', { replace: true })
+                    window.location.href = '/chat'
                   }, 500)
                 } else {
-                  console.log('🔄 [Facebook Click] Using redirect flow - will redirect after page reloads')
-                  // Redirect flow - page will reload and redirect after auth
+                  console.log('❌ [Facebook Click] No result and no localStorage data')
+                  setError('Facebook login failed. Please try again.')
+                  setIsSigningIn(false)
                 }
               } catch (err) {
                 console.error('❌ Facebook login error:', err?.message || err)
+                
+                // ✅ RECOVERY: Even on error, check if data was saved
+                const storedToken = localStorage.getItem('token')
+                const storedUser = localStorage.getItem('user')
+                if (storedToken && storedUser) {
+                  console.log('⚠️ Error occurred but data is in localStorage - redirecting')
+                  setTimeout(() => {
+                    window.location.href = '/chat'
+                  }, 500)
+                  return
+                }
+                
                 setError(err?.message || 'Facebook login failed. Please try again.')
                 setIsSigningIn(false)
               }
