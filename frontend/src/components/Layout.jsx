@@ -8,6 +8,8 @@ import Profile from '../pages/Profile'
 import AuthCallback from '../pages/AuthCallback'
 import Callback from '../pages/callback'
 import AuthSuccess from '../pages/auth-success'
+import GoogleCallback from '../pages/GoogleCallback'
+import FacebookCallback from '../pages/FacebookCallback'
 import OAuthHandler from '../pages/OAuthHandler'
 import OAuthSuccess from '../pages/oauth-success'
 import Terms from '../pages/Terms'
@@ -59,6 +61,8 @@ function LayoutContent() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/callback" element={<Callback />} />
           <Route path="/auth-success" element={<AuthSuccess />} />
+          <Route path="/auth/google/callback" element={<GoogleCallback />} />
+          <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
           <Route path="/oauth-handler" element={<OAuthHandler />} />
           <Route path="/oauth-success" element={<OAuthSuccess />} />
           <Route path="/chat" element={<ProtectedChatRoute><Chat /></ProtectedChatRoute>} />
