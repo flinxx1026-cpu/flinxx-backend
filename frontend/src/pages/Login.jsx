@@ -34,11 +34,36 @@ const Login = () => {
   const [pendingLoginProvider, setPendingLoginProvider] = useState(null)
 
   useEffect(() => {
-    // Check if user already logged in
+    // 🔥 PRIORITY 1: Handle Google OAuth callback from URL
+    const params = new URLSearchParams(window.location.search)
+    const tokenFromUrl = params.get('token')
+    const userFromUrl = params.get('user')
+
+    console.log('🔵 [Login useEffect] Checking OAuth callback:')
+    console.log('   - tokenFromUrl:', !!tokenFromUrl)
+    console.log('   - userFromUrl:', !!userFromUrl)
+
+    // Handle Google OAuth callback
+    if (tokenFromUrl && userFromUrl) {
+      console.log('✅ [Login useEffect] Google OAuth callback received!')
+      try {
+        // Decode user if it's base64 or URL-encoded
+        const decodedUser = typeof userFromUrl === 'string' ? JSON.parse(decodeURIComponent(userFromUrl)) : userFromUrl
+        localStorage.setItem('token', tokenFromUrl)
+        localStorage.setItem('user', JSON.stringify(decodedUser))
+        console.log('✅ [Login useEffect] OAuth credentials stored, redirecting to /chat')
+        navigate('/chat', { replace: true })
+        return
+      } catch (err) {
+        console.error('❌ [Login useEffect] Error handling OAuth callback:', err)
+      }
+    }
+
+    // 🔥 PRIORITY 2: Check if user already logged in (normal case)
     const storedToken = localStorage.getItem('token')
     const storedUser = localStorage.getItem('user')
     
-    console.log('🔵 [Login useEffect] Checking authentication:')
+    console.log('🔵 [Login useEffect] Checking stored authentication:')
     console.log('   - token:', !!storedToken)
     console.log('   - user:', !!storedUser)
     

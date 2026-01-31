@@ -225,7 +225,16 @@ export const AuthProvider = ({ children }) => {
           }
         }
         
-        console.log('\n🔵 [AuthContext] STEP 3: No stored token or user, checking Firebase...');
+        console.log('\n🔵 [AuthContext] STEP 3: Check if Firebase auth is needed...');
+        
+        // 🔥 CRITICAL: Skip Firebase if backend JWT login is active
+        if (storedToken && storedUser) {
+          console.log('🔵 [AuthContext] ✅ Skipping Firebase auth — using backend JWT auth');
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log('🔵 [AuthContext] ✅ No backend JWT found, checking Firebase...');
         
         // Check Firebase authentication state
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
