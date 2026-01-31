@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }) => {
           }
         }
         
-        // Check for stored JWT token from Google OAuth
+        // 🚨 CRITICAL: Check for stored JWT token from Google OAuth FIRST
         const storedToken = localStorage.getItem('token')
         const storedUser = localStorage.getItem('user')
         
@@ -99,7 +99,23 @@ export const AuthProvider = ({ children }) => {
         console.log('🔵 [AuthContext]   - token:', storedToken ? '✓ Found' : '✗ Not found')
         console.log('🔵 [AuthContext]   - user:', storedUser ? '✓ Found' : '✗ Not found')
         
-        // If we have a token, validate it and restore user data
+        // 🚨 EARLY RETURN: If JWT exists, use backend auth and SKIP Firebase entirely
+        if (storedToken && storedUser) {
+          try {
+            console.log('\n🔵 [AuthContext] ✅ Using backend JWT auth. Firebase disabled.')
+            const user = JSON.parse(storedUser)
+            setUser(user)
+            setIsAuthenticated(true)
+            setIsLoading(false)
+            console.log('🔵 [AuthContext] ✅ User restored from JWT:', user.email)
+            console.log('🔵 [AuthContext] ✅ Firebase auth SKIPPED — using JWT only')
+            return // 🚨 EXIT ENTIRE EFFECT — NO FIREBASE
+          } catch (err) {
+            console.error('🔵 [AuthContext] ❌ Error parsing JWT user:', err)
+          }
+        }
+        
+        // Continue with backend validation only if token exists (legacy path)
         if (storedToken && storedUser) {
           try {
             console.log('\n🔵 [AuthContext] STEP 2: Parse localStorage user');
