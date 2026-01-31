@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { jwtDecode } from 'jwt-decode'
-import { getRedirectResult } from 'firebase/auth'
-import { auth } from '../config/firebase'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 import googleIcon from '../assets/google-icon.svg'
-import { signInWithGoogle, signInWithFacebook } from '../config/firebase'
+import { signInWithGoogle, signInWithFacebook, checkRedirectResult } from '../config/firebase'
 import TermsConfirmationModal from '../components/TermsConfirmationModal'
 import './Login.css'
 
@@ -31,18 +29,24 @@ const acceptTerms = () => {
 }
 
 // Custom Google Login Button Component
-const GoogleCustomButton = ({ isSigningIn, onShowTermsModal, onGoogleLogin }) => {
+const GoogleCustomButton = ({ isSigningIn, onShowTermsModal }) => {
   const handleGoogleClick = () => {
     console.log('🔐 Google login clicked - checking terms acceptance')
     
     // Check if terms are already accepted
     if (isTermsAccepted()) {
       console.log('✅ Terms already accepted - proceeding with Google login')
-      onGoogleLogin()
+      triggerGoogleLogin()
     } else {
       console.log('⚠️ Terms not accepted - showing modal first')
       onShowTermsModal('google')
     }
+  }
+
+  const triggerGoogleLogin = () => {
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+    console.log('🔗 Redirecting to Google OAuth:', `${BACKEND_URL}/auth/google`)
+    window.location.href = `${BACKEND_URL}/auth/google`
   }
 
   return (
@@ -64,56 +68,22 @@ const Login = () => {
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [pendingLoginProvider, setPendingLoginProvider] = useState(null)
 
-  // ✅ Check for redirect login result when page loads
-  // This handles cases where Firebase redirect login happened
   useEffect(() => {
-    const handlePostAuthRedirect = async () => {
+    // Check if user was redirected back from OAuth
+    const checkLogin = async () => {
       try {
-        // 🔥 Check if we have a pending redirect from popup/redirect login
-        const pendingRedirect = sessionStorage.getItem('pendingRedirectAfterAuth')
-        
-        // Try to get redirect result (from Firebase redirect flow)
-        const result = await getRedirectResult(auth)
-        
-        if (result?.user) {
-          console.log("✅ [useEffect] Redirect login success:", result.user.email);
-          console.log("🚀 [useEffect] Redirecting to /chat after redirect auth");
-          // Use full page reload to ensure proper initialization
-          setTimeout(() => {
-            window.location.href = '/chat';
-          }, 500);
-          return;
+        const result = await checkRedirectResult()
+        if (result) {
+          console.log('✅ Login successful:', result.email)
+          navigate('/chat')
         }
-        
-        // 🔥 If we have pending redirect flag but no result yet, check localStorage
-        if (pendingRedirect === 'true') {
-          console.log('🔥 [useEffect] Pending redirect flag found')
-          const token = localStorage.getItem('token')
-          const user = localStorage.getItem('user')
-          
-          if (token && user) {
-            console.log('✅ [useEffect] Token and user in localStorage - redirecting to /chat')
-            sessionStorage.removeItem('pendingRedirectAfterAuth')
-            setTimeout(() => {
-              window.location.href = '/chat'
-            }, 500)
-            return
-          }
-        }
-        
-      } catch (error) {
-        console.error("❌ [useEffect] Redirect login error:", error.code, error.message);
-        sessionStorage.removeItem('pendingRedirectAfterAuth')
-        // Only show error if it's not a popup/redirect dismissal
-        if (error.code !== 'auth/popup-closed-by-user' && 
-            error.code !== 'auth/cancelled-popup-request') {
-          setError(`Authentication error: ${error.message}`);
-        }
+      } catch (err) {
+        console.error('❌ Login check failed:', err)
       }
     }
     
-    handlePostAuthRedirect()
-  }, [navigate]);
+    checkLogin()
+  }, [navigate])
 
   // Handle showing terms modal before login
   const handleShowTermsModal = (provider) => {
@@ -142,63 +112,15 @@ const Login = () => {
     // Trigger the pending login provider
     if (pendingLoginProvider === 'google') {
       console.log('🔐 Proceeding with Google login after terms acceptance')
-      setIsSigningIn(true)
-      setError(null)
-      try {
-        const result = await signInWithGoogle()
-        console.log('✅ Google login returned result:', result?.email)
-        
-        // ✅ CRITICAL: Use full page reload for proper initialization
-        setTimeout(() => {
-          console.log('🚀 [handleTermsContinue] Redirecting to /chat')
-          window.location.href = '/chat'
-        }, 500)
-      } catch (err) {
-        console.error('❌ Google login error:', err)
-        
-        // ✅ RECOVERY: Even on error, check if data was saved to localStorage
-        const storedToken = localStorage.getItem('token')
-        const storedUser = localStorage.getItem('user')
-        if (storedToken && storedUser) {
-          console.log('⚠️ Error occurred but data is in localStorage - redirecting')
-          setTimeout(() => {
-            window.location.href = '/chat'
-          }, 500)
-          return
-        }
-        
-        setError('Google login failed. Please try again.')
-        setIsSigningIn(false)
-      }
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+      window.location.href = `${BACKEND_URL}/auth/google`
     } else if (pendingLoginProvider === 'facebook') {
       console.log('🔐 Proceeding with Facebook login after terms acceptance')
-      setIsSigningIn(true)
-      setError(null)
       try {
-        const result = await signInWithFacebook()
-        console.log('✅ Facebook login returned result:', result?.email)
-        
-        // ✅ CRITICAL: Use full page reload for proper initialization
-        setTimeout(() => {
-          console.log('🚀 [handleTermsContinue] Redirecting to /chat for Facebook')
-          window.location.href = '/chat'
-        }, 500)
+        await signInWithFacebook()
       } catch (err) {
         console.error('❌ Facebook login error:', err)
-        
-        // ✅ RECOVERY: Even on error, check if data was saved
-        const storedToken = localStorage.getItem('token')
-        const storedUser = localStorage.getItem('user')
-        if (storedToken && storedUser) {
-          console.log('⚠️ Facebook error but data in localStorage - redirecting')
-          setTimeout(() => {
-            window.location.href = '/chat'
-          }, 500)
-          return
-        }
-        
         setError('Facebook login failed. Please try again.')
-        setIsSigningIn(false)
       }
     }
     
@@ -238,7 +160,7 @@ const Login = () => {
       console.log('   - GoogleID:', googleUser.googleId)
       
       // Save user to backend database
-      const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+      const API_URL = import.meta.env.VITE_API_URL || 'https://flinxx-backend.onrender.com'
       console.log(`🔗 Saving user to backend at: ${API_URL}`)
       
       let userDataToStore = googleUser;
@@ -267,94 +189,41 @@ const Login = () => {
         const dbResponse = await saveResponse.json()
         console.log('✅ User saved to backend:', dbResponse.user)
         
-        // CRITICAL: Create CLEAN user object with ONLY needed fields
-        if (dbResponse.user && dbResponse.user.uuid) {
+        // CRITICAL: Merge database response with googleUser to get profileCompleted status
+        if (dbResponse.user) {
           userDataToStore = {
+            ...googleUser,
+            ...dbResponse.user,
+            // Ensure both field names are present for compatibility
+            id: dbResponse.user.id,
             uuid: dbResponse.user.uuid,
-            name: dbResponse.user.name || googleUser.name || 'User',
-            email: dbResponse.user.email || googleUser.email,
-            picture: dbResponse.user.picture || googleUser.picture,
-            profileCompleted: dbResponse.user.profileCompleted || false,
-            token: googleUser.token
+            profileCompleted: dbResponse.user.profileCompleted,
+            isProfileCompleted: dbResponse.user.profileCompleted
           }
-          console.log('[LOGIN] 🎯 Cleaned user data with profile status:', {
+          console.log('[LOGIN] 🎯 Merged user data with profile status:', {
             profileCompleted: userDataToStore.profileCompleted,
-            uuid: userDataToStore.uuid.substring(0, 8) + '...'
+            isProfileCompleted: userDataToStore.isProfileCompleted,
+            uuid: userDataToStore.uuid
           })
-        } else {
-          // Fallback if backend doesn't return user object with uuid
-          console.warn('[LOGIN] ⚠️ Backend response missing user object or uuid')
-          userDataToStore = {
-            uuid: decoded.sub || decoded.id || decoded.email,  // Fallback to Google ID
-            name: googleUser.name || 'User',
-            email: googleUser.email,
-            picture: googleUser.picture,
-            profileCompleted: false,
-            token: googleUser.token
-          }
         }
       } catch (dbError) {
         console.error('⚠️ Error saving user to backend:', dbError)
-        // CRITICAL: Use fallback data if backend fails
-        console.log('[LOGIN] ⚠️ Backend failed, using Google JWT data as fallback')
-        userDataToStore = {
-          uuid: decoded.sub || decoded.id || decoded.email,
-          name: googleUser.name || 'User',
-          email: googleUser.email,
-          picture: googleUser.picture,
-          profileCompleted: false,
-          token: googleUser.token
-        }
-        console.log('[LOGIN] ✅ Fallback user data created:', {
-          uuid: userDataToStore.uuid?.substring(0, 8) + '...',
-          email: userDataToStore.email
-        })
+        // Continue anyway - data is in localStorage
+        console.log('[LOGIN] ⚠️ Using Google JWT data only (profile status unavailable)')
       }
-      
-      // ✅ CRITICAL VALIDATION: uuid MUST exist before saving
-      if (!userDataToStore.uuid || typeof userDataToStore.uuid !== 'string' || userDataToStore.uuid.length === 0) {
-        throw new Error('CRITICAL: No valid UUID available - cannot proceed with login')
-      }
-      
-      console.log('[LOGIN] ✅ UUID validation passed:', userDataToStore.uuid.substring(0, 8) + '...')
       
       // Save user profile to localStorage
-      console.log('[LOGIN] 🔥 SAVING TOKEN AND USER TO LOCALSTORAGE');
-      console.log('[LOGIN] Token to save:', userDataToStore.token ? userDataToStore.token.substring(0, 20) + '...' : 'MISSING');
-      
-      // 🔥 MANDATORY: Save token with standard keys
-      localStorage.setItem('token', userDataToStore.token || credential)
-      localStorage.setItem('authToken', userDataToStore.token || credential)
-      console.log('✅ [LOGIN] Token saved to localStorage');
-      
-      // ✅ CLEAN USER: Create CLEAN object with ONLY needed fields
-      const cleanUser = {
-        uuid: userDataToStore.uuid,
-        name: userDataToStore.name || 'User',
-        email: userDataToStore.email,
-        picture: userDataToStore.picture,
-        profileCompleted: userDataToStore.profileCompleted || false
-      }
-      
-      // Save CLEAN user profile
-      localStorage.setItem('user', JSON.stringify(cleanUser))
+      console.log('[LOGIN] Storing user to localStorage:', userDataToStore)
+      localStorage.setItem('user', JSON.stringify(userDataToStore))
       localStorage.setItem('authProvider', 'google')
-      localStorage.setItem('userInfo', JSON.stringify(cleanUser))
-      console.log('✅ [LOGIN] CLEAN user data stored in localStorage with profileCompleted status')
+      localStorage.setItem('userInfo', JSON.stringify(userDataToStore))
+      console.log('✅ User data stored in localStorage with profileCompleted status')
       
-      // 🔥 VERIFICATION
-      console.log('🔥 [LOGIN] VERIFICATION - Check localStorage:');
-      console.log('   - token:', localStorage.getItem('token') ? '✓ FOUND' : '✗ MISSING');
-      console.log('   - authToken:', localStorage.getItem('authToken') ? '✓ FOUND' : '✗ MISSING');
-      console.log('   - user:', localStorage.getItem('user') ? '✓ FOUND' : '✗ MISSING');
-      console.log('   - authProvider:', localStorage.getItem('authProvider'));
-      
-      // ✅ REDIRECT TO CHAT - Use full page reload for proper initialization
-      console.log('🚀 [LOGIN] Redirecting to /chat...');
-      // Full page reload ensures AuthContext initializes before ProtectedChatRoute mounts
+      // Redirect to chat after a brief delay
       setTimeout(() => {
-        window.location.href = '/chat'
-      }, 500)
+        setIsSigningIn(false)
+        navigate('/chat')
+      }, 1000)
     } catch (err) {
       console.error('❌ Google login error:', err)
       setError(`Google login failed: ${err.message}`)
@@ -414,52 +283,13 @@ const Login = () => {
       <div className="w-full space-y-4 mb-11">
         {/* Google Login Button */}
         <button
-          type="button"
-          onClick={async () => {
+          onClick={() => {
             console.log('🔐 Google login clicked - checking terms acceptance')
             if (isTermsAccepted()) {
               console.log('✅ Terms already accepted - proceeding with Google login')
-              setIsSigningIn(true)
-              setError(null)
-              try {
-                const result = await signInWithGoogle()
-                console.log('✅ Google login returned result:', result?.email)
-                
-                // ✅ CRITICAL: Check localStorage even if result is null
-                const storedToken = localStorage.getItem('token')
-                const storedUser = localStorage.getItem('user')
-                console.log('🔍 [Google Click] Checking localStorage after login:')
-                console.log('   - token:', !!storedToken)
-                console.log('   - user:', !!storedUser)
-                
-                if (result || (storedToken && storedUser)) {
-                  console.log('🚀 [Google Click] Result received or data in storage - Redirecting to /chat...')
-                  // Use full page reload to ensure proper initialization
-                  setTimeout(() => {
-                    console.log('🚀 [Google Click] Redirecting to /chat')
-                    window.location.href = '/chat'
-                  }, 500)
-                } else {
-                  console.log('🔄 [Google Click] No result and no localStorage data - Using redirect flow')
-                  // Redirect flow - page will reload and redirect after auth
-                }
-              } catch (err) {
-                console.error('❌ Google login error:', err?.message || err)
-                
-                // ✅ RECOVERY: Even on error, check if data was saved
-                const storedToken = localStorage.getItem('token')
-                const storedUser = localStorage.getItem('user')
-                if (storedToken && storedUser) {
-                  console.log('⚠️ Error occurred but data is in localStorage - redirecting')
-                  setTimeout(() => {
-                    window.location.href = '/chat'
-                  }, 500)
-                  return
-                }
-                
-                setError(err?.message || 'Google login failed. Please try again.')
-                setIsSigningIn(false)
-              }
+              const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+              console.log('🔗 Redirecting to Google OAuth:', `${BACKEND_URL}/auth/google`)
+              window.location.href = `${BACKEND_URL}/auth/google`
             } else {
               console.log('⚠️ Terms not accepted - showing modal first')
               handleShowTermsModal('google')
@@ -481,31 +311,13 @@ const Login = () => {
 
         {/* Facebook Login Button */}
         <button
-          type="button"
-          onClick={async () => {
+          onClick={() => {
             console.log('🔐 Facebook login clicked - checking terms acceptance')
             if (isTermsAccepted()) {
               console.log('✅ Terms already accepted - proceeding with Facebook login')
-              setIsSigningIn(true)
-              setError(null)
-              try {
-                const result = await signInWithFacebook()
-                console.log('✅ Facebook login returned result:', result?.email)
-                if (result) {
-                  console.log('🚀 [Facebook Click] Result received - Redirecting to /chat...')
-                  // Small delay to ensure localStorage is fully synced
-                  setTimeout(() => {
-                    navigate('/chat', { replace: true })
-                  }, 500)
-                } else {
-                  console.log('🔄 [Facebook Click] Using redirect flow - will redirect after page reloads')
-                  // Redirect flow - page will reload and redirect after auth
-                }
-              } catch (err) {
-                console.error('❌ Facebook login error:', err?.message || err)
-                setError(err?.message || 'Facebook login failed. Please try again.')
-                setIsSigningIn(false)
-              }
+              const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000'
+              console.log('🔗 Redirecting to Facebook OAuth:', `${BACKEND_URL}/auth/facebook`)
+              window.location.href = `${BACKEND_URL}/auth/facebook`
             } else {
               console.log('⚠️ Terms not accepted - showing modal first')
               handleShowTermsModal('facebook')
