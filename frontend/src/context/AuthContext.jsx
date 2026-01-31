@@ -194,7 +194,7 @@ export const AuthProvider = ({ children }) => {
         // Fall back to checking localStorage user without token validation
         if (storedUser) {
           try {
-            console.log('\n🔵 [AuthContext] STEP 3: Restore from localStorage (no token validation);
+            console.log('\n🔵 [AuthContext] STEP 3: Restore from localStorage (no token validation)');
             console.log('🔵 [AuthContext] Raw stored user string:', storedUser);
             const user = JSON.parse(storedUser);
             console.log('🔵 [AuthContext] Parsed user object:', user);
