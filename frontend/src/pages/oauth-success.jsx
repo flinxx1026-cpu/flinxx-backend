@@ -134,10 +134,10 @@ export default function OAuthSuccess() {
         }
 
         // Add a small delay to ensure localStorage is fully synced before redirect
-        console.log('✅ [OAuthSuccess] All data saved successfully - redirecting to /chat in 500ms');
+        console.log('✅ [OAuthSuccess] All data saved successfully - redirecting to /dashboard in 500ms');
         setTimeout(() => {
-          console.log('✅ [OAuthSuccess] NOW REDIRECTING to /chat');
-          window.location.href = '/chat';
+          console.log('✅ [OAuthSuccess] NOW REDIRECTING to /dashboard');
+          window.location.href = '/dashboard';
         }, 500);
       } catch (err) {
         console.error("❌ [OAuthSuccess] Error:", err.message);
