@@ -2231,8 +2231,8 @@ app.get('/auth/google/callback', async (req, res) => {
     // ✅ SIMPLE APPROACH: Just pass token in URL
     const tokenParam = encodeURIComponent(token);
     
-    // ✅ DIRECT REDIRECT TO FRONTEND DASHBOARD (no intermediate page)
-    console.log(`✅ [AUTH/GOOGLE/CALLBACK] Redirecting directly to https://flinxx.in/dashboard with token in header`)
+    // ✅ REDIRECT TO OAUTH-SUCCESS PAGE WITH TOKEN
+    console.log(`✅ [AUTH/GOOGLE/CALLBACK] Redirecting to /oauth-success with token`)
     
     // Set token as secure httpOnly cookie and redirect
     res.cookie('authToken', token, {
@@ -2242,8 +2242,8 @@ app.get('/auth/google/callback', async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     })
     
-    // Redirect directly to dashboard
-    res.redirect('https://flinxx.in/dashboard')
+    // Redirect to oauth-success page with token in URL
+    res.redirect(`https://flinxx.in/oauth-success?token=${tokenParam}`)
   } catch (error) {
     console.error('\n❌ [AUTH/GOOGLE/CALLBACK] CRITICAL ERROR in callback:', error.message)
     console.error('   Stack:', error.stack)
