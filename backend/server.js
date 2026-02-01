@@ -197,11 +197,111 @@ async function initializeDatabase() {
 // Redis Connection
 let redis = null
 
+// ===== IN-MEMORY QUEUE FALLBACK (when Redis is unavailable) =====
+let inMemoryMatchingQueue = [];
+let inMemoryUserStatus = new Map();
+let inMemoryOnlineUsers = new Set();
+
 // Function to safely initialize Redis
 async function initializeRedis() {
   console.log("[STARTUP] Skipping Redis initialization for now (development)");
-  // Redis is optional - continue without it
-  return null;
+  console.log("[STARTUP] Using in-memory queue as fallback");
+  
+  // Return a fallback object with in-memory implementations
+  return {
+    lPush: async (key, value) => {
+      if (key === 'matching_queue') {
+        inMemoryMatchingQueue.unshift(value);
+        return inMemoryMatchingQueue.length;
+      }
+      return null;
+    },
+    
+    rPop: async (key) => {
+      if (key === 'matching_queue') {
+        return inMemoryMatchingQueue.pop() || null;
+      }
+      return null;
+    },
+    
+    lRange: async (key, start, end) => {
+      if (key === 'matching_queue') {
+        return inMemoryMatchingQueue.slice(start, end === -1 ? undefined : end + 1);
+      }
+      return [];
+    },
+    
+    lLen: async (key) => {
+      if (key === 'matching_queue') {
+        return inMemoryMatchingQueue.length;
+      }
+      return 0;
+    },
+    
+    lRem: async (key, count, value) => {
+      if (key === 'matching_queue') {
+        const index = inMemoryMatchingQueue.indexOf(value);
+        if (index !== -1) {
+          inMemoryMatchingQueue.splice(index, 1);
+          return 1;
+        }
+      }
+      return 0;
+    },
+    
+    keys: async (pattern) => {
+      // Simple pattern matching for development
+      if (pattern === 'user:*:online') {
+        return Array.from(inMemoryUserStatus.keys()).filter(k => k.includes(':online'));
+      }
+      return [];
+    },
+    
+    set: async (key, value) => {
+      inMemoryUserStatus.set(key, value);
+      return 'OK';
+    },
+    
+    setEx: async (key, ttl, value) => {
+      inMemoryUserStatus.set(key, value);
+      // Set expiration timeout (for development, we'll just store without actual expiration)
+      return 'OK';
+    },
+    
+    get: async (key) => {
+      return inMemoryUserStatus.get(key) || null;
+    },
+    
+    del: async (key) => {
+      return inMemoryUserStatus.delete(key) ? 1 : 0;
+    },
+    
+    sAdd: async (key, value) => {
+      if (key === 'online_users' || key === 'active_sessions') {
+        if (key === 'online_users') {
+          inMemoryOnlineUsers.add(value);
+        } else if (key === 'active_sessions') {
+          inMemoryUserStatus.set(`session:${value}`, true);
+        }
+        return 1;
+      }
+      return 0;
+    },
+    
+    sRem: async (key, value) => {
+      if (key === 'online_users') {
+        return inMemoryOnlineUsers.delete(value) ? 1 : 0;
+      }
+      return 0;
+    },
+    
+    sMembers: async (key) => {
+      if (key === 'online_users') {
+        return Array.from(inMemoryOnlineUsers);
+      }
+      return [];
+    }
+  };
 }
 
 // ===== EXPRESS & SOCKET.IO SETUP =====
