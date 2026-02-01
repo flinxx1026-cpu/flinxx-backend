@@ -2793,7 +2793,12 @@ io.on('connection', (socket) => {
       console.log(`      userId1: ${userId}`)
       console.log(`      socketId2: ${waitingUser.socketId}`)
       console.log(`      userId2: ${waitingUser.userId}`)
-      matchUsers(socket.id, userId, waitingUser.socketId, waitingUser.userId, userData, waitingUser)
+      
+      // Call the bulletproof matching function
+      await matchUsers(socket.id, userId, waitingUser.socketId, waitingUser.userId, userData, waitingUser)
+      
+      // DO NOT emit 'waiting' here - matchUsers already emits 'partner_found'
+      console.log(`[find_partner] ✅ matchUsers completed - users should receive partner_found event`)
     } else {
       // Add to waiting queue
       console.log(`\n⏳ [find_partner] NO MATCH FOUND - ADDING USER TO QUEUE`);
@@ -2810,6 +2815,7 @@ io.on('connection', (socket) => {
         console.log(`   - userId: ${parsed.userId}, socketId: ${parsed.socketId}`)
       }
       
+      // Only emit 'waiting' if NOT matched
       socket.emit('waiting', { message: 'Waiting for a partner...' })
     }
   })
@@ -3097,8 +3103,12 @@ io.on('connection', (socket) => {
   })
 })
 
-// Matching Function
+// Matching Function - BULLETPROOF VERSION
 async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, userData2) {
+  console.log('\n\n╔════════════════════════════════════════════════════════════╗')
+  console.log('║          🎯 MATCHUSERS - BULLETPROOF MATCHING 🎯           ║')
+  console.log('╚════════════════════════════════════════════════════════════╝')
+  
   // CRITICAL: Prevent self-matching with multiple checks
   
   // Check 1: userId must be different
@@ -3120,13 +3130,33 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     return
   }
 
+  // CHECK 3: VERIFY BOTH SOCKET IDS EXIST IN SOCKET.IO
+  console.log('\n✓ STEP 1: Validating socket connections exist')
+  const socket1Exists = io.sockets.sockets.has(socketId1)
+  const socket2Exists = io.sockets.sockets.has(socketId2)
+  
+  console.log(`   Socket1 (${socketId1}) exists?`, socket1Exists)
+  console.log(`   Socket2 (${socketId2}) exists?`, socket2Exists)
+  
+  if (!socket1Exists || !socket2Exists) {
+    console.error('❌ CRITICAL: One or both sockets do NOT exist!')
+    console.error(`   Socket1: ${socketId1} = ${socket1Exists}`)
+    console.error(`   Socket2: ${socketId2} = ${socket2Exists}`)
+    console.error('   Cannot match users - aborting')
+    return
+  }
+  
   console.log(`✅ SELF-MATCH CHECKS PASSED:`)
   console.log(`   userId1: ${userId1} !== userId2: ${userId2}`)
   console.log(`   socketId1: ${socketId1} !== socketId2: ${socketId2}`)
+  console.log(`   Both sockets exist in socket.io`)
   
   // Create session
   const sessionId = uuidv4()
   const startedAt = new Date()
+  
+  console.log('\n✓ STEP 2: Creating session')
+  console.log(`   sessionId: ${sessionId}`)
   
   activeSessions.set(sessionId, {
     id: sessionId,
@@ -3150,16 +3180,37 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     
     // Add to active sessions set
     await redis.sAdd('active_sessions', sessionId)
+    console.log(`   ✅ Session stored in Redis`)
   } catch (error) {
     console.error('❌ Error storing session in Redis:', error)
   }
 
-  // Notify both users
-  console.log('\n🎯 MATCHING COMPLETE - SENDING partner_found TO BOTH PEERS')
-  console.log('📤 Sending partner_found to socketId1:', socketId1)
-  console.log('📤 Sending partner_found to socketId2:', socketId2)
+  // CRITICAL: Join both users to a shared room before starting chat
+  console.log('\n✓ STEP 3: Joining both users to shared room')
+  const roomId = `${sessionId}:chat`
   
-  io.to(socketId1).emit('partner_found', {
+  io.sockets.sockets.get(socketId1).join(roomId)
+  io.sockets.sockets.get(socketId2).join(roomId)
+  
+  console.log(`   ✅ Socket1 joined room: ${roomId}`)
+  console.log(`   ✅ Socket2 joined room: ${roomId}`)
+
+  // CRITICAL: Track partner relationships BEFORE emitting
+  console.log('\n✓ STEP 4: Tracking partner relationships')
+  partnerSockets.set(socketId1, socketId2)
+  partnerSockets.set(socketId2, socketId1)
+  console.log(`   ✅ Partner mapping stored:`)
+  console.log(`      ${socketId1} <-> ${socketId2}`)
+  console.log(`      ${socketId2} <-> ${socketId1}`)
+  
+  // CRITICAL: Emit partner_found to BOTH users with full data
+  console.log('\n✓ STEP 5: Emitting partner_found to BOTH users')
+  console.log('╔════════════════════════════════════════════════════════════╗')
+  console.log('║              🚀 SENDING PARTNER_FOUND EVENTS 🚀             ║')
+  console.log('╚════════════════════════════════════════════════════════════╝')
+  
+  // User 1 receives User 2's info
+  const partnerFoundEvent1 = {
     partnerId: userId2,
     sessionId: sessionId,
     socketId: socketId2,
@@ -3167,22 +3218,17 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     userAge: userData2?.userAge || 18,
     userLocation: userData2?.userLocation || 'Unknown',
     userPicture: userData2?.userPicture || null
-  })
-  console.log('✅ partner_found emitted to socketId1:', socketId1)
-  
-  // ✅ Track call start time and partner info for userId2 (socket1)
-  if (io.sockets.sockets.has(socketId1)) {
-    const socket1 = io.sockets.sockets.get(socketId1)
-    socket1.callStartTime = Date.now()
-    socket1.partner = {
-      id: userId2,
-      name: userData2?.userName || 'Anonymous',
-      country: userData2?.userLocation || 'Unknown'
-    }
-    console.log(`✅ Call tracking started for user ${userId1}`)
   }
   
-  io.to(socketId2).emit('partner_found', {
+  console.log(`\n📤 [USER1] Emitting to socket: ${socketId1}`)
+  console.log(`   Partner: ${userId2} (${userData2?.userName || 'Anonymous'})`)
+  console.log(`   Data:`, JSON.stringify(partnerFoundEvent1, null, 2))
+  
+  io.to(socketId1).emit('partner_found', partnerFoundEvent1)
+  console.log(`✅ partner_found CONFIRMED emitted to socketId1`)
+  
+  // User 2 receives User 1's info
+  const partnerFoundEvent2 = {
     partnerId: userId1,
     sessionId: sessionId,
     socketId: socketId1,
@@ -3190,22 +3236,59 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     userAge: userData1?.userAge || 18,
     userLocation: userData1?.userLocation || 'Unknown',
     userPicture: userData1?.userPicture || null
-  })
-  console.log('✅ partner_found emitted to socketId2:', socketId2)
+  }
   
-  // ✅ Track call start time and partner info for userId1 (socket2)
-  if (io.sockets.sockets.has(socketId2)) {
-    const socket2 = io.sockets.sockets.get(socketId2)
-    socket2.callStartTime = Date.now()
-    socket2.partner = {
-      id: userId1,
-      name: userData1?.userName || 'Anonymous',
-      country: userData1?.userLocation || 'Unknown'
+  console.log(`\n📤 [USER2] Emitting to socket: ${socketId2}`)
+  console.log(`   Partner: ${userId1} (${userData1?.userName || 'Anonymous'})`)
+  console.log(`   Data:`, JSON.stringify(partnerFoundEvent2, null, 2))
+  
+  io.to(socketId2).emit('partner_found', partnerFoundEvent2)
+  console.log(`✅ partner_found CONFIRMED emitted to socketId2`)
+  
+  // Track call start time and partner info for both users
+  console.log('\n✓ STEP 6: Storing call metadata')
+  
+  try {
+    const socket1 = io.sockets.sockets.get(socketId1)
+    if (socket1) {
+      socket1.callStartTime = Date.now()
+      socket1.partner = {
+        id: userId2,
+        name: userData2?.userName || 'Anonymous',
+        country: userData2?.userLocation || 'Unknown',
+        socketId: socketId2
+      }
+      socket1.sessionId = sessionId
+      console.log(`   ✅ Socket1 metadata stored`)
     }
-    console.log(`✅ Call tracking started for user ${userId2}`)
+  } catch (e) {
+    console.error('   ❌ Error storing socket1 metadata:', e.message)
+  }
+  
+  try {
+    const socket2 = io.sockets.sockets.get(socketId2)
+    if (socket2) {
+      socket2.callStartTime = Date.now()
+      socket2.partner = {
+        id: userId1,
+        name: userData1?.userName || 'Anonymous',
+        country: userData1?.userLocation || 'Unknown',
+        socketId: socketId1
+      }
+      socket2.sessionId = sessionId
+      console.log(`   ✅ Socket2 metadata stored`)
+    }
+  } catch (e) {
+    console.error('   ❌ Error storing socket2 metadata:', e.message)
   }
 
-  console.log(`✅ Matched: ${userId1} <-> ${userId2}`)
+  console.log('\n╔════════════════════════════════════════════════════════════╗')
+  console.log('║         ✅ MATCH COMPLETE - BOTH USERS NOTIFIED ✅          ║')
+  console.log('╚════════════════════════════════════════════════════════════╝')
+  console.log(`✅ Matched: ${userId1} (${userData1?.userName}) <-> ${userId2} (${userData2?.userName})`)
+  console.log(`✅ Session ID: ${sessionId}`)
+  console.log(`✅ Room ID: ${roomId}`)
+  console.log('\n')
 }
 
 // Start Server
