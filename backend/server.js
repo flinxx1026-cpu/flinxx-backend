@@ -773,6 +773,63 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running', db: 'Connected' })
 })
 
+// 🔍 DEBUG ENDPOINT - Check matching queue status
+app.get('/api/debug/queue', async (req, res) => {
+  try {
+    const queueLength = await redis.lLen('matching_queue')
+    const queueEntries = await redis.lRange('matching_queue', 0, -1)
+    const parsedEntries = queueEntries.map(entry => {
+      try {
+        return JSON.parse(entry)
+      } catch (e) {
+        return { error: 'Failed to parse', raw: entry }
+      }
+    })
+    
+    res.json({
+      status: 'OK',
+      queueLength,
+      queue: parsedEntries,
+      timestamp: new Date().toISOString(),
+      inMemoryQueueLength: inMemoryMatchingQueue.length,
+      inMemoryQueue: inMemoryMatchingQueue.map(entry => {
+        try {
+          return JSON.parse(entry)
+        } catch (e) {
+          return { error: 'Failed to parse', raw: entry }
+        }
+      })
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// 🧪 TEST ENDPOINT - Manual matching for debugging
+app.post('/api/debug/test-match', async (req, res) => {
+  try {
+    console.log('\n🧪 MANUAL TEST ENDPOINT CALLED')
+    const queueLen = await getQueueLength()
+    console.log(`Current queue length: ${queueLen}`)
+    
+    if (queueLen < 1) {
+      return res.json({
+        message: 'Queue has fewer than 1 users - cannot test',
+        queueLength: queueLen
+      })
+    }
+    
+    const user = await getNextFromQueue()
+    res.json({
+      message: 'Popped user from queue',
+      user,
+      queueLength: queueLen - 1
+    })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
 // ===== FIREBASE AUTHENTICATION ENDPOINT =====
 // POST /api/auth/firebase
 // Frontend sends: Authorization: Bearer <FIREBASE_ID_TOKEN>
