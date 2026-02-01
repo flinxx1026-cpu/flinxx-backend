@@ -219,7 +219,7 @@ async function initializeRedis() {
     
     rPop: async (key) => {
       if (key === 'matching_queue') {
-        return inMemoryMatchingQueue.pop() || null;
+        return inMemoryMatchingQueue.shift() || null;
       }
       return null;
     },
