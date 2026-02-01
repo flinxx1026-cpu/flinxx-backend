@@ -2672,6 +2672,10 @@ io.on('connection', (socket) => {
 
   // Handle finding partner
   socket.on('find_partner', async (userData) => {
+    console.log('\n\n═══════════════════════════════════════════════════════════════');
+    console.log('🔍 [find_partner] EVENT FIRED - STARTING MATCH LOGIC');
+    console.log('═══════════════════════════════════════════════════════════════');
+    
     // CRITICAL: Get userId from frontend data (NOT generate new UUID)
     const userId = userData?.userId
     
@@ -2696,12 +2700,16 @@ io.on('connection', (socket) => {
     }
     
     console.log(`[find_partner] User ${userId} looking for partner`, { userName: userData?.userName, socketId: socket.id })
+    console.log(`[find_partner] Current socket.id: ${socket.id}`)
 
     // Set user as online in Redis
     await setUserOnline(userId, socket.id)
 
     // Check if there's someone in the queue, skip if it's the same user
     let waitingUser = await getNextFromQueue()
+    
+    console.log(`\n🎯 [find_partner] ATTEMPTING TO POP FROM QUEUE:`);
+    console.log(`   Popped user data:`, waitingUser ? JSON.stringify(waitingUser) : 'NULL');
     
     // CRITICAL: Loop until we find a DIFFERENT user
     let skippedCount = 0
@@ -2719,13 +2727,19 @@ io.on('connection', (socket) => {
     }
     
     if (waitingUser) {
-      console.log(`[find_partner] 🎯 MATCH FOUND!`)
+      console.log(`\n🎯 [find_partner] 🎯 MATCH FOUND! 🎯`)
       console.log(`   Current user: ${userId}`)
       console.log(`   Partner user: ${waitingUser.userId}`)
       console.log(`[find_partner] ✅ Verified: ${userId} !== ${waitingUser.userId}`)
+      console.log(`   Calling matchUsers with:`);
+      console.log(`      socketId1: ${socket.id}`)
+      console.log(`      userId1: ${userId}`)
+      console.log(`      socketId2: ${waitingUser.socketId}`)
+      console.log(`      userId2: ${waitingUser.userId}`)
       matchUsers(socket.id, userId, waitingUser.socketId, waitingUser.userId, userData, waitingUser)
     } else {
       // Add to waiting queue
+      console.log(`\n⏳ [find_partner] NO MATCH FOUND - ADDING USER TO QUEUE`);
       await addToMatchingQueue(userId, socket.id, userData)
       const queueLen = await getQueueLength()
       console.log(`[find_partner] ⏳ Added user ${userId} to queue. Queue length: ${queueLen}`)
