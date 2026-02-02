@@ -105,3 +105,36 @@
 .primary {
   color: var(--primary);
 }
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+  main.flex-grow {
+    padding: 1rem !important;
+  }
+  
+  .container.mx-auto {
+    gap: 1rem !important;
+    height: auto !important;
+    flex-direction: column !important;
+  }
+  
+  .w-full.md\:w-1\/2 {
+    height: 300px !important;
+    min-height: 300px !important;
+  }
+  
+  .border-2 {
+    border-radius: 1.5rem !important;
+  }
+  
+  .text-3xl.md\:text-4xl {
+    font-size: 1.5rem !important;
+  }
+  
+  .text-lg.md\:text-xl {
+    font-size: 0.875rem !important;
+  }
+  
+  .text-6xl.md\:text-8xl {
+    font-size: 3rem !important;
+  }
+}
