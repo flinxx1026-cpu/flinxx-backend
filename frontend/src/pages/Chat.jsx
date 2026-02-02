@@ -2587,7 +2587,7 @@ const Chat = () => {
               backdrop-filter: blur(8px) !important;
             }
             .panel-bottom .user-header {
-              display: flex !important;
+              display: none !important;
             }
             @media (min-width: 769px) {
               .panel-bottom .user-header {
