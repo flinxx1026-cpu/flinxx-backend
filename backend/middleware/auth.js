@@ -1,48 +1,25 @@
-import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 
-const prisma = new PrismaClient();
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization;
 
-export const authMiddleware = async (req, res, next) => {
+  if (!authHeader) {
+    return res.status(401).json({ message: 'No token provided' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ message: 'Invalid token format' });
+  }
+
   try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Missing or invalid authorization header' });
-    }
-    
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
-    // Try to decode as JWT first
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    } catch (jwtError) {
-      // Fallback to base64 JSON format for backward compatibility
-      try {
-        decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
-      } catch (base64Error) {
-        return res.status(401).json({ error: 'Invalid token format' });
-      }
-    }
-    
-    // Fetch user from database
-    const user = await prisma.users.findUnique({
-      where: { id: decoded.userId || decoded.id }
-    
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
-    }
-    
-    // Set req.user with UUID and publicId
-    req.user = {
-      id: user.id,
-      publicId: user.public_id
-    };
-    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    req.user = decoded;
     next();
-  } catch (error) {
-    console.error('❌ Auth middleware error:', error);
-    res.status(401).json({ error: 'Invalid token' });
+  } catch (err) {
+    console.error('❌ Auth middleware error:', err.message);
+    return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
+
+export default authMiddleware;
