@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Flinxx Premium Gold Bordered Widget</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Noto+Sans:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#D4AF37",
+                        "gold": "#D4AF37",
+                        "charcoal": "#0B0B0B",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        :root {
+            --gold-accent: #D4AF37;
+            --charcoal-black: #0B0B0B;
+        }
+        body {
+            font-family: "Plus Jakarta Sans", "Noto Sans", sans-serif;
+            background-color: #0B0B0B;
+        }
+        .premium-glow {
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.15), 0 20px 50px rgba(0, 0, 0, 0.9);
+        }
+    </style>
+</head>
+<body class="bg-charcoal min-h-screen relative overflow-hidden">
+<div class="flex h-screen w-full flex-col pointer-events-none opacity-20">
+<header class="flex items-center justify-between border-b border-solid border-white/10 px-10 py-3 bg-charcoal">
+<div class="flex items-center gap-4 text-gold">
+<div class="size-8 bg-gold/20 rounded"></div>
+<h2 class="text-white text-xl font-bold leading-tight font-display tracking-tight">Flinxx</h2>
+</div>
+<div class="flex items-center gap-8 text-slate-500">
+<div class="flex items-center gap-9 text-sm font-medium">
+<span>Home</span>
+<span>Chat</span>
+<span>Discover</span>
+</div>
+</div>
+</header>
+<main class="flex-1 flex flex-col items-center justify-center p-10">
+<div class="max-w-[800px] w-full aspect-video rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center gap-6 p-8">
+<div class="h-12 w-64 bg-white/10 rounded-lg"></div>
+<div class="h-14 w-48 bg-gold/30 rounded-lg"></div>
+</div>
+</main>
+</div>
+<div class="fixed bottom-6 right-6 w-[380px] flex flex-col bg-[#0B0B0B] rounded-2xl premium-glow border border-gold/40 overflow-hidden z-50">
+<header class="px-6 py-5 flex items-center justify-between bg-[#0B0B0B]">
+<span class="font-bold text-sm font-display text-gold tracking-widest uppercase">Flinxx Support</span>
+<button class="text-slate-500 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</header>
+<div class="flex flex-col flex-1">
+<div class="px-6 pb-6 pt-2 space-y-2">
+<p class="text-white text-2xl font-bold leading-tight font-display">Hi 👋 How can we help you today?</p>
+<p class="text-slate-400 text-sm font-medium">Our premium team typically replies within minutes.</p>
+</div>
+<div class="px-6 pb-8 flex flex-col gap-2.5">
+<button class="flex items-center justify-between w-full p-4 bg-[#0B0B0B] hover:bg-white/[0.03] text-white text-sm font-semibold rounded-xl border border-gold/40 transition-all group">
+<span>Report a user</span>
+<span class="material-symbols-outlined text-[18px] text-gold group-hover:scale-110 transition-transform">flag</span>
+</button>
+<button class="flex items-center justify-between w-full p-4 bg-[#0B0B0B] hover:bg-white/[0.03] text-white text-sm font-semibold rounded-xl border border-gold/40 transition-all group">
+<span>Technical issue</span>
+<span class="material-symbols-outlined text-[18px] text-gold group-hover:scale-110 transition-transform">settings_input_component</span>
+</button>
+<button class="flex items-center justify-between w-full p-4 bg-[#0B0B0B] hover:bg-white/[0.03] text-white text-sm font-semibold rounded-xl border border-gold/40 transition-all group">
+<span>General support</span>
+<span class="material-symbols-outlined text-[18px] text-gold group-hover:scale-110 transition-transform">help_outline</span>
+</button>
+</div>
+</div>
+<div class="p-6 bg-[#0B0B0B] border-t border-white/5">
+<div class="relative flex items-center">
+<input class="w-full bg-[#0B0B0B] border border-gold/40 rounded-xl py-4 px-5 pr-12 text-sm text-white focus:outline-none focus:border-gold/80 focus:ring-1 focus:ring-gold/80 transition-all placeholder:text-slate-600" placeholder="Type your message..." type="text"/>
+<button class="absolute right-4 text-gold hover:text-white transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined font-bold text-[22px]">send</span>
+</button>
+</div>
+<div class="mt-4 text-center">
+<p class="text-[9px] text-gold/60 uppercase tracking-[0.25em] font-extrabold">Powered by Flinxx Premium</p>
+</div>
+</div>
+</div>
+
+</body></html>

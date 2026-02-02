@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import flinxxLogo from '../assets/flinxx-logo.svg'
+import ContactChat from '../components/ContactChat'
 import './Home.css'
 
 // ✅ HOMEPAGE: Pure hero landing page - NO chat/dashboard components
@@ -8,6 +9,7 @@ import './Home.css'
 const Home = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
+  const [isContactOpen, setIsContactOpen] = useState(false)
 
   const handleStartChat = () => {
     setIsLoading(true)
@@ -17,7 +19,7 @@ const Home = () => {
   }
 
   const handleContactUs = () => {
-    navigate('/contact', { replace: true })
+    setIsContactOpen(true)
   }
 
   return (
@@ -138,6 +140,9 @@ const Home = () => {
           </div>
         </div>
       </footer>
+
+      {/* Contact Chat Widget */}
+      <ContactChat isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} />
     </div>
   )
 }
