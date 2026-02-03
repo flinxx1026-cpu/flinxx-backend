@@ -35,7 +35,9 @@ const MatchHistory = ({ isOpen, onClose }) => {
       }
 
       const data = await response.json();
+      console.log('🔍 [MatchHistory] API Response:', data);
       if (data.success && data.data) {
+        console.log('📋 [MatchHistory] Sample match:', data.data[0]);
         // Transform API response to match UI format
         const formattedMatches = data.data.map((match) => {
           const date = new Date(match.created_at);
