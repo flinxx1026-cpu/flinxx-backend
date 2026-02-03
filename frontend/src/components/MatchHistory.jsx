@@ -52,7 +52,7 @@ const MatchHistory = ({ isOpen, onClose }) => {
           const seconds = totalSeconds % 60;
           const durationStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-          // Get first letter of name for avatar
+          // Get first letter of name for avatar fallback
           const avatarLetter = match.matched_user_name?.charAt(0).toUpperCase() || 'U';
 
           return {
@@ -64,6 +64,7 @@ const MatchHistory = ({ isOpen, onClose }) => {
             date: dateStr,
             time: timeStr,
             avatar: avatarLetter,
+            profileImage: match.profileImage || match.photo_url || null,
             liked: match.is_liked || false,
             matched_user_id: match.matched_user_id
           };
@@ -194,10 +195,17 @@ const MatchHistory = ({ isOpen, onClose }) => {
                 {/* Middle: User Info */}
                 <div className="match-card-user">
                   <div className="match-card-avatar">
-                    {match.avatar === 'M' ? (
-                      <div className="avatar-initial">M</div>
+                    {match.profileImage ? (
+                      <img
+                        src={match.profileImage}
+                        alt={match.name}
+                        className="avatar-image"
+                        loading="lazy"
+                      />
                     ) : (
-                      <span>{match.avatar}</span>
+                      <div className="avatar-initial">
+                        {match.avatar}
+                      </div>
                     )}
                   </div>
                   <div className="match-card-info">

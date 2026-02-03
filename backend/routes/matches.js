@@ -30,16 +30,19 @@ router.get('/', authMiddleware, async (req, res) => {
 
     const { rows } = await pool.query(
       `SELECT 
-        id,
-        matched_user_id,
-        matched_user_name,
-        matched_user_country,
-        duration_seconds,
-        is_liked,
-        created_at
-       FROM matches
-       WHERE user_id = $1
-       ORDER BY created_at DESC
+        m.id,
+        m.matched_user_id,
+        m.matched_user_name,
+        m.matched_user_country,
+        m.duration_seconds,
+        m.is_liked,
+        m.created_at,
+        u.profileImage,
+        u.photo_url
+       FROM matches m
+       LEFT JOIN users u ON m.matched_user_id = u.id
+       WHERE m.user_id = $1
+       ORDER BY m.created_at DESC
        LIMIT 50`,
       [userId]
     )

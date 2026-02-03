@@ -80,6 +80,7 @@ async function initializeDatabase() {
         email VARCHAR(255) UNIQUE NOT NULL,
         display_name VARCHAR(255),
         photo_url TEXT,
+        profileImage TEXT,
         auth_provider VARCHAR(50),
         provider_id VARCHAR(255),
         google_id VARCHAR(255) UNIQUE,
@@ -93,6 +94,7 @@ async function initializeDatabase() {
       );
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+      ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS profileImage TEXT;
       CREATE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id);
       CREATE INDEX IF NOT EXISTS idx_users_provider ON users(auth_provider, provider_id);
       CREATE INDEX IF NOT EXISTS idx_users_profile_completed ON users("profileCompleted");
@@ -2155,6 +2157,7 @@ app.get('/auth/google/callback', async (req, res) => {
           email: userInfo.email,
           display_name: userInfo.name || 'User',
           photo_url: userInfo.picture || null,
+          profileImage: userInfo.picture || null,
           auth_provider: 'google',
           provider_id: userInfo.id,
           google_id: userInfo.id,
