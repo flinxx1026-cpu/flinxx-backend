@@ -37,7 +37,7 @@ router.get('/', authMiddleware, async (req, res) => {
         m.duration_seconds,
         m.is_liked,
         m.created_at,
-        u.profileImage,
+        COALESCE(u.profileImage, u.photo_url) as profileImage,
         u.photo_url
        FROM matches m
        LEFT JOIN users u ON m.matched_user_id = u.id

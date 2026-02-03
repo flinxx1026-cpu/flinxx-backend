@@ -116,6 +116,7 @@ model users {
   public_id                               String?    @unique @db.VarChar(8)
   display_name                            String?    @db.VarChar(255)
   photo_url                               String?
+  profileImage                            String?
   auth_provider                           String?    @db.VarChar(50)
   provider_id                             String?    @db.VarChar(255)
   google_id                               String?    @unique @db.Text
