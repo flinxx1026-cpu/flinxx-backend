@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 import { getUnreadCount } from "../services/api";
-import socket from "../services/socketService";
 
 const UnreadContext = createContext();
 
@@ -54,6 +53,7 @@ export const UnreadProvider = ({ children }) => {
 
   // ✅ SOCKET EVENT: Update unread count when new message arrives
   // Only attach listener when user is fully ready
+  // Lazy-load socket inside useEffect to avoid TDZ during module initialization
   useEffect(() => {
     if (authLoading === true) return;
     if (!user) return;
@@ -66,15 +66,34 @@ export const UnreadProvider = ({ children }) => {
       setUnreadCount(count);
     };
 
-    // Safely attach listener - socket may be a proxy
-    if (socket && typeof socket.on === 'function') {
-      socket.on('receive_message', handleNewMessage);
-    }
+    // Lazy-load socket inside async IIFE - safe from TDZ
+    const setupSocketListener = async () => {
+      try {
+        const socketModule = await import("../services/socketService");
+        const socket = socketModule.default;
+        
+        if (socket && typeof socket.on === 'function') {
+          socket.on('receive_message', handleNewMessage);
+          
+          return () => {
+            if (socket && typeof socket.off === 'function') {
+              socket.off('receive_message', handleNewMessage);
+            }
+          };
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to load socket in UnreadContext:', error.message);
+      }
+      return undefined;
+    };
+
+    let cleanup;
+    setupSocketListener().then(cleanupFn => {
+      cleanup = cleanupFn;
+    });
 
     return () => {
-      if (socket && typeof socket.off === 'function') {
-        socket.off('receive_message', handleNewMessage);
-      }
+      if (cleanup) cleanup();
     };
   }, [authLoading, user?.uuid]);
 
