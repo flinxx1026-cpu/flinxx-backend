@@ -2844,32 +2844,52 @@ const Chat = () => {
                   </button>
                 </div>
 
-                {/* Branding Logo - Bottom Left Corner */}
+                {/* Branding Logo with Text - Bottom Left Corner */}
                 <div style={{ position: 'absolute', bottom: '24px', left: '24px', zIndex: 20, pointerEvents: 'none' }}>
                   <div style={{
-                    width: '32px',
-                    height: '32px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
+                    gap: '7px',
                     background: 'rgba(0, 0, 0, 0.4)',
                     backdropFilter: 'blur(8px)',
                     WebkitBackdropFilter: 'blur(8px)',
                     border: '1px solid rgba(255, 255, 255, 0.2)',
                     borderRadius: '8px',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+                    padding: '6px 10px'
                   }}>
-                    <img
-                      src="/favicon.png"
-                      alt="Flinxx Logo"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                        padding: '4px',
-                        opacity: 0.85
-                      }}
-                    />
+                    {/* Logo */}
+                    <div style={{
+                      width: '28px',
+                      height: '28px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <img
+                        src="/favicon.png"
+                        alt="Flinxx Logo"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                          opacity: 0.9
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Text Branding */}
+                    <span style={{
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#d4af37',
+                      opacity: 0.85,
+                      letterSpacing: '0.3px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      flinxx.in
+                    </span>
                   </div>
                 </div>
               </div>
