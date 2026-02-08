@@ -634,6 +634,10 @@ const Chat = () => {
   // ✅ Unified tab state for all side panels
   const [activeTab, setActiveTab] = useState(null); // 'profile' | 'search' | 'likes' | 'messages' | 'trophy' | 'timer' | null
 
+  // ✅ Incoming Friend Request Notification During Video Chat
+  const [incomingFriendRequest, setIncomingFriendRequest] = useState(null);
+  const friendRequestCheckIntervalRef = useRef(null);
+
   // Chat state
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
@@ -2176,6 +2180,33 @@ const Chat = () => {
     };
   }, []);
 
+  // ✅ POLL FOR INCOMING FRIEND REQUESTS during video chat
+  useEffect(() => {
+    if (!hasPartner) {
+      // Clear polling interval when not in video chat
+      if (friendRequestCheckIntervalRef.current) {
+        clearInterval(friendRequestCheckIntervalRef.current);
+        friendRequestCheckIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Start polling for incoming requests every 3 seconds while in video chat
+    friendRequestCheckIntervalRef.current = setInterval(() => {
+      checkIncomingFriendRequests();
+    }, 3000);
+
+    // Check immediately on entering video chat
+    checkIncomingFriendRequests();
+
+    return () => {
+      if (friendRequestCheckIntervalRef.current) {
+        clearInterval(friendRequestCheckIntervalRef.current);
+        friendRequestCheckIntervalRef.current = null;
+      }
+    };
+  }, [hasPartner, checkIncomingFriendRequests]);
+
   const getTurnServers = async () => {
     // ✅ Return cached servers immediately if available
     if (turnServersCacheRef.current) {
@@ -2489,6 +2520,82 @@ const Chat = () => {
     console.log('='.repeat(80) + '\n');
   }, [user, partnerInfo]);
 
+  // ✅ POLL FOR INCOMING FRIEND REQUESTS during video chat
+  const checkIncomingFriendRequests = useCallback(async () => {
+    if (!user?.uuid || !hasPartner) return;
+
+    try {
+      const response = await fetch(
+        `${BACKEND_URL}/api/friends/pending?userId=${user.uuid}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const pendingRequests = data.requests?.filter(req => req.status === 'pending') || [];
+        
+        // Show only the first unread request
+        if (pendingRequests.length > 0 && !incomingFriendRequest) {
+          const latestRequest = pendingRequests[0];
+          console.log('📬 Incoming friend request detected during video chat:', latestRequest.display_name);
+          setIncomingFriendRequest(latestRequest);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking incoming friend requests:', error);
+    }
+  }, [user, hasPartner, incomingFriendRequest]);
+
+  // ✅ HANDLE ACCEPT FRIEND REQUEST
+  const handleAcceptIncomingRequest = useCallback(async () => {
+    if (!incomingFriendRequest?.id) return;
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/friends/accept`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ requestId: incomingFriendRequest.id })
+      });
+
+      if (response.ok) {
+        console.log('✅ Friend request accepted:', incomingFriendRequest.display_name);
+        setIncomingFriendRequest(null);
+      }
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+    }
+  }, [incomingFriendRequest]);
+
+  // ✅ HANDLE DECLINE FRIEND REQUEST
+  const handleDeclineIncomingRequest = useCallback(async () => {
+    if (!incomingFriendRequest?.id) return;
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/friends/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ requestId: incomingFriendRequest.id })
+      });
+
+      if (response.ok) {
+        console.log('❌ Friend request declined:', incomingFriendRequest.display_name);
+        setIncomingFriendRequest(null);
+      }
+    } catch (error) {
+      console.error('Error declining friend request:', error);
+    }
+  }, [incomingFriendRequest]);
+
   const endChat = () => {
     setHasPartner(false);
     setPartnerFound(false);  // ✅ Hide video chat screen
@@ -2497,6 +2604,7 @@ const Chat = () => {
     setMessages([]);
     setConnectionTime(0);
     setIsSearching(true);  // ✅ Return to waiting screen
+    setIncomingFriendRequest(null);  // ✅ Clear any pending friend request notification
 
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
@@ -3021,9 +3129,177 @@ const Chat = () => {
             </div>
           </div>
         </div>
+
+        {/* ✅ INCOMING FRIEND REQUEST POPUP - Shows during video chat */}
+        {incomingFriendRequest && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999
+          }}>
+            <div style={{
+              backgroundColor: '#1a1a2e',
+              borderRadius: '24px',
+              border: '1px solid rgba(212, 175, 55, 0.3)',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6)',
+              padding: '32px 24px',
+              maxWidth: '400px',
+              width: '90%',
+              animation: 'slideInUp 0.3s ease-out'
+            }}>
+              {/* Header */}
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <h2 style={{
+                  color: '#d4af37',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  marginBottom: '8px'
+                }}>Friend Request</h2>
+                <p style={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  fontSize: '13px'
+                }}>New friend request during chat</p>
+              </div>
+
+              {/* Avatar and Name */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                marginBottom: '24px'
+              }}>
+                <div style={{
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '50%',
+                  marginBottom: '12px',
+                  overflow: 'hidden',
+                  border: '2px solid rgba(212, 175, 55, 0.3)',
+                  backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {incomingFriendRequest.photo_url ? (
+                    <img
+                      src={incomingFriendRequest.photo_url}
+                      alt={incomingFriendRequest.display_name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  ) : (
+                    <span style={{
+                      fontSize: '24px',
+                      fontWeight: 'bold',
+                      color: '#d4af37'
+                    }}>
+                      {incomingFriendRequest.display_name?.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <p style={{
+                  color: '#fff',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  marginBottom: '4px'
+                }}>
+                  {incomingFriendRequest.display_name}
+                </p>
+                <p style={{
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  fontSize: '12px'
+                }}>
+                  wants to be friends
+                </p>
+              </div>
+
+              {/* Buttons */}
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center'
+              }}>
+                <button
+                  onClick={handleDeclineIncomingRequest}
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    backdropFilter: 'blur(8px)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.3)';
+                    e.target.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                    e.target.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                  }}
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={handleAcceptIncomingRequest}
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    backgroundColor: 'rgba(16, 185, 129, 0.3)',
+                    color: '#10b981',
+                    border: '1px solid rgba(16, 185, 129, 0.5)',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    backdropFilter: 'blur(8px)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(16, 185, 129, 0.4)';
+                    e.target.style.borderColor = 'rgba(16, 185, 129, 0.6)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(16, 185, 129, 0.3)';
+                    e.target.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                  }}
+                >
+                  Accept
+                </button>
+              </div>
+            </div>
+
+            <style>{`
+              @keyframes slideInUp {
+                from {
+                  opacity: 0;
+                  transform: translateY(20px);
+                }
+                to {
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+              }
+            `}</style>
+          </div>
+        )}
       </>
     );
-  }), [streamsReadyTrigger, partnerFound]);
+  }), [streamsReadyTrigger, partnerFound, incomingFriendRequest, handleAcceptIncomingRequest, handleDeclineIncomingRequest]);
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
