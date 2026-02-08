@@ -67,16 +67,6 @@ const CameraPanel = React.memo(() => {
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
 
-      {/* Branding Logo - Top Left Corner */}
-      <div className="absolute top-4 left-4 z-20 pointer-events-none branding-logo">
-        <img 
-          src="/favicon.png" 
-          alt="Flinxx Logo" 
-          className="w-full h-full object-contain p-1"
-          style={{ opacity: 0.85 }}
-        />
-      </div>
-
       {/* You Badge */}
       <div className="absolute bottom-6 left-6 z-30 pointer-events-none">
         <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
@@ -2852,6 +2842,35 @@ const Chat = () => {
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '28px' }}>skip_next</span>
                   </button>
+                </div>
+
+                {/* Branding Logo - Bottom Left Corner */}
+                <div style={{ position: 'absolute', bottom: '24px', left: '24px', zIndex: 20, pointerEvents: 'none' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0, 0, 0, 0.4)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
+                  }}>
+                    <img
+                      src="/favicon.png"
+                      alt="Flinxx Logo"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        padding: '4px',
+                        opacity: 0.85
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
