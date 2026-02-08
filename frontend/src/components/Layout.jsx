@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import React, { Suspense, lazy } from 'react'
 import Home from '../pages/Home'
 import Login from '../pages/Login'
-import Chat from '../pages/Chat'
 import Matching from '../pages/Matching'
 import Profile from '../pages/Profile'
 import AuthCallback from '../pages/AuthCallback'
@@ -18,6 +17,9 @@ import PrivacyPolicy from '../pages/PrivacyPolicy'
 import ProtectedChatRoute from './ProtectedChatRoute'
 import { DuoSquadProvider, useDuoSquad } from '../context/DuoSquadContext'
 import './Layout.css'
+
+// Lazy load Chat component to avoid TDZ errors during module initialization
+const Chat = lazy(() => import('../pages/Chat'))
 
 // Lazy load DuoPanel to delay initialization
 const DuoPanel = lazy(() => import('./DuoPanel'))
@@ -70,8 +72,8 @@ function LayoutContent() {
           <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
           <Route path="/oauth-handler" element={<OAuthHandler />} />
           <Route path="/oauth-success" element={<OAuthSuccess />} />
-          <Route path="/chat" element={<ProtectedChatRoute><Chat /></ProtectedChatRoute>} />
-          <Route path="/dashboard" element={<ProtectedChatRoute><Chat /></ProtectedChatRoute>} />
+          <Route path="/chat" element={<ProtectedChatRoute><Suspense fallback={<div>Loading...</div>}><Chat /></Suspense></ProtectedChatRoute>} />
+          <Route path="/dashboard" element={<ProtectedChatRoute><Suspense fallback={<div>Loading...</div>}><Chat /></Suspense></ProtectedChatRoute>} />
           <Route path="/matching" element={<Matching />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
