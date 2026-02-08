@@ -133,12 +133,21 @@ export default function OAuthSuccess() {
           throw new Error('Failed to save authentication data to localStorage');
         }
 
-        // Add a small delay to ensure localStorage is fully synced before redirect
-        console.log('✅ [OAuthSuccess] All data saved successfully - redirecting to /dashboard in 500ms');
+        // Verify localStorage is persisted correctly
+        const verifyToken = localStorage.getItem('token');
+        const verifyUser = localStorage.getItem('user');
+        
+        if (!verifyToken || !verifyUser) {
+          throw new Error('Failed to verify localStorage persistence after save');
+        }
+
+        // Force reload with hard refresh to ensure AuthContext gets fresh data
+        console.log('✅ [OAuthSuccess] All data saved successfully - redirecting to /dashboard with page reload');
         setTimeout(() => {
-          console.log('✅ [OAuthSuccess] NOW REDIRECTING to /dashboard');
+          console.log('✅ [OAuthSuccess] NOW REDIRECTING to /dashboard with hard refresh');
+          // Use absolute URL and force page reload
           window.location.href = '/dashboard';
-        }, 500);
+        }, 300);
       } catch (err) {
         console.error("❌ [OAuthSuccess] Error:", err.message);
         setError(err.message || "An error occurred during authentication");

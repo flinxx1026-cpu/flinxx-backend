@@ -2246,7 +2246,9 @@ app.get('/auth/google/callback', async (req, res) => {
     })
     
     // Redirect to oauth-success page with token in URL
-    res.redirect(`https://flinxx.in/oauth-success?token=${tokenParam}`)
+    // Use FRONTEND_URL environment variable instead of hardcoded URL
+    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
+    res.redirect(`${frontendUrl}/oauth-success?token=${tokenParam}`)
   } catch (error) {
     console.error('\n❌ [AUTH/GOOGLE/CALLBACK] CRITICAL ERROR in callback:', error.message)
     console.error('   Stack:', error.stack)
