@@ -79,6 +79,12 @@ export default function OAuthSuccess() {
 
         if (userFromBackend) {
           validUUID = userFromBackend.uuid || userFromBackend.id;
+          console.log('🔍 [OAuthSuccess] Checking backend UUID:', {
+            uuid_value: validUUID,
+            uuid_type: typeof validUUID,
+            uuid_length: validUUID ? validUUID.toString().length : 'null'
+          });
+          
           if (validUUID && typeof validUUID === 'string' && validUUID.length === 36) {
             normalizedUser = {
               uuid: validUUID,
@@ -88,9 +94,12 @@ export default function OAuthSuccess() {
               picture: userFromBackend.picture || userFromBackend.photo_url,
               profileCompleted: userFromBackend.profileCompleted || false
             };
-            console.log('✅ [OAuthSuccess] Using backend user data');
+            console.log('✅ [OAuthSuccess] ✓ Valid UUID from backend, using backend user data', validUUID.substring(0, 8) + '...');
           } else {
-            console.warn('⚠️ [OAuthSuccess] Backend UUID invalid, falling back to JWT');
+            console.warn('⚠️ [OAuthSuccess] Backend UUID invalid or wrong format, falling back to JWT:', {
+              received: validUUID,
+              length: validUUID ? validUUID.toString().length : 0
+            });
             userFromBackend = null;
           }
         }
@@ -99,8 +108,18 @@ export default function OAuthSuccess() {
         if (!userFromBackend) {
           // Generate a valid UUID if needed (use the id from JWT)
           validUUID = decoded.id;
+          console.log('🔍 [OAuthSuccess] Checking JWT UUID:', {
+            uuid_value: validUUID,
+            uuid_type: typeof validUUID,
+            uuid_length: validUUID ? validUUID.toString().length : 'null'
+          });
+          
           if (!validUUID || typeof validUUID !== 'string' || validUUID.length !== 36) {
-            console.error('❌ [OAuthSuccess] Invalid UUID in JWT:', validUUID);
+            console.error('❌ [OAuthSuccess] Invalid UUID in JWT:', {
+              received: validUUID,
+              type: typeof validUUID,
+              length: validUUID ? validUUID.toString().length : 0
+            });
             setError('Authentication failed: Invalid user ID in token');
             return;
           }
@@ -113,7 +132,7 @@ export default function OAuthSuccess() {
             picture: decoded.picture || null,
             profileCompleted: decoded.profileCompleted || false
           };
-          console.log('✅ [OAuthSuccess] Using JWT user data');
+          console.log('✅ [OAuthSuccess] ✓ Valid UUID from JWT, using JWT user data', validUUID.substring(0, 8) + '...');
         }
 
         console.log('✅ [OAuthSuccess] Saving to localStorage - user:', normalizedUser.email);
