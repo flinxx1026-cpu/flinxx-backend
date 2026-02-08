@@ -1,5 +1,6 @@
 import ErrorBoundary from './ErrorBoundary'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import React, { Suspense, lazy } from 'react'
 import Home from '../pages/Home'
 import Login from '../pages/Login'
 import Chat from '../pages/Chat'
@@ -15,9 +16,11 @@ import OAuthSuccess from '../pages/oauth-success'
 import Terms from '../pages/Terms'
 import PrivacyPolicy from '../pages/PrivacyPolicy'
 import ProtectedChatRoute from './ProtectedChatRoute'
-import DuoPanel from './DuoPanel'
 import { DuoSquadProvider, useDuoSquad } from '../context/DuoSquadContext'
 import './Layout.css'
+
+// Lazy load DuoPanel to delay initialization
+const DuoPanel = lazy(() => import('./DuoPanel'))
 
 function LayoutContent() {
   const { isDuoSquadOpen, closeDuoSquad } = useDuoSquad();
@@ -47,7 +50,9 @@ function LayoutContent() {
             pointerEvents: 'auto'
           }}
         >
-          <DuoPanel isOpen={isDuoSquadOpen} onClose={closeDuoSquad} />
+          <Suspense fallback={<div>Loading...</div>}>
+            <DuoPanel isOpen={isDuoSquadOpen} onClose={closeDuoSquad} />
+          </Suspense>
         </div>
       )}
 
