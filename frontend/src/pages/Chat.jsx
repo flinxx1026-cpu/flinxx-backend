@@ -67,6 +67,16 @@ const CameraPanel = React.memo(() => {
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
 
+      {/* Branding Logo - Top Left Corner */}
+      <div className="absolute top-4 left-4 z-20 pointer-events-none branding-logo">
+        <img 
+          src="/favicon.png" 
+          alt="Flinxx Logo" 
+          className="w-full h-full object-contain p-1"
+          style={{ opacity: 0.85 }}
+        />
+      </div>
+
       {/* You Badge */}
       <div className="absolute bottom-6 left-6 z-30 pointer-events-none">
         <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
@@ -222,11 +232,6 @@ const IntroScreen = React.memo(({
                 <span>{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
               </div>
             </button>
-          </div>
-
-          {/* Footer */}
-          <div className="w-full text-center py-4 z-10 mt-auto">
-            <p className="text-xs text-gray-500 dark:text-gray-600 font-medium">Premium Video Experience</p>
           </div>
         </aside>
 
@@ -1367,24 +1372,52 @@ const Chat = () => {
         // ✅ CRITICAL: Enable the remote track explicitly
         event.track.enabled = true;
         
-        // ✅ ALWAYS trigger component re-render - even if video element isn't ready yet
-        // This ensures the video element gets rendered so ref callback can attach the stream
+        console.log('📥 ===== REMOTE TRACK RECEIVED =====');
+        console.log('📥 Track kind:', event.track.kind);
+        console.log('📥 Track enabled:', event.track.enabled);
+        console.log('📥 Stream tracks count:', remoteStream.getTracks().length);
+        
+        // ✅ OPTIMIZATION: Attach IMMEDIATELY if ref exists, no waiting for state updates
+        if (remoteVideoRef.current) {
+          // Attach srcObject ONLY ONCE, never overwrite
+          if (remoteVideoRef.current.srcObject !== remoteStream) {
+            console.log('📺 ATTACHING REMOTE STREAM IMMEDIATELY to video element');
+            remoteVideoRef.current.srcObject = remoteStream;
+            remoteVideoRef.current.muted = false;
+            
+            // 🔥 AGGRESSIVE PLAY: Try to play immediately with multiple fallbacks
+            const playVideo = async () => {
+              try {
+                // First attempt: direct play
+                const playPromise = remoteVideoRef.current.play();
+                if (playPromise && typeof playPromise.then === 'function') {
+                  await playPromise;
+                  console.log('✅ Remote video playing successfully (immediate)');
+                }
+              } catch (playError) {
+                console.warn('⚠️ Immediate play failed:', playError.name);
+                
+                // Retry after a tiny delay
+                setTimeout(() => {
+                  if (remoteVideoRef.current) {
+                    remoteVideoRef.current.play().catch(() => {
+                      console.log('ℹ️ Autoplay blocked - will play on user interaction');
+                    });
+                  }
+                }, 50);
+              }
+            };
+            
+            playVideo();
+          } else {
+            console.log('📺 Stream already attached, adding new track:', event.track.kind);
+          }
+        } else {
+          console.warn('⚠️ remoteVideoRef not ready yet - will attach when ref callback fires');
+        }
+        
+        // ✅ Also trigger re-render to ensure UI is up-to-date (but don't wait for it)
         setStreamsReadyTrigger(prev => prev + 1);
-        
-        if (!remoteVideoRef.current) {
-            // Video element not ready yet - will attach when ref callback fires
-            return;
-        }
-        
-        // ✅ FIX #1: Attach srcObject ONLY ONCE, never overwrite
-        if (remoteVideoRef.current.srcObject !== remoteStream) {
-          remoteVideoRef.current.srcObject = remoteStream;
-          remoteVideoRef.current.muted = false;
-          
-          remoteVideoRef.current.play().catch(() => {
-            // Autoplay may be blocked
-          });
-        }
     };
 
     peerConnection.onconnectionstatechange = () => {
@@ -2375,6 +2408,97 @@ const Chat = () => {
     endChat();
   }, []);
 
+  // ✅ SEND FRIEND REQUEST in video mode - Uses AuthContext directly (NOT currentUser state)
+  const sendFriendRequest = useCallback(async () => {
+    console.log('\n' + '='.repeat(80));
+    console.log('🎯 [VIDEO FRIEND REQUEST] ========== FUNCTION TRIGGERED ==========');
+    console.log('='.repeat(80));
+    
+    // ✅ Get sender from AuthContext user (NOT currentUser state which can be null)
+    const senderPublicId = user?.publicId || user?.uuid;
+    
+    // ✅ Get receiver from partnerInfo - check all possible field names
+    console.log('📊 [VIDEO FR] Partner Info full object:', JSON.stringify(partnerInfo, null, 2));
+    const receiverPublicId = partnerInfo?.partnerId || partnerInfo?.id || partnerInfo?.uuid || partnerInfo?.publicId;
+    
+    console.log('📊 [VIDEO FR] ========== IDs EXTRACTED ==========');
+    console.log('   Friend request sender:', senderPublicId);
+    console.log('   Friend request receiver:', receiverPublicId);
+    console.log('   Sender source: AuthContext.user');
+    console.log('   Receiver source: partnerInfo');
+    console.log('📊 [DEBUG] AuthContext user:', {
+      uuid: user?.uuid,
+      publicId: user?.publicId,
+      name: user?.name
+    });
+    console.log('📊 [DEBUG] Partner Info object keys:', partnerInfo ? Object.keys(partnerInfo) : 'null');
+    
+    // ✅ VALIDATION - Don't check currentUser anymore
+    if (!senderPublicId) {
+      console.error('❌ [VIDEO FR] Sender ID missing - user.uuid/publicId not in AuthContext');
+      console.error('   AuthContext user:', user);
+      alert('Error: Could not get your user ID from auth');
+      return;
+    }
+    
+    if (!receiverPublicId) {
+      console.error('❌ [VIDEO FR] Receiver ID missing - partnerInfo does not have ID fields');
+      console.error('   Available partnerInfo fields:', partnerInfo ? Object.keys(partnerInfo) : 'partnerInfo is null');
+      console.error('   Full partnerInfo:', partnerInfo);
+      alert('Error: Could not get partner ID');
+      return;
+    }
+    
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    const payload = {
+      senderPublicId: String(senderPublicId),
+      receiverPublicId: String(receiverPublicId)
+    };
+    
+    console.log('\n📤 [VIDEO FR] ========== API REQUEST ==========');
+    console.log('   Endpoint:', `${BACKEND_URL}/api/friends/send`);
+    console.log('   Method: POST');
+    console.log('   Payload:', payload);
+    console.log('   Token exists:', !!localStorage.getItem('token'));
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/friends/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      console.log('\n📥 [VIDEO FR] ========== API RESPONSE ==========');
+      console.log('   Status Code:', response.status);
+      console.log('   Status Text:', response.statusText);
+      console.log('   OK:', response.ok);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ [VIDEO FR] SUCCESS (200)');
+        console.log('   Response Data:', data);
+        console.log('✅ [VIDEO FR] Friend request sent successfully!');
+        alert(`Friend request sent to ${partnerInfo?.userName}!`);
+      } else {
+        const error = await response.json().catch(() => ({}));
+        console.error('❌ [VIDEO FR] ERROR (' + response.status + ')');
+        console.error('   Error Data:', error);
+        alert(error.error || `Failed to send friend request (${response.status})`);
+      }
+    } catch (error) {
+      console.error('❌ [VIDEO FR] NETWORK ERROR');
+      console.error('   Error Name:', error.name);
+      console.error('   Error Message:', error.message);
+      console.error('   Full Error:', error);
+      alert('Error sending friend request: ' + error.message);
+    }
+    
+    console.log('='.repeat(80) + '\n');
+  }, [user, partnerInfo]);
+
   const endChat = () => {
     setHasPartner(false);
     setPartnerFound(false);  // ✅ Hide video chat screen
@@ -2453,19 +2577,44 @@ const Chat = () => {
   }, []);
 
   const remoteVideoRefCallback = useCallback((el) => {
+    if (!el) {
+      remoteVideoRef.current = null;
+      return;
+    }
+    
     // Store the ref
     remoteVideoRef.current = el;
     
-    if (el) {
-      // ✅ CRITICAL FIX: If stream already exists on peerConnection, attach it now
-      const remoteStream = peerConnectionRef.current?._remoteStream;
-      if (remoteStream && remoteStream.getTracks().length > 0) {
-        if (el.srcObject !== remoteStream) {
-          el.srcObject = remoteStream;
-          el.play().catch(() => {
-            // Autoplay may be blocked
-          });
-        }
+    // ✅ CRITICAL FIX: If stream already exists on peerConnection, attach it IMMEDIATELY
+    const remoteStream = peerConnectionRef.current?._remoteStream;
+    if (remoteStream && remoteStream.getTracks().length > 0) {
+      if (el.srcObject !== remoteStream) {
+        console.log('📺 REF CALLBACK: Attaching remote stream immediately');
+        el.srcObject = remoteStream;
+        el.muted = false;
+        
+        // 🔥 AGGRESSIVE PLAY: Try multiple times to play
+        const attemptPlay = async () => {
+          try {
+            const playPromise = el.play();
+            if (playPromise && typeof playPromise.then === 'function') {
+              await playPromise;
+              console.log('✅ Remote video playing from ref callback');
+            }
+          } catch (err) {
+            console.warn('⚠️ Play from ref callback failed:', err.name);
+            // Retry once more
+            setTimeout(() => {
+              if (remoteVideoRef.current) {
+                remoteVideoRef.current.play().catch(() => {});
+              }
+            }, 100);
+          }
+        };
+        
+        attemptPlay();
+      } else {
+        console.log('📺 REF CALLBACK: Stream already attached');
       }
     }
   }, []);
@@ -2627,7 +2776,13 @@ const Chat = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 md:gap-3">
-                    <button style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = '#d4af37'; e.target.style.color = '#000'; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#d4af37'; }}>
+                    <button 
+                      onClick={sendFriendRequest}
+                      title="Send Friend Request"
+                      style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} 
+                      onMouseEnter={(e) => { e.target.style.backgroundColor = '#d4af37'; e.target.style.color = '#000'; }} 
+                      onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#d4af37'; }}
+                    >
                       <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person</span>
                     </button>
                     <button style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = '#d4af37'; e.target.style.color = '#000'; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#d4af37'; }}>
@@ -2651,7 +2806,10 @@ const Chat = () => {
                       height: '100%',
                       objectFit: 'cover',
                       backgroundColor: '#000',
-                      display: hasPartner ? 'block' : 'none',
+                      display: 'block',  // ✅ OPTIMIZATION: Always show - let ontrack control visibility via opacity/visibility
+                      opacity: hasPartner ? 1 : 0,  // ✅ Fade in/out without DOM remount
+                      visibility: hasPartner ? 'visible' : 'hidden',
+                      transition: 'opacity 0.3s ease-in-out',
                       position: 'absolute',
                       top: 0,
                       left: 0
