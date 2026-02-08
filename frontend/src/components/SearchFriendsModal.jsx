@@ -5,7 +5,6 @@ import { MessageContext } from '../context/MessageContext';
 import { AuthContext } from '../context/AuthContext';
 import { useUnread } from '../context/UnreadContext';
 import ChatBox from './ChatBox';
-import { joinUserRoom } from '../services/socketService';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
   const { markAsRead } = useContext(MessageContext) || {};
