@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import socket from '../services/socketService'
+// ✅ DEFERRED: Socket is loaded dynamically to avoid TDZ
+// import socket from '../services/socketService'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 import MobileWaitingScreen from './MobileWaitingScreen'
 
 const Matching = () => {
   const navigate = useNavigate()
+  const socketRef = useRef(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769)
   const [countdown, setCountdown] = useState(5)
   const [isAutoNext, setIsAutoNext] = useState(true)
@@ -21,6 +23,26 @@ const Matching = () => {
   ])
   const [currentIndex, setCurrentIndex] = useState(0)
   const countdownRef = useRef(null)
+
+  // ✅ LAZY LOAD SOCKET - Dynamically import socket to avoid TDZ
+  useEffect(() => {
+    const loadSocket = async () => {
+      try {
+        const socketModule = await import('../services/socketService');
+        socketRef.current = socketModule.default;
+        console.log('✅ Socket loaded in Matching:', socketRef.current?.id ? 'Connected' : 'Ready');
+      } catch (error) {
+        console.error('❌ Failed to load socket in Matching:', error.message);
+        socketRef.current = {
+          on: () => {},
+          off: () => {},
+          emit: () => {}
+        };
+      }
+    };
+    
+    loadSocket();
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -52,10 +74,10 @@ const Matching = () => {
       handleNext()
     }
 
-    socket.on('profile_skipped', handleSkipFromOtherUser)
+    socketRef.current?.on('profile_skipped', handleSkipFromOtherUser)
 
     return () => {
-      socket.off('profile_skipped', handleSkipFromOtherUser)
+      socketRef.current?.off('profile_skipped', handleSkipFromOtherUser)
     }
   }, [])
 
@@ -81,14 +103,14 @@ const Matching = () => {
     // Emit skip event to notify other users viewing profiles
     const skippedUserId = userProfiles[currentIndex]?.id
     if (skippedUserId) {
-      socket.emit('skip_profile', { skippedUserId, currentProfileIndex: currentIndex })
+      socketRef.current?.emit('skip_profile', { skippedUserId, currentProfileIndex: currentIndex })
     }
     handleNext()
   }
 
   const handleConnect = () => {
     // Emit event to backend to initiate connection
-    socket.emit('connect_user', { targetUserId: userProfiles[currentIndex].id })
+    socketRef.current?.emit('connect_user', { targetUserId: userProfiles[currentIndex].id })
     // Navigate to chat
     navigate('/chat')
   }

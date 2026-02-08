@@ -1,10 +1,12 @@
-import { useState, useEffect, useContext } from 'react';
-import socket from '../services/socketService';
+import { useState, useEffect, useContext, useRef } from 'react';
+// ✅ DEFERRED: Socket is loaded dynamically to avoid TDZ
+// import socket from '../services/socketService';
 import { markMessagesAsRead } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { useUnreadSafe } from '../context/UnreadContext';
 
 const ChatBox = ({ friend, onBack, onMessageSent }) => {
+  const socketRef = useRef(null);
   const { user } = useContext(AuthContext) || {};
   const { refetchUnreadCount } = useUnreadSafe();
   const [messages, setMessages] = useState([]);
@@ -45,6 +47,26 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     return null;
   }
 
+  // ✅ LAZY LOAD SOCKET - Dynamically import socket to avoid TDZ
+  useEffect(() => {
+    const loadSocket = async () => {
+      try {
+        const socketModule = await import('../services/socketService');
+        socketRef.current = socketModule.default;
+        console.log('✅ Socket loaded in ChatBox');
+      } catch (error) {
+        console.error('❌ Failed to load socket in ChatBox:', error.message);
+        socketRef.current = {
+          on: () => {},
+          off: () => {},
+          emit: () => {}
+        };
+      }
+    };
+    
+    loadSocket();
+  }, []);
+
   // ✅ JOIN CHAT ROOM when component opens
   useEffect(() => {
     if (!myUserId || !friend) return;
@@ -59,7 +81,7 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     console.log(`   My UUID: ${myUserId}`);
     console.log(`   Friend UUID: ${friendUUID}`);
     
-    socket.emit('join_chat', {
+    socketRef.current?.emit('join_chat', {
       senderId: myUserId,
       receiverId: friend.id
     });
@@ -135,7 +157,7 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     const now = new Date().toISOString();
 
     // ✅ SEND MESSAGE VIA SOCKET AND SAVE TO DB
-    socket.emit('send_message', {
+    socketRef.current?.emit('send_message', {
       senderId: myUserId,
       receiverId: friend.id, // UUID from friend object
       message: text,
@@ -166,9 +188,9 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
       }
     };
 
-    socket.on('receive_message', handleReceiveMessage);
+    socketRef.current?.on('receive_message', handleReceiveMessage);
 
-    return () => socket.off('receive_message', handleReceiveMessage);
+    return () => socketRef.current?.off('receive_message', handleReceiveMessage);
   }, [myUserId, friend, onMessageSent]);
 
   // ✅ CHECK FRIEND REQUEST STATUS when chat opens
