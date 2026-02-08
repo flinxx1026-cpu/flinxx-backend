@@ -7,7 +7,8 @@ import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useDuoSquad } from '../context/DuoSquadContext';
-import socket from '../services/socketService';
+// ✅ DEFERRED: Socket is now imported dynamically to avoid TDZ during lazy loading
+// import socket from '../services/socketService';
 import MobileWaitingScreen from './MobileWaitingScreen';
 import { getIceServers, getMediaConstraints, formatTime, logIceServers } from '../utils/webrtcUtils';
 import PremiumModal from '../components/PremiumModal';
@@ -649,6 +650,9 @@ const Chat = () => {
   // Peer connection reference - keep as ref for internal use only
   const peerConnectionRef = useRef(null);
   
+  // ✅ Socket ref - loaded dynamically after component mounts
+  const socketRef = useRef(null);
+  
   // CRITICAL: Store current user in a ref - initialize in useEffect only
   const currentUserRef = useRef(null);
   const userIdRef = useRef(null);
@@ -667,6 +671,29 @@ const Chat = () => {
 
   // 🧪 DEBUG TEST - Check if both "RENDER START" and "HOOKS DONE" appear in console
   console.log("HOOKS DONE");
+
+  // ✅ LAZY LOAD SOCKET - Dynamically import socket to avoid TDZ during module initialization
+  useEffect(() => {
+    const loadSocket = async () => {
+      try {
+        const socketModule = await import('../services/socketService');
+        socketRef.current = socketModule.default;
+        console.log('✅ Socket loaded dynamically:', socketRef.current?.id ? 'Connected' : 'Ready');
+      } catch (error) {
+        console.error('❌ Failed to load socket:', error.message);
+        // Create a mock socket for safety
+        socketRef.current = {
+          on: () => {},
+          off: () => {},
+          emit: () => {},
+          id: null,
+          connected: false
+        };
+      }
+    };
+    
+    loadSocket();
+  }, []);
 
   // ✅ CAMERA INIT - MOVE THIS TO FIRST useEffect SO IT RUNS IMMEDIATELY
   // NOTE: Auth validation is handled by ProtectedChatRoute - NO NEED to duplicate here
@@ -1286,7 +1313,7 @@ const Chat = () => {
             }
             
             console.log('🔌 Sending ICE candidate to partner socket:', partnerSocketIdRef.current);
-            socket.emit("ice_candidate", {
+            socketRef.current?.emit("ice_candidate", {
               candidate: candidate,
               to: partnerSocketIdRef.current
             });
@@ -1536,11 +1563,11 @@ const Chat = () => {
         // Reject this match and look for another partner
         setIsLoading(true);
         console.error('   Emitting skip_user...');
-        socket.emit('skip_user', {
+        socketRef.current?.emit('skip_user', {
           partnerSocketId: data.socketId
         });
         console.error('   Emitting find_partner...');
-        socket.emit('find_partner', {
+        socketRef.current?.emit('find_partner', {
           userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
           userName: currentUser.name || 'Anonymous',
           userAge: currentUser.age || 18,
@@ -1767,7 +1794,7 @@ const Chat = () => {
         console.log('🔌🔌🔌 CRITICAL: About to emit webrtc_offer with to:', data.socketId);
         console.log('🔌🔌🔌 CRITICAL: Is to value empty/null/undefined?', !data.socketId);
         
-        socket.emit('webrtc_offer', {
+        socketRef.current?.emit('webrtc_offer', {
           offer: peerConnectionRef.current.localDescription,
           to: data.socketId
         });
@@ -1973,7 +2000,7 @@ const Chat = () => {
         })));
         console.log('🔌 CRITICAL: Offerer socket ID from offer:', data.from);
         console.log('🔌 SERVER sending ANSWER to:', data.from);
-        socket.emit('webrtc_answer', {
+        socketRef.current?.emit('webrtc_answer', {
           answer: peerConnectionRef.current.localDescription,
           to: data.from
         });
