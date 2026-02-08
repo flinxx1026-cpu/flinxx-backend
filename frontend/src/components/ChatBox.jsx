@@ -2,11 +2,11 @@ import { useState, useEffect, useContext } from 'react';
 import socket from '../services/socketService';
 import { markMessagesAsRead } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
-import { useUnread } from '../context/UnreadContext';
+import { useUnreadSafe } from '../context/UnreadContext';
 
 const ChatBox = ({ friend, onBack, onMessageSent }) => {
   const { user } = useContext(AuthContext) || {};
-  const { refetchUnreadCount } = useUnread();
+  const { refetchUnreadCount } = useUnreadSafe();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [friendRequestStatus, setFriendRequestStatus] = useState('none');

@@ -88,10 +88,37 @@ export const joinUserRoom = (userId) => {
   }
 }
 
-// Export as default - will lazily initialize on first access
-export default new Proxy({}, {
-  get: (target, prop) => {
+// ✅ Safe wrapper functions instead of Proxy to avoid minification TDZ issues
+const socketWrapper = {
+  on: (event, handler) => {
     const s = getOrCreateSocket();
-    return s ? s[prop] : (() => {})
-  }
-})
+    if (s && typeof s.on === 'function') {
+      s.on(event, handler);
+    }
+  },
+  off: (event, handler) => {
+    const s = getOrCreateSocket();
+    if (s && typeof s.off === 'function') {
+      s.off(event, handler);
+    }
+  },
+  emit: (event, data) => {
+    const s = getOrCreateSocket();
+    if (s && typeof s.emit === 'function') {
+      s.emit(event, data);
+    }
+  },
+  get id() {
+    const s = getOrCreateSocket();
+    return s ? s.id : null;
+  },
+  get io() {
+    const s = getOrCreateSocket();
+    return s ? s.io : { engine: { transport: { name: 'mock' } } };
+  },
+  // Direct socket access for advanced use cases
+  getSocket: () => getOrCreateSocket()
+};
+
+// Export as default - safe wrapper object
+export default socketWrapper;

@@ -103,3 +103,25 @@ export const useUnread = () => {
   }
   return context;
 };
+
+// Safe version that returns default values instead of throwing
+export const useUnreadSafe = () => {
+  try {
+    const context = useContext(UnreadContext);
+    if (!context) {
+      return {
+        unreadCount: 0,
+        setUnreadCount: () => {},
+        refetchUnreadCount: async () => {}
+      };
+    }
+    return context;
+  } catch (error) {
+    console.warn('![UnreadContext]Failed to access useUnread:', error.message);
+    return {
+      unreadCount: 0,
+      setUnreadCount: () => {},
+      refetchUnreadCount: async () => {}
+    };
+  }
+};

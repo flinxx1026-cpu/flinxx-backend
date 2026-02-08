@@ -3,13 +3,13 @@ import './DuoPanel.css';
 import { getFriends, markMessagesAsRead } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { MessageContext } from '../context/MessageContext';
-import { useUnread } from '../context/UnreadContext';
+import { useUnreadSafe } from '../context/UnreadContext';
 import ChatBox from './ChatBox';
 
 const DuoPanel = ({ isOpen = true, onClose }) => {
   const { user } = useContext(AuthContext) || {};
   const { markAsRead } = useContext(MessageContext) || {};
-  const { refetchUnreadCount } = useUnread() || {};
+  const { refetchUnreadCount } = useUnreadSafe();
   const [friends, setFriends] = useState(null); // null = loading, array = loaded (never reset)
   const [activeChat, setActiveChat] = useState(null);
   const hasFetchedRef = useRef(false); // Track if data has been fetched in this render lifecycle
