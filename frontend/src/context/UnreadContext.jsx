@@ -66,10 +66,15 @@ export const UnreadProvider = ({ children }) => {
       setUnreadCount(count);
     };
 
-    socket.on('receive_message', handleNewMessage);
+    // Safely attach listener - socket may be a proxy
+    if (socket && typeof socket.on === 'function') {
+      socket.on('receive_message', handleNewMessage);
+    }
 
     return () => {
-      socket.off('receive_message', handleNewMessage);
+      if (socket && typeof socket.off === 'function') {
+        socket.off('receive_message', handleNewMessage);
+      }
     };
   }, [authLoading, user?.uuid]);
 
