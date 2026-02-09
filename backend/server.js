@@ -610,6 +610,8 @@ async function getRandomOnlineUser(excludeUserId) {
 // Queue management using Redis
 async function addToMatchingQueue(userId, socketId, userData) {
   try {
+    console.log(`\n📝 [QUEUE] Adding user ${userId} to queue...`)
+    
     // CRITICAL: Check if this user is already in the queue (e.g., from a previous session)
     const existingQueueEntries = await redis.lRange('matching_queue', 0, -1)
     let removedCount = 0
@@ -641,11 +643,16 @@ async function addToMatchingQueue(userId, socketId, userData) {
       timestamp: Date.now()
     })
     await redis.lPush('matching_queue', queueData)
-    console.log(`✅ User ${userId} added to matching queue with socket ${socketId}`)
+    console.log(`✅ [QUEUE] User ${userId} added with socket ${socketId}`)
     
-    // Verify it was added
+    // Verify it was added and log full queue state
     const queueLen = await redis.lLen('matching_queue')
-    console.log(`✅ Queue length after add: ${queueLen}`)
+    const allEntries = await redis.lRange('matching_queue', 0, -1)
+    console.log(`📊 [QUEUE] After ADD - Total users in queue: ${queueLen}`)
+    for (let i = 0; i < allEntries.length; i++) {
+      const entry = JSON.parse(allEntries[i])
+      console.log(`   [${i}] User ${entry.userId} - Socket ${entry.socketId.substring(0, 8)}...`)
+    }
   } catch (error) {
     console.error('❌ Error adding to queue:', error)
   }
@@ -653,8 +660,21 @@ async function addToMatchingQueue(userId, socketId, userData) {
 
 async function getNextFromQueue() {
   try {
+    const queueLen = await redis.lLen('matching_queue')
+    console.log(`\n🔍 [QUEUE] Attempting to pop from queue (${queueLen} users waiting)`)
+    
     const data = await redis.rPop('matching_queue')
-    return data ? JSON.parse(data) : null
+    
+    if (data) {
+      const parsed = JSON.parse(data)
+      const newQueueLen = await redis.lLen('matching_queue')
+      console.log(`✅ [QUEUE] Popped user ${parsed.userId} - socket ${parsed.socketId.substring(0, 8)}...`)
+      console.log(`📊 [QUEUE] Queue now has ${newQueueLen} users after pop`)
+      return parsed
+    } else {
+      console.log(`⏳ [QUEUE] Queue is empty - no users to pop`)
+      return null
+    }
   } catch (error) {
     console.error('❌ Error getting from queue:', error)
     return null
@@ -2669,8 +2689,14 @@ app.get('/api/messages', async (req, res) => {
 
 // WebSocket Events
 io.on('connection', (socket) => {
-  console.log(`✅ User connected: ${socket.id}`)
-  console.log(`📊 Active connections: ${io.engine.clientsCount}`)
+  console.log(`\n✅ [CONNECTION] New socket connection: ${socket.id}`)
+  console.log(`📊 [CONNECTION] Total active connections: ${io.engine.clientsCount}`)
+  console.log(`📊 [CONNECTION] Current queue length: ${redis ? 'pending redis check' : 0}`)
+  
+  // Log queue state on each new connection
+  redis.lLen('matching_queue').then(queueLen => {
+    console.log(`📊 [CONNECTION] Matching queue size: ${queueLen} users waiting`)
+  }).catch(err => console.error('Error checking queue on connect:', err))
 
   // ✅ JOIN CHAT ROOM (shared room for sender + receiver)
   socket.on('join_chat', ({ senderId, receiverId }) => {
@@ -2737,6 +2763,9 @@ io.on('connection', (socket) => {
     console.log('\n\n═══════════════════════════════════════════════════════════════');
     console.log('🔍 [find_partner] EVENT FIRED - STARTING MATCH LOGIC');
     console.log('═══════════════════════════════════════════════════════════════');
+    console.log(`🔌 [find_partner] Current socket.id: ${socket.id}`)
+    console.log(`🔌 [find_partner] Socket connected: ${socket.connected}`)
+    console.log(`📊 [find_partner] Total active sockets: ${io.engine.clientsCount}`)
     
     // CRITICAL: Get userId from frontend data (NOT generate new UUID)
     const userId = userData?.userId
@@ -2749,20 +2778,20 @@ io.on('connection', (socket) => {
 
     // Store the mapping: socket.id -> userId (from frontend)
     userSockets.set(socket.id, userId)
+    console.log(`✅ [find_partner] Stored mapping - socket ${socket.id.substring(0, 8)}... → user ${userId}`)
     
     // Log queue state BEFORE processing
     const queueLenBefore = await getQueueLength()
     const queueEntriesBefore = await redis.lRange('matching_queue', 0, -1)
-    console.log(`\n📊 [find_partner] QUEUE STATE BEFORE PROCESSING:`)
-    console.log(`   Queue length: ${queueLenBefore}`)
-    console.log(`   Queue entries:`)
-    for (const entry of queueEntriesBefore) {
-      const parsed = JSON.parse(entry)
-      console.log(`      - userId: ${parsed.userId}, socketId: ${parsed.socketId}, timestamp: ${new Date(parsed.timestamp).toISOString()}`)
+    console.log(`\n📊 [find_partner] QUEUE STATE BEFORE`)
+    console.log(`   Total users waiting: ${queueLenBefore}`)
+    for (let i = 0; i < queueEntriesBefore.length; i++) {
+      const parsed = JSON.parse(queueEntriesBefore[i])
+      console.log(`   [${i}] User ${parsed.userId} - Socket ${parsed.socketId.substring(0, 8)}...`)
     }
     
-    console.log(`[find_partner] User ${userId} looking for partner`, { userName: userData?.userName, socketId: socket.id })
-    console.log(`[find_partner] Current socket.id: ${socket.id}`)
+    console.log(`\n👤 [find_partner] User ${userId} looking for partner`)
+    console.log(`   userName: ${userData?.userName || 'Anonymous'}`)
 
     // Set user as online in Redis
     await setUserOnline(userId, socket.id)
@@ -2770,58 +2799,65 @@ io.on('connection', (socket) => {
     // Check if there's someone in the queue, skip if it's the same user
     let waitingUser = await getNextFromQueue()
     
-    console.log(`\n🎯 [find_partner] ATTEMPTING TO POP FROM QUEUE:`);
-    console.log(`   Popped user data:`, waitingUser ? JSON.stringify(waitingUser) : 'NULL');
-    
     // CRITICAL: Loop until we find a DIFFERENT user
     let skippedCount = 0
     while (waitingUser && waitingUser.userId === userId) {
       skippedCount++
-      console.log(`[find_partner] ⚠️ SKIPPING SELF-MATCH ATTEMPT #${skippedCount}`)
+      console.log(`⚠️ [find_partner] SKIPPING SELF-MATCH #${skippedCount}`)
       console.log(`   Waiting user: ${waitingUser.userId}`)
       console.log(`   Current user: ${userId}`)
-      console.log(`   These are the SAME - getting next user from queue...`)
       waitingUser = await getNextFromQueue() // Try next user
     }
     
     if (skippedCount > 0) {
-      console.log(`[find_partner] ✅ Skipped ${skippedCount} self-match attempts`)
+      console.log(`✅ [find_partner] Skipped ${skippedCount} self-match attempts`)
     }
     
     if (waitingUser) {
       console.log(`\n🎯 [find_partner] 🎯 MATCH FOUND! 🎯`)
-      console.log(`   Current user: ${userId}`)
-      console.log(`   Partner user: ${waitingUser.userId}`)
-      console.log(`[find_partner] ✅ Verified: ${userId} !== ${waitingUser.userId}`)
-      console.log(`   Calling matchUsers with:`);
-      console.log(`      socketId1: ${socket.id}`)
-      console.log(`      userId1: ${userId}`)
-      console.log(`      socketId2: ${waitingUser.socketId}`)
-      console.log(`      userId2: ${waitingUser.userId}`)
+      console.log(`   Current user: ${userId} (socket ${socket.id.substring(0, 8)}...)`)
+      console.log(`   Partner user: ${waitingUser.userId} (socket ${waitingUser.socketId.substring(0, 8)}...)`)
+      
+      // Verify sockets are valid
+      const socket1Exists = io.sockets.sockets.has(socket.id)
+      const socket2Exists = io.sockets.sockets.has(waitingUser.socketId)
+      console.log(`🔌 [find_partner] Socket validity check:`)
+      console.log(`   Current socket exists? ${socket1Exists}`)
+      console.log(`   Partner socket exists? ${socket2Exists}`)
+      
+      if (!socket1Exists || !socket2Exists) {
+        console.error(`❌ [find_partner] One or both sockets are INVALID!`)
+        // Re-add current user to queue and try again
+        console.log(`🔄 [find_partner] Re-adding ${userId} to queue...`)
+        await addToMatchingQueue(userId, socket.id, userData)
+        socket.emit('waiting', { message: 'Waiting for a partner...' })
+        return
+      }
       
       // Call the bulletproof matching function
+      console.log(`\n✅ [find_partner] Calling matchUsers()...`)
       await matchUsers(socket.id, userId, waitingUser.socketId, waitingUser.userId, userData, waitingUser)
-      
-      // DO NOT emit 'waiting' here - matchUsers already emits 'partner_found'
-      console.log(`[find_partner] ✅ matchUsers completed - users should receive partner_found event`)
+      console.log(`[find_partner] ✅ matchUsers completed`)
     } else {
       // Add to waiting queue
       console.log(`\n⏳ [find_partner] NO MATCH FOUND - ADDING USER TO QUEUE`);
       await addToMatchingQueue(userId, socket.id, userData)
       const queueLen = await getQueueLength()
-      console.log(`[find_partner] ⏳ Added user ${userId} to queue. Queue length: ${queueLen}`)
-      console.log(`[find_partner] 📋 Waiting for another user to join...`)
+      console.log(`✅ [find_partner] Added user ${userId} to queue. Queue length: ${queueLen}`)
       
       // Log queue state AFTER adding
       const queueEntriesAfter = await redis.lRange('matching_queue', 0, -1)
-      console.log(`📊 [find_partner] QUEUE STATE AFTER ADDING USER:`)
-      for (const entry of queueEntriesAfter) {
-        const parsed = JSON.parse(entry)
-        console.log(`   - userId: ${parsed.userId}, socketId: ${parsed.socketId}`)
+      console.log(`📊 [find_partner] QUEUE STATE AFTER`)
+      console.log(`   Total users waiting: ${queueLen}`)
+      for (let i = 0; i < queueEntriesAfter.length; i++) {
+        const parsed = JSON.parse(queueEntriesAfter[i])
+        console.log(`   [${i}] User ${parsed.userId} - Socket ${parsed.socketId.substring(0, 8)}...`)
       }
       
-      // Only emit 'waiting' if NOT matched
+      // Emit waiting event
+      console.log(`📤 [find_partner] Emitting 'waiting' event to socket ${socket.id.substring(0, 8)}...`)
       socket.emit('waiting', { message: 'Waiting for a partner...' })
+      console.log(`✅ [find_partner] 'waiting' event emitted`)
     }
   })
 
@@ -3214,6 +3250,20 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   console.log('║              🚀 SENDING PARTNER_FOUND EVENTS 🚀             ║')
   console.log('╚════════════════════════════════════════════════════════════╝')
   
+  // VERIFY SOCKETS ARE STILL CONNECTED BEFORE EMITTING
+  const socket1Connected = io.sockets.sockets.has(socketId1)
+  const socket2Connected = io.sockets.sockets.has(socketId2)
+  
+  console.log(`\n🔌 [EMIT CHECK] Socket connection status:`)
+  console.log(`   Socket1 (${socketId1.substring(0, 8)}...) connected? ${socket1Connected}`)
+  console.log(`   Socket2 (${socketId2.substring(0, 8)}...) connected? ${socket2Connected}`)
+  
+  if (!socket1Connected || !socket2Connected) {
+    console.error(`❌ [EMIT ERROR] One or both sockets disconnected AFTER partner check!`)
+    console.error(`   Cannot emit partner_found - sockets unavailable`)
+    return
+  }
+  
   // User 1 receives User 2's info
   const partnerFoundEvent1 = {
     partnerId: userId2,
@@ -3225,12 +3275,15 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     userPicture: userData2?.userPicture || null
   }
   
-  console.log(`\n📤 [USER1] Emitting to socket: ${socketId1}`)
+  console.log(`\n📤 [EMIT1] Sending partner_found to User1 socket ${socketId1.substring(0, 8)}...`)
   console.log(`   Partner: ${userId2} (${userData2?.userName || 'Anonymous'})`)
-  console.log(`   Data:`, JSON.stringify(partnerFoundEvent1, null, 2))
   
-  io.to(socketId1).emit('partner_found', partnerFoundEvent1)
-  console.log(`✅ partner_found CONFIRMED emitted to socketId1`)
+  try {
+    io.to(socketId1).emit('partner_found', partnerFoundEvent1)
+    console.log(`✅ [EMIT1] partner_found sent to User1`)
+  } catch (emit1Err) {
+    console.error(`❌ [EMIT1] Error emitting to User1:`, emit1Err.message)
+  }
   
   // User 2 receives User 1's info
   const partnerFoundEvent2 = {
@@ -3243,12 +3296,15 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     userPicture: userData1?.userPicture || null
   }
   
-  console.log(`\n📤 [USER2] Emitting to socket: ${socketId2}`)
+  console.log(`\n📤 [EMIT2] Sending partner_found to User2 socket ${socketId2.substring(0, 8)}...`)
   console.log(`   Partner: ${userId1} (${userData1?.userName || 'Anonymous'})`)
-  console.log(`   Data:`, JSON.stringify(partnerFoundEvent2, null, 2))
   
-  io.to(socketId2).emit('partner_found', partnerFoundEvent2)
-  console.log(`✅ partner_found CONFIRMED emitted to socketId2`)
+  try {
+    io.to(socketId2).emit('partner_found', partnerFoundEvent2)
+    console.log(`✅ [EMIT2] partner_found sent to User2`)
+  } catch (emit2Err) {
+    console.error(`❌ [EMIT2] Error emitting to User2:`, emit2Err.message)
+  }
   
   // Track call start time and partner info for both users
   console.log('\n✓ STEP 6: Storing call metadata')
