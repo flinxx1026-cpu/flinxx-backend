@@ -977,7 +977,7 @@ const Chat = () => {
 
   // CRITICAL: Define functions AFTER state declarations to avoid TDZ
   // Expose camera re-initialization function that can be called from ProfileModal
-  const reinitializeCamera = React.useCallback(async () => {
+  const reinitializeCamera = useCallback(async () => {
     console.log('\n\n🎥 ===== CAMERA RE-INITIALIZATION STARTED =====');
     console.log('🎥 [REINIT] Camera re-initialization requested');
     console.log('🎥 [REINIT] Current state:');
