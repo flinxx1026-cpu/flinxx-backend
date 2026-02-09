@@ -1500,6 +1500,13 @@ const Chat = () => {
   // This must run only once, NOT every time startVideoChat is called
   // ========================================
   useEffect(() => {
+    // ✅ CRITICAL: Guard against undefined socket and create local reference
+    if (!socketRef.current) {
+      console.warn('⚠️ Socket not ready yet - deferring listener setup');
+      return;
+    }
+    const socket = socketRef.current;
+    
     console.log('\n\n🔌 ===== SOCKET LISTENERS SETUP (COMPONENT MOUNT) =====');
     console.log('🔌 Setting up socket listeners - runs ONCE on component load');
     console.log('🔌 Socket ID:', socket.id);
