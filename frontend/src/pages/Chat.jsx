@@ -2757,7 +2757,8 @@ const Chat = () => {
     return () => clearInterval(checkInterval);
   }, [hasPartner]);
 
-  const VideoChatScreen = useMemo(() => (() => {
+  // ✅ REMOVED useMemo - use direct conditional render to avoid TDZ in minified code
+  const renderVideoChatScreen = () => {
     // CRITICAL DEBUG: Log partnerInfo to diagnose display issue
     console.log('🎬 VideoChatScreen rendering - partnerInfo:', {
       exists: !!partnerInfo,
@@ -3323,7 +3324,7 @@ const Chat = () => {
         )}
       </>
     );
-  }), [streamsReadyTrigger, partnerFound]);
+  };
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
@@ -3370,7 +3371,7 @@ const Chat = () => {
       {/* VIDEO CHAT - FULL SCREEN (absolute positioning) */}
       {partnerFound && (
         <div className="absolute inset-0 z-50 w-full h-full">
-          <VideoChatScreen />
+          {renderVideoChatScreen()}
         </div>
       )}
 
