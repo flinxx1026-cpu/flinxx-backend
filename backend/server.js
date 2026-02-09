@@ -2189,7 +2189,6 @@ app.get('/auth/google/callback', async (req, res) => {
           email: userInfo.email,
           display_name: userInfo.name || 'User',
           photo_url: userInfo.picture || null,
-          profileImage: userInfo.picture || null,
           auth_provider: 'google',
           provider_id: userInfo.id,
           google_id: userInfo.id,

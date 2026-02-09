@@ -4,6 +4,7 @@ node_modules
 
 # Firebase service account - NEVER commit this file
 firebase-service-account.json
+flinx-8a05e-firebase-adminsdk-fbsvc-b87965e6cf.json
 
 # Build & logs
 dist
