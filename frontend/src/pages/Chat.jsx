@@ -1524,6 +1524,28 @@ const Chat = () => {
     socket.off('disconnect');
     console.log('🔌 Removed old listeners (if any existed)');
     
+    // 🔍 UNIVERSAL DEBUG LISTENER - Catch ALL events to verify socket is working
+    console.log('\n🔍 [DEBUG] Setting up universal event listener to catch ALL socket events...');
+    socket.onAny((eventName, ...args) => {
+      console.log(`\n🎯 [UNIVERSAL LISTENER] Event received: "${eventName}"`);
+      console.log(`   Data:`, args);
+      console.log(`   Data type:`, typeof args[0]);
+      
+      // Special highlighting for critical events
+      if (eventName === 'partner_found') {
+        console.log(`✅ ✅ ✅ PARTNER_FOUND RECEIVED - THIS IS IT!`);
+      } else if (eventName === 'waiting') {
+        console.log(`⏳ Waiting event received`);
+      } else if (eventName === 'error') {
+        console.log(`❌ Error event received`);
+      } else if (eventName === 'connect') {
+        console.log(`🔌 Socket connected`);
+      } else if (eventName === 'disconnect') {
+        console.log(`❌ Socket disconnected`);
+      }
+    });
+    console.log('✅ Universal event listener ready');
+    
     // Partner found - fires for BOTH offerer AND answerer
     socket.on('partner_found', async (data) => {
       console.log('\n\n📋 ===== PARTNER FOUND EVENT RECEIVED =====');

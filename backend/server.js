@@ -2847,9 +2847,16 @@ io.on('connection', (socket) => {
       }
       
       // Call the bulletproof matching function
-      console.log(`\n✅ [find_partner] Calling matchUsers()...`)
+      console.log(`\n✅ [find_partner] All checks PASSED - now calling matchUsers()...`)
+      console.log(`   socketId1: ${socket.id}`)
+      console.log(`   userId1: ${userId}`)
+      console.log(`   socketId2: ${waitingUser.socketId}`)
+      console.log(`   userId2: ${waitingUser.userId}`)
+      
       await matchUsers(socket.id, userId, waitingUser.socketId, waitingUser.userId, userData, waitingUser)
-      console.log(`[find_partner] ✅ matchUsers completed`)
+      
+      console.log(`✅ [find_partner] matchUsers() completed successfully`)
+      console.log(`🎉 [find_partner] Both users should have received partner_found event`)
     } else {
       // Add to waiting queue
       console.log(`\n⏳ [find_partner] NO MATCH FOUND - ADDING USER TO QUEUE`);
@@ -3242,10 +3249,41 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   console.log('\n✓ STEP 3: Joining both users to shared room')
   const roomId = `${sessionId}:chat`
   
-  io.sockets.sockets.get(socketId1).join(roomId)
-  io.sockets.sockets.get(socketId2).join(roomId)
-  
-  console.log(`   ✅ Socket1 joined room: ${roomId}`)
+  try {
+    const socket1Obj = io.sockets.sockets.get(socketId1)
+    const socket2Obj = io.sockets.sockets.get(socketId2)
+    
+    if (!socket1Obj) {
+      console.error(`❌ Cannot join room - Socket1 object is null!`)
+    } else {
+      socket1Obj.join(roomId)
+      const roomsForSocket1 = Array.from(socket1Obj.rooms);
+      console.log(`✅ Socket1 joined room: ${roomId}`)
+      console.log(`   Socket1 is now in ${roomsForSocket1.length} room(s): ${roomsForSocket1.join(', ')}`)
+    }
+    
+    if (!socket2Obj) {
+      console.error(`❌ Cannot join room - Socket2 object is null!`)
+    } else {
+      socket2Obj.join(roomId)
+      const roomsForSocket2 = Array.from(socket2Obj.rooms);
+      console.log(`✅ Socket2 joined room: ${roomId}`)
+      console.log(`   Socket2 is now in ${roomsForSocket2.length} room(s): ${roomsForSocket2.join(', ')}`)
+    }
+    
+    // Verify both are in the same room
+    const roomSockets = io.sockets.adapter.rooms.get(roomId)
+    console.log(`\n📍 [ROOM CHECK] Room "${roomId}" now contains:`)
+    console.log(`   Total sockets in room: ${roomSockets?.size || 0}`)
+    if (roomSockets) {
+      for (const sockId of roomSockets) {
+        console.log(`   - ${sockId}`)
+      }
+    }
+  } catch (roomErr) {
+    console.error(`❌ ERROR joining rooms:`, roomErr.message)
+    console.error(`   This could prevent partner_found from being received!`)
+  }
   console.log(`   ✅ Socket2 joined room: ${roomId}`)
 
   // CRITICAL: Track partner relationships BEFORE emitting
@@ -3269,12 +3307,29 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   console.log(`\n🔌 [EMIT CHECK] Socket connection status:`)
   console.log(`   Socket1 (${socketId1.substring(0, 8)}...) connected? ${socket1Connected}`)
   console.log(`   Socket2 (${socketId2.substring(0, 8)}...) connected? ${socket2Connected}`)
+  console.log(`   Total connected sockets on server: ${io.engine.clientsCount}`)
   
   if (!socket1Connected || !socket2Connected) {
     console.error(`❌ [EMIT ERROR] One or both sockets disconnected AFTER partner check!`)
+    console.error(`   Socket1 exists: ${socket1Connected}`)
+    console.error(`   Socket2 exists: ${socket2Connected}`)
     console.error(`   Cannot emit partner_found - sockets unavailable`)
     return
   }
+  
+  // Get actual socket objects to verify they're valid
+  const actualSocket1 = io.sockets.sockets.get(socketId1)
+  const actualSocket2 = io.sockets.sockets.get(socketId2)
+  
+  console.log(`\n🔍 [SOCKET DETAILS] Verifying socket object properties:`)
+  console.log(`   Socket1:`)
+  console.log(`     - exists: ${!!actualSocket1}`)
+  console.log(`     - connected: ${actualSocket1?.connected || false}`)
+  console.log(`     - handshake.auth: ${!!actualSocket1?.handshake?.auth}`)
+  console.log(`   Socket2:`)
+  console.log(`     - exists: ${!!actualSocket2}`)
+  console.log(`     - connected: ${actualSocket2?.connected || false}`)
+  console.log(`     - handshake.auth: ${!!actualSocket2?.handshake?.auth}`)
   
   // User 1 receives User 2's info
   const partnerFoundEvent1 = {
@@ -3289,12 +3344,21 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   
   console.log(`\n📤 [EMIT1] Sending partner_found to User1 socket ${socketId1.substring(0, 8)}...`)
   console.log(`   Partner: ${userId2} (${userData2?.userName || 'Anonymous'})`)
+  console.log(`   Event payload:`, JSON.stringify(partnerFoundEvent1, null, 2))
   
   try {
-    io.to(socketId1).emit('partner_found', partnerFoundEvent1)
-    console.log(`✅ [EMIT1] partner_found sent to User1`)
+    // Use the actual socket object to emit
+    if (actualSocket1) {
+      actualSocket1.emit('partner_found', partnerFoundEvent1)
+      console.log(`✅ [EMIT1] partner_found emitted via socket object`)
+    } else {
+      // Fallback to io.to()
+      io.to(socketId1).emit('partner_found', partnerFoundEvent1)
+      console.log(`✅ [EMIT1] partner_found emitted via io.to()`)
+    }
   } catch (emit1Err) {
-    console.error(`❌ [EMIT1] Error emitting to User1:`, emit1Err.message)
+    console.error(`❌ [EMIT1] CRITICAL ERROR emitting to User1:`, emit1Err.message)
+    console.error(`   Stack:`, emit1Err.stack)
   }
   
   // User 2 receives User 1's info
@@ -3310,13 +3374,24 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   
   console.log(`\n📤 [EMIT2] Sending partner_found to User2 socket ${socketId2.substring(0, 8)}...`)
   console.log(`   Partner: ${userId1} (${userData1?.userName || 'Anonymous'})`)
+  console.log(`   Event payload:`, JSON.stringify(partnerFoundEvent2, null, 2))
   
   try {
-    io.to(socketId2).emit('partner_found', partnerFoundEvent2)
-    console.log(`✅ [EMIT2] partner_found sent to User2`)
+    // Use the actual socket object to emit
+    if (actualSocket2) {
+      actualSocket2.emit('partner_found', partnerFoundEvent2)
+      console.log(`✅ [EMIT2] partner_found emitted via socket object`)
+    } else {
+      // Fallback to io.to()
+      io.to(socketId2).emit('partner_found', partnerFoundEvent2)
+      console.log(`✅ [EMIT2] partner_found emitted via io.to()`)
+    }
   } catch (emit2Err) {
-    console.error(`❌ [EMIT2] Error emitting to User2:`, emit2Err.message)
+    console.error(`❌ [EMIT2] CRITICAL ERROR emitting to User2:`, emit2Err.message)
+    console.error(`   Stack:`, emit2Err.stack)
   }
+  
+  console.log(`\n✅ [EMIT COMPLETE] Both partner_found events processed`)
   
   // Track call start time and partner info for both users
   console.log('\n✓ STEP 6: Storing call metadata')

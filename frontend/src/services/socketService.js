@@ -34,6 +34,7 @@ const getOrCreateSocket = () => {
     socket.on('connect', () => {
       console.log('✅ Socket connected successfully! ID:', socket.id)
       console.log('📊 Transport method:', socket.io.engine.transport.name)
+      console.log('📊 Socket connected status:', socket.connected)
     })
 
     socket.on('connect_error', (error) => {
@@ -56,6 +57,13 @@ const getOrCreateSocket = () => {
     socket.on('connect_timeout', () => {
       console.error('⏱️ Socket connection timeout')
     })
+    
+    // 🔍 DEBUG: Log all unhandled events
+    socket.onAny((eventName, ...args) => {
+      if (!['connect', 'disconnect', 'ping', 'pong'].includes(eventName)) {
+        console.log(`🎯 [socketService DEBUG] Unhandled event: "${eventName}"`, args);
+      }
+    });
 
     // ✅ HANDLE FORCE LOGOUT (when user is banned)
     socket.on('force_logout', () => {
@@ -70,7 +78,10 @@ const getOrCreateSocket = () => {
       on: () => {},
       off: () => {},
       emit: () => {},
+      onAny: () => {},
+      offAny: () => {},
       id: null,
+      connected: false,
       io: { engine: { transport: { name: 'mock' } } }
     }
   }
@@ -108,6 +119,20 @@ const socketWrapper = {
       s.emit(event, data);
     }
   },
+  onAny: (handler) => {
+    const s = getOrCreateSocket();
+    if (s && typeof s.onAny === 'function') {
+      s.onAny(handler);
+    } else if (s) {
+      console.warn('⚠️ Socket.IO onAny() not available - universal event listener may not work');
+    }
+  },
+  offAny: (handler) => {
+    const s = getOrCreateSocket();
+    if (s && typeof s.offAny === 'function') {
+      s.offAny(handler);
+    }
+  },
   get id() {
     const s = getOrCreateSocket();
     return s ? s.id : null;
@@ -115,6 +140,10 @@ const socketWrapper = {
   get io() {
     const s = getOrCreateSocket();
     return s ? s.io : { engine: { transport: { name: 'mock' } } };
+  },
+  get connected() {
+    const s = getOrCreateSocket();
+    return s ? s.connected : false;
   },
   // Direct socket access for advanced use cases
   getSocket: () => getOrCreateSocket()
