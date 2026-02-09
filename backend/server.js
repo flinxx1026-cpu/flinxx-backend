@@ -213,7 +213,10 @@ async function initializeRedis() {
   return {
     lPush: async (key, value) => {
       if (key === 'matching_queue') {
+        const parsed = JSON.parse(value);
+        console.log(`   [IN-MEMORY] lPush: Adding User ${parsed.userId} to LEFT (beginning)`);
         inMemoryMatchingQueue.unshift(value);
+        console.log(`   [IN-MEMORY] lPush: Queue now has ${inMemoryMatchingQueue.length} items`);
         return inMemoryMatchingQueue.length;
       }
       return null;
@@ -221,14 +224,20 @@ async function initializeRedis() {
     
     rPop: async (key) => {
       if (key === 'matching_queue') {
-        return inMemoryMatchingQueue.shift() || null;
+        // ✅ CRITICAL: rPop removes from the RIGHT (end) of list - creates FIFO queue with lPush
+        // lPush adds to LEFT (beginning), rPop removes from RIGHT (end) = FIFO queue
+        const item = inMemoryMatchingQueue.pop();
+        console.log(`   [IN-MEMORY] rPop: Removing from RIGHT (end), queue now has ${inMemoryMatchingQueue.length} items`);
+        return item || null;
       }
       return null;
     },
     
     lRange: async (key, start, end) => {
       if (key === 'matching_queue') {
-        return inMemoryMatchingQueue.slice(start, end === -1 ? undefined : end + 1);
+        const result = inMemoryMatchingQueue.slice(start, end === -1 ? undefined : end + 1);
+        console.log(`   [IN-MEMORY] lRange: Returning ${result.length} items from queue`);
+        return result;
       }
       return [];
     },
@@ -244,7 +253,10 @@ async function initializeRedis() {
       if (key === 'matching_queue') {
         const index = inMemoryMatchingQueue.indexOf(value);
         if (index !== -1) {
+          const parsed = JSON.parse(value);
+          console.log(`   [IN-MEMORY] lRem: Removing User ${parsed.userId} from queue`);
           inMemoryMatchingQueue.splice(index, 1);
+          console.log(`   [IN-MEMORY] lRem: Queue now has ${inMemoryMatchingQueue.length} items`);
           return 1;
         }
       }
