@@ -22,18 +22,14 @@ import TermsConfirmationModal from '../components/TermsConfirmationModal';
 import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
-// ✅ MODULE-LEVEL REF HOLDER - Allows CameraPanel to access the ref without prop drilling
-// This prevents prop changes from triggering re-renders of CameraPanel
-let sharedVideoRef = null;
-
 // ✅ CAMERA PANEL - Plain function (no React.memo) to avoid TDZ in production builds
-const CameraPanel = () => {
+const CameraPanel = ({ videoRef }) => {
   // Use useCallback to ensure ref callback is stable and doesn't recreate element
   const videoRefCallback = useCallback(el => {
-    if (el) {
-      sharedVideoRef = el;
+    if (el && videoRef) {
+      videoRef.current = el;
     }
-  }, []);
+  }, [videoRef]);
   
   // Log mount/unmount to catch if component is being destroyed
   useEffect(() => {
@@ -557,7 +553,6 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
 
 const Chat = () => {
   const navigate = useNavigate();
-  const authContext = useContext(AuthContext);
   const location = useLocation();
   const { user, isLoading: authLoading } = useContext(AuthContext) || {};
   const { activeMode, setActiveMode, handleModeChange, openDuoSquad } = useDuoSquad();
@@ -654,6 +649,7 @@ const Chat = () => {
   // Video and stream refs
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const sharedVideoRef = useRef(null);  // ✅ React-safe ref for CameraPanel video element
   const localStreamRef = useRef(null);
   const streamRef = useRef(null);  // 🔥 Keep track of stream for cleanup
   const partnerSocketIdRef = useRef(null);  // CRITICAL: Store partner socket ID for sending offers/answers
@@ -3354,7 +3350,7 @@ const Chat = () => {
             setIsMatchHistoryOpen={setIsMatchHistoryOpen}
           >
             {/* ✅ CameraPanel as children - prevents unmounting on prop changes */}
-            <CameraPanel />
+            <CameraPanel videoRef={sharedVideoRef} />
           </IntroScreen>
 
           {/* WAITING SCREEN - overlays on top (absolute positioning) */}
