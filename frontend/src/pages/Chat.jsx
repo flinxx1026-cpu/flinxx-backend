@@ -730,15 +730,15 @@ const Chat = () => {
         // Wait for sharedVideoRef to be available (CameraPanel must render first)
         let attempts = 0;
         const attachStream = () => {
-          if (sharedVideoRef && localStreamRef.current) {
+          if (sharedVideoRef.current && localStreamRef.current) {
             console.log('📹 [CAMERA INIT] Attaching stream to video element...');
-            sharedVideoRef.srcObject = localStreamRef.current;
-            sharedVideoRef.muted = true;
+            sharedVideoRef.current.srcObject = localStreamRef.current;
+            sharedVideoRef.current.muted = true;
             
             console.log('📹 [CAMERA INIT] Calling play() on video element');
             
             // Call play() directly without waiting for metadata
-            sharedVideoRef.play()
+            sharedVideoRef.current.play()
               .then(() => {
                 if (isMounted) {
                   console.log('📹 [CAMERA INIT] ✅ Video stream is now playing');
@@ -762,7 +762,7 @@ const Chat = () => {
             setTimeout(attachStream, 50);
           } else {
             console.error('📹 [CAMERA INIT] ❌ Video ref never became available');
-            console.error('   sharedVideoRef:', !!sharedVideoRef);
+            console.error('   sharedVideoRef:', !!sharedVideoRef.current);
             console.error('   localStreamRef.current:', !!localStreamRef.current);
             setIsLocalCameraReady(true);
             setStreamsReadyTrigger(prev => prev + 1); // ✅ Trigger video render
@@ -1182,19 +1182,19 @@ const Chat = () => {
   // ✅ ONE-TIME VERIFICATION: Check after 1 second that stream is properly attached
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (sharedVideoRef && localStreamRef.current) {
+      if (sharedVideoRef.current && localStreamRef.current) {
         console.log('📹 [VERIFY] Stream attached:', {
-          srcObject: !!sharedVideoRef.srcObject,
-          paused: sharedVideoRef.paused,
+          srcObject: !!sharedVideoRef.current.srcObject,
+          paused: sharedVideoRef.current.paused,
           tracks: localStreamRef.current.getTracks().length,
-          readyState: sharedVideoRef.readyState,
-          networkState: sharedVideoRef.networkState
+          readyState: sharedVideoRef.current.readyState,
+          networkState: sharedVideoRef.current.networkState
         });
         
         // If not playing, try to play
-        if (sharedVideoRef.paused) {
+        if (sharedVideoRef.current.paused) {
           console.log('📹 [VERIFY] Video is paused, attempting play...');
-          sharedVideoRef.play().catch(err => {
+          sharedVideoRef.current.play().catch(err => {
             console.warn('📹 [VERIFY] Play failed:', err.message);
           });
         }
