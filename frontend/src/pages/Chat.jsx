@@ -2757,7 +2757,7 @@ const Chat = () => {
     return () => clearInterval(checkInterval);
   }, [hasPartner]);
 
-  const VideoChatScreen = useMemo(() => React.memo(() => {
+  const VideoChatScreen = useMemo(() => (() => {
     // CRITICAL DEBUG: Log partnerInfo to diagnose display issue
     console.log('🎬 VideoChatScreen rendering - partnerInfo:', {
       exists: !!partnerInfo,
