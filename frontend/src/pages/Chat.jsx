@@ -24,12 +24,13 @@ import './Chat.css';
 
 // ✅ CAMERA PANEL - Plain function (no React.memo) to avoid TDZ in production builds
 const CameraPanel = ({ videoRef }) => {
-  // Use useCallback to ensure ref callback is stable and doesn't recreate element
+  // ✅ CRITICAL: Ref callback should NOT have videoRef in deps - it's never recreated
+  // This prevents TDZ issues from dependency updates
   const videoRefCallback = useCallback(el => {
     if (el && videoRef) {
       videoRef.current = el;
     }
-  }, [videoRef]);
+  }, []);
   
   // Log mount/unmount to catch if component is being destroyed
   useEffect(() => {
@@ -2167,7 +2168,7 @@ const Chat = () => {
       // Only cancel matching if user was still searching (not in active chat)
       if (isMatchingRef && !hasPartnerRef) {
         console.log('🧹 User was still looking for partner - emitting cancel_matching');
-        socket.emit('cancel_matching', {
+        socketRef.current?.emit('cancel_matching', {
           userId: userIdRef.current,
           timestamp: new Date().toISOString()
         });
@@ -2390,7 +2391,7 @@ const Chat = () => {
       console.log('🎬 [STATE BEFORE] isSearching:', isSearching, 'partnerFound:', partnerFound);
       
       // EMIT SOCKET EVENT FIRST (synchronous, immediate)
-      socket.emit('find_partner', {
+      socketRef.current?.emit('find_partner', {
         userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
         userName: currentUser.name || 'Anonymous',
         userAge: currentUser.age || 18,
@@ -2416,7 +2417,7 @@ const Chat = () => {
     console.log('STATE BEFORE CANCEL:', { isSearching, partnerFound });
     
     // Emit socket event
-    socket.emit("cancel_matching", { userId: userIdRef.current });
+    socketRef.current?.emit("cancel_matching", { userId: userIdRef.current });
     
     // Reset state
     setIsSearching(false);
@@ -2438,7 +2439,7 @@ const Chat = () => {
     };
 
     setMessages(prev => [...prev, newMessage]);
-    socket.emit('send_message', {
+    socketRef.current?.emit('send_message', {
       message: messageInput,
       to: partnerSocketIdRef.current   // 🔥 CRITICAL - Route to partner socket
     });
@@ -2446,7 +2447,7 @@ const Chat = () => {
   }, [messageInput, hasPartner]);
 
   const skipUser = useCallback(() => {
-    socket.emit('skip_user', {
+    socketRef.current?.emit('skip_user', {
       partnerSocketId: partnerSocketIdRef.current
     });
     endChat();
@@ -2635,7 +2636,7 @@ const Chat = () => {
     }
 
     // Look for new partner (do NOT stop camera - reuse same stream)
-    socket.emit('find_partner', {
+    socketRef.current?.emit('find_partner', {
       userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
       userName: currentUser.name || 'Anonymous',
       userAge: currentUser.age || 18,
