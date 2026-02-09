@@ -561,7 +561,12 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
 const Chat = () => {
   const navigate = useNavigate();
   const authContext = useContext(AuthContext);
-  
+  const location = useLocation();
+  const { user, isLoading: authLoading } = useContext(AuthContext) || {};
+  const { activeMode, setActiveMode, handleModeChange, openDuoSquad } = useDuoSquad();
+
+  console.log("RENDER START");
+
   // ✅ UPDATE LAST SEEN - MUST BE FIRST - Call immediately on mount
   useEffect(() => {
     const userToken = localStorage.getItem("token") || localStorage.getItem("authToken");
@@ -592,15 +597,6 @@ const Chat = () => {
         console.error("PROFILE ERROR", err);
       });
   }, []);
-
-  console.log("RENDER START");
-
-  // ✅ Get DuoSquad context (manages state at Layout level to prevent remounting)
-  const { activeMode, setActiveMode, handleModeChange, openDuoSquad } = useDuoSquad();
-
-  // ✅ ALL HOOKS FIRST - BEFORE ANY LOGIC OR RETURNS
-  const location = useLocation();
-  const { user, isLoading: authLoading } = useContext(AuthContext) || {};
 
   // CRITICAL: Terms acceptance state
   const [showTermsModal, setShowTermsModal] = useState(false);
