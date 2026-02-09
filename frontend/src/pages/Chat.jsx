@@ -628,6 +628,9 @@ const Chat = () => {
   const [incomingFriendRequest, setIncomingFriendRequest] = useState(null);
   const friendRequestCheckIntervalRef = useRef(null);
 
+  // ✅ BACKEND URL - Declare once to avoid repetition
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
   // Chat state
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
@@ -2204,33 +2207,6 @@ const Chat = () => {
     };
   }, []);
 
-  // ✅ POLL FOR INCOMING FRIEND REQUESTS during video chat
-  useEffect(() => {
-    if (!hasPartner) {
-      // Clear polling interval when not in video chat
-      if (friendRequestCheckIntervalRef.current) {
-        clearInterval(friendRequestCheckIntervalRef.current);
-        friendRequestCheckIntervalRef.current = null;
-      }
-      return;
-    }
-
-    // Start polling for incoming requests every 3 seconds while in video chat
-    friendRequestCheckIntervalRef.current = setInterval(() => {
-      checkIncomingFriendRequests();
-    }, 3000);
-
-    // Check immediately on entering video chat
-    checkIncomingFriendRequests();
-
-    return () => {
-      if (friendRequestCheckIntervalRef.current) {
-        clearInterval(friendRequestCheckIntervalRef.current);
-        friendRequestCheckIntervalRef.current = null;
-      }
-    };
-  }, [hasPartner, checkIncomingFriendRequests]);
-
   const getTurnServers = async () => {
     // ✅ Return cached servers immediately if available
     if (turnServersCacheRef.current) {
@@ -2494,7 +2470,6 @@ const Chat = () => {
       return;
     }
     
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
     const payload = {
       senderPublicId: String(senderPublicId),
       receiverPublicId: String(receiverPublicId)
@@ -2572,7 +2547,34 @@ const Chat = () => {
     } catch (error) {
       console.error('Error checking incoming friend requests:', error);
     }
-  }, [user, hasPartner, incomingFriendRequest]);
+  }, [user, hasPartner, incomingFriendRequest, BACKEND_URL]);
+
+  // ✅ POLL FOR INCOMING FRIEND REQUESTS during video chat - NOW SAFE: Called after function declaration
+  useEffect(() => {
+    if (!hasPartner) {
+      // Clear polling interval when not in video chat
+      if (friendRequestCheckIntervalRef.current) {
+        clearInterval(friendRequestCheckIntervalRef.current);
+        friendRequestCheckIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Start polling for incoming requests every 3 seconds while in video chat
+    friendRequestCheckIntervalRef.current = setInterval(() => {
+      checkIncomingFriendRequests();
+    }, 3000);
+
+    // Check immediately on entering video chat
+    checkIncomingFriendRequests();
+
+    return () => {
+      if (friendRequestCheckIntervalRef.current) {
+        clearInterval(friendRequestCheckIntervalRef.current);
+        friendRequestCheckIntervalRef.current = null;
+      }
+    };
+  }, [hasPartner, checkIncomingFriendRequests]);
 
   // ✅ HANDLE ACCEPT FRIEND REQUEST
   const handleAcceptIncomingRequest = useCallback(async () => {
