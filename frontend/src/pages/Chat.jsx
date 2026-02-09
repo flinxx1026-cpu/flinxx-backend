@@ -1497,57 +1497,62 @@ const Chat = () => {
 
   // ========================================
   // CRITICAL: Setup socket listeners ONCE on component mount
-  // This must run only once, NOT every time startVideoChat is called
-  // ========================================
+  // Setup socket listeners - runs when socketRef finally becomes available
   useEffect(() => {
-    // ✅ CRITICAL: Guard against undefined socket and create local reference
     if (!socketRef.current) {
-      console.warn('⚠️ Socket not ready yet - deferring listener setup');
+      console.warn('⚠️ [Listeners] Socket not ready yet');
       return;
     }
+    
     const socket = socketRef.current;
     
-    console.log('\n\n🔌 ===== SOCKET LISTENERS SETUP (COMPONENT MOUNT) =====');
-    console.log('🔌 Setting up socket listeners - runs ONCE on component load');
-    console.log('🔌 Socket ID:', socket.id);
-    console.log('🔌 Socket connected:', socket.connected);
-    console.log('🔌 🔐 Using userIdRef.current for ALL ID comparisons:', userIdRef.current);
-    
-    // Clean up old listeners to prevent duplicates
-    socket.off('partner_found');
-    socket.off('webrtc_offer');
-    socket.off('webrtc_answer');
-    socket.off('ice_candidate');
-    socket.off('receive_message');
-    socket.off('partner_disconnected');
-    socket.off('user_skipped');
-    socket.off('disconnect');
-    console.log('🔌 Removed old listeners (if any existed)');
-    
-    // 🔍 UNIVERSAL DEBUG LISTENER - Catch ALL events to verify socket is working
-    console.log('\n🔍 [DEBUG] Setting up universal event listener to catch ALL socket events...');
-    socket.onAny((eventName, ...args) => {
-      console.log(`\n🎯 [UNIVERSAL LISTENER] Event received: "${eventName}"`);
-      console.log(`   Data:`, args);
-      console.log(`   Data type:`, typeof args[0]);
+    // Check if socket is connected
+    if (!socket.connected) {
+      console.warn('⚠️ [Listeners] Socket loaded but not connected yet (connected=' + socket.connected + ')');
+      console.warn('⚠️ Waiting for socket.io to establish connection...');
       
-      // Special highlighting for critical events
-      if (eventName === 'partner_found') {
-        console.log(`✅ ✅ ✅ PARTNER_FOUND RECEIVED - THIS IS IT!`);
-      } else if (eventName === 'waiting') {
-        console.log(`⏳ Waiting event received`);
-      } else if (eventName === 'error') {
-        console.log(`❌ Error event received`);
-      } else if (eventName === 'connect') {
-        console.log(`🔌 Socket connected`);
-      } else if (eventName === 'disconnect') {
-        console.log(`❌ Socket disconnected`);
-      }
-    });
-    console.log('✅ Universal event listener ready');
+      // Listen for connect event to retry
+      const onConnect = () => {
+        console.log('✅ [Listeners] Socket.IO connected! Retrying listener setup...');
+        registerListeners();
+      };
+      socket.on('connect', onConnect);
+      
+      return () => socket.off('connect', onConnect);
+    }
     
-    // Partner found - fires for BOTH offerer AND answerer
-    socket.on('partner_found', async (data) => {
+    // Socket is ready - register all listeners
+    registerListeners();
+    
+    function registerListeners() {
+      console.log('\n\n🔌 ===== SOCKET LISTENERS SETUP =====');
+      console.log('🔌 Socket ID:', socket.id);
+      console.log('🔌 Socket connected:', socket.connected);
+      console.log('🔌 Using userIdRef:', userIdRef.current);
+      
+      // Clean up any old listeners first
+      socket.off('partner_found');
+      socket.off('webrtc_offer');
+      socket.off('webrtc_answer');
+      socket.off('ice_candidate');
+      socket.off('receive_message');
+      socket.off('partner_disconnected');
+      socket.off('user_skipped');
+      socket.off('disconnect');
+      
+      // 🔍 UNIVERSAL DEBUG LISTENER
+      console.log('\n🔍 [DEBUG] Setting up universal event listener...');
+      socket.onAny((eventName, ...args) => {
+        console.log(`\n🎯 [UNIVERSAL LISTENER] Event received: "${eventName}"`);
+        console.log(`   Data:`, args);
+        if (eventName === 'partner_found') {
+          console.log(`✅ ✅ ✅ PARTNER_FOUND RECEIVED - THIS IS IT!`);
+        }
+      });
+      
+      // ✅ CRITICAL: partner_found listener
+      console.log('\n✅ [HANDLER] Registering partner_found listener...');
+      socket.on('partner_found', async (data) => {
       console.log('\n\n📋 ===== PARTNER FOUND EVENT RECEIVED =====');
       console.log('👥 RAW DATA from server:', JSON.stringify(data, null, 2));
       console.log('👥 My socket ID:', socket.id);
@@ -2161,23 +2166,24 @@ const Chat = () => {
     console.log('🔌 ✅ webrtc_offer listener active');
     console.log('🔌 ✅ webrtc_answer listener active');
     console.log('🔌 ✅ ice_candidate listener active');
-    console.log('🔌 ✅ partner_disconnected listener active (CRITICAL FOR DISCONNECT)');
-    console.log('🔌 ✅ user_skipped listener active (CRITICAL FOR SKIP)');
-    console.log('🔌 ✅ disconnect listener active');
-    console.log('🔌 Ready to receive WebRTC signaling messages\n\n');
+    console.log('🔌 ✅ partner_disconnected listener active');
+    console.log('🔌 ✅ Ready to receive WebRTC messages\n\n');
+    }
     
-    // Cleanup function to remove listeners on unmount
+    // Cleanup function
     return () => {
-      console.log('🧹 Removing socket listeners on component unmount');
-      socket.off('partner_found');
-      socket.off('webrtc_offer');
-      socket.off('webrtc_answer');
-      socket.off('ice_candidate');
-      socket.off('partner_disconnected');
-      socket.off('user_skipped');
-      socket.off('disconnect');
+      console.log('🧹 Removing socket listeners on cleanup');
+      if (socket) {
+        socket.off('partner_found');
+        socket.off('webrtc_offer');
+        socket.off('webrtc_answer');
+        socket.off('ice_candidate');
+        socket.off('partner_disconnected');
+        socket.off('user_skipped');
+        socket.off('disconnect');
+      }
     };
-  }, []); // Empty dependency array - runs ONCE on component mount
+  }, [socketRef.current?.connected]); // Re-run if socket connection status changes
 
   // CRITICAL: Cancel matching when user navigates away or component unmounts
   // IMPORTANT: Use refs to capture current state without adding dependencies
