@@ -26,19 +26,17 @@ import './Chat.css';
 // This prevents prop changes from triggering re-renders of CameraPanel
 let sharedVideoRef = null;
 
-// ✅ CAMERA PANEL - Defined at MODULE LEVEL with NO PROPS
-// React.memo ensures it never re-renders after first render
-// Add logging to track mounting/unmounting
-const CameraPanel = React.memo(() => {
+// ✅ CAMERA PANEL - Plain function (no React.memo) to avoid TDZ in production builds
+const CameraPanel = () => {
   // Use useCallback to ensure ref callback is stable and doesn't recreate element
-  const videoRefCallback = React.useCallback(el => {
+  const videoRefCallback = useCallback(el => {
     if (el) {
       sharedVideoRef = el;
     }
   }, []);
   
   // Log mount/unmount to catch if component is being destroyed
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('📹 CameraPanel mounted');
     return () => {
       console.error('❌ CameraPanel unmounting - THIS BREAKS THE STREAM');
@@ -77,11 +75,10 @@ const CameraPanel = React.memo(() => {
       </div>
     </main>
   );
-});
+};
 
-// ✅ INTRO SCREEN - Defined at MODULE LEVEL to prevent recreation
-// Wrapped with React.memo to ensure it never re-renders unnecessarily
-const IntroScreen = React.memo(({ 
+// ✅ INTRO SCREEN - Plain function (no React.memo) to avoid TDZ in production builds
+const IntroScreen = ({ 
   user, 
   isLoading, 
   activeMode, 
@@ -98,9 +95,9 @@ const IntroScreen = React.memo(({
 }) => {
   console.log("Dashboard render");
   
-  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 769);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 769);
     };
@@ -374,11 +371,11 @@ const IntroScreen = React.memo(({
       </main>
     </div>
   );
-});
+};
 
-// ✅ WAITING SCREEN - Module-level component (memoized) to prevent recreation on every Chat render
+// ✅ WAITING SCREEN - Plain function (no React.memo) to avoid TDZ in production builds
 // This prevents the video ref callback from firing repeatedly, which causes flickering
-const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) => {
+const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
   // Check if mobile device
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
 
@@ -399,7 +396,7 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
   // ✅ DESKTOP VIEW: Show desktop waiting screen
   // ✅ Ref callback to attach stream - fires when element mounts, not on every render
   // Module-level component + memoization ensures this fires only once
-  const handleWaitingVideoRef = React.useCallback((videoElement) => {
+  const handleWaitingVideoRef = useCallback((videoElement) => {
     if (!videoElement) return;
     
     console.log('📺 [WAITING SCREEN] Video element ref callback fired');
@@ -418,7 +415,7 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
   }, []);  // ✅ EMPTY dependency array - localStreamRef is accessed via closure, not as dependency
 
   // Force dark mode when visible
-  React.useEffect(() => {
+  useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
 
@@ -556,7 +553,7 @@ const WaitingScreen = React.memo(({ onCancel, localStreamRef, cameraStarted }) =
       </main>
     </>
   );
-});
+};
 
 const Chat = () => {
   const navigate = useNavigate();
