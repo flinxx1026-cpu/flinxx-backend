@@ -113,8 +113,8 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     markRead();
   }, [friend?.id, myUserId, refetchUnreadCount]);
 
-  // ✅ LOAD CHAT HISTORY when chat opens
-  useEffect(() => {
+  // ✅ Function to fetch messages
+  const loadChatMessages = async () => {
     if (!myUserId || !friend?.id) {
       console.log('⏳ ChatBox: Waiting for myUserId or friend.id', { myUserId, friendId: friend?.id });
       return;
@@ -127,29 +127,38 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     
     console.log("📨 Fetching chat history from:", messagesUrl);
     
-    fetch(messagesUrl)
-      .then(res => {
-        console.log("📨 Response status:", res.status);
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        console.log("📨 Messages loaded:", data.length, 'messages');
-        if (Array.isArray(data)) {
-          setMessages(
-            data.map(m => ({
-              me: m.sender_id === myUserId,
-              text: m.message
-            }))
-          );
-        }
-      })
-      .catch(err => {
-        console.error("❌ Failed to load chat history:", err);
-      });
-  }, [myUserId, friend]);
+    try {
+      const res = await fetch(messagesUrl);
+      console.log("📨 Response status:", res.status);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      console.log("📨 Messages loaded:", data.length, 'messages');
+      if (Array.isArray(data)) {
+        setMessages(
+          data.map(m => ({
+            me: m.sender_id === myUserId,
+            text: m.message
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("❌ Failed to load chat history:", err);
+    }
+  };
+
+  // ✅ LOAD CHAT HISTORY when chat opens
+  useEffect(() => {
+    loadChatMessages();
+    
+    // ✅ Auto-refresh messages every 2 seconds (polling)
+    const interval = setInterval(() => {
+      loadChatMessages();
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [myUserId, friend?.id]);
 
   const send = () => {
     if (!text.trim()) return;
@@ -171,6 +180,11 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     if (onMessageSent) {
       onMessageSent(friend.id, now);
     }
+
+    // ✅ Auto-refresh messages after a short delay to ensure DB has the message
+    setTimeout(() => {
+      loadChatMessages();
+    }, 500);
   };
 
   // ✅ RECEIVE MESSAGES FROM SOCKET (from shared room)
