@@ -669,48 +669,43 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       color: '#fff',
                       fontSize: '14px',
                       fontWeight: '600',
-                      padding: '10px 0',
-                      borderBottom: '1px solid rgba(255,255,255,0.1)',
-                      margin: '0'
+                      padding: '12px 16px',
+                      margin: '0',
+                      borderBottom: 'none'
                     }}>
-                      💚 {incomingRequests.length} Incoming Request{incomingRequests.length !== 1 ? 's' : ''}
+                      💚 {incomingRequests.length} Friend Request{incomingRequests.length !== 1 ? 's' : ''}
                     </h3>
                     {incomingRequests.map(req => (
-                      <div key={req.id} className="notification-item" style={{ marginTop: '10px' }}>
-                        <div className="notification-avatar">
-                          {req.photo_url ? (
-                            <img src={req.photo_url} alt={req.display_name} />
-                          ) : (
-                            <div className="text-avatar">
-                              {req.display_name?.charAt(0).toUpperCase() || '?'}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="notification-text">
-                          <strong>{req.display_name}</strong>
-                          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
-                            {req.status === 'pending' ? '⏳ Wants to be your friend' : req.status === 'accepted' ? '✓ Friends' : '❌ Rejected'}
-                          </p>
+                      <div key={req.id} className="compact-request-item">
+                        <div className="compact-request-left">
+                          <div className="compact-request-avatar">
+                            {req.photo_url ? (
+                              <img src={req.photo_url} alt={req.display_name} />
+                            ) : (
+                              <div className="text-avatar">
+                                {req.display_name?.charAt(0).toUpperCase() || '?'}
+                              </div>
+                            )}
+                          </div>
+                          <div className="compact-request-info">
+                            <strong>{req.display_name}</strong>
+                            <p className="compact-request-status">Pending</p>
+                          </div>
                         </div>
 
                         {req.status === 'pending' && (
-                          <div className="message-actions">
+                          <div className="compact-request-actions">
                             <button
-                              className="accept-btn"
+                              className="compact-accept-btn"
                               onClick={() => handleAcceptRequest(req.id, req.sender_id)}
-                              style={{ backgroundColor: '#10b981', color: '#fff' }}
-                              title="Accept"
                             >
-                              ✓
+                              Accept
                             </button>
                             <button
-                              className="reject-btn"
+                              className="compact-reject-btn"
                               onClick={() => handleRejectRequest(req.id)}
-                              style={{ backgroundColor: '#ef4444', color: '#fff' }}
-                              title="Reject"
                             >
-                              ✕
+                              Decline
                             </button>
                           </div>
                         )}

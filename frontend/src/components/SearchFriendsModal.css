@@ -859,3 +859,109 @@
   opacity: 0.8;
 }
 
+/* Compact Request Item Layout */
+.compact-request-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 12px;
+}
+
+.compact-request-item:last-child {
+  border-bottom: none;
+}
+
+.compact-request-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.compact-request-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.compact-request-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.compact-request-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.compact-request-info strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compact-request-status {
+  margin: 0;
+  font-size: 11px;
+  color: #10b981;
+  font-weight: 500;
+}
+
+.compact-request-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.compact-accept-btn,
+.compact-reject-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.compact-accept-btn {
+  background: #10b981;
+  color: #fff;
+}
+
+.compact-accept-btn:hover {
+  background: #059669;
+  transform: scale(1.05);
+}
+
+.compact-accept-btn:active {
+  transform: scale(0.95);
+}
+
+.compact-reject-btn {
+  background: #ef4444;
+  color: #fff;
+}
+
+.compact-reject-btn:hover {
+  background: #dc2626;
+  transform: scale(1.05);
+}
+
+.compact-reject-btn:active {
+  transform: scale(0.95);
+}
+
