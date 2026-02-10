@@ -10,20 +10,42 @@ import fetch from 'node-fetch'
 import jwt from 'jsonwebtoken'
 import { PrismaClient } from '@prisma/client'
 import authMiddleware from './middleware/auth.js'
-import friendsRoutes from './routes/friends.js'
+import friendsRoutes, { setIO as setFriendsIO } from './routes/friends.js'
 import notificationsRoutes, { setPool as setNotificationsPool } from './routes/notifications.js'
 import messagesRoutes from './routes/messages.js'
 import matchesRoutes, { setMatchesPool } from './routes/matches.js'
 import { initializeFirebaseAdmin, verifyFirebaseToken } from './firebaseAdmin.js'
 
-dotenv.config()
+// Load environment variables in correct order:
+// 1. First load .env.local (development overrides) with override: true to ensure it takes precedence
+// 2. Then load .env (fallbacks) without override to fill in missing values
+
+// Load .env.local first (development/local environment)
+dotenv.config({ 
+  path: '.env.local',
+  override: true  // Force .env.local to override any existing process.env values
+})
+
+// Load .env second as fallback for variables not in .env.local
+dotenv.config({
+  override: false  // Don't override - only fill in missing variables
+})
 
 console.log('📍 Backend initialization starting...')
 console.log('📍 NODE_ENV:', process.env.NODE_ENV || 'not set')
 console.log('📍 PORT will be:', process.env.PORT || 10000)
+console.log('📍 FRONTEND_URL:', process.env.FRONTEND_URL || 'not set')
+console.log('📍 CLIENT_URL:', process.env.CLIENT_URL || 'not set')
 console.log('📍 GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? '✓ SET' : '✗ NOT SET')
 console.log('📍 GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? '✓ SET' : '✗ NOT SET')
 console.log('📍 GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL || '✗ NOT SET')
+console.log('📍 GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI || '✗ NOT SET')
+console.log('📍 ═══════════════════════════════════════════════════════')
+console.log('📍 🔗 OAUTH DEBUGGING:')
+console.log('📍   GOOGLE_CALLBACK_URL value:', process.env.GOOGLE_CALLBACK_URL)
+console.log('📍   GOOGLE_REDIRECT_URI value:', process.env.GOOGLE_REDIRECT_URI)
+console.log('📍 ═══════════════════════════════════════════════════════')
+console.log('📍 ✅ All environment variables loaded successfully!')
 
 // 🔥 Initialize Firebase Admin SDK
 console.log('🔥 Initializing Firebase Admin SDK...')
@@ -401,6 +423,10 @@ const io = new Server(httpServer, {
   pingInterval: 25000,
   pingTimeout: 60000
 })
+
+// ✅ PASS IO INSTANCE TO ROUTES
+setFriendsIO(io)
+console.log('✅ [server.js] Socket.IO passed to friends routes')
 
 // Middleware - Enable CORS for all routes
 app.use(cors(corsOptions))
@@ -1888,21 +1914,60 @@ app.post('/api/friends/send', async (req, res) => {
       return res.status(404).json({ error: 'User not found' })
     }
 
+    // Check for duplicate pending request
+    const existingRequest = await pool.query(
+      `SELECT id FROM friend_requests 
+       WHERE sender_id = $1 AND receiver_id = $2 AND status = 'pending'
+       LIMIT 1`,
+      [sender.id, receiver.id]
+    )
+
+    if (existingRequest.rows.length > 0) {
+      console.log(`⚠️ Duplicate request already exists from ${sender.public_id} to ${receiver.public_id}`)
+      return res.status(400).json({ error: 'Friend request already pending' })
+    }
+
     // Insert friend request
     const result = await pool.query(
       `INSERT INTO friend_requests (sender_id, receiver_id, status)
        VALUES ($1, $2, 'pending')
-       ON CONFLICT (sender_id, receiver_id) DO NOTHING
        RETURNING id, sender_id, receiver_id, status, created_at`,
       [sender.id, receiver.id]
     )
 
-    if (result.rows.length === 0) {
-      return res.status(400).json({ error: 'Friend request already exists' })
-    }
-
     const request = result.rows[0]
     console.log(`✅ Friend request sent from ${sender.public_id} to ${receiver.public_id}`)
+
+    // 🔔 EMIT REALTIME NOTIFICATION IF RECEIVER IS ONLINE
+    // ✅ FIX: Use UUID for lookup, not numeric ID (frontend sends UUID in register_user)
+    const receiverUuid = receiver.uuid
+    const receiverSocketId = onlineUsers.get(receiverUuid)
+    
+    console.log(`🔍 [LOOKUP] Looking for receiver UUID: ${receiverUuid.substring(0, 8)}...`)
+    console.log(`🔍 [LOOKUP] Found socket ID: ${receiverSocketId ? receiverSocketId.substring(0, 8) + '...' : 'NOT FOUND'}`)
+    console.log(`🔍 [LOOKUP] Current online users: ${onlineUsers.size}`)
+    
+    if (receiverSocketId) {
+      const eventPayload = {
+        requestId: request.id,
+        senderId: sender.id,
+        senderPublicId: sender.public_id,
+        senderName: sender.display_name || 'User',
+        senderProfileImage: sender.photo_url,
+        createdAt: request.created_at,
+        status: 'pending'
+      };
+      console.log(`🔥🔥🔥 [BACKEND] EMITTING friend_request_received EVENT 🔥🔥🔥`);
+      console.log(`📢 Target Socket ID: ${receiverSocketId.substring(0, 8)}...`);
+      console.log(`📢 Target User: ${receiver.public_id}`);
+      console.log(`📢 Payload:`, eventPayload);
+      
+      io.to(receiverSocketId).emit('friend_request_received', eventPayload);
+      
+      console.log(`✅ Event emitted successfully to ${receiver.public_id}`);
+    } else {
+      console.log(`⚠️ Receiver ${receiver.public_id} is offline - request saved to DB only`)
+    }
 
     res.status(201).json({
       success: true,
@@ -2699,6 +2764,9 @@ app.get('/api/messages', async (req, res) => {
 });
 
 // WebSocket Events
+// Keep track of online users: userId -> socketId
+const onlineUsers = new Map()
+
 io.on('connection', (socket) => {
   console.log(`\n✅ [CONNECTION] New socket connection: ${socket.id}`)
   console.log(`📊 [CONNECTION] Total active connections: ${io.engine.clientsCount}`)
@@ -2708,6 +2776,82 @@ io.on('connection', (socket) => {
   redis.lLen('matching_queue').then(queueLen => {
     console.log(`📊 [CONNECTION] Matching queue size: ${queueLen} users waiting`)
   }).catch(err => console.error('Error checking queue on connect:', err))
+
+  // ✅ REGISTER USER (when user comes online)
+  socket.on('register_user', (userId) => {
+    if (userId) {
+      onlineUsers.set(userId, socket.id)
+      // ✅ JOIN SOCKET TO ROOM WITH USER UUID (CRITICAL for io.to(uuid).emit())
+      socket.join(userId)
+      console.log(`👤 [REGISTER] User ${userId.substring(0, 8)}... registered - Socket ${socket.id.substring(0, 8)}...`)
+      console.log(`✅ [REGISTER] Socket joined to room: ${userId.substring(0, 8)}...`)
+      console.log(`👥 [ONLINE USERS] Total: ${onlineUsers.size}`)
+      console.log(`👥 [ONLINE USERS] All UUIDs: ${Array.from(onlineUsers.keys()).map(k => k.substring(0, 8) + '...').join(', ')}`)
+    }
+  })
+
+  // ✅ HANDLE DISCONNECT
+  socket.on('disconnect', () => {
+    // Find and remove the user from onlineUsers map
+    for (const [userId, socketId] of onlineUsers.entries()) {
+      if (socketId === socket.id) {
+        onlineUsers.delete(userId)
+        console.log(`👤 [DISCONNECT] User ${userId} disconnected`)
+        console.log(`👥 [ONLINE USERS] ${onlineUsers.size} users currently online`)
+        break
+      }
+    }
+  })
+
+  // ✅ QUICK INVITE FLOW (Profile icon - direct popup, NOT panel request)
+  socket.on('friend:quick-invite', (data) => {
+    console.log('\n' + '='.repeat(80))
+    console.log('🚀🚀🚀 [QUICK INVITE - BACKEND] Socket event received 🚀🚀🚀')
+    console.log('='.repeat(80))
+    console.log('📦 [QUICK INVITE - BACKEND] Payload received:', {
+      senderPublicId: data?.senderPublicId?.substring(0, 8) + '...',
+      senderName: data?.senderName,
+      receiverPublicId: data?.receiverPublicId?.substring(0, 8) + '...',
+      timestamp: data?.timestamp
+    })
+    console.log('⚠️  [QUICK INVITE - BACKEND] IMPORTANT: NO DATABASE INSERT WILL HAPPEN!')
+    console.log('⚠️  [QUICK INVITE - BACKEND] This is socket-only popup flow')
+
+    // ✅ VALIDATION
+    if (!data?.senderPublicId || !data?.receiverPublicId) {
+      console.error('❌ [QUICK INVITE - BACKEND] Missing required IDs')
+      return
+    }
+
+    // ✅ GET RECEIVER'S SOCKET ROOM
+    const receiverSocketId = onlineUsers.get(data.receiverPublicId)
+    
+    if (!receiverSocketId) {
+      console.warn('⚠️ [QUICK INVITE - BACKEND] Receiver not online:', data.receiverPublicId)
+      console.log('📊 [QUICK INVITE - BACKEND] Available online users:', Array.from(onlineUsers.keys()).map(k => k.substring(0, 8) + '...').join(', '))
+      return
+    }
+
+    console.log('✅ [QUICK INVITE - BACKEND] Receiver is online - sending popup...')
+    console.log('📍 [QUICK INVITE - BACKEND] Emitting to user room:', data.receiverPublicId.substring(0, 8) + '...')
+
+    // ✅ EMIT POPUP EVENT TO RECEIVER (via their user room)
+    // Use io.to(userId) to target the specific user room
+    console.log('📡 [QUICK INVITE - BACKEND] Emitting "friend:quick-invite-received" event...')
+    io.to(data.receiverPublicId).emit('friend:quick-invite-received', {
+      senderId: data.senderPublicId,
+      senderPublicId: data.senderPublicId,
+      senderName: data.senderName,
+      senderProfileImage: data.senderProfileImage,
+      timestamp: data.timestamp,
+      // No requestId, no database entry - just a popup
+      isQuickInvite: true
+    })
+
+    console.log('✅ [QUICK INVITE - BACKEND] Popup event emitted to receiver')
+    console.log('🎯 [QUICK INVITE - BACKEND] RESULT: Direct popup only, NO panel entry created')
+    console.log('='.repeat(80) + '\n')
+  })
 
   // ✅ JOIN CHAT ROOM (shared room for sender + receiver)
   socket.on('join_chat', ({ senderId, receiverId }) => {

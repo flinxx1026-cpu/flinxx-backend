@@ -65,6 +65,13 @@ const getOrCreateSocket = () => {
       }
     });
 
+    // ✅ HANDLE FRIEND REQUEST RECEIVED - Debug handler
+    socket.on('friend_request_received', (data) => {
+      console.log('🔥🔥🔥 [socketService] FRIEND REQUEST EVENT RECEIVED 🔥🔥🔥');
+      console.log('📦 Data:', data);
+      console.log('🔥🔥🔥 Event will now bubble to all AuthContext listeners 🔥🔥🔥');
+    });
+
     // ✅ HANDLE FORCE LOGOUT (when user is banned)
     socket.on('force_logout', () => {
       alert('You have been banned by admin')

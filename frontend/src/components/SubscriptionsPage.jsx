@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import './SubscriptionsPage.css';
 
 const SubscriptionsPage = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState('flex'); // 'premium' | 'flex'
-
   // Flex Plans data
   const flexItems = [
     {
@@ -43,33 +41,6 @@ const SubscriptionsPage = ({ onClose }) => {
     }
   ];
 
-  // Premium Plans data (placeholder for future)
-  const premiumItems = [
-    {
-      id: 1,
-      emoji: '👑',
-      name: 'Premium Basic',
-      price: '₹299/mo',
-      features: ['All Blue Tick benefits', 'Basic theme access', 'Monthly boost']
-    },
-    {
-      id: 2,
-      emoji: '💎',
-      name: 'Premium Plus',
-      price: '₹599/mo',
-      features: ['All Premium Basic', 'All themes', 'Weekly boost']
-    },
-    {
-      id: 3,
-      emoji: '🌟',
-      name: 'Premium Elite',
-      price: '₹999/mo',
-      features: ['Everything included', 'Priority support', 'Daily boost']
-    }
-  ];
-
-  const plans = activeTab === 'flex' ? flexItems : premiumItems;
-
   return (
     <div className="subscriptions-page">
       {/* Close Button */}
@@ -82,25 +53,9 @@ const SubscriptionsPage = ({ onClose }) => {
         {/* Header */}
         <h1 className="subscriptions-title">Flinxx Subscriptions</h1>
 
-        {/* Tab Switch */}
-        <div className="plan-tabs">
-          <button
-            className={`tab ${activeTab === 'premium' ? 'active' : ''}`}
-            onClick={() => setActiveTab('premium')}
-          >
-            PREMIUM PLANS
-          </button>
-          <button
-            className={`tab ${activeTab === 'flex' ? 'active' : ''}`}
-            onClick={() => setActiveTab('flex')}
-          >
-            FLEX PLANS
-          </button>
-        </div>
-
         {/* Plans Grid */}
         <div className="plans-grid">
-          {plans.map((plan) => (
+          {flexItems.map((plan) => (
             <div key={plan.id} className="plan-card">
               {/* Plan Header */}
               <div className="plan-header">

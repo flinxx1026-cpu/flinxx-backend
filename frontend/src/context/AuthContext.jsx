@@ -1,7 +1,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../config/firebase'
-import { getNotifications } from '../services/api'
+import { getSentRequests } from '../services/api'
+import socketWrapper from '../services/socketService'
 
 // Create Auth Context
 export const AuthContext = createContext()
@@ -22,40 +23,141 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authPending, setAuthPending] = useState(false)
   
-  // ✅ KEEP NOTIFICATIONS in AuthContext (needed for SearchFriendsModal)
-  const [notifications, setNotifications] = useState([])
+  // ✅ SENT REQUESTS in AuthContext (requests sent BY user, for SearchFriendsModal)
+  // Incoming requests are handled ONLY via socket event to incomingFriendRequest
+  const [sentRequests, setSentRequests] = useState([])
+  
+  // ✅ GLOBAL FRIEND REQUEST STATE - Popup visible on ANY screen
+  const [incomingFriendRequest, setIncomingFriendRequest] = useState(null)
 
-  // ✅ REFRESH NOTIFICATIONS (unread moved to UnreadContext)
-  const refreshNotifications = async () => {
+  // ✅ SETUP GLOBAL SOCKET LISTENER FOR FRIEND REQUESTS
+  // This runs ONCE on mount and keeps listening throughout the app lifecycle
+  useEffect(() => {
+    console.log('🔔 [AuthContext - useEffect 1] ATTACHING friend_request_received listener...');
+    
+    const handleFriendRequest = (data) => {
+      console.log('🔥🔥🔥 [AuthContext - Listener] FRIEND REQUEST RECEIVED EVENT 🔥🔥🔥');
+      console.log('📦 [AuthContext] Payload received:', data);
+      console.log('📦 [AuthContext] Sender:', data?.senderName);
+      console.log('📦 [AuthContext] Request ID:', data?.requestId);
+      
+      if (data?.requestId) {
+        console.log('✅ [AuthContext] Setting incomingFriendRequest state with data:', data.senderName);
+        setIncomingFriendRequest({
+          requestId: data.requestId,
+          senderId: data.senderId,
+          senderPublicId: data.senderPublicId,
+          senderName: data.senderName || 'User',
+          senderProfileImage: data.senderProfileImage,
+          createdAt: data.createdAt,
+          status: data.status
+        });
+        console.log('✅ [AuthContext] State updated - Component should re-render NOW!');
+      } else {
+        console.warn('⚠️ [AuthContext] Invalid event - missing requestId:', data);
+      }
+    };
+
+    // ✅ HANDLE QUICK INVITE (Profile icon flow - direct popup, NOT panel)
+    const handleQuickInvite = (data) => {
+      console.log('\n' + '='.repeat(80))
+      console.log('🚀🚀🚀 [QUICK INVITE - RECEIVER] Socket event received 🚀🚀🚀')
+      console.log('='.repeat(80))
+      console.log('📦 [QUICK INVITE - RECEIVER] Payload:', data);
+      console.log('📊 [QUICK INVITE - RECEIVER] Details:', {
+        senderName: data?.senderName,
+        senderPublicId: data?.senderPublicId?.substring(0, 8) + '...',
+        timestamp: data?.timestamp,
+        isQuickInvite: data?.isQuickInvite
+      })
+      console.log('⚠️  [QUICK INVITE - RECEIVER] IMPORTANT: This is popup-only, NOT a panel entry!')
+      
+      if (data?.senderPublicId) {
+        console.log('✅ [QUICK INVITE - RECEIVER] Valid data - creating popup...')
+        // Generate a temporary request ID for the popup (not a real database request)
+        const tempRequestId = `quick-invite-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        
+        console.log('📱 [QUICK INVITE - RECEIVER] Showing popup with ID:', tempRequestId)
+        setIncomingFriendRequest({
+          requestId: tempRequestId,
+          senderId: data.senderId,
+          senderPublicId: data.senderPublicId,
+          senderName: data.senderName || 'User',
+          senderProfileImage: data.senderProfileImage,
+          createdAt: data.timestamp || new Date().toISOString(),
+          status: 'quick-invite', // Mark as quick invite (different from pending)
+          isQuickInvite: true // Flag to differentiate from regular requests
+        });
+        console.log('🎯 [QUICK INVITE - RECEIVER] Popup should appear NOW!')
+        console.log('='.repeat(80) + '\n')
+      } else {
+        console.warn('⚠️ [QUICK INVITE - RECEIVER] Invalid quick invite - missing senderPublicId:', data);
+      }
+    };
+
+    // Attach listeners once and keep them forever
+    socketWrapper.on('friend_request_received', handleFriendRequest);
+    socketWrapper.on('friend:quick-invite-received', handleQuickInvite);
+    console.log('✅ [AuthContext] Listeners attached - waiting for friend_request_received and quick-invite events...');
+
+    // Cleanup on unmount
+    return () => {
+      console.log('🔔 [AuthContext] Removing friend_request_received and quick-invite listeners');
+      socketWrapper.off('friend_request_received', handleFriendRequest);
+      socketWrapper.off('friend:quick-invite-received', handleQuickInvite);
+    };
+  }, []); // Empty dependency - attach once, never re-attach
+
+  // ✅ REGISTER USER WITH SOCKET.IO WHEN AUTHENTICATED
+  useEffect(() => {
+    if (user?.uuid && isAuthenticated && !isLoading) {
+      console.log(`📢 [AuthContext] Registering user ${user.uuid.substring(0, 8)}... with Socket.IO`);
+      socketWrapper.emit('register_user', user.uuid);
+    }
+  }, [user?.uuid, isAuthenticated, isLoading]);
+
+  // ✅ REFRESH SENT REQUESTS (requests sent BY user)
+  const refreshSentRequests = async () => {
     if (!user?.uuid || user.uuid.length !== 36) {
-      console.warn('⏸ refreshNotifications skipped: user UUID not ready');
+      console.warn('⏸ refreshSentRequests skipped: user UUID not ready');
       return;
     }
-    const data = await getNotifications(user.uuid);
-    setNotifications(Array.isArray(data) ? data : []);
+    const data = await getSentRequests(user.uuid);
+    const filtered = Array.isArray(data) ? data : [];
+    console.log(`📤 [AuthContext] refreshSentRequests - fetched ${filtered.length} requests`);
+    if (filtered.length > 0) {
+      console.log('📤 [AuthContext] Sample sent request:', {
+        id: filtered[0].id,
+        receiver: filtered[0].display_name,
+        status: filtered[0].status,
+        sender_id: filtered[0].sender_id,
+        receiver_id: filtered[0].receiver_id
+      });
+    }
+    setSentRequests(filtered);
   };
 
-  // ✅ CRITICAL: Only fetch notifications when USER UUID is ready
+  // ✅ CRITICAL: Only fetch sent requests when USER UUID is ready
   // This dependency ensures we NEVER call APIs before user is loaded
   useEffect(() => {
     // MUST wait for authLoading to be FALSE first
     if (isLoading === true) {
-      console.log('⏸ Skipping notifications fetch – authLoading is true');
+      console.log('⏸ Skipping sent requests fetch – authLoading is true');
       return;
     }
 
     if (!user?.uuid || user.uuid.length !== 36) {
-      console.log('⏸ Skipping notifications fetch – user UUID not ready');
+      console.log('⏸ Skipping sent requests fetch – user UUID not ready');
       return;
     }
 
-    console.log('✅ User ready, fetching notifications:', user.uuid.substring(0, 8) + '...');
+    console.log('✅ User ready, fetching sent requests:', user.uuid.substring(0, 8) + '...');
     
     // Fetch immediately
-    refreshNotifications();
+    refreshSentRequests();
 
     // Poll every 5 seconds
-    const notifInterval = setInterval(refreshNotifications, 5000);
+    const notifInterval = setInterval(refreshSentRequests, 5000);
 
     return () => {
       clearInterval(notifInterval);
@@ -326,9 +428,12 @@ export const AuthProvider = ({ children }) => {
       authPending, 
       setAuthPending, 
       setAuthToken,
-      // ✅ NOTIFICATIONS (unread moved to UnreadContext)
-      notifications,
-      refreshNotifications
+      // ✅ SENT REQUESTS (requests sent BY user - for SearchFriendsModal)
+      sentRequests,
+      refreshSentRequests,
+      // ✅ INCOMING REQUEST POPUP (received requests - for dashboard)
+      incomingFriendRequest,
+      setIncomingFriendRequest
     }}>
       {children}
     </AuthContext.Provider>

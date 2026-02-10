@@ -16,6 +16,7 @@ import Terms from '../pages/Terms'
 import PrivacyPolicy from '../pages/PrivacyPolicy'
 import ProtectedChatRoute from './ProtectedChatRoute'
 import { DuoSquadProvider, useDuoSquad } from '../context/DuoSquadContext'
+import GlobalFriendRequestPopup from './GlobalFriendRequestPopup'
 import './Layout.css'
 
 // Lazy load Chat component to avoid TDZ errors during module initialization
@@ -31,6 +32,11 @@ function LayoutContent() {
 
   return (
     <>
+      {/* 🔔 GLOBAL FRIEND REQUEST POPUP - DISABLED (now handled in Chat.jsx directly) */}
+      {/* <div style={{ position: 'relative', zIndex: 999999 }}>
+        <GlobalFriendRequestPopup />
+      </div> */}
+
       {/* DuoSquad Modal - Fixed positioning at Layout level to prevent remounting */}
       {isDuoSquadOpen && (
         <div

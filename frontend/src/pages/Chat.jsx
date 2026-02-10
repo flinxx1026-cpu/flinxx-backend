@@ -9,11 +9,13 @@ import { AuthContext } from '../context/AuthContext';
 import { useDuoSquad } from '../context/DuoSquadContext';
 // ✅ DEFERRED: Socket is now imported dynamically to avoid TDZ during lazy loading
 // import socket from '../services/socketService';
+import socketWrapper from '../services/socketService';
 import MobileWaitingScreen from './MobileWaitingScreen';
 import { getIceServers, getMediaConstraints, formatTime, logIceServers } from '../utils/webrtcUtils';
 import PremiumModal from '../components/PremiumModal';
 import GenderFilterModal from '../components/GenderFilterModal';
 import ProfileModal from '../components/ProfileModal';
+import FriendRequestPopup from '../components/FriendRequestPopup';
 import MatchHistory from '../components/MatchHistory';
 import SearchFriendsModal from '../components/SearchFriendsModal';
 import SubscriptionsPage from '../components/SubscriptionsPage';
@@ -555,7 +557,7 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
 const Chat = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isLoading: authLoading } = useContext(AuthContext) || {};
+  const { user, isLoading: authLoading, refreshNotifications, incomingFriendRequest, setIncomingFriendRequest, refreshSentRequests } = useContext(AuthContext) || {};
   const { activeMode, setActiveMode, handleModeChange, openDuoSquad } = useDuoSquad();
 
   console.log("RENDER START");
@@ -624,9 +626,8 @@ const Chat = () => {
   // ✅ Unified tab state for all side panels
   const [activeTab, setActiveTab] = useState(null); // 'profile' | 'search' | 'likes' | 'messages' | 'trophy' | 'timer' | null
 
-  // ✅ Incoming Friend Request Notification During Video Chat
-  const [incomingFriendRequest, setIncomingFriendRequest] = useState(null);
-  const friendRequestCheckIntervalRef = useRef(null);
+  // 🚀 QUICK INVITE POPUP STATE - Real-time popup for profile icon invites
+  const [quickInvite, setQuickInvite] = useState(null); // { inviteId, senderId, senderName, senderProfileImage }
 
   // ✅ BACKEND URL - Declare once to avoid repetition
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
@@ -664,6 +665,8 @@ const Chat = () => {
 
   // 🧪 DEBUG TEST - Check if both "RENDER START" and "HOOKS DONE" appear in console
   console.log("HOOKS DONE");
+
+
 
   // ✅ LAZY LOAD SOCKET - Dynamically import socket to avoid TDZ during module initialization
   useEffect(() => {
@@ -2167,7 +2170,9 @@ const Chat = () => {
     console.log('🔌 ✅ webrtc_answer listener active');
     console.log('🔌 ✅ ice_candidate listener active');
     console.log('🔌 ✅ partner_disconnected listener active');
+    console.log('🔌 ✅ user_skipped listener active');
     console.log('🔌 ✅ Ready to receive WebRTC messages\n\n');
+    console.log('🔔 Friend requests are handled separately in a dedicated useEffect\n\n');
     }
     
     // Cleanup function
@@ -2458,19 +2463,23 @@ const Chat = () => {
   }, []);
 
   // ✅ SEND FRIEND REQUEST in video mode - Uses AuthContext directly (NOT currentUser state)
+  // ⚠️ THIS IS THE OLD HTTP-BASED FLOW - DO NOT USE FROM PROFILE ICON
+  // Profile icon should call sendQuickInvite() ONLY, NOT this function
   const sendFriendRequest = useCallback(async () => {
     console.log('\n' + '='.repeat(80));
-    console.log('🎯 [VIDEO FRIEND REQUEST] ========== FUNCTION TRIGGERED ==========');
+    console.log('⚠️ ⚠️ ⚠️ [OLD HTTP FRIEND REQUEST] FUNCTION TRIGGERED ⚠️ ⚠️ ⚠️');
     console.log('='.repeat(80));
+    console.log('📍 [OLD HTTP FR] This is the SEARCH MODAL flow (HTTP-based)');
+    console.log('📍 [OLD HTTP FR] Profile icon should NEVER trigger this function!');
     
     // ✅ Get sender from AuthContext user (NOT currentUser state which can be null)
     const senderPublicId = user?.publicId || user?.uuid;
     
     // ✅ Get receiver from partnerInfo - check all possible field names
-    console.log('📊 [VIDEO FR] Partner Info full object:', JSON.stringify(partnerInfo, null, 2));
+    console.log('📊 [OLD HTTP FR] Partner Info full object:', JSON.stringify(partnerInfo, null, 2));
     const receiverPublicId = partnerInfo?.partnerId || partnerInfo?.id || partnerInfo?.uuid || partnerInfo?.publicId;
     
-    console.log('📊 [VIDEO FR] ========== IDs EXTRACTED ==========');
+    console.log('📊 [OLD HTTP FR] ========== IDs EXTRACTED ==========');
     console.log('   Friend request sender:', senderPublicId);
     console.log('   Friend request receiver:', receiverPublicId);
     console.log('   Sender source: AuthContext.user');
@@ -2547,108 +2556,124 @@ const Chat = () => {
     console.log('='.repeat(80) + '\n');
   }, [user, partnerInfo]);
 
-  // ✅ POLL FOR INCOMING FRIEND REQUESTS during video chat
-  const checkIncomingFriendRequests = useCallback(async () => {
-    if (!user?.uuid || !hasPartner) return;
-
-    try {
-      const response = await fetch(
-        `${BACKEND_URL}/api/friends/pending?userId=${user.uuid}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const pendingRequests = data.requests?.filter(req => req.status === 'pending') || [];
-        
-        // Show only the first unread request
-        if (pendingRequests.length > 0 && !incomingFriendRequest) {
-          const latestRequest = pendingRequests[0];
-          console.log('📬 Incoming friend request detected during video chat:', latestRequest.display_name);
-          setIncomingFriendRequest(latestRequest);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking incoming friend requests:', error);
+  // ✅ QUICK INVITE FLOW - Creates REAL friend request via API
+  // Shows popup on receiver's screen via socket event
+  // Creates database entry so it appears in Friends & Requests panel
+  const sendQuickInvite = useCallback(async () => {
+    console.log('\n' + '='.repeat(80));
+    console.log('🚀 [QUICK INVITE] ========== PROFILE ICON FRIEND REQUEST ==========');
+    console.log('='.repeat(80));
+    
+    // ✅ Get sender from AuthContext user
+    const senderPublicId = user?.publicId || user?.uuid;
+    
+    // ✅ Get receiver from partnerInfo
+    const receiverPublicId = partnerInfo?.partnerId || partnerInfo?.id || partnerInfo?.uuid || partnerInfo?.publicId;
+    
+    console.log('📊 [QUICK INVITE] IDs:');
+    console.log('   Sender:', senderPublicId?.substring(0, 8) + '...');
+    console.log('   Receiver:', receiverPublicId?.substring(0, 8) + '...');
+    
+    // ✅ VALIDATION
+    if (!senderPublicId) {
+      console.error('❌ Sender ID missing');
+      alert('Error: Could not get your user ID');
+      return;
     }
-  }, [user, hasPartner, incomingFriendRequest, BACKEND_URL]);
-
-  // ✅ POLL FOR INCOMING FRIEND REQUESTS during video chat - NOW SAFE: Called after function declaration
-  useEffect(() => {
-    if (!hasPartner) {
-      // Clear polling interval when not in video chat
-      if (friendRequestCheckIntervalRef.current) {
-        clearInterval(friendRequestCheckIntervalRef.current);
-        friendRequestCheckIntervalRef.current = null;
-      }
+    
+    if (!receiverPublicId) {
+      console.error('❌ Receiver ID missing');
+      alert('Error: Could not get partner ID');
       return;
     }
 
-    // Start polling for incoming requests every 3 seconds while in video chat
-    friendRequestCheckIntervalRef.current = setInterval(() => {
-      checkIncomingFriendRequests();
-    }, 3000);
-
-    // Check immediately on entering video chat
-    checkIncomingFriendRequests();
-
-    return () => {
-      if (friendRequestCheckIntervalRef.current) {
-        clearInterval(friendRequestCheckIntervalRef.current);
-        friendRequestCheckIntervalRef.current = null;
-      }
-    };
-  }, [hasPartner, checkIncomingFriendRequests]);
-
-  // ✅ HANDLE ACCEPT FRIEND REQUEST
-  const handleAcceptIncomingRequest = useCallback(async () => {
-    if (!incomingFriendRequest?.id) return;
-
     try {
-      const response = await fetch(`${BACKEND_URL}/api/friends/accept`, {
+      // ✅ CALL API TO CREATE REAL FRIEND REQUEST (database entry)
+      console.log('\n📤 [QUICK INVITE] Calling /api/friends/send...');
+      console.log('   Type: PERSISTENT request (WITH database entry)');
+      
+      const response = await fetch(`${BACKEND_URL}/api/friends/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ requestId: incomingFriendRequest.id })
+        body: JSON.stringify({ 
+          senderPublicId: String(senderPublicId),
+          receiverPublicId: String(receiverPublicId)
+        })
       });
 
-      if (response.ok) {
-        console.log('✅ Friend request accepted:', incomingFriendRequest.display_name);
-        setIncomingFriendRequest(null);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ [QUICK INVITE] API Error:', errorData);
+        alert('Failed to send request: ' + (errorData.error || 'Unknown error'));
+        return;
       }
+
+      const data = await response.json();
+      console.log('✅ [QUICK INVITE] Request created:', data);
+      console.log('   Request ID:', data.requestId);
+      console.log('   Status: SAVED TO DATABASE');
+      console.log('   Will appear in Friends & Requests panel');
+      
+      // ✅ CRITICAL FIX: Refresh sent requests immediately after sending
+      // This ensures the request appears in Friends & Requests modal right away
+      // Instead of waiting for the 5-second polling interval
+      console.log('🔄 [QUICK INVITE] Refreshing sent requests to show new request immediately...');
+      if (refreshSentRequests) {
+        await refreshSentRequests();
+        console.log('✅ [QUICK INVITE] Sent requests refreshed - new request should now appear in Friends & Requests');
+      } else {
+        console.warn('⚠️ [QUICK INVITE] refreshSentRequests not available in AuthContext');
+      }
+      
+      alert(`Friend request sent to ${partnerInfo?.userName}!`);
     } catch (error) {
-      console.error('Error accepting friend request:', error);
+      console.error('❌ [QUICK INVITE] Error:', error.message);
+      alert('Failed to send request: ' + error.message);
     }
-  }, [incomingFriendRequest]);
+    
+    console.log('='.repeat(80) + '\n');
+  }, [user, partnerInfo, BACKEND_URL, refreshSentRequests]);
 
-  // ✅ HANDLE DECLINE FRIEND REQUEST
-  const handleDeclineIncomingRequest = useCallback(async () => {
-    if (!incomingFriendRequest?.id) return;
-
+  // ✅ FRIEND REQUEST POPUP HANDLERS - Shown ONLY on video chat screen
+  const handleAcceptFriendRequest = async (requestId) => {
+    console.log('✅ [Chat] Accepting friend request:', requestId);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/friends/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ requestId: incomingFriendRequest.id })
-      });
-
-      if (response.ok) {
-        console.log('❌ Friend request declined:', incomingFriendRequest.display_name);
-        setIncomingFriendRequest(null);
-      }
+      const { acceptFriendRequest } = await import('../services/api');
+      await acceptFriendRequest(requestId);
+      console.log('✅ [Chat] Request accepted');
+      setIncomingFriendRequest(null);
+      // ✅ DO NOT call refreshNotifications() here
+      // AuthContext polling will update her notifications in 5 seconds
+      // Popup is local to video chat screen only
     } catch (error) {
-      console.error('Error declining friend request:', error);
+      console.error('❌ [Chat] Error accepting request:', error);
+      alert('Failed to accept request');
     }
-  }, [incomingFriendRequest]);
+  };
+
+  const handleRejectFriendRequest = async (requestId) => {
+    console.log('✅ [Chat] Rejecting friend request:', requestId);
+    try {
+      const { rejectFriendRequest } = await import('../services/api');
+      await rejectFriendRequest(requestId);
+      console.log('✅ [Chat] Request rejected');
+      setIncomingFriendRequest(null);
+      // ✅ DO NOT call refreshNotifications() here
+      // AuthContext polling will update her notifications in 5 seconds
+      // Popup is local to video chat screen only
+    } catch (error) {
+      console.error('❌ [Chat] Error rejecting request:', error);
+      alert('Failed to reject request');
+    }
+  };
+
+  // ✅ FRIEND REQUESTS NOW HANDLED GLOBALLY
+  // Removed polling function, handlers, and inline modal
+  // GlobalFriendRequestPopup handles all incoming requests via socket events
+  // and displays them as a non-blocking toast notification from any screen
 
   const endChat = () => {
     setHasPartner(false);
@@ -2930,8 +2955,8 @@ const Chat = () => {
                   </div>
                   <div className="flex items-center gap-2 md:gap-3">
                     <button 
-                      onClick={sendFriendRequest}
-                      title="Send Friend Request"
+                      onClick={sendQuickInvite}
+                      title="Send Quick Invite"
                       style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} 
                       onMouseEnter={(e) => { e.target.style.backgroundColor = '#d4af37'; e.target.style.color = '#000'; }} 
                       onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#d4af37'; }}
@@ -3185,173 +3210,8 @@ const Chat = () => {
           </div>
         </div>
 
-        {/* ✅ INCOMING FRIEND REQUEST POPUP - Shows during video chat */}
-        {incomingFriendRequest && (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999
-          }}>
-            <div style={{
-              backgroundColor: '#1a1a2e',
-              borderRadius: '24px',
-              border: '1px solid rgba(212, 175, 55, 0.3)',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6)',
-              padding: '32px 24px',
-              maxWidth: '400px',
-              width: '90%',
-              animation: 'slideInUp 0.3s ease-out'
-            }}>
-              {/* Header */}
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <h2 style={{
-                  color: '#d4af37',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  marginBottom: '8px'
-                }}>Friend Request</h2>
-                <p style={{
-                  color: 'rgba(255, 255, 255, 0.6)',
-                  fontSize: '13px'
-                }}>New friend request during chat</p>
-              </div>
-
-              {/* Avatar and Name */}
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                marginBottom: '24px'
-              }}>
-                <div style={{
-                  width: '60px',
-                  height: '60px',
-                  borderRadius: '50%',
-                  marginBottom: '12px',
-                  overflow: 'hidden',
-                  border: '2px solid rgba(212, 175, 55, 0.3)',
-                  backgroundColor: 'rgba(212, 175, 55, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  {incomingFriendRequest.photo_url ? (
-                    <img
-                      src={incomingFriendRequest.photo_url}
-                      alt={incomingFriendRequest.display_name}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover'
-                      }}
-                    />
-                  ) : (
-                    <span style={{
-                      fontSize: '24px',
-                      fontWeight: 'bold',
-                      color: '#d4af37'
-                    }}>
-                      {incomingFriendRequest.display_name?.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <p style={{
-                  color: '#fff',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  marginBottom: '4px'
-                }}>
-                  {incomingFriendRequest.display_name}
-                </p>
-                <p style={{
-                  color: 'rgba(255, 255, 255, 0.5)',
-                  fontSize: '12px'
-                }}>
-                  wants to be friends
-                </p>
-              </div>
-
-              {/* Buttons */}
-              <div style={{
-                display: 'flex',
-                gap: '12px',
-                justifyContent: 'center'
-              }}>
-                <button
-                  onClick={handleDeclineIncomingRequest}
-                  style={{
-                    flex: 1,
-                    padding: '12px 16px',
-                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                    color: '#ef4444',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    backdropFilter: 'blur(8px)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.3)';
-                    e.target.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
-                    e.target.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                  }}
-                >
-                  Decline
-                </button>
-                <button
-                  onClick={handleAcceptIncomingRequest}
-                  style={{
-                    flex: 1,
-                    padding: '12px 16px',
-                    backgroundColor: 'rgba(16, 185, 129, 0.3)',
-                    color: '#10b981',
-                    border: '1px solid rgba(16, 185, 129, 0.5)',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    backdropFilter: 'blur(8px)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = 'rgba(16, 185, 129, 0.4)';
-                    e.target.style.borderColor = 'rgba(16, 185, 129, 0.6)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'rgba(16, 185, 129, 0.3)';
-                    e.target.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-                  }}
-                >
-                  Accept
-                </button>
-              </div>
-            </div>
-
-            <style>{`
-              @keyframes slideInUp {
-                from {
-                  opacity: 0;
-                  transform: translateY(20px);
-                }
-                to {
-                  opacity: 1;
-                  transform: translateY(0);
-                }
-              }
-            `}</style>
-          </div>
-        )}
+        {/* ✅ FRIEND REQUEST POPUP - Now handled globally by GlobalFriendRequestPopup as a toast */}
+        {/* No longer rendering inline modal here - toast shows on top */}
       </>
     );
   };
@@ -3402,6 +3262,16 @@ const Chat = () => {
       {partnerFound && (
         <div className="absolute inset-0 z-50 w-full h-full">
           {renderVideoChatScreen()}
+          
+          {/* ✅ FRIEND REQUEST POPUP - Show ONLY on video chat screen */}
+          {incomingFriendRequest && (
+            <FriendRequestPopup
+              request={incomingFriendRequest}
+              onAccept={handleAcceptFriendRequest}
+              onReject={handleRejectFriendRequest}
+              onClose={() => setIncomingFriendRequest(null)}
+            />
+          )}
         </div>
       )}
 
@@ -3488,6 +3358,9 @@ const Chat = () => {
               </div>
             </div>
           )}
+
+          {/* ✅ FRIEND REQUESTS - Shown as popup ONLY on video chat screen */}
+          {/* Popup appears on top of video chat when incoming request arrives */}
         </>
       )}
     </div>

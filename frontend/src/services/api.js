@@ -48,7 +48,7 @@ export const getFriends = async (userUUID) => {
 };
 
 /**
- * Fetch all friend request notifications (pending + accepted)
+ * Fetch all friend request notifications (INCOMING - received by user)
  * ✅ Accept UUID as parameter from AuthContext
  */
 export const getNotifications = async (userUUID) => {
@@ -59,7 +59,7 @@ export const getNotifications = async (userUUID) => {
       return [];
     }
 
-    console.log('📬 Fetching notifications for user');
+    console.log('📬 Fetching INCOMING notifications for user');
 
     const response = await fetch(
       `${BACKEND_URL}/api/notifications?userId=${userUUID}`,
@@ -74,10 +74,46 @@ export const getNotifications = async (userUUID) => {
     }
 
     const data = await response.json();
-    console.log('✅ Notifications loaded:', data.length, 'items');
+    console.log('✅ Incoming notifications loaded:', data.length, 'items');
     return data;
   } catch (err) {
-    console.error('❌ Error fetching notifications:', err);
+    console.error('❌ Error fetching incoming notifications:', err);
+    return [];
+  }
+};
+
+/**
+ * Fetch sent friend requests (requests SENT by user)
+ * ✅ Accept UUID as parameter from AuthContext
+ * Used by SearchFriendsModal to show requests user has sent
+ */
+export const getSentRequests = async (userUUID) => {
+  try {
+    // ✅ STRICT VALIDATION: UUID must be 36-char string
+    if (!userUUID || typeof userUUID !== 'string' || userUUID.length !== 36) {
+      console.warn('⛔ getSentRequests blocked – invalid UUID:', userUUID);
+      return [];
+    }
+
+    console.log('📤 Fetching SENT requests from user');
+
+    const response = await fetch(
+      `${BACKEND_URL}/api/sent-requests?userId=${userUUID}`,
+      {
+        method: 'GET',
+        headers: getAuthHeaders(),
+      }
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+    console.log('✅ Sent requests loaded:', data.length, 'items');
+    return data;
+  } catch (err) {
+    console.error('❌ Error fetching sent requests:', err);
     return [];
   }
 };
@@ -258,6 +294,31 @@ export const rejectFriendRequest = async (requestId) => {
     return { success: true, data };
   } catch (err) {
     console.error('Error rejecting friend request:', err);
+    return { success: false };
+  }
+};
+
+/**
+ * Send a friend request to a user
+ */
+export const sendFriendRequest = async (senderPublicId, receiverPublicId) => {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/friends/send`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ senderPublicId, receiverPublicId })
+    });
+
+    if (!response.ok) {
+      console.error('❌ Send friend request API error:', response.status);
+      return { success: false };
+    }
+
+    const data = await response.json();
+    console.log('✅ Friend request sent', data);
+    return { success: true, data };
+  } catch (err) {
+    console.error('Error sending friend request:', err);
     return { success: false };
   }
 };

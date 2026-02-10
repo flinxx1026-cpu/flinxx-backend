@@ -1,0 +1,218 @@
+/* Friend Request Popup Overlay */
+.friend-request-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  animation: fadeIn 0.3s ease-in;
+  pointer-events: auto;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Popup Container */
+.friend-request-popup-container {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 20px;
+  padding: 40px 30px;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7), 
+              0 0 20px rgba(255, 165, 0, 0.3);
+  border: 1px solid rgba(255, 165, 0, 0.2);
+  position: relative;
+  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Close Button */
+.popup-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #999;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.popup-close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* Profile Section */
+.popup-profile-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+/* Profile Image */
+.popup-profile-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 3px solid #ffa500;
+  box-shadow: 0 4px 15px rgba(255, 165, 0, 0.4);
+}
+
+.popup-profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.popup-profile-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+  color: #fff;
+  background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+}
+
+/* Message */
+.popup-message {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.popup-sender-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 8px 0;
+  word-break: break-word;
+}
+
+.popup-text {
+  font-size: 14px;
+  color: #aaa;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Action Buttons */
+.popup-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.popup-btn-reject,
+.popup-btn-accept {
+  flex: 1;
+  padding: 11px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.popup-btn-reject {
+  background-color: rgba(255, 0, 0, 0.1);
+  border: 1.5px solid #ff4444;
+  color: #ff6b6b;
+}
+
+.popup-btn-reject:hover:not(:disabled) {
+  background-color: rgba(255, 0, 0, 0.2);
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
+}
+
+.popup-btn-accept {
+  background-color: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+  color: #fff;
+}
+
+.popup-btn-accept {
+  background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+  color: #fff;
+}
+
+.popup-btn-accept:hover:not(:disabled) {
+  box-shadow: 0 0 15px rgba(255, 165, 0, 0.6);
+  transform: translateY(-2px);
+}
+
+.popup-btn-reject:disabled,
+.popup-btn-accept:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 640px) {
+  .friend-request-popup-container {
+    padding: 30px 20px;
+    max-width: 280px;
+  }
+
+  .popup-sender-name {
+    font-size: 16px;
+  }
+
+  .popup-text {
+    font-size: 13px;
+  }
+
+  .popup-profile-image {
+    width: 70px;
+    height: 70px;
+  }
+
+  .popup-btn-reject,
+  .popup-btn-accept {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}

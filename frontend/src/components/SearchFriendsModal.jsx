@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import './SearchFriendsModal.css';
-import { getFriends, markMessagesAsRead } from '../services/api';
+import { getFriends, markMessagesAsRead, getNotifications } from '../services/api';
 import { MessageContext } from '../context/MessageContext';
 import { AuthContext } from '../context/AuthContext';
 import { useUnread } from '../context/UnreadContext';
@@ -8,7 +8,7 @@ import ChatBox from './ChatBox';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
   const { markAsRead } = useContext(MessageContext) || {};
-  const { user, notifications, refreshNotifications } = useContext(AuthContext) || {};
+  const { user, sentRequests, refreshSentRequests } = useContext(AuthContext) || {};
   const { setUnreadCount, refetchUnreadCount } = useUnread();
   
   const [search, setSearch] = useState('');
@@ -19,6 +19,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [currentUser, setCurrentUser] = useState(null);
   const [friends, setFriends] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
+  const [incomingRequests, setIncomingRequests] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   
   const isNotificationMode = mode === 'notifications';
   const isMessageMode = mode === 'message';
@@ -130,20 +132,61 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     }
   }, [isOpen, user?.uuid]);
 
-  // ✅ REFRESH notifications when panel opens (not just on mount)
+  // ✅ REFRESH sent requests when panel opens (not just on mount)
   useEffect(() => {
     if (!isOpen) return;
-    if (!isNotificationMode) return;
+    // Refresh in both notification and likes modes
+    if (!isNotificationMode && !isLikesMode) return;
     
-    if (user?.uuid && user.uuid.length === 36 && refreshNotifications) {
-      console.log('🔄 Refreshing notifications when panel opens');
-      refreshNotifications();
+    if (user?.uuid && user.uuid.length === 36 && refreshSentRequests) {
+      console.log('🔄 Refreshing sent requests when panel opens');
+      refreshSentRequests();
     }
-  }, [isOpen, isNotificationMode, user?.uuid, refreshNotifications]);
+  }, [isOpen, isNotificationMode, isLikesMode, user?.uuid, refreshSentRequests]);
 
-  // ✅ Notifications come from centralized AuthContext (single source of truth)
-  // No need to fetch here - AuthContext manages it
-  const pendingRequests = notifications || [];
+  // ✅ FETCH INCOMING REQUESTS when Likes mode opens
+  useEffect(() => {
+    if (!isOpen || !isLikesMode) return;
+    
+    const fetchIncomingRequests = async () => {
+      if (!user?.uuid || user.uuid.length !== 36) {
+        console.warn('⛔ Cannot fetch incoming requests - invalid user UUID');
+        return;
+      }
+      
+      setNotificationsLoading(true);
+      try {
+        console.log('📥 Fetching incoming friend requests...');
+        const data = await getNotifications(user.uuid);
+        console.log('✅ Incoming requests loaded:', data.length, 'items');
+        setIncomingRequests(data || []);
+      } catch (err) {
+        console.error('❌ Error fetching incoming requests:', err);
+        setIncomingRequests([]);
+      } finally {
+        setNotificationsLoading(false);
+      }
+    };
+    
+    fetchIncomingRequests();
+  }, [isOpen, isLikesMode, user?.uuid]);
+
+  // ✅ Sent requests come from centralized AuthContext (single source of truth)
+  // These are requests sent BY the user to others (shown in Friends & Requests list)
+  // Incoming requests are handled ONLY via socket popup event
+  const pendingRequests = sentRequests || [];
+  
+  // 🔍 DEBUG: Log what we're displaying
+  useEffect(() => {
+    if (isLikesMode && pendingRequests.length > 0) {
+      console.log(`🔍 [SearchFriendsModal] Displaying ${pendingRequests.length} requests in Likes mode:`);
+      pendingRequests.forEach((req, idx) => {
+        console.log(`   ${idx + 1}. "${req.display_name}" - Status: ${req.status}`);
+        console.log(`      sender_id: ${req.sender_id?.substring(0, 8)}...`);
+        console.log(`      receiver_id: ${req.receiver_id?.substring(0, 8)}...`);
+      });
+    }
+  }, [pendingRequests, isLikesMode]);
 
   // ✅ Update chat list when message is sent or received
   const updateChatListOnMessage = (friendId, messageTime) => {
@@ -285,17 +328,24 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       });
 
       if (response.ok) {
-        // Update UI state immediately after success
+        // ✅ Update UI state ONLY - button state change
         setFriendRequestStates(prev => ({
           ...prev,
           [targetUserId]: 'pending'
         }));
         console.log('Friend request sent to:', targetUserId);
         
-        // Refresh notifications to update the recipient's view
-        if (refreshNotifications) {
-          refreshNotifications();
+        // ✅ CRITICAL FIX: Refresh sent requests immediately after sending
+        // This ensures the request appears in Friends & Requests modal right away
+        if (refreshSentRequests) {
+          console.log('🔄 Refreshing sent requests after search modal friend request...');
+          refreshSentRequests();
         }
+        
+        // ✅ DO NOT call refreshNotifications() here
+        // Backend will emit socket event to receiver
+        // AuthContext socket listener will update real-time popup
+        // Notifications polling will catch this request in 5 seconds
       } else {
         console.error('Failed to send friend request');
       }
@@ -318,17 +368,20 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       });
 
       if (response.ok) {
-        // Update states - update status instead of filtering out
-        setFriendRequestStates(prev => ({
-          ...prev,
-          [senderId]: 'accepted'
-        }));
-        console.log('Friend request accepted');
+        console.log('✅ Friend request accepted:', requestId);
         
-        // Refresh notifications to notify the sender
-        if (refreshNotifications) {
-          refreshNotifications();
+        // ✅ Remove from incoming requests list
+        setIncomingRequests(prev => prev.filter(req => req.id !== requestId));
+        
+        // ✅ Update friend state if senderId exists
+        if (senderId) {
+          setFriendRequestStates(prev => ({
+            ...prev,
+            [senderId]: 'accepted'
+          }));
         }
+      } else {
+        console.error('Failed to accept friend request:', response.status);
       }
     } catch (error) {
       console.error('Error accepting request:', error);
@@ -347,12 +400,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       });
 
       if (response.ok) {
-        console.log('Friend request rejected');
+        console.log('❌ Friend request rejected:', requestId);
         
-        // Refresh notifications to notify the sender
-        if (refreshNotifications) {
-          refreshNotifications();
-        }
+        // ✅ Remove from incoming requests list immediately
+        setIncomingRequests(prev => prev.filter(req => req.id !== requestId));
+      } else {
+        console.error('Failed to reject friend request:', response.status);
       }
     } catch (error) {
       console.error('Error rejecting request:', error);
@@ -605,7 +658,68 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
               />
             ) : (
               <div className="search-results">
-                {/* SECTION 1: Friend Requests (Incoming) */}
+                {/* SECTION 1: Incoming Friend Requests (Received by User) */}
+                {notificationsLoading ? (
+                  <p style={{ textAlign: 'center', color: '#9ca3af', marginTop: '20px' }}>
+                    Loading requests...
+                  </p>
+                ) : incomingRequests && incomingRequests.length > 0 ? (
+                  <div style={{ marginBottom: '20px' }}>
+                    <h3 style={{
+                      color: '#fff',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      padding: '10px 0',
+                      borderBottom: '1px solid rgba(255,255,255,0.1)',
+                      margin: '0'
+                    }}>
+                      💚 {incomingRequests.length} Incoming Request{incomingRequests.length !== 1 ? 's' : ''}
+                    </h3>
+                    {incomingRequests.map(req => (
+                      <div key={req.id} className="notification-item" style={{ marginTop: '10px' }}>
+                        <div className="notification-avatar">
+                          {req.photo_url ? (
+                            <img src={req.photo_url} alt={req.display_name} />
+                          ) : (
+                            <div className="text-avatar">
+                              {req.display_name?.charAt(0).toUpperCase() || '?'}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="notification-text">
+                          <strong>{req.display_name}</strong>
+                          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                            {req.status === 'pending' ? '⏳ Wants to be your friend' : req.status === 'accepted' ? '✓ Friends' : '❌ Rejected'}
+                          </p>
+                        </div>
+
+                        {req.status === 'pending' && (
+                          <div className="message-actions">
+                            <button
+                              className="accept-btn"
+                              onClick={() => handleAcceptRequest(req.id, req.sender_id)}
+                              style={{ backgroundColor: '#10b981', color: '#fff' }}
+                              title="Accept"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              className="reject-btn"
+                              onClick={() => handleRejectRequest(req.id)}
+                              style={{ backgroundColor: '#ef4444', color: '#fff' }}
+                              title="Reject"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {/* SECTION 2: Friend Requests (Sent by User) */}
                 {pendingRequests && pendingRequests.length > 0 && (
                   <div style={{ marginBottom: '20px' }}>
                     <h3 style={{ 
@@ -615,7 +729,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       padding: '10px 0',
                       borderBottom: '1px solid rgba(255,255,255,0.1)'
                     }}>
-                      📬 {pendingRequests.length} Friend Request{pendingRequests.length !== 1 ? 's' : ''}
+                      📤 {pendingRequests.length} Sent Request{pendingRequests.length !== 1 ? 's' : ''}
                     </h3>
                     {pendingRequests.map(req => (
                       <div key={req.id} className="notification-item" style={{ marginTop: '10px' }}>
@@ -631,56 +745,20 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
                         <div className="notification-text">
                           <strong>{req.display_name}</strong>
-                          {req.status !== 'accepted' && (
-                            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
-                              {req.status === 'pending' ? 'Pending' : 'Request received'}
-                            </p>
-                          )}
+                          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                            {req.status === 'pending' ? '⏳ Request sent' : req.status === 'accepted' ? '✓ Friends' : 'Request rejected'}
+                          </p>
                         </div>
 
-                        {req.status !== 'accepted' && (
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                              onClick={() => handleAcceptRequest(req.id, req.sender_id)}
-                              style={{
-                                padding: '6px 12px',
-                                background: '#10b981',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: '600'
-                              }}
-                            >
-                              Accept
-                            </button>
-                            <button
-                              onClick={() => handleRejectRequest(req.id)}
-                              style={{
-                                padding: '6px 12px',
-                                background: '#ef4444',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: '600'
-                              }}
-                            >
-                              Decline
-                            </button>
-                          </div>
-                        )}
                         {req.status === 'accepted' && (
                           <button
                             className="message-btn"
                             onClick={() => {
                               console.log('Opening chat with:', req);
-                              // Use req.id if it's a valid UUID (36 chars), otherwise fallback to sender_id
-                              const friendId = (req.id && typeof req.id === 'string' && req.id.length === 36) 
-                                ? req.id 
-                                : req.sender_id;
+                              // Use req.id if it's a valid UUID (36 chars), otherwise fallback to receiver_id
+                              const friendId = (req.user_id && typeof req.user_id === 'string' && req.user_id.length === 36) 
+                                ? req.user_id 
+                                : req.receiver_id;
                               const chatUser = {
                                 ...req,
                                 id: friendId
@@ -706,7 +784,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       padding: '20px'
                     }}
                   >
-                    No friend requests yet
+                    No sent requests yet
                   </p>
                 )}
               </div>

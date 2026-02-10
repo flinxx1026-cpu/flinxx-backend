@@ -5,6 +5,14 @@ import authMiddleware from '../middleware/auth.js';
 
 const router = express.Router();
 
+// ✅ Global io instance (set by server.js)
+let io = null;
+
+export const setIO = (ioInstance) => {
+  io = ioInstance;
+  console.log('✅ [friends.js] Socket.IO instance set');
+};
+
 router.get('/', async (req, res) => {
   try {
     const userId = req.query.userId;
@@ -143,13 +151,13 @@ router.post('/send', async (req, res) => {
 
     // Look up sender by publicId (handle both UUID and numeric formats)
     const senderResult = await db.query(
-      `SELECT id FROM users WHERE id::text = $1 OR public_id::text = $1`,
+      `SELECT id, display_name, photo_url FROM users WHERE id::text = $1 OR public_id::text = $1`,
       [String(senderPublicId)]
     );
 
     // Look up receiver by publicId (handle both UUID and numeric formats)
     const receiverResult = await db.query(
-      `SELECT id FROM users WHERE id::text = $1 OR public_id::text = $1`,
+      `SELECT id, display_name, photo_url FROM users WHERE id::text = $1 OR public_id::text = $1`,
       [String(receiverPublicId)]
     );
 
@@ -163,8 +171,10 @@ router.post('/send', async (req, res) => {
       return res.status(404).json({ error: 'Receiver not found' });
     }
 
-    const senderId = senderResult.rows[0].id;
-    const receiverId = receiverResult.rows[0].id;
+    const sender = senderResult.rows[0];
+    const receiver = receiverResult.rows[0];
+    const senderId = sender.id;
+    const receiverId = receiver.id;
 
     if (senderId === receiverId) {
       return res.status(400).json({ error: 'Cannot send friend request to yourself' });
@@ -187,15 +197,123 @@ router.post('/send', async (req, res) => {
     const result = await db.query(
       `INSERT INTO friend_requests (sender_id, receiver_id, status, created_at)
        VALUES ($1, $2, 'pending', NOW())
-       RETURNING id, status`,
+       RETURNING id, status, created_at`,
       [senderId, receiverId]
     );
 
-    console.log('✅ Friend request sent successfully');
-    res.json({ success: true, data: result.rows[0] });
+    const request = result.rows[0];
+    console.log('✅ Friend request created, request ID:', request.id);
+
+    // 🔥 EMIT REAL-TIME SOCKET EVENT (CRITICAL!)
+    if (io) {
+      const eventPayload = {
+        requestId: request.id,
+        senderId: sender.id,
+        senderPublicId: senderPublicId,
+        senderName: sender.display_name || 'User',
+        senderProfileImage: sender.photo_url,
+        createdAt: request.created_at,
+        status: 'pending'
+      };
+      
+      console.log(`🔥🔥🔥 [friends.js] FRIEND REQUEST EVENT 🔥🔥🔥`);
+      console.log(`📢 Emitting to room: ${receiver.id}`);
+      console.log(`📢 Payload:`, eventPayload);
+      
+      // Emit to receiver's user room (using UUID from users.id)
+      io.to(receiver.id).emit('friend_request_received', eventPayload);
+      
+      console.log(`✅ Event emitted successfully`);
+    } else {
+      console.warn('⚠️ Socket.IO not initialized - real-time notification will not be sent');
+    }
+
+    res.json({ success: true, data: request });
 
   } catch (err) {
     console.error('❌ Send friend request error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅🚀 QUICK INVITE - Real-time popup invite (NO pending request created)
+// Used by profile icon quick-action, NOT by search modal
+router.post('/quick-invite', async (req, res) => {
+  try {
+    const { senderPublicId, receiverPublicId } = req.body;
+
+    if (!senderPublicId || !receiverPublicId) {
+      return res.status(400).json({ error: 'Missing senderPublicId or receiverPublicId' });
+    }
+
+    console.log('🚀🚀🚀 [QUICK INVITE] Starting real-time invite 🚀🚀🚀');
+    console.log('   Sender:', senderPublicId);
+    console.log('   Receiver:', receiverPublicId);
+
+    // Look up sender by publicId
+    const senderResult = await db.query(
+      `SELECT id, display_name, photo_url FROM users WHERE id::text = $1 OR public_id::text = $1`,
+      [String(senderPublicId)]
+    );
+
+    // Look up receiver by publicId
+    const receiverResult = await db.query(
+      `SELECT id, display_name, photo_url FROM users WHERE id::text = $1 OR public_id::text = $1`,
+      [String(receiverPublicId)]
+    );
+
+    if (senderResult.rows.length === 0) {
+      console.error('❌ Sender not found:', senderPublicId);
+      return res.status(404).json({ error: 'Sender not found' });
+    }
+
+    if (receiverResult.rows.length === 0) {
+      console.error('❌ Receiver not found:', receiverPublicId);
+      return res.status(404).json({ error: 'Receiver not found' });
+    }
+
+    const sender = senderResult.rows[0];
+    const receiver = receiverResult.rows[0];
+    const senderId = sender.id;
+    const receiverId = receiver.id;
+
+    if (senderId === receiverId) {
+      return res.status(400).json({ error: 'Cannot invite yourself' });
+    }
+
+    // ✅ KEY DIFFERENCE: Do NOT check or create pending request!
+    // This is ephemeral - just send the socket event
+    // No database record, no "pending" state in Friends & Requests panel
+
+    // 🔥 EMIT REAL-TIME SOCKET EVENT (EPHEMERAL INVITE)
+    if (io) {
+      const quickInvitePayload = {
+        inviteId: `quick-${Date.now()}-${Math.random()}`, // Ephemeral ID
+        senderId: sender.id,
+        senderPublicId: senderPublicId,
+        senderName: sender.display_name || 'User',
+        senderProfileImage: sender.photo_url,
+        createdAt: new Date().toISOString(),
+        type: 'quick_friend_invite' // Different type from normal requests
+      };
+      
+      console.log(`🚀🚀🚀 [QUICK INVITE] Emitting ephemeral invite 🚀🚀🚀`);
+      console.log(`📢 Emitting to room: ${receiver.id}`);
+      console.log(`📢 Payload:`, quickInvitePayload);
+      
+      // Emit to receiver's user room with special event type
+      io.to(receiver.id).emit('quick_friend_invite', quickInvitePayload);
+      
+      console.log(`✅ Quick invite emitted successfully`);
+    } else {
+      console.warn('⚠️ Socket.IO not initialized - real-time invite will not be sent');
+    }
+
+    // ✅ Return immediately - no pending request created
+    res.json({ success: true, inviteId: `quick-${Date.now()}-${Math.random()}`, ephemeral: true });
+
+  } catch (err) {
+    console.error('❌ Quick invite error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
