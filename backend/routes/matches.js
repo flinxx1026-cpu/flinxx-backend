@@ -38,7 +38,10 @@ router.get('/', authMiddleware, async (req, res) => {
         m.is_liked,
         m.created_at,
         COALESCE(u.profileImage, u.photo_url) as profileImage,
-        u.photo_url
+        u.photo_url,
+        COALESCE(u.public_id, '') as matched_user_public_id,
+        u.has_blue_tick,
+        u.blue_tick_expires_at
        FROM matches m
        LEFT JOIN users u ON m.matched_user_id = u.id
        WHERE m.user_id = $1

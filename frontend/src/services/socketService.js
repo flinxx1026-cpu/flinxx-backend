@@ -1,6 +1,19 @@
 import io from 'socket.io-client'
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+// Determine correct socket URL based on environment
+const getSocketUrl = () => {
+  // If env vars are set, use them
+  if (import.meta.env.VITE_SOCKET_URL) {
+    return import.meta.env.VITE_SOCKET_URL;
+  }
+  if (import.meta.env.VITE_BACKEND_URL) {
+    return import.meta.env.VITE_BACKEND_URL;
+  }
+  // Default to localhost backend
+  return 'http://localhost:5000';
+};
+
+const SOCKET_URL = getSocketUrl();
 
 let socket = null;
 let isInitializing = false;
@@ -13,28 +26,32 @@ const getOrCreateSocket = () => {
   isInitializing = true;
   
   try {
-    console.log('🔌 Socket.IO connecting to:', SOCKET_URL)
+    console.log('🔌 Socket.IO attempting connection...');
+    console.log('🔌 Target URL:', SOCKET_URL);
     
     socket = io(SOCKET_URL, {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: 10,
-      transports: ['websocket'],
-      secure: true,
+      reconnectionAttempts: 20,
+      // Enable both websocket and polling for maximum compatibility
+      transports: ['websocket', 'polling'],
+      secure: false,  // Use http:// protocol, not https://
       rejectUnauthorized: false,
       forceNew: false,
       withCredentials: true,
-      upgrade: false,
+      upgrade: true,  // Allow upgrading from polling to websocket
       rememberUpgrade: false,
       multiplex: true,
-      timeout: 60000
+      timeout: 20000,
+      // Additional socket.io options
+      'sync disconnect on unload': true,
+      autoConnect: true
     })
 
     socket.on('connect', () => {
       console.log('✅ Socket connected successfully! ID:', socket.id)
-      console.log('📊 Transport method:', socket.io.engine.transport.name)
-      console.log('📊 Socket connected status:', socket.connected)
+      console.log('📊 Transport:', socket.io.engine.transport.name)
     })
 
     socket.on('connect_error', (error) => {
@@ -61,8 +78,18 @@ const getOrCreateSocket = () => {
     // 🔍 DEBUG: Log all unhandled events
     socket.onAny((eventName, ...args) => {
       if (!['connect', 'disconnect', 'ping', 'pong'].includes(eventName)) {
-        console.log(`🎯 [socketService DEBUG] Unhandled event: "${eventName}"`, args);
+        if (eventName === 'call_ended') {
+          console.log(`🎯🎯🎯 [socketService] RECEIVED call_ended EVENT! 🎯🎯🎯`, args);
+        } else {
+          console.log(`🎯 [socketService DEBUG] Event: "${eventName}"`, args);
+        }
       }
+    });
+
+    // ✅ SPECIFIC LISTENER: call_ended - to catch and log
+    socket.on('call_ended', (data) => {
+      console.log('🔔 [socketService] call_ended listener triggered directly');
+      console.log('📦 Data:', data);
     });
 
     // ✅ HANDLE FRIEND REQUEST RECEIVED - Debug handler
@@ -78,8 +105,26 @@ const getOrCreateSocket = () => {
       localStorage.clear()
       window.location.href = '/login'
     })
+
+    // ✅ HANDLE ACCOUNT WARNING
+    socket.on('account_warning', (warningData) => {
+      console.log('🚨 [socketService] ACCOUNT WARNING EVENT RECEIVED 🚨');
+      console.log('📦 Warning data:', warningData);
+      
+      // Dispatch custom event so AuthContext can listen
+      if (typeof window !== 'undefined') {
+        const warningEvent = new CustomEvent('account_warning', {
+          detail: warningData
+        });
+        window.dispatchEvent(warningEvent);
+        console.log('✅ [socketService] Window event dispatched for account_warning');
+      }
+    })
   } catch (err) {
     console.error('❌ Socket.IO initialization error:', err)
+    console.error('❌ Error message:', err.message)
+    console.error('❌ Error stack:', err.stack)
+    console.error('❌ Falling back to mock socket')
     // Create a mock socket to prevent errors
     socket = {
       on: () => {},
@@ -111,25 +156,34 @@ const socketWrapper = {
   on: (event, handler) => {
     const s = getOrCreateSocket();
     if (s && typeof s.on === 'function') {
+      console.log(`🔌 [socketWrapper] Attaching listener for event: "${event}"`);
       s.on(event, handler);
+      console.log(`✅ [socketWrapper] Listener attached for: "${event}"`);
+    } else {
+      console.warn(`⚠️ [socketWrapper] Cannot attach listener for "${event}" - socket not available`);
     }
   },
   off: (event, handler) => {
     const s = getOrCreateSocket();
     if (s && typeof s.off === 'function') {
+      console.log(`🔌 [socketWrapper] Detaching listener for event: "${event}"`);
       s.off(event, handler);
     }
   },
-  emit: (event, data) => {
+  emit: (event, ...args) => {
     const s = getOrCreateSocket();
     if (s && typeof s.emit === 'function') {
-      s.emit(event, data);
+      console.log(`📤 [socketWrapper] Emitting event: "${event}"`);
+      s.emit(event, ...args);
+      console.log(`✅ [socketWrapper] Event emitted: "${event}"`);
     }
   },
   onAny: (handler) => {
     const s = getOrCreateSocket();
     if (s && typeof s.onAny === 'function') {
+      console.log(`🔌 [socketWrapper] Attaching universal event listener`);
       s.onAny(handler);
+      console.log(`✅ [socketWrapper] Universal listener attached`);
     } else if (s) {
       console.warn('⚠️ Socket.IO onAny() not available - universal event listener may not work');
     }
@@ -153,7 +207,18 @@ const socketWrapper = {
     return s ? s.connected : false;
   },
   // Direct socket access for advanced use cases
-  getSocket: () => getOrCreateSocket()
+  getSocket: () => getOrCreateSocket(),
+  // Force initialization
+  connect: () => {
+    const s = getOrCreateSocket();
+    console.log('🔌 [socketService] connect() called, socket state:', {
+      exists: !!s,
+      isConnected: s?.connected || false,
+      id: s?.id || null,
+      isMock: !s?.io?.engine
+    });
+    return s;
+  }
 };
 
 // Export as default - safe wrapper object

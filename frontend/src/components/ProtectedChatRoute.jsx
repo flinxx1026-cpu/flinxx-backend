@@ -39,7 +39,7 @@ const ProtectedChatRoute = ({ children }) => {
             color: 'white',
             fontSize: '1.125rem',
             fontWeight: '600'
-          }}>Loading...</p>
+          }}></p>
         </div>
         <style>{`
           @keyframes spin {

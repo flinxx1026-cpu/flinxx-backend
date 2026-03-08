@@ -34,10 +34,10 @@ const TermsConfirmationModal = ({ onContinue, onCancel }) => {
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div className="relative w-full max-w-lg rounded-2xl p-8 border shadow-2xl" style={{
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           border: '1px solid rgba(212, 175, 55, 0.3)',
           boxShadow: '0 0 50px rgba(212, 175, 55, 0.15)',
           background: 'rgba(5, 5, 5, 0.8)'
@@ -74,7 +74,7 @@ const TermsConfirmationModal = ({ onContinue, onCancel }) => {
               </p>
               
               <p>
-                You understand that Flinxx is a live interaction platform and you use it at your own responsibility.
+                You understand that Flinxx is a live interaction platform and users are responsible for their actions.
               </p>
             </div>
 

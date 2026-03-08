@@ -102,14 +102,14 @@ const PremiumModal = ({ isOpen, onClose }) => {
       ]
     },
     {
-      id: "profile-highlight",
-      name: "Profile Highlight",
-      emoji: "⭐",
-      price: "₹99",
+      id: "unlimited-skip",
+      name: "Unlimited Skip",
+      emoji: "⏭️",
+      price: "₹149",
       features: [
-        "24h highlight",
-        "Top search visibility",
-        "Premium placement"
+        "Unlimited skips",
+        "Skip anyone anytime",
+        "No daily limit"
       ]
     }
   ];

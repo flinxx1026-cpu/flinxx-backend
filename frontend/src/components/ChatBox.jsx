@@ -1,18 +1,44 @@
 import { useState, useEffect, useContext, useRef } from 'react';
-// ✅ DEFERRED: Socket is loaded dynamically to avoid TDZ
-// import socket from '../services/socketService';
+// ✅ Import socketWrapper directly instead of lazy loading
+import socketWrapper from '../services/socketService';
 import { markMessagesAsRead } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 import { useUnreadSafe } from '../context/UnreadContext';
+import IncomingCallScreen from './IncomingCallScreen';
+import CallPopup from './CallPopup';
+
+// Helper: Convert a date to relative time string (e.g. "5 min ago", "2 hours ago")
+const getTimeAgo = (dateStr) => {
+  if (!dateStr) return 'Offline';
+  const now = new Date();
+  const date = new Date(dateStr);
+  const seconds = Math.floor((now - date) / 1000);
+  if (seconds < 60) return 'Just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months > 1 ? 's' : ''} ago`;
+  const years = Math.floor(months / 12);
+  return `${years} year${years > 1 ? 's' : ''} ago`;
+};
 
 const ChatBox = ({ friend, onBack, onMessageSent }) => {
   const socketRef = useRef(null);
-  const { user } = useContext(AuthContext) || {};
+  const messagesEndRef = useRef(null);
+  const { user, setCallType, setDirectCallData } = useContext(AuthContext) || {};
   const { refetchUnreadCount } = useUnreadSafe();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
-  const [friendRequestStatus, setFriendRequestStatus] = useState('none');
-  const [sendingRequest, setSendingRequest] = useState(false);
+  const [showIncomingCall, setShowIncomingCall] = useState(false);
+  const [showCallPopup, setShowCallPopup] = useState(false);
+  const [isCallLoading, setIsCallLoading] = useState(false);
+  const [friendOnline, setFriendOnline] = useState(null); // null = loading, true/false
+  const [friendLastSeen, setFriendLastSeen] = useState(null);
+  const [, setTick] = useState(0); // force re-render for time ago updates
   
   // Get current user UUID from AuthContext (source of truth)
   const myUserId = user?.uuid;
@@ -47,25 +73,48 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     return null;
   }
 
-  // ✅ LAZY LOAD SOCKET - Dynamically import socket to avoid TDZ
+  // ✅ INITIALIZE SOCKET REFERENCE - Use global socketWrapper
   useEffect(() => {
-    const loadSocket = async () => {
-      try {
-        const socketModule = await import('../services/socketService');
-        socketRef.current = socketModule.default;
-        console.log('✅ Socket loaded in ChatBox');
-      } catch (error) {
-        console.error('❌ Failed to load socket in ChatBox:', error.message);
-        socketRef.current = {
-          on: () => {},
-          off: () => {},
-          emit: () => {}
-        };
+    // Socket is now globally available
+    socketRef.current = socketWrapper;
+    console.log('✅ [ChatBox] Socket initialized from global socketWrapper');
+  }, []);
+
+  // ✅ CHECK FRIEND ONLINE STATUS & LISTEN FOR CHANGES
+  useEffect(() => {
+    if (!friend?.id) return;
+
+    // Fetch initial status via REST API (reliable, no socket callback needed)
+    fetch(`${BACKEND_URL}/api/user/status/${friend.id}`)
+      .then(r => r.json())
+      .then(data => {
+        setFriendOnline(data.isOnline);
+        setFriendLastSeen(data.lastSeen);
+      })
+      .catch(() => {
+        setFriendOnline(false);
+        setFriendLastSeen(null);
+      });
+
+    // Listen for real-time status changes via socket
+    const handleStatusChange = (data) => {
+      if (data.friendId === friend.id) {
+        setFriendOnline(data.isOnline);
+        setFriendLastSeen(data.lastSeen);
       }
     };
-    
-    loadSocket();
-  }, []);
+    socketWrapper?.on('friend_status_change', handleStatusChange);
+
+    // Update "X ago" text every 30 seconds
+    const interval = setInterval(() => {
+      setTick(t => t + 1);
+    }, 30000);
+
+    return () => {
+      socketWrapper?.off('friend_status_change', handleStatusChange);
+      clearInterval(interval);
+    };
+  }, [friend?.id]);
 
   // ✅ JOIN CHAT ROOM when component opens
   useEffect(() => {
@@ -207,242 +256,41 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     return () => socketRef.current?.off('receive_message', handleReceiveMessage);
   }, [myUserId, friend, onMessageSent]);
 
-  // ✅ CHECK FRIEND REQUEST STATUS when chat opens
+  // ✅ AUTO-SCROLL TO BOTTOM WHEN MESSAGES CHANGE
   useEffect(() => {
-    if (!myUserId || !friend?.id) {
-      console.warn('⚠️ [FRIEND STATUS] Skipping status check - missing IDs');
-      console.warn('   myUserId:', myUserId);
-      console.warn('   friend?.id:', friend?.id);
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 0);
+  }, [messages]);
+
+  // ✅ LISTEN FOR INCOMING CALLS from socket
+  useEffect(() => {
+    // Wait for socket to be initialized
+    if (!socketRef.current) {
+      console.log('⏳ Socket not ready yet, skipping listener setup');
       return;
     }
 
-    const checkFriendStatus = async () => {
-      console.log('\n📋 [FRIEND STATUS] Checking friend request status...');
-      console.log('📋 [FRIEND STATUS] Endpoint: /api/friends/status');
-      console.log('📋 [FRIEND STATUS] Query params:', {
-        senderPublicId: myUserId,
-        receiverPublicId: friend.id,
-        friendName: friend.display_name
-      });
-
-      try {
-        const statusUrl = `${BACKEND_URL}/api/friends/status?senderPublicId=${myUserId}&receiverPublicId=${friend.id}`;
-        console.log('📋 [FRIEND STATUS] Full URL:', statusUrl);
-        
-        const response = await fetch(statusUrl, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        console.log('📬 [FRIEND STATUS] Response received:', {
-          status: response.status,
-          ok: response.ok,
-          statusText: response.statusText
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ [FRIEND STATUS] Status API success');
-          console.log('✅ [FRIEND STATUS] Response data:', data);
-          console.log('✅ [FRIEND STATUS] Status value:', data.status);
-          setFriendRequestStatus(data.status);
-          console.log('✅ [FRIEND STATUS] State updated to:', data.status);
-        } else {
-          console.error('❌ [FRIEND STATUS] API error status:', response.status);
-          const errorData = await response.json().catch(() => ({}));
-          console.error('❌ [FRIEND STATUS] Error response:', errorData);
-        }
-      } catch (error) {
-        console.error('❌ [FRIEND STATUS] Network error:', error.message);
-        console.error('❌ [FRIEND STATUS] Full error:', error);
+    const handleIncomingCall = (data) => {
+      console.log('📞 INCOMING CALL EVENT RECEIVED:', data);
+      console.log('   - Caller:', data.callerName);
+      console.log('   - Caller ID:', data.callerId);
+      console.log('   - Receiver ID:', data.receiverId);
+      console.log('   - Current User ID:', myUserId);
+      
+      // ✅ FILTER: Only show popup if THIS user is the receiver
+      if (data.receiverId === myUserId) {
+        console.log('✅ Call is for THIS user - showing popup');
+        setShowCallPopup(true);
+      } else {
+        console.log('⛔ Call is for someone else - ignoring');
       }
     };
 
-    checkFriendStatus();
-  }, [myUserId, friend?.id, BACKEND_URL]);
+    socketRef.current?.on('incoming_call', handleIncomingCall);
 
-  // ✅ SEND FRIEND REQUEST via existing API
-  const sendFriendRequest = async () => {
-    console.log('\n' + '='.repeat(80));
-    console.log('🎯 [FRIEND REQUEST] ========== FUNCTION TRIGGERED ==========');
-    console.log('='.repeat(80));
-    console.log('⏱️  Timestamp:', new Date().toISOString());
-    
-    // ========== DEBUG #1: Log all user context ==========
-    console.log('\n📊 [DEBUG #1] SENDER IDENTITY CHECK');
-    console.log('   currentUser (from AuthContext):', {
-      uuid: user?.uuid,
-      name: user?.name,
-      email: user?.email,
-      picture: user?.picture
-    });
-    console.log('   myUserId (extracted from user.uuid):', myUserId);
-    console.log('   myUserId type:', typeof myUserId);
-    console.log('   myUserId length:', myUserId?.length);
-    console.log('   user object exists:', !!user);
-    console.log('   user.uuid exists:', !!user?.uuid);
-    
-    // ========== DEBUG #2: Log receiver/friend details ==========
-    console.log('\n📊 [DEBUG #2] RECEIVER IDENTITY CHECK');
-    console.log('   selectedUser (friend prop):', {
-      id: friend?.id,
-      uuid: friend?.uuid,
-      publicId: friend?.publicId,
-      display_name: friend?.display_name,
-      photo_url: friend?.photo_url
-    });
-    console.log('   friend.id type:', typeof friend?.id);
-    console.log('   friend.id length:', friend?.id?.length);
-    console.log('   friend object exists:', !!friend);
-    
-    // ========== DEBUG #3: Check for early returns ==========
-    console.log('\n📊 [DEBUG #3] EARLY RETURN CHECKS');
-    console.log('   myUserId exists:', !!myUserId);
-    console.log('   friend?.id exists:', !!friend?.id);
-    console.log('   friendRequestStatus:', friendRequestStatus);
-    console.log('   sendingRequest:', sendingRequest);
-    
-    // ========== VALIDATION CHECK 1: Verify user and friend IDs ==========
-    console.log('\n✅ [VALIDATION #1] Checking required IDs...');
-    if (!myUserId) {
-      console.error('❌ [VALIDATION #1] FAILED: myUserId is missing!');
-      console.error('   DEBUG INFO:', {
-        user_exists: !!user,
-        user_uuid: user?.uuid,
-        extraction_method: 'user?.uuid'
-      });
-      alert('Error: Current user ID not available in AuthContext');
-      return;
-    }
-    
-    if (!friend?.id) {
-      console.error('❌ [VALIDATION #1] FAILED: friend.id is missing!');
-      console.error('   DEBUG INFO:', {
-        friend_exists: !!friend,
-        friend_keys: friend ? Object.keys(friend) : 'null',
-        available_ids: {
-          id: friend?.id,
-          uuid: friend?.uuid,
-          publicId: friend?.publicId
-        }
-      });
-      alert('Error: Receiver ID not available in friend object');
-      return;
-    }
-    console.log('✅ [VALIDATION #1] PASSED: Both IDs exist');
-    
-    // ========== VALIDATION CHECK 2: Prevent duplicate friend request ==========
-    console.log('\n✅ [VALIDATION #2] Checking duplicate prevention...');
-    if (friendRequestStatus === 'pending') {
-      console.log('❌ [VALIDATION #2] BLOCKED: Friend request already PENDING');
-      return;
-    }
-    if (friendRequestStatus === 'accepted') {
-      console.log('❌ [VALIDATION #2] BLOCKED: Already FRIENDS with this user');
-      return;
-    }
-    console.log('✅ [VALIDATION #2] PASSED: Status is "none" - OK to send');
-    
-    console.log('\n✅ ALL VALIDATIONS PASSED - PROCEEDING WITH API CALL');
-    
-    setSendingRequest(true);
-    try {
-      const payload = {
-        senderPublicId: myUserId,
-        receiverPublicId: friend.id
-      };
-
-      console.log('\n📤 [API REQUEST] Building request...');
-      console.log('   Endpoint:', `${BACKEND_URL}/api/friends/send`);
-      console.log('   Method:', 'POST');
-      console.log('   Payload:', JSON.stringify(payload, null, 2));
-      console.log('   Content-Type:', 'application/json');
-      console.log('   Authorization:', `Bearer ${localStorage.getItem('token')?.substring(0, 20)}...`);
-      
-      console.log('\n📤 [API REQUEST] Sending request...');
-      const response = await fetch(`${BACKEND_URL}/api/friends/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      console.log('\n📥 [API RESPONSE] Response received');
-      console.log('   Status Code:', response.status);
-      console.log('   Status Text:', response.statusText);
-      console.log('   OK:', response.ok);
-
-      if (response.ok) {
-        const responseData = await response.json();
-        console.log('✅ [API RESPONSE] SUCCESS (200)');
-        console.log('   Response Data:', responseData);
-        setFriendRequestStatus('pending');
-        console.log('✅ [STATE UPDATE] friendRequestStatus set to "pending"');
-        console.log('✅ [SUCCESS] Friend request sent to:', friend.display_name);
-        alert(`✅ Friend request sent to ${friend.display_name}!`);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('❌ [API RESPONSE] ERROR (' + response.status + ')');
-        console.error('   Error Data:', errorData);
-        console.error('   Error Message:', errorData.error || 'Unknown error');
-        alert(errorData.error || `Failed to send friend request (HTTP ${response.status})`);
-      }
-    } catch (error) {
-      console.error('\n❌ [NETWORK ERROR] Request failed');
-      console.error('   Error Name:', error.name);
-      console.error('   Error Message:', error.message);
-      console.error('   Error Stack:', error.stack);
-      console.error('   Full Error:', error);
-      alert('Error sending friend request: ' + error.message);
-    } finally {
-      setSendingRequest(false);
-      console.log('\n🎯 [FUNCTION COMPLETE] sendFriendRequest finished');
-      console.log('='.repeat(80) + '\n');
-    }
-  };
-
-  // ✅ GET FRIEND BUTTON TEXT AND STYLE based on status
-  const getFriendButtonConfig = () => {
-    let config;
-    switch (friendRequestStatus) {
-      case 'pending':
-        config = {
-          text: '⏳ SENT',
-          disabled: true,
-          bgColor: 'rgba(212, 175, 55, 0.1)',
-          textColor: '#D4AF37',
-          borderColor: '#D4AF37',
-          opacity: 0.6
-        };
-        break;
-      case 'accepted':
-        config = {
-          text: '💬 FRIENDS',
-          disabled: true,
-          bgColor: 'rgba(16, 185, 129, 0.1)',
-          textColor: '#10b981',
-          borderColor: '#10b981',
-          opacity: 0.8
-        };
-        break;
-      default:
-        config = {
-          text: '🤝 ADD FRIEND',
-          disabled: false,
-          bgColor: 'rgba(16, 185, 129, 0.2)',
-          textColor: '#fff',
-          borderColor: '#10b981',
-          opacity: 1
-        };
-    }
-    console.log('🎨 [BUTTON CONFIG] Status:', friendRequestStatus, '-> ', config);
-    return config;
-  };
-
-  const friendBtnConfig = getFriendButtonConfig();
+    return () => socketRef.current?.off('incoming_call', handleIncomingCall);
+  }, [myUserId]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -451,91 +299,179 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     }
   };
 
+  // ✅ CALL BUTTON HANDLER - Send call notification to friend
+  const handleCallClick = () => {
+    console.log('📞 Initiating call to:', friend.display_name);
+    console.log('   Socket ref:', socketRef.current ? '✅ Available' : '❌ NULL');
+    console.log('   Socket type:', typeof socketRef.current);
+    console.log('   Socket has emit:', typeof socketRef.current?.emit);
+    
+    // ✅ CRITICAL: Check if socket is ready
+    if (!socketRef.current) {
+      console.error('❌ Socket not initialized yet - waiting for async load...');
+      alert('Socket connection not ready. Please try again in a moment.');
+      return;
+    }
+    
+    if (typeof socketRef.current.emit !== 'function') {
+      console.error('❌ Socket emit method not available');
+      alert('Socket not properly connected. Please retry.');
+      return;
+    }
+    
+    const callPayload = {
+      callerId: myUserId,
+      callerName: user?.name || 'Unknown',
+      callerProfileImage: user?.picture,
+      receiverId: friend.id,
+      recipientName: friend.display_name
+    };
+    
+    console.log('📡 Emitting init_call with payload:', callPayload);
+    
+    // ✅ Emit socket event to notify the friend of incoming call
+    socketRef.current.emit('init_call', callPayload);
+
+    // ✅ SHOW INCOMING CALL SCREEN FOR CALLER (waiting for receiver to accept)
+    console.log('📞 [ChatBox] Setting callType = "direct" for caller');
+    setCallType('direct');
+    setDirectCallData({
+      callerId: callPayload.callerId,
+      callerName: callPayload.callerName,
+      receiverId: callPayload.receiverId,
+      recipientName: callPayload.recipientName,
+      callAccepted: false  // ✅ Flag to show CallingWaitScreen until receiver accepts
+    });
+
+    console.log('📞 ✅ Call initiated, CallingWaitScreen should appear for caller...');
+  };
+
+  // ✅ ACCEPT CALL HANDLER
+  const handleAcceptCall = async () => {
+    setIsCallLoading(true);
+    console.log('✅ Call accepted with:', friend.display_name);
+    
+    // Simulate call setup delay
+    setTimeout(() => {
+      setShowCallPopup(false);
+      setIsCallLoading(false);
+      // TODO: Start video chat - trigger parent component to show video call
+      console.log('🎥 Starting video chat with:', friend.display_name);
+    }, 1000);
+  };
+
+  // ✅ REJECT CALL HANDLER
+  const handleRejectCall = () => {
+    console.log('❌ Call rejected with:', friend.display_name);
+    setShowCallPopup(false);
+    setIsCallLoading(false);
+  };
+
   return (
-    <div className="chat-box">
-      {/* HEADER */}
-      <div className="chat-header">
-        <button onClick={onBack}>←</button>
-        <img src={friend.photo_url} alt={friend.display_name} />
-        <span>{friend.display_name}</span>
-        
-        {/* ✅ FRIEND REQUEST BUTTON - Reuses existing API */}
-        <button
-          className="friend-request-btn"
-          title={friendBtnConfig.text}
-          onClick={(e) => {
-            console.log('\n' + '='.repeat(80));
-            console.log('🖱️  [BUTTON CLICK] ========== BUTTON CLICKED ==========');
-            console.log('='.repeat(80));
-            console.log('⏱️  Timestamp:', new Date().toISOString());
-            console.log('🖱️  Button Text:', friendBtnConfig.text);
-            console.log('🖱️  Button Disabled:', friendBtnConfig.disabled);
-            console.log('🖱️  Sending Request:', sendingRequest);
-            console.log('🖱️  Button Enabled (effective):', !(friendBtnConfig.disabled || sendingRequest));
-            console.log('🖱️  Event Type:', e.type);
-            console.log('🖱️  Event Target Tag:', e.target.tagName);
-            console.log('🖱️  Current State:', {
-              myUserId,
-              friendId: friend?.id,
-              friendName: friend?.display_name,
-              status: friendRequestStatus
-            });
-            
-            // ✅ Check if button is actually clickable
-            if (friendBtnConfig.disabled || sendingRequest) {
-              console.log('⛔️  Button is DISABLED - action blocked');
-              return;
-            }
-            
-            console.log('✅ Button is ENABLED - proceeding to call sendFriendRequest()');
-            sendFriendRequest();
-          }}
-          disabled={friendBtnConfig.disabled || sendingRequest}
-          style={{
-            backgroundColor: friendBtnConfig.bgColor,
-            color: friendBtnConfig.textColor,
-            border: `1px solid ${friendBtnConfig.borderColor}`,
-            padding: '6px 10px',
-            borderRadius: '4px',
-            cursor: friendBtnConfig.disabled || sendingRequest ? 'not-allowed' : 'pointer',
-            opacity: friendBtnConfig.opacity,
-            transition: 'all 0.2s ease',
-            fontSize: '12px',
-            fontWeight: '600',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {sendingRequest ? '⏳' : friendBtnConfig.text}
-        </button>
-
-        <button className="call-button" title="Call">📞</button>
-      </div>
-
-      {/* BODY */}
-      <div className="chat-body">
-        {messages.length === 0 && (
-          <p className="empty">
-            Start a conversation with {friend.display_name}
-          </p>
-        )}
-
-        {messages.map((m, i) => (
-          <div key={i} className={`bubble ${m.me ? 'me' : ''}`}>
-            {m.text}
+    <div className="w-full max-w-[420px] h-full bg-white dark:bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-800">
+      {/* HEADER - User Info */}
+      <div className="px-6 py-4 flex items-center justify-between border-b border-gray-200/50 dark:border-white/10 bg-white/30 dark:bg-white/5">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onBack}
+            className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors"
+          >
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-white font-semibold text-lg shadow-lg shadow-cyan-500/20">
+              {friend.display_name?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-900 dark:text-white text-[15px]">
+                {friend.display_name}
+              </h2>
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${friendOnline ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-widest font-medium">
+                  {friendOnline === null ? '...' : friendOnline ? 'Online' : getTimeAgo(friendLastSeen)}
+                </span>
+              </div>
+            </div>
           </div>
-        ))}
+        </div>
+        <button 
+          onClick={handleCallClick}
+          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-200/50 dark:hover:bg-white/10 transition-colors cursor-pointer"
+          title="Call"
+        >
+          <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400">call</span>
+        </button>
       </div>
 
-      {/* INPUT */}
-      <div className="chat-input">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Type a message…"
-        />
-        <button onClick={send}>➤</button>
+      {/* MESSAGES - Body */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-3" ref={messagesEndRef} style={{ scrollBehavior: 'smooth' }}>
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-center text-gray-500 dark:text-gray-400">
+              Start a conversation with {friend.display_name}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-end space-y-2">
+            {messages.map((m, i) => (
+              m.me ? (
+                <div
+                  key={i}
+                  className="message-bubble-right bg-indigo-600 dark:bg-indigo-600 text-white px-4 py-2 text-sm max-w-[80%] shadow-md shadow-indigo-600/20 leading-relaxed tracking-wide rounded-[18px]"
+                  style={{ borderRadius: '18px 18px 4px 18px' }}
+                >
+                  {m.text}
+                </div>
+              ) : (
+                <div
+                  key={i}
+                  className="message-bubble-left bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2 text-sm max-w-[80%] leading-relaxed tracking-wide rounded-[18px]"
+                  style={{ borderRadius: '18px 18px 18px 4px', alignSelf: 'flex-start' }}
+                >
+                  {m.text}
+                </div>
+              )
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
+
+      {/* INPUT - Footer */}
+      <div className="p-6 border-t border-gray-200/50 dark:border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="w-full bg-gray-200/50 dark:bg-white/5 border-none focus:ring-2 focus:ring-indigo-600/50 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-2xl px-5 py-3.5 text-sm transition-all outline-none"
+              placeholder="Type a message..."
+              type="text"
+            />
+          </div>
+          <button
+            onClick={send}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white w-12 h-12 flex items-center justify-center rounded-2xl shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95"
+          >
+            <span className="material-symbols-outlined text-[20px]" style={{ transform: 'rotate(-30deg)', marginLeft: '4px' }}>
+              send
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* ✅ CALL POPUP - Top-centered notification */}
+      {showCallPopup && (
+        <CallPopup
+          callerName={friend.display_name}
+          callerAvatar={friend.display_name?.charAt(0).toUpperCase()}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
+          isLoading={isCallLoading}
+        />
+      )}
     </div>
   );
 };

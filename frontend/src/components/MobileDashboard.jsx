@@ -1,8 +1,10 @@
 import React from 'react'
+import { useUnreadSafe } from '../context/UnreadContext'
 import './MobileDashboard.css'
 
 function MobileDashboard({ onStartVideoChat, onTabClick, localStreamRef, cameraStarted }) {
   const [activeTab, setActiveTab] = React.useState('soloX');
+  const { unreadCount } = useUnreadSafe();
 
   const handleTabClick = (tab) => {
     setActiveTab(tab);
@@ -46,10 +48,36 @@ function MobileDashboard({ onStartVideoChat, onTabClick, localStreamRef, cameraS
             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
             <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">favorite</span>
           </button>
-          <button className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden">
-            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-            <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">chat_bubble</span>
-          </button>
+          <div className="relative w-10 h-10 inline-flex">
+            <button className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden">
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+              <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">chat_bubble</span>
+            </button>
+            {unreadCount > 0 && (
+              <span
+                className="absolute top-0 right-0 bg-red-500 text-white font-bold rounded-full flex items-center justify-center shadow-lg ring-2 ring-white dark:ring-[#050505] pointer-events-none"
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  minWidth: '20px',
+                  minHeight: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#EF4444',
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  lineHeight: '1',
+                  zIndex: '50',
+                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                  transform: 'translate(25%, -25%)',
+                  border: '2px solid white'
+                }}
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </div>
           <button className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden">
             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
             <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">emoji_events</span>

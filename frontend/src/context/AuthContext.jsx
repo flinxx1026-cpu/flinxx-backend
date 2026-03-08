@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../config/firebase'
-import { getSentRequests } from '../services/api'
+import { getSentRequests, getNotifications } from '../services/api'
 import socketWrapper from '../services/socketService'
 
 // Create Auth Context
@@ -27,8 +27,32 @@ export const AuthProvider = ({ children }) => {
   // Incoming requests are handled ONLY via socket event to incomingFriendRequest
   const [sentRequests, setSentRequests] = useState([])
   
+  // ✅ INCOMING REQUESTS - Persistent list for badge count (polling every 5 seconds)
+  const [incomingRequests, setIncomingRequests] = useState(() => {
+    // 💚 Load from cache immediately for instant badge display
+    try {
+      const cached = localStorage.getItem('cachedIncomingRequests');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  })
+  
   // ✅ GLOBAL FRIEND REQUEST STATE - Popup visible on ANY screen
   const [incomingFriendRequest, setIncomingFriendRequest] = useState(null)
+  
+  // ✅ GLOBAL INCOMING CALL STATE - Available on any screen
+  const [incomingCall, setIncomingCall] = useState(null)
+  
+  // ✅ DIRECT CALL STATE - For direct user-to-user calls with IncomingCallScreen
+  const [callType, setCallType] = useState(null) // 'direct' or null
+  const [directCallData, setDirectCallData] = useState(null)
+  
+  // ✅ GLOBAL CAMERA STREAM - Store once, reuse everywhere (no repeated permission requests)
+  const [localStream, setLocalStream] = useState(null)
+
+  // ✅ ACCOUNT WARNING STATE - Show warning modal
+  const [accountWarning, setAccountWarning] = useState(null)
 
   // ✅ SETUP GLOBAL SOCKET LISTENER FOR FRIEND REQUESTS
   // This runs ONCE on mount and keeps listening throughout the app lifecycle
@@ -98,23 +122,275 @@ export const AuthProvider = ({ children }) => {
     // Attach listeners once and keep them forever
     socketWrapper.on('friend_request_received', handleFriendRequest);
     socketWrapper.on('friend:quick-invite-received', handleQuickInvite);
-    console.log('✅ [AuthContext] Listeners attached - waiting for friend_request_received and quick-invite events...');
+    
+    // ✅ GLOBAL INCOMING CALL LISTENER
+    const handleIncomingCall = (data) => {
+      console.log('\n' + '='.repeat(80))
+      console.log('📞📞📞 [AuthContext LISTENER] INCOMING CALL EVENT RECEIVED 📞📞📞')
+      console.log('='.repeat(80))
+      console.log('📦 Call event received from backend')
+      console.log('📦 Event data:', {
+        callerId: data?.callerId?.substring(0, 8) + '...',
+        callerName: data?.callerName,
+        receiverId: data?.receiverId?.substring(0, 8) + '...',
+        recipientName: data?.recipientName
+      })
+      
+      if (data?.callerId && data?.receiverId) {
+        console.log('✅ Valid call data - setting incomingCall state')
+        setIncomingCall({
+          callerId: data.callerId,
+          callerName: data.callerName || 'Unknown User',
+          callerProfileImage: data.callerProfileImage,
+          receiverId: data.receiverId,
+          recipientName: data.recipientName || 'Unknown',
+          timestamp: data.timestamp || new Date().toISOString()
+        })
+        console.log('🔔 Incoming call popup should appear NOW!')
+        console.log('='.repeat(80) + '\n')
+      } else {
+        console.warn('⚠️ Invalid call data:', data)
+      }
+    };
+    
+    // ✅ CALL ACCEPTED LISTENER - When receiver accepts call
+    const handleCallAccepted = (data) => {
+      console.log('\n' + '='.repeat(80))
+      console.log('✅✅✅ [AuthContext LISTENER] CALL ACCEPTED EVENT RECEIVED ✅✅✅')
+      console.log('='.repeat(80))
+      console.log('📦 Call accepted event from backend')
+      console.log('📦 Event data:', {
+        callerId: data?.callerId?.substring(0, 8) + '...',
+        receiverId: data?.receiverId?.substring(0, 8) + '...',
+        callerName: data?.callerName
+      })
+      
+      // Update directCallData to trigger IncomingCallScreen for caller
+      // ⚠️ IMPORTANT: Preserve existing data (recipientName, etc) while adding callAccepted flag
+      if (data?.callerId && data?.receiverId) {
+        console.log('✅ Valid acceptance data - UPDATING directCallData for caller')
+        console.log('   Setting callAccepted = true to show IncomingCallScreen')
+        console.log('   Preserving existing directCallData fields (recipientName, etc)')
+        setCallType('direct');
+        setDirectCallData(prevData => ({
+          ...prevData,  // ✅ Keep existing data (callerId, receiverId, recipientName, etc)
+          callAccepted: true  // ✅ Just add the acceptance flag
+        }))
+        console.log('🎥 DirectCallData updated - IncomingCallScreen should appear for caller NOW!')
+        console.log('='.repeat(80) + '\n')
+      } else {
+        console.warn('⚠️ Invalid acceptance data:', data)
+      }
+    };
+    
+    socketWrapper.on('incoming_call', handleIncomingCall);
+    socketWrapper.on('call_accepted', handleCallAccepted);
+    
+    // ✅ CALL ENDED LISTENER - When either user hangs up
+    const handleCallEnded = (data) => {
+      console.log('\n' + '='.repeat(80))
+      console.log('❌❌❌ [AuthContext LISTENER] CALL ENDED EVENT RECEIVED ❌❌❌')
+      console.log('='.repeat(80))
+      console.log('📦 Call ended event from backend')
+      console.log('📦 Event data:', {
+        callerId: data?.callerId?.substring(0, 8) + '...',
+        receiverId: data?.receiverId?.substring(0, 8) + '...'
+      })
+      
+      // ✅ AGGRESSIVELY clear all call-related states
+      console.log('✅ Starting aggressive state clearing...')
+      console.log('   State BEFORE: callType=' + callType + ', directCallData=' + (directCallData ? 'SET' : 'NULL') + ', incomingCall=' + (incomingCall ? 'SET' : 'NULL'))
+      
+      // Use setTimeout to ensure state update actually happens
+      setCallType(null);
+      setDirectCallData(null);
+      setIncomingCall(null);
+      
+      console.log('   ✅ All state setters called')
+      console.log('='.repeat(80) + '\n')
+    };
+
+    // ✅ Attach specific listener
+    socketWrapper.on('call_ended', handleCallEnded);
+    
+    // ✅ ACCOUNT WARNING LISTENER - When admin sends warning to user
+    const handleAccountWarning = (warningData) => {
+      console.log('\n' + '='.repeat(80))
+      console.log('⚠️ ⚠️ ⚠️  [AuthContext LISTENER] ACCOUNT WARNING RECEIVED ⚠️ ⚠️ ⚠️ ')
+      console.log('='.repeat(80))
+      console.log('📦 Warning event from backend')
+      console.log('📦 Event data:', {
+        type: warningData?.type,
+        warningCount: warningData?.warningCount,
+        reason: warningData?.reason
+      })
+      
+      if (warningData) {
+        console.log('✅ Valid warning data - setting accountWarning state')
+        const warningState = {
+          type: warningData.type || 'warning',
+          message: warningData.message || 'Your account has been warned',
+          reason: warningData.reason || 'Violation of Premium Community Standards',
+          warningCount: warningData.warningCount || 1,
+          lastWarningAt: warningData.lastWarningAt,
+          timestamp: warningData.timestamp
+        }
+        
+        setAccountWarning(warningState)
+        
+        // ✅ BACKUP: Save to localStorage so it persists even if page refreshes
+        localStorage.setItem('flinx_pending_warning', JSON.stringify(warningState))
+        console.log('💾 Saved warning to localStorage as backup')
+        
+        console.log('🚨 Warning modal should appear NOW!')
+        console.log('='.repeat(80) + '\n')
+      } else {
+        console.warn('⚠️ Invalid warning data:', warningData)
+      }
+    };
+
+    socketWrapper.on('account_warning', handleAccountWarning);
+    
+    // ✅ BACKUP: Also listen via window event for warning (in case socket event doesn't work)
+    const handleWindowWarning = (event) => {
+      console.log('🎯 [AuthContext] Window event caught account_warning');
+      console.log('📦 Event detail:', event.detail);
+      handleAccountWarning(event.detail);
+    };
+    
+    window.addEventListener('account_warning', handleWindowWarning);
+    
+    // ✅ BACKUP: Also listen via universal event listener to catch all events
+    const handleAnyEvent = (eventName, ...args) => {
+      if (eventName === 'call_ended') {
+        console.log('🎯 [AuthContext] UNIVERSAL listener caught call_ended event (backup)');
+        console.log('📦 Event data:', args[0]);
+        handleCallEnded(args[0]);
+      } else if (eventName === 'account_warning') {
+        console.log('🎯 [AuthContext] UNIVERSAL listener caught account_warning event (backup)');
+        console.log('📦 Event data:', args[0]);
+        handleAccountWarning(args[0]);
+      }
+    };
+    socketWrapper.onAny(handleAnyEvent);
+    
+    console.log('✅ [AuthContext] ✓ incoming_call listener attached - ready to receive calls');
+    console.log('✅ [AuthContext] ✓ call_accepted listener attached - READY TO RELAY ACCEPTANCE TO CALLER');
+    console.log('✅ [AuthContext] ✓ call_ended listener attached - READY TO DISCONNECT CALLS');
+    console.log('✅ [AuthContext] ✓ account_warning listener attached - READY TO HANDLE WARNINGS');
+    console.log('✅ [AuthContext] ✓ universal event listener attached - backup for call_ended and account_warning');
 
     // Cleanup on unmount
     return () => {
-      console.log('🔔 [AuthContext] Removing friend_request_received and quick-invite listeners');
+      console.log('🔔 [AuthContext] Removing all socket listeners');
       socketWrapper.off('friend_request_received', handleFriendRequest);
       socketWrapper.off('friend:quick-invite-received', handleQuickInvite);
+      socketWrapper.off('incoming_call', handleIncomingCall);
+      socketWrapper.off('call_accepted', handleCallAccepted);
+      socketWrapper.off('call_ended', handleCallEnded);
+      socketWrapper.off('account_warning', handleAccountWarning);
+      socketWrapper.offAny(handleAnyEvent);
+      window.removeEventListener('account_warning', handleWindowWarning);
     };
   }, []); // Empty dependency - attach once, never re-attach
 
   // ✅ REGISTER USER WITH SOCKET.IO WHEN AUTHENTICATED
   useEffect(() => {
     if (user?.uuid && isAuthenticated && !isLoading) {
-      console.log(`📢 [AuthContext] Registering user ${user.uuid.substring(0, 8)}... with Socket.IO`);
-      socketWrapper.emit('register_user', user.uuid);
+      console.log(`\n📢 [AuthContext] Ready to register user ${user.uuid.substring(0, 8)}...`)
+      console.log(`   Socket connected: ${socketWrapper.connected}`)
+      
+      if (!socketWrapper.connected) {
+        console.warn('⚠️ Socket not connected yet - waiting for connection...')
+        
+        // Wait for socket connection
+        const handleConnect = () => {
+          console.log('✅ Socket connected - now registering user')
+          socketWrapper.emit('register_user', user.uuid)
+          console.log(`📢 [AuthContext] register_user emitted for ${user.uuid.substring(0, 8)}...`)
+          socketWrapper.off('connect', handleConnect)
+        }
+        
+        socketWrapper.on('connect', handleConnect)
+      } else {
+        // Socket already connected
+        console.log(`📢 [AuthContext] Registering user ${user.uuid.substring(0, 8)}... with Socket.IO`)
+        socketWrapper.emit('register_user', user.uuid)
+        console.log(`📢 [AuthContext] register_user emitted for ${user.uuid.substring(0, 8)}...`)
+      }
     }
   }, [user?.uuid, isAuthenticated, isLoading]);
+
+  // ✅ CHECK LOCALSTORAGE FOR PENDING WARNING ON APP LOAD
+  useEffect(() => {
+    if (isAuthenticated && user?.uuid) {
+      console.log('\n' + '='.repeat(80))
+      console.log('🔍 [AuthContext STARTUP] Checking localStorage for pending warning...')
+      console.log('='.repeat(80))
+      
+      try {
+        const pendingWarning = localStorage.getItem('flinx_pending_warning');
+        if (pendingWarning) {
+          const warningData = JSON.parse(pendingWarning);
+          console.log('✅ Found pending warning in localStorage!')
+          console.log('📦 Warning data:', warningData);
+          console.log('🚨 Showing warning modal...')
+          setAccountWarning(warningData);
+          // Don't remove it yet - user might close modal and reload
+        } else {
+          console.log('❌ No pending warning found')
+        }
+      } catch (error) {
+        console.error('⚠️ Error reading localStorage warning:', error.message)
+      }
+      console.log('='.repeat(80) + '\n')
+    }
+  }, [isAuthenticated, user?.uuid])
+
+  // ✅ POLLING: Check for warnings every 10 seconds as backup
+  useEffect(() => {
+    if (!isAuthenticated || !user?.uuid) return;
+
+    console.log('🔄 [AuthContext] Starting warning status polling (every 10 seconds)...');
+
+    const pollWarningStatus = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        const response = await fetch(`http://localhost:5000/api/user/${user.uuid}/warning-status`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.hasWarning && !accountWarning) {
+            console.log('🚨 [POLLING] User has a warning! Showing modal...');
+            console.log('📦 Warning data:', data.warning);
+            setAccountWarning(data.warning);
+            // Save to localStorage as backup
+            localStorage.setItem('flinx_pending_warning', JSON.stringify(data.warning));
+          }
+        }
+      } catch (error) {
+        // Silent error - this is just a backup polling mechanism
+       console.log('⏭️ [POLLING] Check skipped (socket connection is primary)');
+      }
+    };
+
+    // Poll every 10 seconds
+    const intervalId = setInterval(pollWarningStatus, 10000);
+
+    // Also check immediately on mount
+    pollWarningStatus();
+
+    return () => clearInterval(intervalId);
+  }, [isAuthenticated, user?.uuid, accountWarning]);
 
   // ✅ REFRESH SENT REQUESTS (requests sent BY user)
   const refreshSentRequests = async () => {
@@ -135,6 +411,27 @@ export const AuthProvider = ({ children }) => {
       });
     }
     setSentRequests(filtered);
+  };
+
+  // ✅ REFRESH INCOMING REQUESTS (requests received BY user) 
+  const refreshIncomingRequests = async () => {
+    if (!user?.uuid || user.uuid.length !== 36) {
+      console.warn('⏸ refreshIncomingRequests skipped: user UUID not ready');
+      return;
+    }
+    const data = await getNotifications(user.uuid);
+    const filtered = Array.isArray(data) ? data : [];
+    console.log(`💚 [AuthContext] refreshIncomingRequests - fetched ${filtered.length} requests`);
+    if (filtered.length > 0) {
+      console.log('💚 [AuthContext] Sample incoming request:', {
+        id: filtered[0].id,
+        sender: filtered[0].display_name,
+        status: filtered[0].status
+      });
+    }
+    setIncomingRequests(filtered);
+    // 💾 Cache to localStorage for instant loading next session
+    localStorage.setItem('cachedIncomingRequests', JSON.stringify(filtered));
   };
 
   // ✅ CRITICAL: Only fetch sent requests when USER UUID is ready
@@ -161,6 +458,33 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       clearInterval(notifInterval);
+    };
+  }, [isLoading, user?.uuid]);
+
+  // ✅ FETCH INCOMING REQUESTS when USER UUID is ready
+  // Polls every 5 seconds for badge count on heart icon
+  useEffect(() => {
+    // MUST wait for authLoading to be FALSE first
+    if (isLoading === true) {
+      console.log('⏸ Skipping incoming requests fetch – authLoading is true');
+      return;
+    }
+
+    if (!user?.uuid || user.uuid.length !== 36) {
+      console.log('⏸ Skipping incoming requests fetch – user UUID not ready');
+      return;
+    }
+
+    console.log('✅ User ready, fetching incoming requests:', user.uuid.substring(0, 8) + '...');
+    
+    // Fetch immediately
+    refreshIncomingRequests();
+
+    // Poll every 3 seconds (faster updates)
+    const incomingInterval = setInterval(refreshIncomingRequests, 3000);
+
+    return () => {
+      clearInterval(incomingInterval);
     };
   }, [isLoading, user?.uuid]);
 
@@ -398,6 +722,7 @@ export const AuthProvider = ({ children }) => {
       name: userData?.name || 'User',
       email: userData?.email,
       picture: userData?.picture,
+      location: userData?.location || null,
       profileCompleted: userData?.profileCompleted || false
     }
     
@@ -431,9 +756,27 @@ export const AuthProvider = ({ children }) => {
       // ✅ SENT REQUESTS (requests sent BY user - for SearchFriendsModal)
       sentRequests,
       refreshSentRequests,
+      // ✅ INCOMING REQUESTS (requests received BY user - for badge count)
+      incomingRequests,
+      setIncomingRequests,
+      refreshIncomingRequests,
       // ✅ INCOMING REQUEST POPUP (received requests - for dashboard)
       incomingFriendRequest,
-      setIncomingFriendRequest
+      setIncomingFriendRequest,
+      // ✅ INCOMING CALL (available on any screen)
+      incomingCall,
+      setIncomingCall,
+      // ✅ DIRECT CALL STATE
+      callType,
+      setCallType,
+      directCallData,
+      setDirectCallData,
+      // ✅ GLOBAL CAMERA STREAM (stored once, reused everywhere - no repeated permission requests)
+      localStream,
+      setLocalStream,
+      // ✅ ACCOUNT WARNING (show warning modal)
+      accountWarning,
+      setAccountWarning
     }}>
       {children}
     </AuthContext.Provider>

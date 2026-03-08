@@ -14,6 +14,7 @@ import friendsRoutes, { setIO as setFriendsIO } from './routes/friends.js'
 import notificationsRoutes, { setPool as setNotificationsPool } from './routes/notifications.js'
 import messagesRoutes from './routes/messages.js'
 import matchesRoutes, { setMatchesPool } from './routes/matches.js'
+import paymentsRoutes, { setPaymentsPool, setPaymentsPrisma } from './routes/payments.js'
 import { initializeFirebaseAdmin, verifyFirebaseToken } from './firebaseAdmin.js'
 
 // Load environment variables in correct order:
@@ -52,6 +53,10 @@ console.log('🔥 Initializing Firebase Admin SDK...')
 initializeFirebaseAdmin()
 
 let prisma
+
+// Keep track of online users: userId -> socketId (used by both REST API and WebSocket)
+const onlineUsers = new Map()
+
 try {
   prisma = new PrismaClient()
   console.log('✅ Prisma Client initialized')
@@ -189,11 +194,13 @@ async function initializeDatabase() {
         sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
       CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id);
       CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(sender_id, receiver_id);
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false;
     `)
 
     // Create matches table for match history
@@ -212,6 +219,40 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_matches_created_at ON matches(created_at);
     `)
 
+    // Create payments table for Razorpay transactions
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS payments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        plan_id VARCHAR(50) NOT NULL,
+        plan_name VARCHAR(100) NOT NULL,
+        amount INTEGER NOT NULL,
+        currency VARCHAR(10) DEFAULT 'INR',
+        razorpay_order_id VARCHAR(255),
+        razorpay_payment_id VARCHAR(255),
+        razorpay_signature TEXT,
+        status VARCHAR(50) DEFAULT 'created',
+        paid_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+      CREATE INDEX IF NOT EXISTS idx_payments_order_id ON payments(razorpay_order_id);
+      CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+    `)
+
+    // Add premium feature columns to users table
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS has_blue_tick BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS blue_tick_expires_at TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS has_match_boost BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS match_boost_expires_at TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS has_unlimited_skip BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS unlimited_skip_expires_at TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_skip_count INTEGER DEFAULT 0;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_skip_reset_date DATE;
+    `)
+
     console.log('✅ PostgreSQL tables initialized')
   } catch (error) {
     console.error('❌ Error initializing database tables:', error)
@@ -222,7 +263,7 @@ async function initializeDatabase() {
 let redis = null
 
 // ===== IN-MEMORY QUEUE FALLBACK (when Redis is unavailable) =====
-let inMemoryMatchingQueue = [];
+let inMemoryMatchingQueue = []; // For sorted set: [{score, value}, ...]
 let inMemoryUserStatus = new Map();
 let inMemoryOnlineUsers = new Set();
 
@@ -233,11 +274,62 @@ async function initializeRedis() {
   
   // Return a fallback object with in-memory implementations
   return {
+    // ===== SORTED SET COMMANDS (used by matching queue) =====
+    zAdd: async (key, ...args) => {
+      if (key === 'matching_queue') {
+        // args can be {score, value} object or multiple
+        const items = Array.isArray(args[0]) ? args[0] : args;
+        for (const item of items) {
+          const { score, value } = item;
+          // Remove existing entry with same value (dedup)
+          inMemoryMatchingQueue = inMemoryMatchingQueue.filter(e => e.value !== value);
+          inMemoryMatchingQueue.push({ score, value });
+          // Sort by score ascending (boost users with score 0 first)
+          inMemoryMatchingQueue.sort((a, b) => a.score - b.score);
+          const parsed = JSON.parse(value);
+          console.log(`   [IN-MEMORY] zAdd: Added User ${parsed.userId} with score ${score}, queue has ${inMemoryMatchingQueue.length} items`);
+        }
+        return items.length;
+      }
+      return 0;
+    },
+
+    zRange: async (key, start, end) => {
+      if (key === 'matching_queue') {
+        const endIdx = end === -1 ? undefined : end + 1;
+        const result = inMemoryMatchingQueue.slice(start, endIdx).map(e => e.value);
+        console.log(`   [IN-MEMORY] zRange(${start}, ${end}): Returning ${result.length} items`);
+        return result;
+      }
+      return [];
+    },
+
+    zRem: async (key, value) => {
+      if (key === 'matching_queue') {
+        const before = inMemoryMatchingQueue.length;
+        inMemoryMatchingQueue = inMemoryMatchingQueue.filter(e => e.value !== value);
+        const removed = before - inMemoryMatchingQueue.length;
+        if (removed > 0) {
+          console.log(`   [IN-MEMORY] zRem: Removed entry, queue has ${inMemoryMatchingQueue.length} items`);
+        }
+        return removed;
+      }
+      return 0;
+    },
+
+    zCard: async (key) => {
+      if (key === 'matching_queue') {
+        return inMemoryMatchingQueue.length;
+      }
+      return 0;
+    },
+
+    // ===== LIST COMMANDS (kept for compatibility) =====
     lPush: async (key, value) => {
       if (key === 'matching_queue') {
         const parsed = JSON.parse(value);
         console.log(`   [IN-MEMORY] lPush: Adding User ${parsed.userId} to LEFT (beginning)`);
-        inMemoryMatchingQueue.unshift(value);
+        inMemoryMatchingQueue.unshift({ score: Date.now(), value });
         console.log(`   [IN-MEMORY] lPush: Queue now has ${inMemoryMatchingQueue.length} items`);
         return inMemoryMatchingQueue.length;
       }
@@ -246,18 +338,16 @@ async function initializeRedis() {
     
     rPop: async (key) => {
       if (key === 'matching_queue') {
-        // ✅ CRITICAL: rPop removes from the RIGHT (end) of list - creates FIFO queue with lPush
-        // lPush adds to LEFT (beginning), rPop removes from RIGHT (end) = FIFO queue
         const item = inMemoryMatchingQueue.pop();
         console.log(`   [IN-MEMORY] rPop: Removing from RIGHT (end), queue now has ${inMemoryMatchingQueue.length} items`);
-        return item || null;
+        return item?.value || null;
       }
       return null;
     },
     
     lRange: async (key, start, end) => {
       if (key === 'matching_queue') {
-        const result = inMemoryMatchingQueue.slice(start, end === -1 ? undefined : end + 1);
+        const result = inMemoryMatchingQueue.slice(start, end === -1 ? undefined : end + 1).map(e => e.value);
         console.log(`   [IN-MEMORY] lRange: Returning ${result.length} items from queue`);
         return result;
       }
@@ -273,14 +363,13 @@ async function initializeRedis() {
     
     lRem: async (key, count, value) => {
       if (key === 'matching_queue') {
-        const index = inMemoryMatchingQueue.indexOf(value);
-        if (index !== -1) {
-          const parsed = JSON.parse(value);
-          console.log(`   [IN-MEMORY] lRem: Removing User ${parsed.userId} from queue`);
-          inMemoryMatchingQueue.splice(index, 1);
-          console.log(`   [IN-MEMORY] lRem: Queue now has ${inMemoryMatchingQueue.length} items`);
-          return 1;
+        const before = inMemoryMatchingQueue.length;
+        inMemoryMatchingQueue = inMemoryMatchingQueue.filter(e => e.value !== value);
+        const removed = before - inMemoryMatchingQueue.length;
+        if (removed > 0) {
+          console.log(`   [IN-MEMORY] lRem: Removed, queue now has ${inMemoryMatchingQueue.length} items`);
         }
+        return removed;
       }
       return 0;
     },
@@ -539,6 +628,9 @@ setMatchesPool(pool)
 app.use('/api', notificationsRoutes)
 app.use('/api/messages', messagesRoutes)
 app.use('/api/matches', matchesRoutes)
+setPaymentsPool(pool)
+setPaymentsPrisma(prisma)
+app.use('/api/payments', paymentsRoutes)
 
 // User Management (now using Redis for online presence)
 // In-memory maps kept for socket connections during session
@@ -645,30 +737,41 @@ async function getRandomOnlineUser(excludeUserId) {
   }
 }
 
-// Queue management using Redis
+// Queue management using Redis (Sorted Set for Match Boost priority)
 async function addToMatchingQueue(userId, socketId, userData) {
   try {
     console.log(`\n📝 [QUEUE] Adding user ${userId} to queue...`)
     
     // CRITICAL: Check if this user is already in the queue (e.g., from a previous session)
-    const existingQueueEntries = await redis.lRange('matching_queue', 0, -1)
+    const existingMembers = await redis.zRange('matching_queue', 0, -1)
     let removedCount = 0
     
-    for (const entry of existingQueueEntries) {
+    for (const entry of existingMembers) {
       const queuedUser = JSON.parse(entry)
       if (queuedUser.userId === userId) {
         console.warn(`⚠️ DUPLICATE ENTRY FOUND: User ${userId} already in queue`)
         console.warn(`   Old socket: ${queuedUser.socketId}`)
         console.warn(`   New socket: ${socketId}`)
         console.warn(`   Removing old entry...`)
-        // Remove the old entry
-        await redis.lRem('matching_queue', 0, entry)
+        await redis.zRem('matching_queue', entry)
         removedCount++
       }
     }
     
     if (removedCount > 0) {
       console.log(`✅ REMOVED ${removedCount} duplicate queue entries for user ${userId}`)
+    }
+
+    // Check if user has Match Boost
+    let hasMatchBoost = false;
+    try {
+      const boostUser = await prisma.users.findUnique({ 
+        where: { id: userId }, 
+        select: { has_match_boost: true, match_boost_expires_at: true } 
+      });
+      hasMatchBoost = !!(boostUser?.has_match_boost && boostUser?.match_boost_expires_at && new Date(boostUser.match_boost_expires_at) > new Date());
+    } catch (e) {
+      console.warn(`⚠️ Could not check Match Boost status:`, e.message);
     }
 
     const queueData = JSON.stringify({
@@ -678,18 +781,22 @@ async function addToMatchingQueue(userId, socketId, userData) {
       userAge: userData?.userAge || 18,
       userLocation: userData?.userLocation || 'Unknown',
       userPicture: userData?.userPicture || null,
+      hasMatchBoost,
       timestamp: Date.now()
     })
-    await redis.lPush('matching_queue', queueData)
-    console.log(`✅ [QUEUE] User ${userId} added with socket ${socketId}`)
+
+    // Boost users get score 0 (highest priority), normal users get timestamp score
+    const score = hasMatchBoost ? 0 : Date.now();
+    await redis.zAdd('matching_queue', { score, value: queueData })
+    console.log(`✅ [QUEUE] User ${userId} added with socket ${socketId} ${hasMatchBoost ? '🚀 (MATCH BOOST - PRIORITY)' : '(normal)'}`)
     
     // Verify it was added and log full queue state
-    const queueLen = await redis.lLen('matching_queue')
-    const allEntries = await redis.lRange('matching_queue', 0, -1)
+    const queueLen = await redis.zCard('matching_queue')
+    const allEntries = await redis.zRange('matching_queue', 0, -1)
     console.log(`📊 [QUEUE] After ADD - Total users in queue: ${queueLen}`)
     for (let i = 0; i < allEntries.length; i++) {
       const entry = JSON.parse(allEntries[i])
-      console.log(`   [${i}] User ${entry.userId} - Socket ${entry.socketId.substring(0, 8)}...`)
+      console.log(`   [${i}] User ${entry.userId} - Socket ${entry.socketId.substring(0, 8)}... ${entry.hasMatchBoost ? '🚀 BOOST' : ''}`)
     }
   } catch (error) {
     console.error('❌ Error adding to queue:', error)
@@ -698,15 +805,18 @@ async function addToMatchingQueue(userId, socketId, userData) {
 
 async function getNextFromQueue() {
   try {
-    const queueLen = await redis.lLen('matching_queue')
-    console.log(`\n🔍 [QUEUE] Attempting to pop from queue (${queueLen} users waiting)`)
+    const queueLen = await redis.zCard('matching_queue')
+    console.log(`\n🔍 [QUEUE] Attempting to pop from sorted queue (${queueLen} users waiting)`)
     
-    const data = await redis.rPop('matching_queue')
+    // Get the member with lowest score (boost users first, then oldest normal users)
+    const members = await redis.zRange('matching_queue', 0, 0)
     
-    if (data) {
+    if (members && members.length > 0) {
+      const data = members[0]
+      await redis.zRem('matching_queue', data)
       const parsed = JSON.parse(data)
-      const newQueueLen = await redis.lLen('matching_queue')
-      console.log(`✅ [QUEUE] Popped user ${parsed.userId} - socket ${parsed.socketId.substring(0, 8)}...`)
+      const newQueueLen = await redis.zCard('matching_queue')
+      console.log(`✅ [QUEUE] Popped user ${parsed.userId} - socket ${parsed.socketId.substring(0, 8)}... ${parsed.hasMatchBoost ? '🚀 BOOST' : ''}`)
       console.log(`📊 [QUEUE] Queue now has ${newQueueLen} users after pop`)
       return parsed
     } else {
@@ -721,15 +831,15 @@ async function getNextFromQueue() {
 
 async function removeUserFromQueue(userId) {
   try {
-    // Get all queue entries
-    const allEntries = await redis.lRange('matching_queue', 0, -1)
+    // Get all queue entries from sorted set
+    const allEntries = await redis.zRange('matching_queue', 0, -1)
     let removedCount = 0
     
     // Find and remove entries matching this userId
     for (const entry of allEntries) {
       const queuedUser = JSON.parse(entry)
       if (queuedUser.userId === userId) {
-        await redis.lRem('matching_queue', 0, entry)
+        await redis.zRem('matching_queue', entry)
         removedCount++
         console.log(`✅ Removed user ${userId} from queue (${removedCount} entry)`)
       }
@@ -747,7 +857,7 @@ async function removeUserFromQueue(userId) {
 
 async function getQueueLength() {
   try {
-    return await redis.lLen('matching_queue')
+    return await redis.zCard('matching_queue')
   } catch (error) {
     console.error('❌ Error getting queue length:', error)
     return 0
@@ -1630,6 +1740,25 @@ app.get('/api/users/email/:email', async (req, res) => {
   }
 })
 
+// ✅ Check friend online status & last seen
+app.get('/api/user/status/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const isOnline = onlineUsers.has(userId);
+    let lastSeen = null;
+    if (!isOnline) {
+      const result = await pool.query('SELECT last_seen FROM users WHERE id = $1', [userId]);
+      if (result.rows.length > 0 && result.rows[0].last_seen) {
+        lastSeen = result.rows[0].last_seen;
+      }
+    }
+    res.json({ isOnline, lastSeen });
+  } catch (err) {
+    console.error('❌ Error checking user status:', err.message);
+    res.json({ isOnline: false, lastSeen: null });
+  }
+});
+
 // Get user profile by ID or email (for frontend)
 app.get('/api/user/profile', verifyUserToken, async (req, res) => {
   try {
@@ -1671,6 +1800,7 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
         email: true,
         display_name: true,
         photo_url: true,
+        location: true,
         auth_provider: true,
         created_at: true,
         updated_at: true,
@@ -1698,6 +1828,7 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
+        location: user.location || null,
         authProvider: user.auth_provider,
         createdAt: user.created_at,
         updatedAt: user.updated_at,
@@ -1854,7 +1985,9 @@ app.get('/api/search-user', async (req, res) => {
         photo_url: true,
         public_id: true,
         age: true,
-        gender: true
+        gender: true,
+        has_blue_tick: true,
+        blue_tick_expires_at: true
       }
     });
 
@@ -1872,7 +2005,8 @@ app.get('/api/search-user', async (req, res) => {
         email: user.email,
         publicId: user.public_id,
         age: user.age,
-        gender: user.gender
+        gender: user.gender,
+        hasBlueTick: !!(user.has_blue_tick && user.blue_tick_expires_at && new Date(user.blue_tick_expires_at) > new Date())
       }]);
     } else {
       console.log('[SEARCH USER] ❌ No user found with public_id:', searchId);
@@ -2004,6 +2138,25 @@ app.post('/api/friends/accept', async (req, res) => {
 
     const request = result.rows[0]
     console.log(`✅ Friend request ${requestId} accepted`)
+
+    // ✅ Emit socket event to BOTH sender and receiver so both see "Now you are friends"
+    try {
+      const senderId = request.sender_id;
+      const receiverId = request.receiver_id;
+      
+      // Find socket IDs for both users
+      for (const [socketId, userId] of userSockets.entries()) {
+        if (userId === senderId || userId === receiverId) {
+          const sock = io.sockets.sockets.get(socketId);
+          if (sock) {
+            sock.emit('friend_request_accepted', { senderId, receiverId, requestId });
+            console.log(`📨 Sent friend_request_accepted to ${userId.substring(0, 8)}... (socket ${socketId.substring(0, 8)}...)`);
+          }
+        }
+      }
+    } catch (socketErr) {
+      console.warn('⚠️ Could not emit friend_request_accepted socket event:', socketErr.message);
+    }
 
     res.json({
       success: true,
@@ -2417,6 +2570,7 @@ app.get('/auth-success', async (req, res) => {
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
+        location: user.location || null,
         profileCompleted: user.profileCompleted,
         termsAccepted: user.termsAccepted
       }
@@ -2684,8 +2838,11 @@ app.get('/api/profile', async (req, res) => {
         photo_url: true,
         gender: true,
         birthday: true,
+        location: true,
         profileCompleted: true,
         auth_provider: true,
+        has_blue_tick: true,
+        blue_tick_expires_at: true,
         created_at: true,
         updated_at: true
       }
@@ -2719,8 +2876,10 @@ app.get('/api/profile', async (req, res) => {
         picture: user.photo_url,
         gender: user.gender,
         birthday: user.birthday,
+        location: user.location || null,
         profileCompleted: user.profileCompleted,
-        authProvider: user.auth_provider
+        authProvider: user.auth_provider,
+        hasBlueTick: !!(user.has_blue_tick && user.blue_tick_expires_at && new Date(user.blue_tick_expires_at) > new Date())
       }
     })
   } catch (error) {
@@ -2731,6 +2890,48 @@ app.get('/api/profile', async (req, res) => {
       error: 'Invalid token',
       details: error.message
     })
+  }
+})
+
+// ✅ UPDATE USER LOCATION (called from dashboard on mount)
+app.post('/api/users/update-location', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, error: 'Missing authorization' });
+    }
+
+    const token = authHeader.substring(7);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtErr) {
+      try {
+        decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
+      } catch (b64Err) {
+        return res.status(401).json({ success: false, error: 'Invalid token' });
+      }
+    }
+
+    const userId = decoded.userId || decoded.id;
+    const { location } = req.body;
+
+    if (!location) {
+      return res.status(400).json({ success: false, error: 'Missing location' });
+    }
+
+    console.log(`📍 [LOCATION API] Updating location for user ${userId}: ${location}`);
+
+    await prisma.users.update({
+      where: { id: userId },
+      data: { location: location }
+    });
+
+    console.log(`📍 [LOCATION API] ✅ Location saved successfully`);
+    res.json({ success: true, location: location });
+  } catch (error) {
+    console.error('📍 [LOCATION API] ❌ Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 })
 
@@ -2764,9 +2965,6 @@ app.get('/api/messages', async (req, res) => {
 });
 
 // WebSocket Events
-// Keep track of online users: userId -> socketId
-const onlineUsers = new Map()
-
 io.on('connection', (socket) => {
   console.log(`\n✅ [CONNECTION] New socket connection: ${socket.id}`)
   console.log(`📊 [CONNECTION] Total active connections: ${io.engine.clientsCount}`)
@@ -2778,27 +2976,92 @@ io.on('connection', (socket) => {
   }).catch(err => console.error('Error checking queue on connect:', err))
 
   // ✅ REGISTER USER (when user comes online)
-  socket.on('register_user', (userId) => {
+  socket.on('register_user', async (userId) => {
     if (userId) {
       onlineUsers.set(userId, socket.id)
       // ✅ JOIN SOCKET TO ROOM WITH USER UUID (CRITICAL for io.to(uuid).emit())
       socket.join(userId)
-      console.log(`👤 [REGISTER] User ${userId.substring(0, 8)}... registered - Socket ${socket.id.substring(0, 8)}...`)
-      console.log(`✅ [REGISTER] Socket joined to room: ${userId.substring(0, 8)}...`)
-      console.log(`👥 [ONLINE USERS] Total: ${onlineUsers.size}`)
-      console.log(`👥 [ONLINE USERS] All UUIDs: ${Array.from(onlineUsers.keys()).map(k => k.substring(0, 8) + '...').join(', ')}`)
+      console.log(`\n✅ [REGISTER_USER] User registered successfully`)
+      console.log(`   User UUID: ${userId.substring(0, 8)}...`)
+      console.log(`   Socket ID: ${socket.id.substring(0, 8)}...`)
+      console.log(`   Joined room: ${userId.substring(0, 8)}...`)
+      console.log(`   Socket rooms: ${JSON.stringify(Array.from(socket.rooms)?.map(r => r.substring(0, 8) + '...'))}`)
+      console.log(`👥 [ONLINE USERS] Total connected: ${onlineUsers.size}`)
+      console.log(`   UUIDs: ${Array.from(onlineUsers.keys()).map(k => k.substring(0, 8) + '...').join(', ')}`)
+      console.log()
+
+      // ✅ Broadcast online status to all friends of this user
+      try {
+        const friendsResult = await pool.query(
+          `SELECT CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END AS friend_id
+           FROM friend_requests WHERE (sender_id = $1 OR receiver_id = $1) AND status = 'accepted'`,
+          [userId]
+        )
+        friendsResult.rows.forEach(row => {
+          io.to(row.friend_id).emit('friend_status_change', {
+            friendId: userId,
+            isOnline: true,
+            lastSeen: null
+          })
+        })
+      } catch (err) {
+        console.error('❌ Error broadcasting online status:', err.message)
+      }
     }
   })
 
   // ✅ HANDLE DISCONNECT
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     // Find and remove the user from onlineUsers map
     for (const [userId, socketId] of onlineUsers.entries()) {
       if (socketId === socket.id) {
         onlineUsers.delete(userId)
         console.log(`👤 [DISCONNECT] User ${userId} disconnected`)
         console.log(`👥 [ONLINE USERS] ${onlineUsers.size} users currently online`)
+
+        // ✅ Update last_seen in database and broadcast offline status to friends
+        const now = new Date()
+        try {
+          await pool.query('UPDATE users SET last_seen = $1 WHERE id = $2', [now, userId])
+          const friendsResult = await pool.query(
+            `SELECT CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END AS friend_id
+             FROM friend_requests WHERE (sender_id = $1 OR receiver_id = $1) AND status = 'accepted'`,
+            [userId]
+          )
+          friendsResult.rows.forEach(row => {
+            io.to(row.friend_id).emit('friend_status_change', {
+              friendId: userId,
+              isOnline: false,
+              lastSeen: now.toISOString()
+            })
+          })
+          console.log(`✅ [DISCONNECT] last_seen updated & friends notified for ${userId}`)
+        } catch (err) {
+          console.error('❌ Error updating last_seen on disconnect:', err.message)
+        }
         break
+      }
+    }
+  })
+
+  // ✅ CHECK FRIEND STATUS (online/offline + last seen)
+  socket.on('check_friend_status', async (friendId, callback) => {
+    try {
+      const isOnline = onlineUsers.has(friendId)
+      let lastSeen = null
+      if (!isOnline) {
+        const result = await pool.query('SELECT last_seen FROM users WHERE id = $1', [friendId])
+        if (result.rows.length > 0 && result.rows[0].last_seen) {
+          lastSeen = result.rows[0].last_seen
+        }
+      }
+      if (typeof callback === 'function') {
+        callback({ isOnline, lastSeen })
+      }
+    } catch (err) {
+      console.error('❌ Error checking friend status:', err.message)
+      if (typeof callback === 'function') {
+        callback({ isOnline: false, lastSeen: null })
       }
     }
   })
@@ -2862,6 +3125,230 @@ io.on('connection', (socket) => {
     
     socket.join(roomId)
     console.log(`✅ User ${senderId} joined chat room: ${roomId}`)
+  })
+
+  // ✅ HANDLE INCOMING CALL (caller initiates call)
+  socket.on('init_call', (data) => {
+    const { callerId, callerName, callerProfileImage, receiverId, recipientName } = data
+    
+    console.log('\n' + '='.repeat(80))
+    console.log('📞 [INIT_CALL] ====== INCOMING CALL INITIATED ======')
+    console.log('='.repeat(80))
+    console.log('📞 Caller ID:', callerId?.substring(0, 8) + '...')
+    console.log('📞 Caller Name:', callerName)
+    console.log('📞 Receiver ID:', receiverId?.substring(0, 8) + '...')
+    console.log('📞 Recipient Name:', recipientName)
+    console.log('='.repeat(80))
+
+    // ✅ CRITICAL: Check if receiver exists in onlineUsers
+    console.log('\n📍 Looking up receiver in onlineUsers map...')
+    console.log('   Total online users:', onlineUsers.size)
+    console.log('   Available UUIDs:', Array.from(onlineUsers.keys()).map(k => k.substring(0, 8) + '...').join(', '))
+    
+    const receiverSocket = onlineUsers.get(receiverId)
+    console.log(`   Receiver ${receiverId?.substring(0, 8)}... found:`, receiverSocket ? `✅ YES (socket: ${receiverSocket?.substring(0, 8)}...)` : `❌ NO`)
+    
+    if (!receiverSocket) {
+      console.warn(`⚠️  Receiver ${receiverId?.substring(0, 8)}... is NOT online - call will be lost`)
+      return
+    }
+    
+    // ✅ Emit to receiver's socket room
+    const receiverSocketRoom = receiverId
+    console.log(`\n📡 Emitting incoming_call event...`)
+    console.log(`   Target room: ${receiverSocketRoom?.substring(0, 8)}...`)
+    
+    io.to(receiverSocketRoom).emit('incoming_call', {
+      callerId,
+      callerName,
+      callerProfileImage,
+      receiverId,
+      recipientName
+    })
+
+    console.log('✅ Incoming call event emitted to recipient')
+    console.log('='.repeat(80) + '\n')
+  })
+
+  // ✅ CALL ACCEPTED - Relay acceptance back to caller
+  socket.on('call_accepted', (data) => {
+    const { callerId, receiverId, callerName } = data
+
+    console.log('\n' + '='.repeat(80))
+    console.log('✅ [CALL_ACCEPTED] ====== CALL ACCEPTED BY RECEIVER ======')
+    console.log('='.repeat(80))
+    console.log('✅ Caller ID:', callerId?.substring(0, 8) + '...')
+    console.log('✅ Caller Name:', callerName)
+    console.log('✅ Receiver ID:', receiverId?.substring(0, 8) + '...')
+    console.log('='.repeat(80))
+
+    // ✅ CRITICAL: Check if caller is still online
+    console.log('\n📍 Looking up caller in onlineUsers map...')
+    const callerSocket = onlineUsers.get(callerId)
+    console.log(`   Caller ${callerId?.substring(0, 8)}... found:`, callerSocket ? `✅ YES` : `❌ NO`)
+    
+    if (!callerSocket) {
+      console.warn(`⚠️  Caller ${callerId?.substring(0, 8)}... is NOT online - call acceptance will be lost`)
+      return
+    }
+
+    // ✅ Emit to caller's socket room
+    const callerSocketRoom = callerId
+    console.log(`\n📡 Emitting call_accepted event...`)
+    console.log(`   Target room: ${callerSocketRoom?.substring(0, 8)}...`)
+    
+    io.to(callerSocketRoom).emit('call_accepted', {
+      callerId,
+      receiverId,
+      callerName,
+      timestamp: new Date().toISOString()
+    })
+
+    console.log('✅ Call acceptance event emitted to caller')
+    console.log('='.repeat(80) + '\n')
+  })
+
+  // ✅ CALL ENDED - When either user hangs up, notify BOTH users immediately
+  socket.on('call_ended', (data) => {
+    const { callerId, receiverId } = data
+    const senderSocketId = socket.id
+
+    console.log('\n' + '='.repeat(80))
+    console.log('❌ [CALL_ENDED] ====== CALL ENDED BY USER ======')
+    console.log('='.repeat(80))
+    console.log('❌ Event received from socket:', senderSocketId.substring(0, 8) + '...')
+    console.log('❌ Caller ID:', callerId?.substring(0, 8) + '...')
+    console.log('❌ Receiver ID:', receiverId?.substring(0, 8) + '...')
+    console.log('='.repeat(80))
+
+    if (callerId && receiverId) {
+      const callEndedData = {
+        callerId,
+        receiverId,
+        timestamp: new Date().toISOString()
+      }
+
+      // Get online status
+      const callerOnlineSocketId = onlineUsers.get(callerId)
+      const receiverOnlineSocketId = onlineUsers.get(receiverId)
+      
+      console.log(`\n📍 User Online Status:`)
+      console.log(`   Caller ${callerId.substring(0, 8)}... → Socket: ${callerOnlineSocketId ? callerOnlineSocketId.substring(0, 8) + '...' : '❌ OFFLINE'}`)
+      console.log(`   Receiver ${receiverId.substring(0, 8)}... → Socket: ${receiverOnlineSocketId ? receiverOnlineSocketId.substring(0, 8) + '...' : '❌ OFFLINE'}`)
+
+      // ✅ Check room membership before broadcasting
+      console.log(`\n📋 Socket.IO Room Status:`)
+      const callerRoom = io.sockets.adapter.rooms.get(callerId)
+      const receiverRoom = io.sockets.adapter.rooms.get(receiverId)
+      console.log(`   Room "${callerId.substring(0, 8)}..." has ${callerRoom?.size || 0} socket(s)`)
+      console.log(`   Room "${receiverId.substring(0, 8)}..." has ${receiverRoom?.size || 0} socket(s)`)
+
+      // ✅ BROADCAST using both room-based and socket-based methods for maximum reliability
+      console.log(`\n📡 BROADCASTING call_ended event:`)
+      
+      // Method 1: Broadcast via UUID-based rooms (this will reach sockets in those rooms)
+      console.log(`   📤 Method 1: Broadcasting to room "${callerId.substring(0, 8)}..."`)
+      io.to(callerId).emit('call_ended', callEndedData)
+      
+      console.log(`   📤 Method 2: Broadcasting to room "${receiverId.substring(0, 8)}..."`)
+      io.to(receiverId).emit('call_ended', callEndedData)
+      
+      // Method 2: Direct socket emit for sender as backup (in case they're not in their own room yet)
+      console.log(`   📤 Method 3: Direct emit to sender socket`)
+      socket.emit('call_ended', callEndedData)
+      
+      // Method 3: Explicit socket targeting if we have socket IDs
+      if (receiverOnlineSocketId && receiverOnlineSocketId !== senderSocketId) {
+        console.log(`   📤 Method 4: Direct emit to receiver's socket`)
+        io.to(receiverOnlineSocketId).emit('call_ended', callEndedData)
+      }
+      if (callerOnlineSocketId && callerOnlineSocketId !== senderSocketId) {
+        console.log(`   📤 Method 5: Direct emit to caller's socket`)
+        io.to(callerOnlineSocketId).emit('call_ended', callEndedData)
+      }
+      
+      console.log('\n✅ call_ended BROADCAST COMPLETE - using 5 delivery methods\n')
+    }
+    
+    console.log('='.repeat(80) + '\n')
+  })
+
+  // ✅ DIRECT CALL - WebRTC OFFER (Caller sends offer to Receiver)
+  socket.on('direct_call:offer', (data) => {
+    const { offer, from, to } = data
+    
+    console.log('\n' + '='.repeat(80))
+    console.log('📋 [DIRECT CALL:OFFER] WebRTC Offer from caller')
+    console.log('='.repeat(80))
+    console.log('📋 From (Caller):', from?.substring(0, 8) + '...')
+    console.log('📋 To (Receiver):', to?.substring(0, 8) + '...')
+    console.log('📋 Offer SDP length:', offer?.sdp?.length || 0, 'chars')
+    
+    if (from && to && offer) {
+      const receiverSocketId = onlineUsers.get(to)
+      
+      if (receiverSocketId) {
+        console.log('📤 Receiver online - relaying offer via socket:', receiverSocketId.substring(0, 8) + '...')
+        io.to(receiverSocketId).emit('direct_call:offer', {
+          offer,
+          from
+        })
+        console.log('✅ Offer relayed to receiver')
+      } else {
+        console.warn('⚠️ Receiver not online - offer NOT delivered')
+      }
+    }
+    
+    console.log('='.repeat(80) + '\n')
+  })
+
+  // ✅ DIRECT CALL - WebRTC ANSWER (Receiver sends answer to Caller)
+  socket.on('direct_call:answer', (data) => {
+    const { answer, from, to } = data
+    
+    console.log('\n' + '='.repeat(80))
+    console.log('📋 [DIRECT CALL:ANSWER] WebRTC Answer from receiver')
+    console.log('='.repeat(80))
+    console.log('📋 From (Receiver):', from?.substring(0, 8) + '...')
+    console.log('📋 To (Caller):', to?.substring(0, 8) + '...')
+    console.log('📋 Answer SDP length:', answer?.sdp?.length || 0, 'chars')
+    
+    if (from && to && answer) {
+      const callerSocketId = onlineUsers.get(to)
+      
+      if (callerSocketId) {
+        console.log('📤 Caller online - relaying answer via socket:', callerSocketId.substring(0, 8) + '...')
+        io.to(callerSocketId).emit('direct_call:answer', {
+          answer,
+          from
+        })
+        console.log('✅ Answer relayed to caller')
+      } else {
+        console.warn('⚠️ Caller not online - answer NOT delivered')
+      }
+    }
+    
+    console.log('='.repeat(80) + '\n')
+  })
+
+  // ✅ DIRECT CALL - WebRTC ICE CANDIDATE (Both sides exchange ICE candidates)
+  socket.on('direct_call:ice_candidate', (data) => {
+    const { candidate, from, to } = data
+    
+    console.log('🧊 [DIRECT CALL:ICE] Relaying ICE candidate from:', from?.substring(0, 8) + '... to:', to?.substring(0, 8) + '...')
+    
+    if (from && to && candidate) {
+      const peerSocketId = onlineUsers.get(to)
+      
+      if (peerSocketId) {
+        io.to(peerSocketId).emit('direct_call:ice_candidate', {
+          candidate,
+          from
+        })
+      } else {
+        console.warn('⚠️ Peer not online - ICE candidate NOT delivered')
+      }
+    }
   })
 
   // ✅ SEND MESSAGE (friend DM to shared room)
@@ -2934,6 +3421,50 @@ io.on('connection', (socket) => {
     // Store the mapping: socket.id -> userId (from frontend)
     userSockets.set(socket.id, userId)
     console.log(`✅ [find_partner] Stored mapping - socket ${socket.id.substring(0, 8)}... → user ${userId}`)
+    
+    // ✅ CRITICAL: Always use DB location (most up-to-date from IP detection)
+    try {
+      const dbUser = await prisma.users.findUnique({ where: { id: userId }, select: { location: true } });
+      if (dbUser?.location) {
+        console.log(`📍 [find_partner] DB location: ${dbUser.location} (frontend sent: ${userData.userLocation})`);
+        userData.userLocation = dbUser.location;
+      }
+      
+      // ✅ SERVER-SIDE FALLBACK: If DB location has country name or is missing, detect from IP
+      const needsServerDetection = !userData.userLocation || 
+        userData.userLocation === 'Unknown' || 
+        /\b(India|Pakistan|Bangladesh|Nepal|Sri Lanka|United States|United Kingdom|Canada|Australia)\b/i.test(userData.userLocation);
+      
+      if (needsServerDetection) {
+        console.log(`📍 [find_partner] Location needs server-side detection (current: ${userData.userLocation})`);
+        try {
+          const clientIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0]?.trim() || socket.handshake.address;
+          const ipUrl = clientIP && clientIP !== '::1' && clientIP !== '127.0.0.1' 
+            ? `http://ip-api.com/json/${clientIP}?fields=status,city,regionName`
+            : `http://ip-api.com/json/?fields=status,city,regionName`;
+          
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3000);
+          const ipRes = await fetch(ipUrl, { signal: controller.signal });
+          clearTimeout(timeout);
+          const ipData = await ipRes.json();
+          console.log(`📍 [find_partner] Server IP detection result:`, JSON.stringify(ipData));
+          
+          if (ipData.status === 'success' && ipData.city && ipData.regionName) {
+            const newLocation = `${ipData.city}, ${ipData.regionName}`;
+            userData.userLocation = newLocation;
+            // Also update DB with fresh location
+            await prisma.users.update({ where: { id: userId }, data: { location: newLocation } });
+            console.log(`📍 [find_partner] ✅ Server-side location detected & saved: ${newLocation}`);
+          }
+        } catch (ipErr) {
+          console.log(`📍 [find_partner] Server IP detection failed:`, ipErr.message);
+        }
+      }
+    } catch (e) {
+      console.warn(`📍 [find_partner] Could not fetch DB location:`, e.message);
+    }
+    console.log(`📍 [find_partner] Final userLocation: ${userData?.userLocation || 'Unknown'}`)
     
     // Log queue state BEFORE processing
     const queueLenBefore = await getQueueLength()
@@ -3143,9 +3674,50 @@ io.on('connection', (socket) => {
     const partnerSocketId = data?.partnerSocketId
     
     if (userId && partnerSocketId) {
+      // ===== SKIP LIMIT CHECK (130/day for normal users, unlimited for plan holders) =====
+      try {
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const { rows: skipRows } = await pool.query(
+          `SELECT daily_skip_count, last_skip_reset_date, has_unlimited_skip, unlimited_skip_expires_at FROM users WHERE id = $1`,
+          [userId]
+        );
+        if (skipRows.length > 0) {
+          const u = skipRows[0];
+          const hasUnlimitedSkip = !!(u.has_unlimited_skip && u.unlimited_skip_expires_at && new Date(u.unlimited_skip_expires_at) > new Date());
+          let currentCount = u.daily_skip_count || 0;
+          const lastReset = u.last_skip_reset_date ? new Date(u.last_skip_reset_date).toISOString().split('T')[0] : null;
+
+          // Reset count if new day
+          if (lastReset !== today) {
+            currentCount = 0;
+            await pool.query(
+              `UPDATE users SET daily_skip_count = 0, last_skip_reset_date = $1 WHERE id = $2`,
+              [today, userId]
+            );
+          }
+
+          if (!hasUnlimitedSkip && currentCount >= 130) {
+            console.log(`[skip_user] ⛔ User ${userId} hit daily skip limit (${currentCount}/130)`);
+            socket.emit('skip_limit_reached', { message: 'You have reached your daily skip limit (130). Upgrade to Unlimited Skip for no limits!', dailyCount: currentCount, limit: 130 });
+            return;
+          }
+
+          // Increment skip count
+          await pool.query(
+            `UPDATE users SET daily_skip_count = daily_skip_count + 1, last_skip_reset_date = $1 WHERE id = $2`,
+            [today, userId]
+          );
+          console.log(`[skip_user] 📊 User ${userId} skip count: ${currentCount + 1}${hasUnlimitedSkip ? ' (unlimited plan)' : '/130'}`)
+        }
+      } catch (skipErr) {
+        console.error(`[skip_user] ⚠️ Error checking skip limit:`, skipErr.message);
+        // Don't block skip on error - allow it
+      }
+      // ===== END SKIP LIMIT CHECK =====
+
       console.log(`[skip_user] ${userId} skipping ${partnerSocketId}`)
       
-      // ✅ CRITICAL: Save match to database when skipping
+      // ✅ CRITICAL: Save match to database when skipping - FOR BOTH USERS
       if (socket.callStartTime && socket.partner) {
         try {
           const durationSeconds = Math.floor(
@@ -3156,6 +3728,7 @@ io.on('connection', (socket) => {
           console.log(`   Partner: ${socket.partner.id}`)
           console.log(`   Duration: ${durationSeconds}s`)
           
+          // Save match for the skipper
           await pool.query(
             `INSERT INTO matches
              (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
@@ -3168,8 +3741,28 @@ io.on('connection', (socket) => {
               durationSeconds
             ]
           )
+          console.log(`✅ Match saved for skipper ${userId}`)
           
-          console.log(`✅ Match saved successfully for user ${userId} (skip)`)
+          // ✅ Also save match for the PARTNER (reverse)
+          const partnerSocket = io.sockets.sockets.get(socket.partner.socketId)
+          const partnerUserId = userSockets.get(socket.partner.socketId)
+          if (partnerSocket && partnerUserId && partnerSocket.partner) {
+            await pool.query(
+              `INSERT INTO matches
+               (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
+               VALUES ($1, $2, $3, $4, $5)`,
+              [
+                partnerUserId,
+                partnerSocket.partner.id,
+                partnerSocket.partner.name,
+                partnerSocket.partner.country,
+                durationSeconds
+              ]
+            )
+            console.log(`✅ Match saved for partner ${partnerUserId} (skip)`)
+            partnerSocket.callStartTime = null
+            partnerSocket.partner = null
+          }
           
           // Clear tracking
           socket.callStartTime = null
@@ -3228,17 +3821,18 @@ io.on('connection', (socket) => {
     console.log(`   partnerSockets size: ${partnerSockets.size}`)
     console.log(`   All tracked partners:`, Array.from(partnerSockets.entries()))
     
-    // ✅ CRITICAL: Save match to database if call was active
+    // ✅ CRITICAL: Save match to database if call was active - FOR BOTH USERS
     if (userId && socket.callStartTime && socket.partner) {
       try {
         const durationSeconds = Math.floor(
           (Date.now() - socket.callStartTime) / 1000
         )
         
-        console.log(`\n💾 Saving match history for user ${userId}`)
+        console.log(`\n💾 Saving match history for user ${userId} (disconnect)`)
         console.log(`   Partner: ${socket.partner.id}`)
         console.log(`   Duration: ${durationSeconds}s`)
         
+        // Save match for the disconnecting user
         await pool.query(
           `INSERT INTO matches
            (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
@@ -3251,8 +3845,28 @@ io.on('connection', (socket) => {
             durationSeconds
           ]
         )
+        console.log(`✅ Match saved for disconnecting user ${userId}`)
         
-        console.log(`✅ Match saved successfully for user ${userId}`)
+        // ✅ Also save match for the PARTNER (reverse)
+        const partnerSocket = io.sockets.sockets.get(socket.partner.socketId)
+        const partnerUserId = userSockets.get(socket.partner.socketId)
+        if (partnerSocket && partnerUserId && partnerSocket.partner) {
+          await pool.query(
+            `INSERT INTO matches
+             (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [
+              partnerUserId,
+              partnerSocket.partner.id,
+              partnerSocket.partner.name,
+              partnerSocket.partner.country,
+              durationSeconds
+            ]
+          )
+          console.log(`✅ Match saved for partner ${partnerUserId} (disconnect)`)
+          partnerSocket.callStartTime = null
+          partnerSocket.partner = null
+        }
       } catch (error) {
         console.error(`❌ Error saving match to database:`, error)
       }
@@ -3354,6 +3968,45 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   console.log(`   socketId1: ${socketId1} !== socketId2: ${socketId2}`)
   console.log(`   Both sockets exist in socket.io`)
   
+  // ✅ CRITICAL: Fetch location from DATABASE for both users (frontend may send 'Unknown' if IP detection hasn't completed)
+  try {
+    const [dbUser1, dbUser2] = await Promise.all([
+      prisma.users.findUnique({ where: { id: userId1 }, select: { location: true, display_name: true, has_blue_tick: true, blue_tick_expires_at: true } }),
+      prisma.users.findUnique({ where: { id: userId2 }, select: { location: true, display_name: true, has_blue_tick: true, blue_tick_expires_at: true } })
+    ]);
+    
+    // Enrich blue tick status (check expiry)
+    const now = new Date();
+    if (userData1) {
+      userData1.hasBlueTick = !!(dbUser1?.has_blue_tick && dbUser1?.blue_tick_expires_at && new Date(dbUser1.blue_tick_expires_at) > now);
+    }
+    if (userData2) {
+      userData2.hasBlueTick = !!(dbUser2?.has_blue_tick && dbUser2?.blue_tick_expires_at && new Date(dbUser2.blue_tick_expires_at) > now);
+    }
+    
+    console.log(`📍 [DB LOCATION] User1 DB location: "${dbUser1?.location || 'null'}", Frontend location: "${userData1?.userLocation || 'null'}"`)
+    console.log(`📍 [DB LOCATION] User2 DB location: "${dbUser2?.location || 'null'}", Frontend location: "${userData2?.userLocation || 'null'}"`)
+    
+    // ✅ ALWAYS use DB location (most up-to-date from IP detection)
+    if (userData1) {
+      if (dbUser1?.location) {
+        userData1.userLocation = dbUser1.location;
+      } else if (!userData1.userLocation) {
+        userData1.userLocation = 'Unknown';
+      }
+    }
+    if (userData2) {
+      if (dbUser2?.location) {
+        userData2.userLocation = dbUser2.location;
+      } else if (!userData2.userLocation) {
+        userData2.userLocation = 'Unknown';
+      }
+    }
+    console.log(`📍 [FINAL] User1 location: "${userData1?.userLocation}", User2 location: "${userData2?.userLocation}"`)
+  } catch (dbLocErr) {
+    console.warn('⚠️ Could not fetch locations from DB:', dbLocErr.message);
+  }
+
   // Create session
   const sessionId = uuidv4()
   const startedAt = new Date()
@@ -3482,7 +4135,8 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     userName: userData2?.userName || 'Anonymous',
     userAge: userData2?.userAge || 18,
     userLocation: userData2?.userLocation || 'Unknown',
-    userPicture: userData2?.userPicture || null
+    userPicture: userData2?.userPicture || null,
+    hasBlueTick: userData2?.hasBlueTick || false
   }
   
   console.log(`\n📤 [EMIT1] Sending partner_found to User1 socket ${socketId1.substring(0, 8)}...`)
@@ -3512,7 +4166,8 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     userName: userData1?.userName || 'Anonymous',
     userAge: userData1?.userAge || 18,
     userLocation: userData1?.userLocation || 'Unknown',
-    userPicture: userData1?.userPicture || null
+    userPicture: userData1?.userPicture || null,
+    hasBlueTick: userData1?.hasBlueTick || false
   }
   
   console.log(`\n📤 [EMIT2] Sending partner_found to User2 socket ${socketId2.substring(0, 8)}...`)
@@ -3582,6 +4237,208 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   console.log('\n')
 }
 
+// ===== ADMIN ENDPOINTS =====
+
+// Send warning to user
+app.post('/api/admin/send-warning', async (req, res) => {
+  try {
+    const { userId, reason } = req.body
+
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' })
+    }
+
+    console.log(`\n${'='.repeat(80)}`)
+    console.log(`⚠️  [SEND WARNING] ⚠️  SENDING WARNING TO USER ⚠️ `)
+    console.log('='.repeat(80))
+    console.log(`📍 User ID (UUID): ${userId}`)
+    console.log(`📝 Reason: ${reason || 'No reason provided'}`)
+    console.log(`⏰ Timestamp: ${new Date().toISOString()}`)
+
+    // Find user
+    const user = await prisma.users.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user) {
+      console.error(`❌ [SEND WARNING] User not found: ${userId}`)
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    console.log(`✅ [SEND WARNING] User found: ${user.email}`)
+    console.log(`📧 Email: ${user.email}`)
+    console.log(`👤 Public ID: ${user.public_id}`)
+
+    // Update user warning fields in database
+    const updatedUser = await pool.query(
+      `UPDATE users 
+       SET warning_count = COALESCE(warning_count, 0) + 1,
+           last_warning_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING id, warning_count, last_warning_at`,
+      [userId]
+    )
+
+    const warningData = updatedUser.rows[0]
+    console.log(`✅ [SEND WARNING] Database updated - Warning count: ${warningData.warning_count}`)
+    console.log(`📊 Updated at: ${warningData.last_warning_at}`)
+
+    // Check active rooms before sending
+    const socketsInRoom = io.sockets.adapter.rooms.get(userId)
+    const socketsInRoomCount = socketsInRoom ? socketsInRoom.size : 0
+    console.log(`\n🔍 [SEND WARNING] Socket room check for userId ${userId}:`)
+    console.log(`   📊 Sockets in room: ${socketsInRoomCount}`)
+    console.log(`   📊 Total connected clients: ${io.engine.clientsCount}`)
+    console.log(`   📊 Online users map size: ${onlineUsers.size}`)
+    
+    // List all online users
+    if (onlineUsers.size > 0) {
+      console.log(`   📋 Online users:`)
+      for (const [otherUserId, socketId] of onlineUsers.entries()) {
+        const marker = otherUserId === userId ? '👈 TARGET USER' : ''
+        console.log(`      - ${otherUserId.substring(0, 8)}... (socket: ${socketId.substring(0, 8)}...) ${marker}`)
+      }
+    } else {
+      console.log(`   ⚠️  No online users registered!`)
+    }
+
+    // Emit warning event to user via Socket.IO
+    console.log(`\n📢 [SEND WARNING] Emitting 'account_warning' event...`)
+    
+    const warningPayload = {
+      type: 'warning',
+      message: 'Your account has been warned for violating community standards',
+      reason: reason || 'Violation of Premium Community Standards',
+      warningCount: warningData.warning_count,
+      lastWarningAt: warningData.last_warning_at,
+      timestamp: new Date().toISOString()
+    }
+    
+    console.log(`   📦 Payload: ${JSON.stringify(warningPayload, null, 2)}`)
+    console.log(`   🎯 Target room: ${userId}`)
+    
+    io.to(userId).emit('account_warning', warningPayload)
+
+    console.log(`✅ [SEND WARNING] Event emitted via io.to('${userId}').emit()`)
+    console.log('='.repeat(80) + '\n')
+
+    // Return success response
+    res.json({
+      success: true,
+      message: 'Warning sent to user',
+      socketsInRoom: socketsInRoomCount,
+      user: {
+        id: user.public_id,
+        email: user.email,
+        warningCount: warningData.warning_count,
+        lastWarningAt: warningData.last_warning_at
+      }
+    })
+
+  } catch (error) {
+    console.error(`❌ [SEND WARNING] Error:`, error.message)
+    console.error(`❌ [SEND WARNING] Stack:`, error.stack)
+    res.status(500).json({ error: 'Failed to send warning', details: error.message })
+  }
+})
+
+// ✅ GET USER'S WARNING STATUS (for frontend polling backup)
+app.get('/api/user/:userId/warning-status', verifyUserToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' });
+    }
+
+    console.log(`\n📊 [GET WARNING STATUS] Checking warning for user: ${userId}`);
+
+    // Get user's warning info
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        warning_count: true,
+        last_warning_at: true,
+        ban_reason: true
+      }
+    });
+
+    if (!user) {
+      console.error(`❌ User not found: ${userId}`);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log(`✅ User found - Warning count: ${user.warning_count}`);
+
+    // If user has warnings, return warning data
+    if (user.warning_count && user.warning_count > 0) {
+      console.log(`⚠️ User has ${user.warning_count} warning(s)`);
+      return res.json({
+        hasWarning: true,
+        warningCount: user.warning_count,
+        lastWarningAt: user.last_warning_at,
+        banReason: user.ban_reason,
+        warning: {
+          type: 'warning',
+          message: 'Your account has been warned for violating community standards',
+          reason: user.ban_reason || 'Violation of Premium Community Standards',
+          warningCount: user.warning_count,
+          lastWarningAt: user.last_warning_at,
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+
+    console.log(`✅ No warnings for this user`);
+    res.json({ hasWarning: false, warningCount: 0 });
+
+  } catch (error) {
+    console.error(`❌ Error getting warning status:`, error.message);
+    res.status(500).json({ error: 'Failed to get warning status', details: error.message });
+  }
+});
+
+// Get user warnings
+app.get('/api/admin/user/:userId/warnings', async (req, res) => {
+  try {
+    const { userId } = req.params
+
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' })
+    }
+
+    const result = await pool.query(
+      `SELECT id, email, public_id, warning_count, last_warning_at, ban_reason
+       FROM users 
+       WHERE id = $1`,
+      [userId]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    const user = result.rows[0]
+    res.json({
+      success: true,
+      user: {
+        id: user.public_id,
+        email: user.email,
+        warningCount: user.warning_count || 0,
+        lastWarningAt: user.last_warning_at,
+        banReason: user.ban_reason
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Error fetching user warnings:', error)
+    res.status(500).json({ error: 'Failed to fetch warnings', details: error.message })
+  }
+})
+
 // Start Server
 const PORT = process.env.PORT || 10000;
 
@@ -3596,6 +4453,34 @@ const PORT = process.env.PORT || 10000;
     console.log("[STARTUP] STEP 2.1 - Database init starting");
     await initializeDatabase();
     console.log("[STARTUP] STEP 2.2 - Database init complete");
+
+    // ✅ AUTO-FIX: Update locations that have country names instead of states
+    try {
+      const countryPattern = '%, India';
+      const result = await pool.query(
+        `SELECT id, location FROM users WHERE location ILIKE $1`, [countryPattern]
+      );
+      if (result.rows.length > 0) {
+        console.log(`📍 [STARTUP] Found ${result.rows.length} users with country in location, fixing...`);
+        for (const user of result.rows) {
+          try {
+            const ipRes = await fetch('http://ip-api.com/json/?fields=status,city,regionName', { timeout: 3000 });
+            const ipData = await ipRes.json();
+            // For localhost, all users share same IP - use city from existing location
+            const existingCity = user.location.split(',')[0].trim();
+            if (ipData.status === 'success' && ipData.regionName) {
+              const newLoc = `${existingCity}, ${ipData.regionName}`;
+              await pool.query('UPDATE users SET location = $1 WHERE id = $2', [newLoc, user.id]);
+              console.log(`📍 [STARTUP] Fixed: "${user.location}" → "${newLoc}" for user ${user.id.substring(0, 8)}`);
+            }
+          } catch (ipErr) {
+            console.log(`📍 [STARTUP] Could not fix location for user ${user.id.substring(0, 8)}: ${ipErr.message}`);
+          }
+        }
+      }
+    } catch (fixErr) {
+      console.log('📍 [STARTUP] Location fix query error:', fixErr.message);
+    }
 
     console.log("[STARTUP] STEP 3.1 - Starting server...");
     httpServer.listen(PORT, '0.0.0.0', () => {

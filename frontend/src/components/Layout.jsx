@@ -17,6 +17,9 @@ import PrivacyPolicy from '../pages/PrivacyPolicy'
 import ProtectedChatRoute from './ProtectedChatRoute'
 import { DuoSquadProvider, useDuoSquad } from '../context/DuoSquadContext'
 import GlobalFriendRequestPopup from './GlobalFriendRequestPopup'
+import GlobalCallPopup from './GlobalCallPopup'
+import WarningModal from './WarningModal'
+import { useAuth } from '../context/AuthContext'
 import './Layout.css'
 
 // Lazy load Chat component to avoid TDZ errors during module initialization
@@ -27,8 +30,18 @@ const DuoPanel = lazy(() => import('./DuoPanel'))
 
 function LayoutContent() {
   const { isDuoSquadOpen, closeDuoSquad } = useDuoSquad();
+  const { accountWarning, setAccountWarning } = useAuth();
   
   console.log('🔍 [LAYOUT] isDuoSquadOpen:', isDuoSquadOpen);
+  console.log('🔍 [LAYOUT] accountWarning:', accountWarning);
+
+  const handleCloseWarning = () => {
+    console.log('✅ [LAYOUT] Closing warning modal');
+    console.log('🗑️ [LAYOUT] Clearing localStorage warning backup');
+    setAccountWarning(null);
+    // Clear the localStorage backup so it doesn't persist
+    localStorage.removeItem('flinx_pending_warning');
+  };
 
   return (
     <>
@@ -36,6 +49,18 @@ function LayoutContent() {
       {/* <div style={{ position: 'relative', zIndex: 999999 }}>
         <GlobalFriendRequestPopup />
       </div> */}
+
+      {/* 📞 GLOBAL INCOMING CALL POPUP - Shows on ANY screen */}
+      <div style={{ position: 'relative', zIndex: 999999 }}>
+        <GlobalCallPopup />
+      </div>
+
+      {/* ⚠️ ACCOUNT WARNING MODAL - Shows on ANY screen */}
+      <WarningModal 
+        isOpen={!!accountWarning} 
+        onClose={handleCloseWarning}
+        warningData={accountWarning}
+      />
 
       {/* DuoSquad Modal - Fixed positioning at Layout level to prevent remounting */}
       {isDuoSquadOpen && (
@@ -58,7 +83,7 @@ function LayoutContent() {
             pointerEvents: 'auto'
           }}
         >
-          <Suspense fallback={<div>Loading...</div>}>
+          <Suspense fallback={<div style={{ width: '100%', height: '100%', background: '#000' }} />}>
             <DuoPanel isOpen={isDuoSquadOpen} onClose={closeDuoSquad} />
           </Suspense>
         </div>
@@ -78,8 +103,8 @@ function LayoutContent() {
           <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
           <Route path="/oauth-handler" element={<OAuthHandler />} />
           <Route path="/oauth-success" element={<OAuthSuccess />} />
-          <Route path="/chat" element={<ProtectedChatRoute><Suspense fallback={<div>Loading...</div>}><Chat /></Suspense></ProtectedChatRoute>} />
-          <Route path="/dashboard" element={<ProtectedChatRoute><Suspense fallback={<div>Loading...</div>}><Chat /></Suspense></ProtectedChatRoute>} />
+          <Route path="/chat" element={<ProtectedChatRoute><Suspense fallback={<div style={{ width: '100%', minHeight: '100vh', background: '#000' }} />}><Chat /></Suspense></ProtectedChatRoute>} />
+          <Route path="/dashboard" element={<ProtectedChatRoute><Suspense fallback={<div style={{ width: '100%', minHeight: '100vh', background: '#000' }} />}><Chat /></Suspense></ProtectedChatRoute>} />
           <Route path="/matching" element={<Matching />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />

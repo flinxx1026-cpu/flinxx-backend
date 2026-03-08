@@ -51,7 +51,6 @@ const GlobalFriendRequestPopup = () => {
         }
       } catch (error) {
         console.error('❌ [QUICK INVITE ACCEPT] Error:', error);
-        alert('Failed to create friend request: ' + error.message);
       }
     } else {
       // ✅ REGULAR REQUEST: Accept using the existing API
@@ -62,7 +61,6 @@ const GlobalFriendRequestPopup = () => {
         setIncomingFriendRequest(null);
       } catch (error) {
         console.error('❌ Error accepting request:', error);
-        alert('Failed to accept request');
       }
     }
   };

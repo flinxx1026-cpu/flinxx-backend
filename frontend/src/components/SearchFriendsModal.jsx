@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import './SearchFriendsModal.css';
 import { getFriends, markMessagesAsRead, getNotifications } from '../services/api';
 import { MessageContext } from '../context/MessageContext';
@@ -112,6 +112,62 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     ensureCurrentUser();
   }, [isOpen]);
 
+  // ✅ LISTEN TO INCOMING MESSAGES AND UPDATE FRIEND UNREAD COUNTS IN REAL-TIME
+  useEffect(() => {
+    if (!isOpen || !isMessageMode) return;
+
+    const loadSocket = async () => {
+      try {
+        // Dynamically import socket to avoid TDZ
+        const socketService = await import('../services/socketService').then(m => m.default);
+        
+        // Log all events to debug
+        const handleAnyEvent = (eventName, data) => {
+          if (!['ping', 'pong', 'connect', 'disconnect'].includes(eventName)) {
+            console.log(`📬 [SearchFriendsModal] Socket event: "${eventName}"`, data);
+          }
+          
+          // Listen for message-related events
+          if (eventName === 'receive_message' || eventName === 'new_message') {
+            console.log('✅ Message event received:', data);
+            
+            // Update friends list - increment unread count for this sender
+            setFriends(prevFriends => {
+              return prevFriends.map(friend => {
+                const senderId = data.senderId || data.sender_id || data.from;
+                
+                if (friend.id === senderId && senderId !== activeChat?.id) {
+                  // Only increment if not currently in that chat
+                  console.log(`📊 Incrementing unread for ${friend.display_name}:`, friend.unreadCount + 1);
+                  return {
+                    ...friend,
+                    unreadCount: (friend.unreadCount || 0) + 1,
+                    last_message_at: new Date().toISOString()
+                  };
+                }
+                return friend;
+              });
+            });
+          }
+        };
+
+        // Use onAny to catch all events
+        socketService.onAny(handleAnyEvent);
+        console.log('✅ Socket onAny listener attached');
+
+        // Cleanup on unmount
+        return () => {
+          socketService.offAny(handleAnyEvent);
+          console.log('✅ Socket onAny listener removed');
+        };
+      } catch (err) {
+        console.error('❌ Error setting up socket listener:', err);
+      }
+    };
+
+    loadSocket();
+  }, [isOpen, isMessageMode, activeChat?.id]);
+
   // ✅ ALWAYS load friends when modal opens
   useEffect(() => {
     if (!isOpen) return;
@@ -131,6 +187,25 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       });
     }
   }, [isOpen, user?.uuid]);
+
+  // ✅ REFRESH friends list when returning from a chat
+  useEffect(() => {
+    if (activeChat === null && friends.length > 0) {
+      console.log('📨 Refreshing friends after closing chat');
+      if (user?.uuid && user.uuid.length === 36) {
+        getFriends(user.uuid).then(data => {
+          const sorted = Array.isArray(data) ? data.sort((a, b) => {
+            const timeA = a.last_message_at ? new Date(a.last_message_at) : new Date(0);
+            const timeB = b.last_message_at ? new Date(b.last_message_at) : new Date(0);
+            return timeB - timeA;
+          }) : [];
+          setFriends(sorted);
+        }).catch(err => {
+          console.error('❌ Error refreshing friends:', err);
+        });
+      }
+    }
+  }, [activeChat, user?.uuid]);
 
   // ✅ REFRESH sent requests when panel opens (not just on mount)
   useEffect(() => {
@@ -192,9 +267,15 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const updateChatListOnMessage = (friendId, messageTime) => {
     setFriends(prevFriends => {
       // Find the friend and update their last_message_at
+      // Also increment unread count if the message is from a different friend than the active chat
       const updatedFriends = prevFriends.map(friend =>
         friend.id === friendId
-          ? { ...friend, last_message_at: messageTime }
+          ? { 
+              ...friend, 
+              last_message_at: messageTime,
+              // Only increment unread if we're not currently viewing this chat
+              unreadCount: activeChat?.id === friendId ? friend.unreadCount : (friend.unreadCount || 0) + 1
+            }
           : friend
       );
 
@@ -240,7 +321,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
   const handleSearch = async (value) => {
     // Optional safety check: prevent accidental wrong search requests
-    if (!value || typeof value !== 'string') return;
+    if (typeof value !== 'string') return;
     
     setSearch(value);
     
@@ -380,6 +461,22 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
             [senderId]: 'accepted'
           }));
         }
+
+        // ✅ REFRESH FRIENDS LIST to show the newly accepted friend
+        console.log('📨 Refreshing friends list after acceptance');
+        if (user?.uuid && user.uuid.length === 36) {
+          getFriends(user.uuid).then(data => {
+            const sorted = Array.isArray(data) ? data.sort((a, b) => {
+              const timeA = a.last_message_at ? new Date(a.last_message_at) : new Date(0);
+              const timeB = b.last_message_at ? new Date(b.last_message_at) : new Date(0);
+              return timeB - timeA;
+            }) : [];
+            setFriends(sorted);
+            console.log('✅ Friends list updated with', sorted.length, 'friends');
+          }).catch(err => {
+            console.error('❌ Error refreshing friends:', err);
+          });
+        }
       } else {
         console.error('Failed to accept friend request:', response.status);
       }
@@ -480,7 +577,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                 </div>
                 <div className="result-info">
                   <div className="result-name-row">
-                    <p className="result-name">{user.name}</p>
+                    <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <p className="result-name" style={{ margin: 0 }}>{user.name}</p>
+                      {user.hasBlueTick && (
+                        <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '3px', marginTop: '-7px', marginBottom: '-11px', flexShrink: 0, objectFit: 'contain', display: 'block' }} />
+                      )}
+                    </div>
                     <button
                       className="friend-badge-btn"
                       title="Send Friend Request"
@@ -495,7 +597,9 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     </button>
                   </div>
                   <p className="tap-to-chat">
-                    {friendRequestStates[user.publicId] === 'accepted' && user.unreadCount > 0 ? 'New message' : 'Tap to chat'}
+                    {friendRequestStates[user.publicId] === 'accepted' && user.unreadCount > 0 ? (
+                      user.unreadCount >= 4 ? `${user.unreadCount}+ new messages` : `${user.unreadCount} new message${user.unreadCount > 1 ? 's' : ''}`
+                    ) : 'Tap to chat'}
                   </p>
                 </div>
               </div>
@@ -536,49 +640,106 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
               </p>
             ) : (
               pendingRequests.map(req => (
-                <div key={req.id} className="notification-item">
-                  <div className="notification-avatar">
+                <div key={req.id} style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '20px',
+                  margin: '20px',
+                  backgroundColor: 'rgba(30, 41, 82, 0.8)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    width: '60px',
+                    height: '60px',
+                    borderRadius: '50%',
+                    backgroundColor: '#FFA500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '12px',
+                    overflow: 'hidden',
+                    fontSize: '24px',
+                    color: '#fff',
+                    fontWeight: 'bold'
+                  }}>
                     {req.photo_url ? (
-                      <img src={req.photo_url} alt={req.display_name} />
+                      <img src={req.photo_url} alt={req.display_name} style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }} />
                     ) : (
-                      <div className="text-avatar">
-                        {req.display_name.charAt(0).toUpperCase()}
-                      </div>
+                      <span>{req.display_name.charAt(0).toUpperCase()}</span>
                     )}
                   </div>
 
-                  <div className="notification-text">
-                    <strong>{req.display_name}</strong>
-                  </div>
+                  <h3 style={{ margin: '8px 0 4px 0', color: '#fff', fontSize: '16px', fontWeight: '600' }}>
+                    {req.display_name}
+                  </h3>
+                  
+                  <p style={{ margin: '0 0 16px 0', color: 'rgba(255, 255, 255, 0.7)', fontSize: '14px' }}>
+                    wants to be your friend
+                  </p>
 
-                  {req.status === 'accepted' && (
-                    <div className="message-actions">
-                      <button
-                        className="message-btn"
-                        onClick={async () => {
-                          // Mark as read in database
-                          if (user?.uuid && user.uuid.length === 36 && req.user_id) {
-                            await markMessagesAsRead(user.uuid, req.user_id);
-                          }
-                          
-                          // Mark as read in context
-                          if (markAsRead && req.user_id) {
-                            markAsRead(req.user_id);
-                          }
-                          // Open chat with this user
-                          // Ensure friend object has 'id' field for ChatBox
-                          const chatUser = {
-                            ...req,
-                            id: req.user_id // Map user_id to id for ChatBox
-                          };
-                          console.log('Opening chat from notification:', chatUser);
-                          setActiveChat(chatUser);
-                        }}
-                      >
-                        Message
-                      </button>
-                    </div>
-                  )}
+                  <div style={{
+                    display: 'flex',
+                    gap: '12px',
+                    width: '100%',
+                    justifyContent: 'center'
+                  }}>
+                    <button
+                      onClick={() => handleRejectRequest(req.id)}
+                      style={{
+                        flex: 1,
+                        maxWidth: '140px',
+                        padding: '10px 16px',
+                        backgroundColor: 'transparent',
+                        border: '2px solid #DC4444',
+                        color: '#DC4444',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = 'rgba(220, 68, 68, 0.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      REJECT
+                    </button>
+                    <button
+                      onClick={() => handleAcceptRequest(req.id, req.sender_id)}
+                      style={{
+                        flex: 1,
+                        maxWidth: '140px',
+                        padding: '10px 16px',
+                        backgroundColor: '#FFA500',
+                        border: 'none',
+                        color: '#000',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = '#FFB819';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = '#FFA500';
+                      }}
+                    >
+                      ACCEPT
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -626,9 +787,16 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       </div>
 
                       <div className="result-info">
-                        <p className="result-name">{friend.display_name}</p>
-                        <p className="tap-to-chat">
-                          {friend.unreadCount > 0 ? 'New message' : 'Tap to chat'}
+                        <div style={{ display: 'inline-flex', alignItems: 'center', position: 'relative' }}>
+                          <p className="result-name" style={{ margin: 0 }}>{friend.display_name}</p>
+                          {friend.hasBlueTick && (
+                            <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '3px', marginTop: '-7px', marginBottom: '-11px', flexShrink: 0, objectFit: 'contain', display: 'block' }} />
+                          )}
+                        </div>
+                        <p className="tap-to-chat" style={{ margin: 0, marginTop: '2px' }}>
+                          {friend.unreadCount > 0 ? (
+                            friend.unreadCount >= 4 ? `${friend.unreadCount}+ new messages` : `${friend.unreadCount} new message${friend.unreadCount > 1 ? 's' : ''}`
+                          ) : 'Tap to chat'}
                         </p>
                       </div>
                     </div>
@@ -688,7 +856,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                             )}
                           </div>
                           <div className="compact-request-info">
-                            <strong>{req.display_name}</strong>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                              <strong>{req.display_name}</strong>
+                              {req.hasBlueTick && (
+                                <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '4px', marginTop: '-9px', marginBottom: '-9px', flexShrink: 0, objectFit: 'contain' }} />
+                              )}
+                            </div>
                             <p className="compact-request-status">Pending</p>
                           </div>
                         </div>
@@ -713,75 +886,6 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     ))}
                   </div>
                 ) : null}
-
-                {/* SECTION 2: Friend Requests (Sent by User) */}
-                {pendingRequests && pendingRequests.length > 0 && (
-                  <div style={{ marginBottom: '20px' }}>
-                    <h3 style={{ 
-                      color: '#fff', 
-                      fontSize: '14px', 
-                      fontWeight: '600', 
-                      padding: '10px 0',
-                      borderBottom: '1px solid rgba(255,255,255,0.1)'
-                    }}>
-                      📤 {pendingRequests.length} Sent Request{pendingRequests.length !== 1 ? 's' : ''}
-                    </h3>
-                    {pendingRequests.map(req => (
-                      <div key={req.id} className="notification-item" style={{ marginTop: '10px' }}>
-                        <div className="notification-avatar">
-                          {req.photo_url ? (
-                            <img src={req.photo_url} alt={req.display_name} />
-                          ) : (
-                            <div className="text-avatar">
-                              {req.display_name?.charAt(0).toUpperCase() || '?'}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="notification-text">
-                          <strong>{req.display_name}</strong>
-                          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
-                            {req.status === 'pending' ? '⏳ Request sent' : req.status === 'accepted' ? '✓ Friends' : 'Request rejected'}
-                          </p>
-                        </div>
-
-                        {req.status === 'accepted' && (
-                          <button
-                            className="message-btn"
-                            onClick={() => {
-                              console.log('Opening chat with:', req);
-                              // Use req.id if it's a valid UUID (36 chars), otherwise fallback to receiver_id
-                              const friendId = (req.user_id && typeof req.user_id === 'string' && req.user_id.length === 36) 
-                                ? req.user_id 
-                                : req.receiver_id;
-                              const chatUser = {
-                                ...req,
-                                id: friendId
-                              };
-                              setActiveChat(chatUser);
-                            }}
-                          >
-                            Message
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Empty State */}
-                {(!pendingRequests || pendingRequests.length === 0) && (
-                  <p
-                    style={{
-                      textAlign: 'center',
-                      color: 'rgba(255,255,255,0.6)',
-                      marginTop: '40px',
-                      padding: '20px'
-                    }}
-                  >
-                    No sent requests yet
-                  </p>
-                )}
               </div>
             )}
           </div>

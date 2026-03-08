@@ -41,64 +41,8 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
     }
   }, [isOpen, user]);
 
-  // Auto-detect location
-  useEffect(() => {
-    if (!locationData && isOpen) {
-      detectLocation();
-    }
-  }, [isOpen]);
-
-  const detectLocation = async () => {
-    try {
-      // Try geolocation API first
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
-            try {
-              const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-              );
-              const data = await response.json();
-              const city = data.address?.city || data.address?.town || 'Unknown';
-              const country = data.address?.country || 'Unknown';
-              setLocationData(`${city}, ${country}`);
-              setProfileData(prev => ({
-                ...prev,
-                location: `${city}, ${country}`
-              }));
-            } catch (err) {
-              console.log('Reverse geocoding error:', err);
-            }
-          },
-          (error) => {
-            console.log('Geolocation error:', error);
-            // Fallback to IP API
-            fetchLocationFromIP();
-          }
-        );
-      } else {
-        fetchLocationFromIP();
-      }
-    } catch (err) {
-      console.log('Location detection error:', err);
-    }
-  };
-
-  const fetchLocationFromIP = async () => {
-    try {
-      const response = await fetch('https://ipapi.co/json/');
-      const data = await response.json();
-      const location = `${data.city}, ${data.country_name}`;
-      setLocationData(location);
-      setProfileData(prev => ({
-        ...prev,
-        location: location
-      }));
-    } catch (err) {
-      console.log('IP API error:', err);
-    }
-  };
+  // ✅ Location is now detected on dashboard mount (Chat.jsx) via IP — no browser popup needed
+  // Profile will use the location already stored in user profile data
 
   const loadUserProfile = async () => {
     if (!user) return;
@@ -142,6 +86,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
         email: user.email || '',
         picture: user.picture || '',
         googleId: user.googleId || '',
+        location: user.location || prev.location || 'Not set',
         gender: user.gender ? user.gender.toLowerCase() : 'Not set',
         birthday: contextBirthdayFormatted,
         birthdayRaw: contextBirthdayRaw
@@ -218,10 +163,17 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
               email: data.user.email || '',
               picture: data.user.picture || '',
               googleId: data.user.googleId || '',
+              location: data.user.location || prev.location || 'Not set',
               gender: genderValue,
               birthday: formattedBirthday,
-              birthdayRaw: rawBirthday
+              birthdayRaw: rawBirthday,
+              hasBlueTick: data.user.hasBlueTick || false
             }));
+
+            // Set locationData state from backend profile
+            if (data.user.location) {
+              setLocationData(data.user.location);
+            }
           }
         } else {
           console.warn('[ProfileModal] ⚠️ Failed to fetch profile from backend:', response.status);
@@ -400,7 +352,10 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
       await signOut(auth);
       localStorage.removeItem('userInfo');
       localStorage.removeItem('userProfile');
-      navigate('/login', { replace: true });
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Refresh page to clear all context and state
+      window.location.href = '/login';
     } catch (err) {
       console.error('Sign out error:', err);
     }
@@ -409,169 +364,133 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
   if (!isOpen) return null;
 
   return (
-    <div className="profile-modal-overlay" onClick={onClose}>
-      <div className="profile-modal-container" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-start z-[9999] p-6 md:p-8" onClick={onClose}>
+      <div className="relative w-full max-w-[320px] bg-white dark:bg-[#1a1d2b] rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 ml-4 md:ml-8" onClick={e => e.stopPropagation()}>
+        {/* Copied Toast - Positioned at top center */}
+        {copyFeedback && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
+            <div className="bg-black/75 backdrop-blur text-white text-[11px] font-medium px-4 py-1.5 rounded-full shadow-xl border border-white/10 flex items-center justify-center translate-y-[-140px]">
+              Copied
+            </div>
+          </div>
+        )}
+
         {/* Close Button */}
-        <button className="profile-modal-close" onClick={onClose}>
-          ✕
+        <button 
+          className="absolute top-4 right-4 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:text-white dark:hover:text-white/80 transition-colors z-10 focus:outline-none"
+          onClick={onClose}
+        >
+          <span className="material-symbols-outlined text-xl">close</span>
         </button>
 
-        {/* Profile Header */}
-        <div className="profile-header">
-          <div className="profile-picture-container">
-            <img
-              src={profileData.picture || 'https://via.placeholder.com/120'}
-              alt="Profile"
-              className="profile-picture"
-            />
-            {isEditing && (
-              <label className="photo-upload-label">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  style={{ display: 'none' }}
+        {/* Content */}
+        <div className="p-6 pt-9 flex flex-col items-center">
+          {/* Avatar */}
+          <div className="relative mb-4">
+            <div className="w-24 h-24 rounded-full border-[3px] border-purple-500 overflow-hidden bg-slate-400 dark:bg-slate-600 flex items-center justify-center shadow-[0_0_15px_1px_rgba(139,92,246,0.4)]">
+              {profileData.picture ? (
+                <img 
+                  src={profileData.picture} 
+                  alt={profileData.name}
+                  className="w-full h-full object-cover"
                 />
-                📷
-              </label>
-            )}
+              ) : (
+                <span className="text-white text-4xl font-semibold select-none">
+                  {profileData.name?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              )}
+            </div>
           </div>
 
-          {isEditing ? (
-            <input
-              type="text"
-              name="name"
-              value={profileData.name}
-              onChange={handleInputChange}
-              className="profile-input-name"
-              placeholder="Name"
-            />
-          ) : (
-            <h2 className="profile-name">{profileData.name}</h2>
-          )}
+          {/* Name and ID */}
+          <div className="text-center mb-6">
+            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white" style={{ margin: 0, lineHeight: '1' }}>
+                {profileData.name}
+              </h2>
+              {profileData.hasBlueTick && (
+                <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '6px', marginTop: '3px', flexShrink: 0, objectFit: 'contain', verticalAlign: 'middle', display: 'block' }} />
+              )}
+            </div>
+            <div className="flex items-center justify-center space-x-1 text-slate-500 dark:text-slate-400">
+              <span className="text-[10px] font-medium tracking-wide">ID: {profileData.id || 'N/A'}</span>
+              {profileData.id && (
+                <button
+                  onClick={() => handleCopyId(profileData.id)}
+                  className="material-icons-round text-xs hover:text-purple-500 transition-colors focus:outline-none"
+                  title="Copy ID"
+                >
+                  content_copy
+                </button>
+              )}
+            </div>
+          </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: "8px",
-              marginTop: "6px",
-              opacity: 0.8
+          {/* Divider */}
+          <div className="w-full h-px bg-slate-200 dark:bg-slate-800 mb-6"></div>
+
+          {/* Premium Section */}
+          <div 
+            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-4 mb-6 text-white flex flex-col items-center text-center shadow-md transform hover:scale-[1.02] transition-transform cursor-pointer"
+            onClick={() => {
+              onClose(); // Close profile modal first
+              setTimeout(() => onOpenPremium(), 100); // Then open premium modal
             }}
           >
-            <span>ID: {profileData.id || 'N/A'}</span>
-
-            {profileData.id && (
-              <button
-                onClick={() => handleCopyId(profileData.id)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center"
-                }}
-                title="Copy ID"
-              >
-                📋
-              </button>
-            )}
+            <div className="flex items-center space-x-1.5 mb-1">
+              <span className="material-icons-round text-yellow-300 text-sm">stars</span>
+              <span className="font-bold text-sm">Flinxx Premium</span>
+            </div>
+            <p className="text-white/80 text-[10px] leading-tight">Unlock premium features and custom themes</p>
           </div>
+
+          {/* Profile Details */}
+          <div className="w-full space-y-4 mb-7">
+            {/* Location */}
+            <div className="flex items-center justify-between group">
+              <div className="flex items-center space-x-2">
+                <span className="material-icons-round text-rose-500 text-sm group-hover:scale-110 transition-transform">location_on</span>
+                <span className="text-slate-600 dark:text-slate-400 text-[12px] font-medium">Location</span>
+              </div>
+              <span className="text-slate-900 dark:text-white text-[12px] font-semibold">
+                {profileData.location || 'Not set'}
+              </span>
+            </div>
+
+            {/* Gender */}
+            <div className="flex items-center justify-between group">
+              <div className="flex items-center space-x-2">
+                <span className="material-icons-round text-blue-500 text-sm group-hover:scale-110 transition-transform">transgender</span>
+                <span className="text-slate-600 dark:text-slate-400 text-[12px] font-medium">Gender</span>
+              </div>
+              <span className="text-slate-900 dark:text-white text-[12px] font-semibold capitalize">
+                {profileData.gender || 'Not set'}
+              </span>
+            </div>
+
+            {/* Birthday */}
+            <div className="flex items-center justify-between group">
+              <div className="flex items-center space-x-2">
+                <span className="material-icons-round text-amber-500 text-sm group-hover:scale-110 transition-transform">cake</span>
+                <span className="text-slate-600 dark:text-slate-400 text-[12px] font-medium">Birthday</span>
+              </div>
+              <span className="text-slate-900 dark:text-white text-[12px] font-semibold">
+                {profileData.birthday || 'Not set'}
+              </span>
+            </div>
+          </div>
+
+          {/* Sign Out Button */}
+          <button 
+            className="w-full py-3 px-4 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-bold text-sm rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-red-500/30"
+            onClick={handleSignOut}
+          >
+            Sign Out
+          </button>
         </div>
 
-        {/* Premium Section */}
-        <div 
-          className="profile-premium-section" 
-          onClick={onOpenPremium}
-          style={{ cursor: 'pointer' }}
-        >
-          <div className="premium-badge">⭐ Flinxx Premium</div>
-          <p className="premium-description">Unlock premium features</p>
-        </div>
-
-        {/* Profile Details - Location, Gender, Birthday */}
-        <div className="profile-details">
-          {isEditing ? (
-            <>
-              <div className="detail-row">
-                <span className="detail-label">📍 Location</span>
-                <input
-                  type="text"
-                  name="location"
-                  value={profileData.location}
-                  onChange={handleInputChange}
-                  className="profile-input-small"
-                />
-              </div>
-
-              <div className="detail-row">
-                <span className="detail-label">⚧ Gender</span>
-                <select
-                  name="gender"
-                  value={profileData.gender}
-                  onChange={handleInputChange}
-                  className="profile-input-small"
-                >
-                  <option value="">Select</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div className="detail-row">
-                <span className="detail-label">🎂 Birthday</span>
-                <input
-                  type="date"
-                  name="birthday"
-                  value={profileData.birthdayRaw || ''}
-                  onChange={handleInputChange}
-                  className="profile-input-small text-black focus:text-black !text-black [&::-webkit-datetime-edit]:text-black [&::-webkit-datetime-edit-year-field]:text-black [&::-webkit-datetime-edit-month-field]:text-black [&::-webkit-datetime-edit-day-field]:text-black"
-                />
-              </div>
-
-              <button
-                className="btn-save"
-                onClick={handleSaveProfile}
-                disabled={loading}
-              >
-                {loading ? 'Saving...' : 'Save Changes'}
-              </button>
-              <button
-                className="btn-cancel"
-                onClick={() => {
-                  setIsEditing(false);
-                  loadUserProfile();
-                }}
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="detail-row">
-                <span className="detail-label">📍 Location</span>
-                <span className="detail-value">{profileData.location || 'Not set'}</span>
-              </div>
-
-              <div className="detail-row">
-                <span className="detail-label">⚧ Gender</span>
-                <span className="detail-value">{profileData.gender || 'Not set'}</span>
-              </div>
-
-              <div className="detail-row">
-                <span className="detail-label">🎂 Birthday</span>
-                <span className="detail-value">{profileData.birthday || 'Not set'}</span>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Sign Out Button */}
-        <button className="btn-sign-out" onClick={handleSignOut}>
-          Sign Out
-        </button>
+        {/* Bottom Accent */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-purple-500/20 to-transparent"></div>
       </div>
     </div>
   );

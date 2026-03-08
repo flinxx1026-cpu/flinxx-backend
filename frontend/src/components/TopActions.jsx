@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { useUnread } from '../context/UnreadContext';
+import { AuthContext } from '../context/AuthContext';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
@@ -14,6 +15,7 @@ const TopActions = ({
   isFixedPosition = false 
 }) => {
   const { unreadCount } = useUnread();
+  const { incomingRequests = [] } = useContext(AuthContext);
 
   // Safety guard - ensure UUID is ready
   if (!currentUser?.uuid) {
@@ -85,14 +87,44 @@ const TopActions = ({
         🔍
       </div>
 
-      {/* Requests Heart Icon */}
+      {/* Requests Heart Icon with Badge */}
       <div 
-        className="icon-circle" 
+        className="icon-wrapper" 
         title="Requests"
         onClick={onRequestsClick}
-        style={{ cursor: 'pointer' }}
+        style={{ cursor: 'pointer', position: 'relative' }}
       >
-        ❤️
+        <div className="icon-circle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          ❤️
+        </div>
+        {incomingRequests && incomingRequests.length > 0 && (
+          <span 
+            className="badge"
+            style={{
+              position: 'absolute',
+              top: '-10px',
+              right: '-10px',
+              backgroundColor: '#EF4444',
+              color: '#ffffff',
+              fontSize: '0.75rem',
+              fontWeight: '900',
+              width: '24px',
+              height: '24px',
+              minWidth: '24px',
+              minHeight: '24px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: '1',
+              zIndex: '50',
+              border: '2.5px solid white',
+              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.6)'
+            }}
+          >
+            {incomingRequests.length}
+          </span>
+        )}
       </div>
 
       {/* Messages Icon with Badge */}

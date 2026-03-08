@@ -367,6 +367,38 @@ video {
   flex-shrink: 0;
 }
 
+/* Icon Wrapper - for positioning badges */
+.icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Badge styling for notification counts */
+.badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background-color: #EF4444;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 900;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  z-index: 50;
+  border: 2.5px solid white;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.6);
+}
+
 /* Icon inside button */
 .icon-btn svg,
 .icon-btn i {
@@ -861,4 +893,14 @@ video {
   font-size: 12px;
   font-weight: 600;
   border: 1px solid #d4af37;
+}
+
+/* Badge animation - pulse effect */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }

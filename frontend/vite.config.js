@@ -7,12 +7,12 @@ export default defineConfig({
     port: 3003,
     proxy: {
       '/api': {
-        target: 'https://d1pphanrf0qsx7.cloudfront.net',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false
       },
       '/socket.io': {
-        target: 'https://d1pphanrf0qsx7.cloudfront.net',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
         ws: true

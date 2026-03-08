@@ -1,5 +1,15 @@
 @import "remixicon/fonts/remixicon.css";
 
+/* Override remixicon font-display from swap to block
+   to prevent showing icon text placeholder while font loads */
+@font-face {
+  font-family: "remixicon";
+  src: url('remixicon/fonts/remixicon.woff2') format("woff2"),
+       url('remixicon/fonts/remixicon.woff') format("woff"),
+       url('remixicon/fonts/remixicon.ttf') format('truetype');
+  font-display: block;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -62,6 +72,17 @@ video {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 }
 

@@ -31,13 +31,13 @@ const FriendRequestPopup = ({ request, onAccept, onReject, onClose }) => {
   const popupContent = (
     <div className="friend-request-popup-overlay" onClick={onClose}>
       <div className="friend-request-popup-container" onClick={(e) => e.stopPropagation()}>
-        {/* Close Button */}
-        <button className="popup-close-btn" onClick={onClose} aria-label="Close">
-          ✕
-        </button>
+        {/* Header */}
+        <div className="popup-header">
+          <h2 className="popup-title">Friend Requests</h2>
+        </div>
 
-        {/* Profile Section */}
-        <div className="popup-profile-section">
+        {/* Main Content Area */}
+        <div className="popup-content">
           {/* Profile Image */}
           <div className="popup-profile-image">
             {request.senderProfileImage ? (
@@ -58,7 +58,7 @@ const FriendRequestPopup = ({ request, onAccept, onReject, onClose }) => {
             </div>
           </div>
 
-          {/* Message */}
+          {/* Message Area */}
           <div className="popup-message">
             <h3 className="popup-sender-name">{request.senderName || 'User'}</h3>
             <p className="popup-text">wants to be your friend</p>
@@ -68,18 +68,18 @@ const FriendRequestPopup = ({ request, onAccept, onReject, onClose }) => {
         {/* Action Buttons */}
         <div className="popup-actions">
           <button
-            className="popup-btn-reject"
-            onClick={handleReject}
-            disabled={isLoading}
-          >
-            {isLoading ? '...' : 'Reject'}
-          </button>
-          <button
             className="popup-btn-accept"
             onClick={handleAccept}
             disabled={isLoading}
           >
             {isLoading ? '...' : 'Accept'}
+          </button>
+          <button
+            className="popup-btn-reject"
+            onClick={handleReject}
+            disabled={isLoading}
+          >
+            {isLoading ? '...' : 'Reject'}
           </button>
         </div>
       </div>

@@ -30,6 +30,8 @@ router.get('/', async (req, res) => {
         u.id,
         u.display_name,
         u.photo_url,
+        u.has_blue_tick,
+        u.blue_tick_expires_at,
         MAX(m.created_at) AS last_message_at
       FROM friend_requests f
       JOIN users u 
@@ -43,7 +45,7 @@ router.get('/', async (req, res) => {
       WHERE 
         (f.sender_id = $1 OR f.receiver_id = $1)
         AND f.status = 'accepted'
-      GROUP BY u.id, u.display_name, u.photo_url
+      GROUP BY u.id, u.display_name, u.photo_url, u.has_blue_tick, u.blue_tick_expires_at
       ORDER BY last_message_at DESC NULLS LAST
     `;
 
@@ -69,6 +71,7 @@ router.get('/', async (req, res) => {
     // 4️⃣ Add unreadCount to each friend
     const friendsWithUnread = rows.map(friend => ({
       ...friend,
+      hasBlueTick: !!(friend.has_blue_tick && friend.blue_tick_expires_at && new Date(friend.blue_tick_expires_at) > new Date()),
       unreadCount: unreadMap[friend.id] || 0
     }));
 

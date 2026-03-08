@@ -35,20 +35,28 @@ router.get('/notifications', async (req, res) => {
         u.id as user_id,
         u.public_id,
         u.display_name,
-        u.photo_url
+        u.photo_url,
+        u.has_blue_tick,
+        u.blue_tick_expires_at
       FROM friend_requests f
       JOIN users u
         ON u.id = f.sender_id
       WHERE 
         f.receiver_id = $1
-        AND f.status IN ('pending', 'accepted')
+        AND f.status = 'pending'
       ORDER BY f.created_at DESC
     `;
 
     const { rows } = await pool.query(query, [userId]);
     
-    console.log('[NOTIFICATIONS API] ✅ Found', rows.length, 'incoming requests');
-    res.json(rows);
+    // Add hasBlueTick computed field
+    const enrichedRows = rows.map(row => ({
+      ...row,
+      hasBlueTick: !!(row.has_blue_tick && row.blue_tick_expires_at && new Date(row.blue_tick_expires_at) > new Date())
+    }));
+    
+    console.log('[NOTIFICATIONS API] ✅ Found', enrichedRows.length, 'incoming requests');
+    res.json(enrichedRows);
 
   } catch (err) {
     console.error('[NOTIFICATIONS API] ❌ Error:', err.message);

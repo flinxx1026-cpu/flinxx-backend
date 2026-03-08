@@ -92,6 +92,7 @@ export default function OAuthSuccess() {
               name: userFromBackend.name || userFromBackend.display_name || 'User',
               email: userFromBackend.email,
               picture: userFromBackend.picture || userFromBackend.photo_url,
+              location: userFromBackend.location || null,
               profileCompleted: userFromBackend.profileCompleted || false
             };
             console.log('✅ [OAuthSuccess] ✓ Valid UUID from backend, using backend user data', validUUID.substring(0, 8) + '...');

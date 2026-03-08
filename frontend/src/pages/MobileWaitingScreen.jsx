@@ -14,16 +14,37 @@ const MobileWaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
   const handleCameraRef = (videoElement) => {
     if (!videoElement) return;
     
-    // Only attach if stream exists and not already attached
-    if (localStreamRef && localStreamRef.current && videoElement.srcObject !== localStreamRef.current) {
-      videoElement.srcObject = localStreamRef.current;
-      videoElement.muted = true;
+    console.log('📱 [MOBILE WAITING SCREEN] Video element ref callback fired');
+    console.log('📱 [MOBILE WAITING SCREEN] Stream available:', !!(localStreamRef?.current));
+    
+    const attachStreamWithRetry = () => {
+      // Check if stream exists
+      if (!localStreamRef || !localStreamRef.current) {
+        console.log('📱 [MOBILE WAITING SCREEN] ⏳ Stream not ready yet, retrying in 100ms...');
+        setTimeout(attachStreamWithRetry, 100);
+        return;
+      }
       
-      // Try to play - some browsers require user interaction
-      videoElement.play().catch(err => {
-        console.warn('📺 [MOBILE WAITING SCREEN] Play warning:', err.message);
-      });
-    }
+      // Only attach if not already attached
+      if (videoElement.srcObject !== localStreamRef.current) {
+        console.log('📱 [MOBILE WAITING SCREEN] ✅ Attaching stream to video element');
+        videoElement.srcObject = localStreamRef.current;
+        videoElement.muted = true;
+        
+        // Try to play
+        videoElement.play().catch(err => {
+          console.warn('📱 [MOBILE WAITING SCREEN] Play warning:', err.message);
+        });
+      } else {
+        console.log('📱 [MOBILE WAITING SCREEN] Stream already attached, ensuring play()');
+        videoElement.play().catch(err => {
+          console.warn('📱 [MOBILE WAITING SCREEN] Play warning:', err.message);
+        });
+      }
+    };
+    
+    // Start the attachment process
+    attachStreamWithRetry();
   };
 
   const handleCancel = () => {
