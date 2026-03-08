@@ -16,11 +16,23 @@ export default function OAuthSuccess() {
         let token = searchParams.get("token");
         
         console.log("🔐 [OAuthSuccess] Page loaded, checking for token in URL...");
+        console.log("🔐 [OAuthSuccess] URL params:", window.location.search);
         console.log("🔐 [OAuthSuccess] Token from URL:", token ? token.substring(0, 20) + "..." : "NOT FOUND");
+        
+        // DEBUG: Check all search params
+        const allParams = {};
+        searchParams.forEach((value, key) => {
+          allParams[key] = value;
+        });
+        console.log("🔐 [OAuthSuccess] All search params:", allParams);
 
         // CRITICAL: If no token in URL params, the backend redirect might have failed
         if (!token) {
           console.error("❌ [OAuthSuccess] No token in URL - backend OAuth callback issue");
+          console.error("🔍 Possible causes:")
+          console.error("   1. FRONTEND_URL not set correctly in backend .env")
+          console.error("   2. Backend redirect_uri doesn't match OAuth app config")
+          console.error("   3. OAuth callback failed silently")
           setError("No authentication token received. Please try logging in again.");
           // Wait 2 seconds then redirect to login
           setTimeout(() => {

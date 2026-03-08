@@ -2497,6 +2497,15 @@ app.get('/auth/google/callback', async (req, res) => {
     // Redirect to oauth-success page with token in URL
     // Use FRONTEND_URL environment variable instead of hardcoded URL
     const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
+    
+    // 🔍 DEBUG: Log which URL is being used
+    console.log('🔍 [AUTH/GOOGLE/CALLBACK] FRONTEND URL RESOLUTION:')
+    console.log('   - FRONTEND_URL env:', process.env.FRONTEND_URL)
+    console.log('   - CLIENT_URL env:', process.env.CLIENT_URL)
+    console.log('   - Using URL:', frontendUrl)
+    console.log('   - NODE_ENV:', process.env.NODE_ENV)
+    console.log('   - Full redirect URL:', `${frontendUrl}/oauth-success?token=${tokenParam.substring(0, 20)}...`)
+    
     res.redirect(`${frontendUrl}/oauth-success?token=${tokenParam}`)
   } catch (error) {
     console.error('\n❌ [AUTH/GOOGLE/CALLBACK] CRITICAL ERROR in callback:', error.message)
@@ -2626,7 +2635,12 @@ app.get('/auth/facebook', (req, res) => {
     if (!callbackUrl) {
       throw new Error('FACEBOOK_CALLBACK_URL environment variable is not set')
     }
-    console.log(`🔗 Facebook OAuth initiated with callback_url: ${callbackUrl}`)
+    
+    console.log('🔗 [/auth/facebook] Facebook OAuth Configuration:')
+    console.log('   - FACEBOOK_CALLBACK_URL env:', process.env.FACEBOOK_CALLBACK_URL)
+    console.log('   - NODE_ENV:', process.env.NODE_ENV)
+    console.log(`🔗 [/auth/facebook] Facebook OAuth initiated with callback_url: ${callbackUrl}`)
+    
     const params = new URLSearchParams({
       client_id: process.env.FACEBOOK_APP_ID,
       redirect_uri: callbackUrl,
@@ -2635,10 +2649,10 @@ app.get('/auth/facebook', (req, res) => {
     })
     
     const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`
-    console.log(`🔗 Redirecting to Facebook consent screen`)
+    console.log(`🔗 [/auth/facebook] Redirecting to Facebook consent screen`)
     res.redirect(authUrl)
   } catch (error) {
-    console.error('❌ Error in /auth/facebook:', error)
+    console.error('❌ [/auth/facebook] Error in /auth/facebook:', error)
     res.status(500).json({ error: 'Failed to initiate Facebook login' })
   }
 })
@@ -2773,6 +2787,14 @@ app.get('/auth/facebook/callback', async (req, res) => {
     
     // ✅ SIMPLE APPROACH: Just pass token in URL
     const tokenParam = encodeURIComponent(token);
+    
+    // 🔍 DEBUG: Log which URL is being used
+    console.log('🔍 [AUTH/FACEBOOK/CALLBACK] FRONTEND URL RESOLUTION:')
+    console.log('   - FRONTEND_URL env:', process.env.FRONTEND_URL)
+    console.log('   - CLIENT_URL env:', process.env.CLIENT_URL)
+    console.log('   - Using URL:', baseUrl)
+    console.log('   - NODE_ENV:', process.env.NODE_ENV)
+    console.log('   - Full redirect URL:', `${baseUrl}/oauth-success?token=${tokenParam.substring(0, 20)}...`)
     
     // Redirect to /oauth-success with token in URL
     const redirectUrl = `${baseUrl}/oauth-success?token=${tokenParam}`;
