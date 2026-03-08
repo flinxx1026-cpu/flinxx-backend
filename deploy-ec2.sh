@@ -36,6 +36,12 @@ echo "📦 [NPM] Installing dependencies..."
 npm install
 echo "✅ Dependencies installed"
 
+# 2.5. Regenerate Prisma client
+echo ""
+echo "🔧 [PRISMA] Regenerating Prisma client..."
+npx prisma generate
+echo "✅ Prisma client regenerated"
+
 # 3. Stop current backend process
 echo ""
 echo "🛑 [PM2] Stopping backend service..."
