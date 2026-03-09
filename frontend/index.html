@@ -12,8 +12,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <!-- Material Icons Font (icon fonts already use font-display:block by default) -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap" rel="stylesheet">
     <!-- Material Symbols Outlined Font — display=block hides text while font loads -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
     <!-- Playfair Display & Inter Fonts — swap is fine for text fonts -->
@@ -30,9 +30,11 @@
             padding: 0;
             background: #000;
         }
+
+        /* ===== CRITICAL: Icon sizing to prevent Layout Shift ===== */
         /* Icon elements: reserve exact size so no layout shift even while font loads.
-           font-display:block in the @font-face makes text invisible (not fallback text)
-           while downloading. These dimension rules ensure stable layout. */
+           font-display:swap in the @font-face makes fallback text visible briefly then swaps to icon font
+           These dimension rules ensure stable layout. */
         .material-icons,
         .material-icons-round,
         .material-symbols-outlined {
@@ -43,6 +45,73 @@
             height: 1em;
             overflow: hidden;
             vertical-align: middle;
+            font-size: inherit;
+            line-height: 1;
+            contain: layout paint;
+            font-feature-settings: 'liga';
+            text-rendering: optimizeLegibility;
+            /* Hide fallback text immediately until icon font loads */
+            color: transparent;
+            text-indent: -9999px;
+        }
+        
+        /* Restore text color once Material Icons font is loaded */
+        @supports (font-variation-settings: normal) {
+            .material-icons,
+            .material-icons-round,
+            .material-symbols-outlined {
+                color: inherit;
+                text-indent: 0;
+            }
+        }
+
+        /* === Icon Button Containers === */
+        /* All icon buttons must have fixed dimensions to prevent shift */
+        [class*="icon-btn"],
+        [class*="icon-"],
+        .icon-row > button,
+        .icon-wrapper,
+        [title*="Profile"],
+        [title*="Search"],
+        [title*="Likes"],
+        [title*="Messages"],
+        [title*="Achievements"],
+        [title*="History"],
+        [title*="Award"],
+        [title*="Trophy"],
+        [title*="Heart"],
+        [title*="Chat"] {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 42px;
+            min-height: 42px;
+            width: 42px;
+            height: 42px;
+            flex-shrink: 0;
+            contain: layout paint style;
+            font-size: 0;
+        }
+        
+        /* Ensure icon elements within buttons display properly */
+        [class*="icon-btn"] i,
+        [class*="icon-btn"] span,
+        [class*="icon-"] i,
+        [class*="icon-"] span {
+            font-size: 1.125rem;
+        }
+
+        /* === Text elements: lock dimensions === */
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 0;
+            margin-bottom: 0.5em;
+        }
+
+        /* === Prevent FOUT (Flash Of Unstyled Text) === */
+        @supports (font-display: swap) {
+            body {
+                font-display: swap;
+            }
         }
     </style>
 </head>

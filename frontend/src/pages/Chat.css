@@ -41,6 +41,16 @@ body,
 html {
   background: #0f0f0f;
   color: #ffffff;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Desktop body - proper scroll handling */
+@media (min-width: 1024px) {
+  body,
+  html {
+    overflow-y: auto;
+  }
 }
 
 /* Ensure all video elements display as block and are visible */
@@ -53,6 +63,12 @@ video {
   opacity: 1;
   transform: none;
   zoom: 1;
+  image-rendering: high-quality;
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  filter: none;
+  -webkit-filter: none;
 }
 
 #localVideo,
@@ -62,6 +78,12 @@ video {
   object-fit: cover !important;
   transform: none !important;
   zoom: 1 !important;
+  image-rendering: auto !important;
+  -webkit-transform: translateZ(0) !important;
+  backface-visibility: hidden !important;
+  -webkit-backface-visibility: hidden !important;
+  filter: none !important;
+  -webkit-filter: none !important;
 }
 
 .video-wrapper,
@@ -216,16 +238,33 @@ video {
 
 /* Top-right Icon Navigation Bar */
 .top-right-icons {
-  position: absolute;
-  top: 20px;
-  right: 30px;
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 14px;
   z-index: 50;
-  flex-direction: row-reverse;
-  flex-wrap: nowrap;
+  flex-direction: row;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* Desktop: Position at top right */
+@media (min-width: 1024px) {
+  .top-right-icons {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    z-index: 50;
+    flex-direction: row-reverse;
+    flex-wrap: nowrap;
+    width: auto;
+    left: auto;
+  }
 }
 
 .icon-circle {
@@ -347,14 +386,72 @@ video {
 /* Icon Row Container */
 .icon-row {
   display: flex;
-  gap: 14px;
+  gap: 16px;
   align-items: center;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow: visible !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  width: 100%;
+  padding: 56px 24px 24px 32px;
+  margin: 0px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: #000000;
+  white-space: nowrap;
+  min-height: 100px;
+}
+
+/* Ensure icon-row shows all icons - proper vertical alignment */
+.icon-row > * {
+  flex-shrink: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Desktop: Icon row at top with proper spacing - NO WRAP */
+@media (min-width: 1024px) {
+  .icon-row {
+    gap: 16px;
+    padding: 56px 24px 24px 32px !important;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    width: 100%;
+    overflow: visible !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    max-width: none !important;
+    margin: 0px !important;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: #000000;
+    white-space: nowrap;
+    min-height: 100px;
+  }
+
+  .icon-row > * {
+    flex-shrink: 0 !important;
+  }
+
+  /* Ensure aside doesn't clip icons */
+  aside.w-full.lg\:flex-1.h-full.flex.flex-col {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: auto !important;
+    clip-path: none !important;
+  }
 }
 
 /* Individual Icon Button */
 .icon-btn {
   width: 42px;
   height: 42px;
+  min-width: 42px;
+  min-height: 42px;
   border-radius: 50%;
   border: 1.5px solid #d4af37;
   display: flex;
@@ -365,6 +462,8 @@ video {
   transition: all 0.3s ease;
   padding: 0;
   flex-shrink: 0;
+  contain: layout paint style;
+  font-size: 0;
 }
 
 /* Icon Wrapper - for positioning badges */
@@ -373,6 +472,13 @@ video {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  flex-shrink: 0;
+  contain: layout paint style;
+  font-size: 0;
 }
 
 /* Badge styling for notification counts */
@@ -402,6 +508,12 @@ video {
 /* Icon inside button */
 .icon-btn svg,
 .icon-btn i {
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.icon-wrapper svg,
+.icon-wrapper i {
   font-size: 18px;
   color: #ffffff;
 }
@@ -902,5 +1014,239 @@ video {
   }
   50% {
     opacity: 0.7;
+  }
+}
+
+/* ===== BADGE & ICON MOBILE FIX ===== */
+/* Make mobile icons exactly like desktop - same size, styling, and badge visibility */
+
+/* Mobile: Icon container must allow badge to overflow */
+@media (max-width: 768px) {
+  /* Icon row - same styling as base, just ensure overflow visible for badges */
+  .icon-row {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  /* Icon Button Size - SAME AS DESKTOP (48px) */
+  .icon-btn {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    font-size: 24px !important;
+    line-height: 48px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .icon-wrapper {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Icon button container - must NOT hide badges */
+  .icon-row > div[style*="position: relative"] {
+    overflow: visible !important;
+    position: relative !important;
+    z-index: 40 !important;
+  }
+
+  /* Badge span - ensure maximum visibility */
+  .icon-row span[style*="position: absolute"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 50 !important;
+    position: absolute !important;
+    pointer-events: none;
+  }
+
+  /* Badge with specific positioning */
+  .icon-row span[style*="backgroundColor: #EF4444"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 50 !important;
+    top: -8px !important;
+    right: -8px !important;
+    position: absolute !important;
+  }
+
+  /* Parent aside container on mobile - allow badges through */
+  aside.w-full.lg\:flex-1.h-full.flex.flex-col {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: auto !important;
+    clip-path: none !important;
+  }
+
+  /* CRITICAL: Direct parent div of badge - no clipping! */
+  .icon-row > div {
+    overflow: visible !important;
+  }
+
+  /* Badge must always be visible on mobile */
+  span[style*="backgroundColor: #EF4444"],
+  span[style*="backgroundColor: rgb(239, 68, 68)"],
+  span[style*="backgroundColor: #FF5555"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 50 !important;
+  }
+}
+
+/* ===== DESKTOP-SPECIFIC LAYOUT FIXES ===== */
+/* Ensure proper desktop layout with two equal columns */
+@media (min-width: 1024px) {
+  /* Main intro screen container - proper grid layout */
+  .w-full.h-\[90vh\].flex.flex-col.lg\:flex-row.justify-center {
+    display: flex;
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 32px !important;
+    padding: 20px !important;
+    align-items: center !important;
+    height: 90vh !important;
+    overflow: hidden !important;
+  }
+
+  /* Left panel - Flinxx heading and icons - NO overflow clipping */
+  aside.w-full.lg\:flex-1.h-full.flex.flex-col {
+    flex: 1 !important;
+    width: auto !important;
+    max-width: 50% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 500px !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: auto !important;
+    padding: 0px !important;
+    clip-path: none !important;
+  }
+
+  /* Right panel - Camera feed */
+  .w-full.lg\:flex-1.relative.bg-refined.rounded-3xl.overflow-hidden.shadow-2xl.border-2.border-primary.group.shadow-glow.flex.flex-col.items-center.justify-center {
+    flex: 1 !important;
+    width: auto !important;
+    max-width: 50% !important;
+    height: 100% !important;
+    min-height: 500px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Icon Button Size - Desktop */
+  .icon-btn {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    font-size: 24px !important;
+    line-height: 48px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .icon-wrapper {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Intro screen - proper flex container */
+  .intro-screen-container {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    height: 90vh !important;
+    gap: 32px !important;
+    padding: 20px !important;
+    max-width: 100% !important;
+    align-items: stretch !important;
+  }
+
+  /* Video chat container - proper flex container */
+  .video-chat-container {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    height: 100vh !important;
+    gap: 32px !important;
+    padding: 20px !important;
+    max-width: 100% !important;
+    align-items: stretch !important;
+  }
+
+  /* Main chat layout - ensure proper spacing */
+  .main-chat-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 32px !important;
+    justify-content: center !important;
+    align-items: stretch !important;
+    padding: 20px !important;
+    width: 100% !important;
+  }
+
+  /* Chat screen - horizontal layout */
+  .chat-screen {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 32px !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  /* Screen container - two columns */
+  .screen-container {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    gap: 32px !important;
+    padding: 0 !important;
+    height: auto !important;
+  }
+
+  .screen-container > div {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    height: auto !important;
+    min-height: 400px !important;
+    width: auto !important;
+  }
+
+  /* Video wrapper - proper sizing */
+  .video-wrapper {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 400px !important;
+    max-height: 600px !important;
+  }
+
+  /* Right panel - proper styling */
+  .right-panel {
+    width: auto !important;
+    height: auto !important;
+    min-height: 400px !important;
+    flex: 1 !important;
+  }
+
+  /* Video box - proper sizing for desktop */
+  .video-box {
+    width: auto !important;
+    height: auto !important;
+    min-height: 400px !important;
+    flex: 1 !important;
   }
 }

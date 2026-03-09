@@ -832,15 +832,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     Loading requests...
                   </p>
                 ) : incomingRequests && incomingRequests.length > 0 ? (
-                  <div style={{ marginBottom: '20px' }}>
-                    <h3 style={{
-                      color: '#fff',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      padding: '12px 16px',
-                      margin: '0',
-                      borderBottom: 'none'
-                    }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <h3 className="request-section-header">
                       💚 {incomingRequests.length} Friend Request{incomingRequests.length !== 1 ? 's' : ''}
                     </h3>
                     {incomingRequests.map(req => (
@@ -885,6 +878,46 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       </div>
                     ))}
                   </div>
+                ) : null}
+
+                {/* SECTION 2: Sent Friend Requests (Requests sent by User) */}
+                {pendingRequests && pendingRequests.length > 0 ? (
+                  <div style={{ marginBottom: '12px' }}>
+                    <h3 className="request-section-header">
+                      ⏳ {pendingRequests.length} Sent Request{pendingRequests.length !== 1 ? 's' : ''}
+                    </h3>
+                    {pendingRequests.map(req => (
+                      <div key={req.id} className="compact-request-item">
+                        <div className="compact-request-left">
+                          <div className="compact-request-avatar">
+                            {req.photo_url ? (
+                              <img src={req.photo_url} alt={req.display_name} />
+                            ) : (
+                              <div className="text-avatar">
+                                {req.display_name?.charAt(0).toUpperCase() || '?'}
+                              </div>
+                            )}
+                          </div>
+                          <div className="compact-request-info">
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                              <strong>{req.display_name}</strong>
+                              {req.hasBlueTick && (
+                                <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '4px', marginTop: '-9px', marginBottom: '-9px', flexShrink: 0, objectFit: 'contain' }} />
+                              )}
+                            </div>
+                            <p className="compact-request-status">Pending</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {/* Empty State */}
+                {(!incomingRequests || incomingRequests.length === 0) && (!pendingRequests || pendingRequests.length === 0) ? (
+                  <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', marginTop: '40px' }}>
+                    No friend requests
+                  </p>
                 ) : null}
               </div>
             )}

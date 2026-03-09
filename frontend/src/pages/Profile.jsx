@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 
-const Profile = () => {
+const Profile = ({ isModal = false, onClose = null }) => {
   const navigate = useNavigate()
   const { user: contextUser } = useContext(AuthContext) || {}
 
@@ -127,7 +127,108 @@ const Profile = () => {
   const avatarOptions = ['👨', '👩', '👦', '👧', '🧑', '👨‍🦱', '👩‍🦱', '👨‍🦲', '👩‍🦲']
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600">
+    <>
+      {isModal ? (
+        // Modal View - Dark background with centered card
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-800/95 backdrop-blur-md rounded-3xl p-8 border border-white/10 w-full max-w-sm shadow-2xl relative">
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 text-white/70 hover:text-white text-2xl font-bold transition"
+            >
+              ✕
+            </button>
+
+            {/* Avatar Section */}
+            <div className="flex flex-col items-center mb-6">
+              {profile.photoURL ? (
+                <div className="w-28 h-28 rounded-full flex items-center justify-center shadow-2xl shadow-purple-400/30 mb-4 border-4 border-purple-400/40 overflow-hidden">
+                  <img 
+                    src={profile.photoURL} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-28 h-28 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full flex items-center justify-center text-5xl shadow-2xl shadow-purple-600/50 mb-4 border-4 border-purple-400/40">
+                  {profile.avatar}
+                </div>
+              )}
+            </div>
+
+            {/* Display Name with Verified Badge */}
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <h2 className="text-2xl font-bold text-white">{profile.displayName}</h2>
+                <span className="text-blue-400">✓</span>
+              </div>
+              {profile.userId && profile.userId !== 'N/A' && (
+                <p className="text-white/60 text-sm flex items-center justify-center gap-1">
+                  ID: {profile.userId}
+                  <button
+                    onClick={() => navigator.clipboard.writeText(profile.userId)}
+                    className="ml-1"
+                    title="Copy ID"
+                  >
+                    📋
+                  </button>
+                </p>
+              )}
+            </div>
+
+            {/* Flinxx Premium Button */}
+            <button className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold py-3 rounded-full transition-all transform hover:scale-105 mb-6 flex items-center justify-center gap-2">
+              <span>🔒</span>
+              <span>Flinxx Premium</span>
+            </button>
+
+            {/* Info Grid */}
+            <div className="space-y-4 mb-6 border-t border-white/10 pt-4">
+              {/* Location */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-white/70">
+                  <span>📍</span>
+                  <span className="text-sm">Location</span>
+                </div>
+                <span className="text-white font-semibold">{profile.country}</span>
+              </div>
+
+              {/* Gender */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-white/70">
+                  <span>♂️</span>
+                  <span className="text-sm">Gender</span>
+                </div>
+                <span className="text-white font-semibold">{profile.gender}</span>
+              </div>
+
+              {/* Birthday */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-white/70">
+                  <span>🎂</span>
+                  <span className="text-sm">Birthday</span>
+                </div>
+                <span className="text-white font-semibold">January 1, 2002</span>
+              </div>
+            </div>
+
+            {/* Sign Out Button */}
+            <button
+              onClick={() => {
+                localStorage.removeItem('user')
+                localStorage.removeItem('accessToken')
+                navigate('/login')
+              }}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-full transition-all transform hover:scale-105"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      ) : (
+        // Full Page View
+        <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600">
       {/* Header */}
       <div className="relative z-20 w-full bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 shadow-lg">
         <div className="px-6 py-6 flex justify-between items-center">
@@ -436,6 +537,8 @@ const Profile = () => {
         </div>
       </div>
     </div>
+      )}
+    </>
   )
 }
 

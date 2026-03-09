@@ -72,7 +72,15 @@ const CallingWaitScreen = ({
               muted
               playsInline
               className="absolute inset-0 w-full h-full object-cover"
-              style={{ backgroundColor: '#000' }}
+              style={{ 
+                backgroundColor: '#000',
+                imageRendering: 'auto',
+                WebkitTransform: 'translateZ(0)',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                filter: 'none',
+                WebkitFilter: 'none'
+              }}
             />
           ) : (
             <div className="text-white opacity-90">

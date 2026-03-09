@@ -12,6 +12,7 @@ import { useUnreadSafe } from '../context/UnreadContext';
 // import socket from '../services/socketService';
 import socketWrapper from '../services/socketService';
 import MobileWaitingScreen from './MobileWaitingScreen';
+import MobileHome from './MobileHome';
 import { getIceServers, getMediaConstraints, formatTime, logIceServers } from '../utils/webrtcUtils';
 import PremiumModal from '../components/PremiumModal';
 import GenderFilterModal from '../components/GenderFilterModal';
@@ -44,13 +45,13 @@ const CameraPanel = ({ videoRef }) => {
   }, []);
   
   return (
-    <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow">
+    <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow flex flex-col items-center justify-center">
       {/* Camera Frame with Video */}
-      <div className="camera-frame w-full h-full">
+      <div className="camera-frame w-full h-full relative flex items-center justify-center">
         {/* Camera Video - Stable element thanks to module-level component */}
         <video
           ref={videoRefCallback}
-          className="camera-video"
+          className="camera-video absolute inset-0"
           autoPlay
           muted
           playsInline
@@ -61,17 +62,6 @@ const CameraPanel = ({ videoRef }) => {
             backgroundColor: "#000"
           }}
         />
-      </div>
-
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none z-10"></div>
-
-      {/* You Badge */}
-      <div className="absolute bottom-6 left-6 z-30 pointer-events-none">
-        <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
-          <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></span>
-          <span className="text-xs font-semibold tracking-wider text-white/90 uppercase">You</span>
-        </div>
       </div>
     </main>
   );
@@ -94,6 +84,8 @@ const IntroScreen = ({
   unreadCount,
   incomingRequests = [],
   setIncomingRequests,
+  localStreamRef,
+  cameraStarted,
   children
 }) => {
   console.log("Dashboard render");
@@ -149,7 +141,7 @@ const IntroScreen = ({
             </button>
 
             {/* Likes Icon with Friend Request Badge */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', overflow: 'visible' }}>
               <button 
                 onClick={() => {
                   setActiveTab(activeTab === 'likes' ? null : 'likes');
@@ -178,7 +170,8 @@ const IntroScreen = ({
                     justifyContent: 'center',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                     border: '2px solid white',
-                    zIndex: '50'
+                    zIndex: 50,
+                    pointerEvents: 'none'
                   }}
                 >
                   {incomingRequests.length > 9 ? '9+' : incomingRequests.length}
@@ -187,7 +180,7 @@ const IntroScreen = ({
             </div>
 
             {/* Messages Icon */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', overflow: 'visible' }}>
               <button 
                 onClick={() => setActiveTab(activeTab === 'messages' ? null : 'messages')}
                 className="icon-btn"
@@ -213,7 +206,8 @@ const IntroScreen = ({
                     justifyContent: 'center',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                     border: '2px solid white',
-                    zIndex: '50'
+                    zIndex: 50,
+                    pointerEvents: 'none'
                   }}
                 >
                   {unreadCount > 9 ? '9+' : unreadCount}
@@ -277,190 +271,14 @@ const IntroScreen = ({
     );
   }
 
-  // Mobile version with new design
+  // Mobile view - return MobileHome
   return (
-    <div className="relative w-full h-screen bg-background-light dark:bg-background-dark flex flex-col transition-colors duration-300 font-body">
-      <style>{`
-        .text-metallic {
-          background: linear-gradient(to bottom, #FDE047, #EAB308, #CA8A04);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        .btn-metallic {
-          background: linear-gradient(135deg, #b47d04 0%, #EAB308 20%, #FDE047 50%, #EAB308 80%, #b47d04 100%);
-          background-size: 200% 200%;
-          animation: shine 4s ease-in-out infinite;
-        }
-        @keyframes shine {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .grid-bg {
-          background-size: 24px 24px;
-        }
-        .shadow-glow-gold {
-          box-shadow: 0 0 15px rgba(234, 179, 8, 0.3);
-        }
-        .shadow-inner-gold {
-          box-shadow: inset 0 0 12px rgba(234, 179, 8, 0.1);
-        }
-      `}</style>
-
-      <div className="absolute inset-0 bg-subtle-grain opacity-20 pointer-events-none z-0 mix-blend-overlay"></div>
-      <div className="absolute inset-0 bg-grid-light dark:bg-grid-dark grid-bg opacity-20 pointer-events-none z-0 [mask-image:linear-gradient(to_bottom,black,transparent)]"></div>
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-primary/10 blur-[60px] rounded-full pointer-events-none z-0"></div>
-      
-      <div className="h-6 w-full z-10"></div>
-
-      {/* Header Navigation */}
-      <header className="relative z-10 px-6 pt-6 pb-2">
-        <nav className="flex justify-between items-center gap-2 overflow-x-auto no-scrollbar py-2 px-1">
-          <button 
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-            <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">person</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab(activeTab === 'search' ? null : 'search')}
-            className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-            <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">search</span>
-          </button>
-          <div className="relative w-10 h-10 inline-flex">
-            <button 
-              onClick={() => {
-                setActiveTab(activeTab === 'likes' ? null : 'likes');
-                if (setIncomingRequests) setIncomingRequests([]);
-              }}
-              className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-              <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">favorite</span>
-            </button>
-            {incomingRequests && incomingRequests.length > 0 && (
-              <span
-                className="absolute top-0 right-0 bg-red-500 text-white font-bold rounded-full flex items-center justify-center shadow-lg ring-2 ring-white dark:ring-[#050505] pointer-events-none"
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  minWidth: '20px',
-                  minHeight: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: '#EF4444',
-                  fontSize: '0.75rem',
-                  fontWeight: '700',
-                  lineHeight: '1',
-                  zIndex: '50',
-                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                  transform: 'translate(25%, -25%)',
-                  border: '2px solid white'
-                }}
-              >
-                {incomingRequests.length > 9 ? '9+' : incomingRequests.length}
-              </span>
-            )}
-          </div>
-          <div className="relative w-10 h-10 inline-flex">
-            <button 
-              onClick={() => setActiveTab(activeTab === 'messages' ? null : 'messages')}
-              className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-              <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">chat_bubble</span>
-            </button>
-            {unreadCount > 0 && (
-              <span
-                className="absolute top-0 right-0 bg-red-500 text-white font-bold rounded-full flex items-center justify-center shadow-lg ring-2 ring-white dark:ring-[#050505] pointer-events-none"
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  minWidth: '20px',
-                  minHeight: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: '#EF4444',
-                  fontSize: '0.75rem',
-                  fontWeight: '700',
-                  lineHeight: '1',
-                  zIndex: '50',
-                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                  transform: 'translate(25%, -25%)',
-                  border: '2px solid white'
-                }}
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </div>
-          <button 
-            onClick={() => setActiveTab(activeTab === 'trophy' ? null : 'trophy')}
-            className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-            <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">emoji_events</span>
-          </button>
-          <button 
-            onClick={() => setIsMatchHistoryOpen(!isMatchHistoryOpen)}
-            className="w-10 h-10 rounded-full border border-gray-400 dark:border-primary/40 flex items-center justify-center text-gray-700 dark:text-[#EAB308] hover:bg-gradient-to-b hover:from-primary hover:to-gold-dark hover:text-black hover:border-transparent hover:shadow-glow-gold transition-all duration-300 shrink-0 group relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-            <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform relative z-10">timer</span>
-          </button>
-        </nav>
-      </header>
-
-      {/* Main Content */}
-      <main className="relative z-10 flex-1 flex flex-col items-center px-6 pt-8 pb-6 overflow-y-auto no-scrollbar">
-        {/* Flinxx Logo */}
-        <div className="mb-10 text-center relative">
-          <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full pointer-events-none"></div>
-          <h1 className="font-display text-5xl text-metallic drop-shadow-sm tracking-wide relative z-10">Flinxx</h1>
-        </div>
-
-        {/* Mode Selection Buttons - Hidden */}
-
-        {/* Spacer to push button to center */}
-        <div className="flex-1"></div>
-
-        {/* Start Video Chat Button */}
-        <button 
-          onClick={startVideoChat}
-          disabled={isLoading}
-          className="w-full max-w-[280px] btn-metallic text-gray-950 font-bold text-lg py-4 px-6 rounded-full shadow-[0_0_20px_rgba(234,179,8,0.4)] border-t border-yellow-200/50 flex items-center justify-center gap-3 hover:shadow-[0_0_30px_rgba(234,179,8,0.5)] transform hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all mb-8 relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <div className="absolute inset-0 bg-white/20 skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
-          <span className="material-symbols-outlined text-gray-900 text-3xl relative z-10">movie</span>
-          <span className="relative z-10">{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
-        </button>
-
-        {/* Spacer to push button to center */}
-        <div className="flex-1"></div>
-
-        {/* Camera Preview */}
-        <div className="w-full flex-1 min-h-[220px] rounded-3xl overflow-hidden relative border border-gray-300 dark:border-primary/30 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] group">
-          {children}
-          <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white/90 text-xs font-bold py-1.5 px-3 rounded-full flex items-center gap-2 border border-white/10 shadow-lg ring-1 ring-white/5">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
-            YOU
-          </div>
-        </div>
-      </main>
-    </div>
+    <MobileHome 
+      user={user}
+      onStartChat={startVideoChat}
+      localStreamRef={localStreamRef}
+      cameraStarted={cameraStarted}
+    />
   );
 };
 
@@ -588,17 +406,15 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
                   width: '100%',
                   height: '100%',
                   objectFit: 'cover',
-                  backgroundColor: '#000'
+                  backgroundColor: '#000',
+                  imageRendering: 'auto',
+                  WebkitTransform: 'translateZ(0)',
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                  filter: 'none',
+                  WebkitFilter: 'none'
                 }}
               />
-              {/* Fallback placeholder if no camera */}
-              {!cameraStarted && (
-                <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50">
-                  <div className="text-zinc-600 dark:text-zinc-700 flex flex-col items-center gap-2">
-                    <span className="material-icons-outlined text-6xl opacity-20">videocam_off</span>
-                  </div>
-                </div>
-              )}
               <div className="absolute bottom-6 left-6">
                 <div className="px-4 py-1.5 rounded-full border border-primary/50 bg-black/60 text-primary text-sm font-medium backdrop-blur-sm shadow-lg">
                   You
@@ -861,6 +677,15 @@ const Chat = () => {
       await new Promise(resolve => setTimeout(resolve, 0));
       
       // ✅ STEP 4: Attach stream to video element
+      // Skip on mobile - MobileHome handles its own camera attachment via callback
+      if (window.innerWidth < 769) {
+        console.log('📱 [CAMERA INIT] Mobile detected - skipping desktop video attachment (MobileHome handles camera)');
+        setCameraStarted(true);
+        setIsLocalCameraReady(true);
+        setStreamsReadyTrigger(prev => prev + 1);
+        return;
+      }
+      
       // Wait for sharedVideoRef to be available (CameraPanel must render first)
       let attempts = 0;
       const attachStream = () => {
@@ -3032,15 +2857,36 @@ const Chat = () => {
           @media (max-width: 768px) {
             .main-layout {
               flex-direction: column !important;
-              padding: 1rem !important;
-              gap: 1rem !important;
+              padding: 0.5rem !important;
+              gap: 0.5rem !important;
               overflow: hidden !important;
             }
             .panel-top, .panel-bottom {
-              flex: 1 1 50% !important;
-              height: 50% !important;
+              flex: 1 1 45% !important;
+              height: 45% !important;
               width: 100% !important;
               min-height: 0;
+            }
+            .user-header {
+              padding: 0.75rem !important;
+              gap: 0.5rem !important;
+            }
+            .user-header h2 {
+              font-size: 13px !important;
+            }
+            .user-header span {
+              font-size: 9px !important;
+            }
+            .user-header button {
+              width: 28px !important;
+              height: 28px !important;
+            }
+            .user-header button .material-symbols-outlined {
+              font-size: 16px !important;
+            }
+            .size-10 {
+              width: 28px !important;
+              height: 28px !important;
             }
             .panel-top {
               order: 1;
@@ -3469,6 +3315,8 @@ const Chat = () => {
           unreadCount={unreadCount}
           incomingRequests={incomingRequests}
           setIncomingRequests={setIncomingRequests}
+          localStreamRef={localStreamRef}
+          cameraStarted={cameraStarted}
         >
           {/* ✅ CameraPanel as children - prevents unmounting on prop changes */}
           <CameraPanel videoRef={sharedVideoRef} />

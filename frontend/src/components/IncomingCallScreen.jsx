@@ -146,16 +146,6 @@ const IncomingCallScreen = ({
             className="w-full h-full object-cover"
             style={{ backgroundColor: '#000' }}
           />
-          
-          {/* Finxx.in Logo - Bottom Right Watermark */}
-          <div className="absolute bottom-6 right-6 pointer-events-none">
-            <div className="bg-black/40 border-2 border-yellow-500 rounded-lg px-4 py-2 flex items-center gap-2">
-              <div className="w-6 h-6 bg-yellow-500 rounded flex items-center justify-center text-black font-bold text-sm">
-                F
-              </div>
-              <span className="text-yellow-400 font-semibold text-xs">finxx.in</span>
-            </div>
-          </div>
         </div>
         </div>
       </div>

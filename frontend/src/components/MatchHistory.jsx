@@ -201,7 +201,7 @@ const MatchHistory = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-start justify-start pt-24 pl-8 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-start justify-start pt-24 pl-8 lg:pt-24 lg:pl-8 md:pt-20 md:pl-6 sm:p-4 xs:p-2" onClick={onClose}>
       <style>{`
         .glass-dark {
           background: rgba(30, 41, 59, 0.7);
@@ -272,96 +272,96 @@ const MatchHistory = ({ isOpen, onClose }) => {
         }
       `}</style>
       
-      <div className="relative w-full max-w-lg bg-gradient-to-br from-slate-900 to-slate-950 rounded-3xl shadow-2xl overflow-hidden border border-gray-800 flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+      <div className="relative w-11/12 sm:w-full md:max-w-lg lg:max-w-lg bg-gradient-to-br from-slate-900 to-slate-950 rounded-3xl shadow-2xl overflow-hidden border border-gray-800 flex flex-col max-h-[80vh] sm:max-h-[85vh] lg:max-h-[80vh]" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-800">
-          <h1 className="text-2xl font-bold text-white tracking-tight">Match History</h1>
+        <div className="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4 border-b border-gray-800">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Match History</h1>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-white w-10 h-10 flex items-center justify-center transition-all active:scale-95"
+            className="text-gray-400 hover:text-white w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition-all active:scale-95"
           >
-            <span className="material-symbols-outlined text-3xl">close</span>
+            <span className="material-symbols-outlined text-2xl sm:text-3xl">close</span>
           </button>
         </div>
 
         {/* Matches List */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 sm:px-6 py-3 sm:py-4 space-y-2 sm:space-y-3">
           {isLoading && (
             <div className="flex items-center justify-center py-12">
-              <p className="text-gray-300">Loading your matches...</p>
+              <p className="text-gray-300 text-sm sm:text-base">Loading your matches...</p>
             </div>
           )}
           
           {error && !isLoading && (
             <div className="flex items-center justify-center py-12">
-              <p className="text-red-400">Error loading matches: {error}</p>
+              <p className="text-red-400 text-sm sm:text-base">Error loading matches: {error}</p>
             </div>
           )}
           
           {!isLoading && !error && matches.length === 0 && (
             <div className="flex items-center justify-center py-12">
-              <p className="text-gray-300">No match history yet</p>
+              <p className="text-gray-300 text-sm sm:text-base">No match history yet</p>
             </div>
           )}
           
           {!isLoading && matches.map(match => (
-            <div key={match.id} className="group relative bg-slate-800/40 hover:bg-slate-800 p-4 rounded-2xl border border-gray-800 transition-all duration-300">
-              <div className="flex items-center gap-4">
+            <div key={match.id} className="group relative bg-slate-800/40 hover:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-gray-800 transition-all duration-300">
+              <div className="flex items-center gap-2 sm:gap-4 flex-wrap sm:flex-nowrap">
                 {/* Date & Time */}
-                <div className="flex flex-col min-w-[100px]">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{match.date}</span>
-                  <span className="text-sm font-medium text-gray-300">{match.time}</span>
+                <div className="flex flex-col min-w-[80px] sm:min-w-[100px]">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest">{match.date}</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-300">{match.time}</span>
                   <div className="flex items-center gap-1 mt-1">
-                    <span className="material-symbols-outlined text-[14px] text-indigo-400">schedule</span>
-                    <span className="text-xs font-mono text-indigo-400">{match.duration}</span>
+                    <span className="material-symbols-outlined text-[12px] sm:text-[14px] text-indigo-400">schedule</span>
+                    <span className="text-[10px] sm:text-xs font-mono text-indigo-400">{match.duration}</span>
                   </div>
                 </div>
 
                 {/* Avatar & Name */}
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="relative">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  <div className="relative flex-shrink-0">
                     {match.profileImage ? (
                       <img
                         src={match.profileImage}
                         alt={match.name}
-                        className="w-12 h-12 rounded-full object-cover shadow-lg border-2 border-white/10"
+                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover shadow-lg border-2 border-white/10"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-lg font-bold shadow-lg border-2 border-white/10">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-sm sm:text-lg font-bold shadow-lg border-2 border-white/10 flex-shrink-0">
                         {match.avatar}
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-col">
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <span className="text-lg font-bold text-white leading-tight">{match.name}</span>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0, flexWrap: 'wrap' }}>
+                      <span className="text-sm sm:text-lg font-bold text-white leading-tight truncate">{match.name}</span>
                       {match.hasBlueTick && (
-                        <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '4px', marginTop: '-3px', marginBottom: '-7px', flexShrink: 0, objectFit: 'contain' }} />
+                        <img src="/bluetick.png" alt="Verified" style={{ width: '24px', height: '24px', flexShrink: 0, objectFit: 'contain' }} />
                       )}
                     </div>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                   <div className="has-tooltip">
                     <button 
                       onClick={() => sendFriendRequest(match)}
-                      className="w-9 h-9 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all glow-hover-blue"
+                      className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-all glow-hover-blue flex-shrink-0"
                     >
-                      <span className="material-symbols-outlined text-lg">group</span>
+                      <span className="material-symbols-outlined text-sm sm:text-lg">group</span>
                     </button>
-                    <span className="tooltip">Add Friends</span>
+                    <span className="tooltip text-xs">Add Friends</span>
                   </div>
                   <div className="has-tooltip">
                     <button 
                       onClick={() => deleteMatch(match.id)}
-                      className="w-9 h-9 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all glow-hover-red"
+                      className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all glow-hover-red flex-shrink-0"
                     >
-                      <span className="material-symbols-outlined text-lg">delete</span>
+                      <span className="material-symbols-outlined text-sm sm:text-lg">delete</span>
                     </button>
-                    <span className="tooltip">Delete</span>
+                    <span className="tooltip text-xs">Delete</span>
                   </div>
                 </div>
               </div>

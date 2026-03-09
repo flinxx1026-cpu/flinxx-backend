@@ -364,8 +364,12 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-start z-[9999] p-6 md:p-8" onClick={onClose}>
-      <div className="relative w-full max-w-[320px] bg-white dark:bg-[#1a1d2b] rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 ml-4 md:ml-8" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999] animate-fade-in" onClick={onClose}>
+      <div 
+        className="fixed top-1/2 w-[90vw] sm:w-[360px] max-w-[360px] bg-white dark:bg-[#1a1a2e] rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-[85vh] animate-slide-in-left flex flex-col" 
+        style={{ left: '40px', transform: 'translateY(-50%)' }}
+        onClick={e => e.stopPropagation()}
+      >
         {/* Copied Toast - Positioned at top center */}
         {copyFeedback && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
@@ -383,8 +387,8 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
           <span className="material-symbols-outlined text-xl">close</span>
         </button>
 
-        {/* Content */}
-        <div className="p-6 pt-9 flex flex-col items-center">
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 pt-9 flex flex-col items-center">
           {/* Avatar */}
           <div className="relative mb-4">
             <div className="w-24 h-24 rounded-full border-[3px] border-purple-500 overflow-hidden bg-slate-400 dark:bg-slate-600 flex items-center justify-center shadow-[0_0_15px_1px_rgba(139,92,246,0.4)]">

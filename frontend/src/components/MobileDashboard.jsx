@@ -131,17 +131,25 @@ function MobileDashboard({ onStartVideoChat, onTabClick, localStreamRef, cameraS
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700"
-            style={{ backgroundColor: '#000' }}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            style={{ 
+              backgroundColor: '#000',
+              imageRendering: 'auto',
+              WebkitTransform: 'translateZ(0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              filter: 'none',
+              WebkitFilter: 'none'
+            }}
           />
           {!cameraStarted && (
             <img 
               alt="Selfie camera preview" 
-              className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuCL4aKLR9wxfBpOGbKDML1uPyd01j-nlKQUaqncv8UO0XQPazYIC3UxkLOsQ4PDgqjrzEOT2AXaVO8JyUTprnRNeO1s8ky1zRy097myCLuEQj6BzJU2uGebRocr0ujkDGF_qnErXShu-bOwzbtNyoS-EVw7Zf9SHFx8rC9VEXDImgNPGP33R7AA7N8hdWRucQ4Ml5tRNRrTmvf0GFlkLXU4IzZB9rMakuwP1Qh4f5LtWrFeCFObJe-vYlID5UbKBIxWK75ldAkZvw"
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/40"></div>
+          <div className="absolute inset-0 bg-transparent"></div>
           <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white/90 text-xs font-bold py-1.5 px-3 rounded-full flex items-center gap-2 border border-white/10 shadow-lg ring-1 ring-white/5">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>
             YOU

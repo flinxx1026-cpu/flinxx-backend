@@ -10,11 +10,6 @@ function DesktopWaitingScreen({ onCancelSearch }) {
         {/* Left Side - Your Video */}
         <div className="w-full md:w-1/2 h-full flex flex-col relative group">
           <div className="relative w-full h-full border-2 border-primary/60 dark:border-primary/80 rounded-3xl overflow-hidden bg-black shadow-2xl gold-glow transition-all duration-500 hover:border-primary">
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50">
-              <div className="text-zinc-600 dark:text-zinc-700 flex flex-col items-center gap-2">
-                <span className="material-icons-outlined text-6xl opacity-20">videocam_off</span>
-              </div>
-            </div>
             <div className="absolute bottom-6 left-6">
               <div className="px-4 py-1.5 rounded-full border border-primary/50 bg-black/60 text-primary text-sm font-medium backdrop-blur-sm shadow-lg">
                 You
