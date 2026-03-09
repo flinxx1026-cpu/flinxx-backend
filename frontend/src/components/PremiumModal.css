@@ -8,12 +8,13 @@
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   z-index: 9999;
   backdrop-filter: blur(5px);
   animation: fadeIn 0.3s ease-in-out;
   overflow-y: auto;
   padding: 20px;
+  padding-top: 40px;
 }
 
 @keyframes fadeIn {
@@ -40,6 +41,8 @@
   height: auto !important;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  margin: auto;
 }
 
 @keyframes slideUp {
@@ -356,6 +359,7 @@
 /* Flex Section */
 .flex-section {
   margin-top: 10px !important;
+  padding-top: 20px;
 }
 
 /* Flex Plans Wrapper */
@@ -363,14 +367,15 @@
   width: 100%;
   max-width: 660px;
   margin: 0 auto;
-  padding: 20px 10px;
+  padding: 0 10px;
   display: flex;
   justify-content: center;
+  overflow: visible;
 }
 
 /* Flex Plans Box */
 .flex-plans-box {
-  width: 770px;
+  width: 100%;
   max-width: 660px;
   margin: 0 auto;
 }
@@ -509,7 +514,9 @@
 @media (max-width: 768px) {
   .premium-box {
     width: 95vw;
-    padding: 24px;
+    padding: 24px 20px;
+    max-height: 90vh;
+    overflow-y: auto;
   }
 
   .premium-title {
@@ -540,6 +547,14 @@
 
   .tab-emoji {
     font-size: 14px;
+  }
+
+  .flex-section {
+    padding-top: 20px;
+  }
+
+  .flex-wrapper {
+    padding: 0 12px;
   }
 
   .premium-card {
@@ -594,14 +609,19 @@
 @media (max-width: 600px) {
   .flex-plans-container {
     grid-template-columns: repeat(1, 1fr);
+    gap: 12px;
   }
 
   .flex-card {
-    width: 200px;
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
   }
 
   .premium-box {
-    padding: 20px;
+    padding: 20px 16px;
+    max-height: 85vh;
+    overflow-y: auto;
   }
 
   .premium-title {
@@ -623,8 +643,18 @@
     padding: 8px 10px;
   }
 
+  .flex-section {
+    padding-top: 16px;
+    margin-top: 0;
+  }
+
+  .flex-wrapper {
+    padding: 0 8px;
+  }
+
   .premium-card {
     max-height: 400px;
+    padding: 16px;
   }
 
   .card-header h3 {

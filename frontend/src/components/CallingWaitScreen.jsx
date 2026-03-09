@@ -20,9 +20,16 @@ const CallingWaitScreen = ({
   }, [localStream]);
 
   return (
-    <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black flex items-center justify-center z-50" style={{ height: '100dvh' }}>
       {/* Dot pulse animation */}
       <style>{`
+        html, body, #root {
+          height: 100%;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+        }
+
         @keyframes dot-pulse {
           0%, 100% { opacity: 0.3; }
           50% { opacity: 1; }
@@ -30,9 +37,23 @@ const CallingWaitScreen = ({
         .dot-anim { animation: dot-pulse 1.4s infinite; }
         .dot-anim:nth-child(2) { animation-delay: 0.2s; }
         .dot-anim:nth-child(3) { animation-delay: 0.4s; }
+
+        @media (max-width: 768px) {
+          .calling-main {
+            height: 100dvh;
+            min-h: 100dvh;
+            overflow-y: auto;
+          }
+        }
+
+        @media (min-width: 769px) {
+          .calling-main {
+            height: 100vh;
+          }
+        }
       `}</style>
 
-      <main className="w-full mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-2 gap-8 items-center justify-items-center min-h-screen max-w-6xl">
+      <main className="calling-main w-full mx-auto px-4 md:px-6 py-8 md:py-12 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 items-center justify-items-center max-w-6xl">
         
         {/* LEFT - Recipient Card */}
         <section className="w-full bg-[#1a1a1a] rounded-[2.5rem] border-[1.5px] border-yellow-400 relative flex flex-col items-center justify-center p-8 aspect-square">

@@ -163,9 +163,9 @@ const Search = ({ isModal = false, onClose = null }) => {
   if (isModal) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div className="bg-slate-800/95 backdrop-blur-md rounded-3xl p-8 border border-white/10 w-full max-w-sm shadow-2xl relative max-h-[80vh] overflow-y-auto">
+        <div className="bg-slate-800/95 backdrop-blur-md rounded-3xl p-4 md:p-8 border border-white/10 w-full max-w-sm shadow-2xl relative max-h-[75vh] md:max-h-[85vh] overflow-y-auto">
           {/* Header with Close Button */}
-          <div className="flex items-center justify-between mb-6 sticky top-0 bg-slate-800/95 pb-4">
+          <div className="flex items-center justify-between mb-4 md:mb-6 sticky top-0 bg-slate-800/95 pb-4">
             <h2 className="text-2xl font-bold text-white">Search Friends</h2>
             <button
               onClick={onClose}
@@ -176,7 +176,7 @@ const Search = ({ isModal = false, onClose = null }) => {
           </div>
 
           {/* Search Input */}
-          <div className="mb-6">
+          <div className="mb-4 md:mb-6">
             <div className="relative">
               <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-400">
                 🔍
@@ -186,7 +186,7 @@ const Search = ({ isModal = false, onClose = null }) => {
                 value={searchQuery}
                 onChange={handleInputChange}
                 placeholder="Search a friend by ID"
-                className="w-full bg-white/10 border border-white/30 rounded-2xl px-12 py-3 text-white placeholder-white/50 focus:outline-none focus:border-blue-400/60 focus:ring-1 focus:ring-blue-400/30 transition"
+                className="w-full bg-white/10 border border-white/30 rounded-2xl px-12 py-2 md:py-3 text-white placeholder-white/50 focus:outline-none focus:border-blue-400/60 focus:ring-1 focus:ring-blue-400/30 transition"
                 autoFocus
               />
             </div>
@@ -219,11 +219,11 @@ const Search = ({ isModal = false, onClose = null }) => {
             {searchResults.map((user, index) => (
               <div
                 key={`user-${user.publicId}-${index}`}
-                className="bg-white/5 hover:bg-white/10 rounded-2xl p-4 cursor-pointer transition border border-white/10"
+                className="bg-white/5 hover:bg-white/10 rounded-2xl p-3 md:p-4 cursor-pointer transition border border-white/10"
               >
-                <div className="flex items-center gap-4 justify-between">
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-lg overflow-hidden flex-shrink-0">
+                <div className="flex items-center gap-3 md:gap-4 justify-between">
+                  <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                    <div className="w-10 md:w-12 h-10 md:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-lg overflow-hidden flex-shrink-0">
                       {user.avatar && user.avatar.startsWith('http') ? (
                         <img
                           src={user.avatar}

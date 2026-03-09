@@ -28,7 +28,10 @@
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 0 50px -12px rgba(255, 217, 0, 0.15);
-  overflow: hidden;
+  overflow-y: auto;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Header */
@@ -191,21 +194,72 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .subscriptions-page {
+    padding: 12px;
+  }
+
+  .subscriptions-modal {
+    max-height: 80vh;
+    max-width: 100%;
+  }
+
+  .subscriptions-header {
+    padding: 16px 16px;
+  }
+
   .subscriptions-content {
-    padding: 24px 16px;
+    padding: 16px 12px;
+    overflow-y: auto;
+    flex: 1;
   }
 
   .plans-grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 12px;
   }
 
   .plan-card {
-    padding: 24px;
+    padding: 16px;
+    gap: 12px;
   }
 
   .subscriptions-title {
-    font-size: 20px;
+    font-size: 18px;
+  }
+
+  .plan-icon {
+    font-size: 24px;
+  }
+
+  .plan-title {
+    font-size: 16px;
+  }
+
+  .plan-price-amount {
+    font-size: 24px;
+  }
+
+  .plan-price-period {
+    font-size: 12px;
+  }
+
+  .plan-features-list {
+    gap: 10px;
+  }
+
+  .plan-feature-item {
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  .plan-check-icon {
+    font-size: 16px;
+  }
+
+  .plan-button {
+    height: 40px;
+    font-size: 12px;
+    margin-top: 8px;
   }
 }
 

@@ -120,35 +120,44 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
     <div className="mobile-home-container" style={{ background: '#000', margin: 0, padding: 0 }}>
       <style>{`
         html {
+          height: 100%;
           margin: 0;
           padding: 0;
           background: #000;
+          overflow: hidden;
         }
 
         body {
+          height: 100%;
           margin: 0;
           padding: 0;
           background: #000;
-          overflow-x: hidden;
-          overflow-y: auto;
-          min-height: 100vh;
+          overflow: hidden;
+        }
+
+        #root {
+          height: 100%;
+          margin: 0;
+          overflow: hidden;
         }
 
         .mobile-home-container {
           width: 100%;
+          height: 100dvh;
           background: #000;
           display: flex;
           flex-direction: column;
           align-items: center;
-          min-height: 100%;
+          overflow: hidden;
         }
 
         /* NAVBAR */
         .top-icons {
           display: flex;
           justify-content: center;
-          gap: 16px;
-          padding-top: 15px;
+          align-items: center;
+          gap: 12px;
+          padding: 20px 16px 12px;
           width: 100%;
           overflow: visible;
         }
@@ -159,9 +168,9 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
         }
 
         .top-icons .icon {
-          width: 42px;
-          height: 42px;
-          border: 2px solid #f4b400;
+          width: 40px;
+          height: 40px;
+          border: 1.5px solid #d4af37;
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -169,10 +178,12 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
           color: white;
           cursor: pointer;
           transition: all 0.3s ease;
+          font-size: 18px;
         }
 
         .top-icons .icon:hover {
-          box-shadow: 0 0 15px rgba(244, 180, 0, 0.6);
+          box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+          transform: scale(1.05);
         }
 
         /* Badge styling for mobile icons */
@@ -186,21 +197,28 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
 
         /* PROFILE IMAGE */
         .profile {
-          width: 42px;
-          height: 42px;
+          width: 40px;
+          height: 40px;
           border-radius: 50%;
           object-fit: cover;
-          border: 2px solid #f4b400;
+          border: 1.5px solid #d4af37;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .profile:hover {
+          box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
         }
 
         /* TITLE */
         .logo {
           text-align: center;
           color: #d4af37;
-          font-size: 48px;
-          margin-top: 10px;
-          font-weight: bold;
-          margin-bottom: 0;
+          font-size: 60px;
+          margin: 16px 0 12px 0;
+          font-weight: 700;
+          font-family: 'Playfair Display', 'Georgia', serif;
+          letter-spacing: -1px;
         }
 
         /* BUTTON */
@@ -210,28 +228,34 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
           justify-content: center;
           gap: 12px;
           width: 85%;
-          height: 65px;
-          margin: 20px auto 25px auto;
-          font-size: 20px;
-          font-weight: 600;
+          max-width: 340px;
+          height: 56px;
+          margin: 24px auto 32px auto;
+          font-size: 18px;
+          font-weight: 700;
           color: black;
-          background: linear-gradient(180deg, #ffd54f, #f4a300);
+          background: linear-gradient(to bottom, #fcd34d, #f59e0b);
           border: none;
-          border-radius: 40px;
-          box-shadow: 0 0 25px rgba(255, 180, 0, 0.7);
+          border-radius: 50px;
+          box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
           cursor: pointer;
           transition: all 0.3s ease;
+          font-family: 'Inter', sans-serif;
         }
 
         .start-video-btn:hover {
-          box-shadow: 0 0 35px rgba(255, 180, 0, 0.9);
-          transform: scale(1.02);
+          box-shadow: 0 0 30px rgba(245, 158, 11, 0.6);
+          transform: translateY(-2px);
+        }
+
+        .start-video-btn:active {
+          transform: scale(0.98);
         }
 
         /* CAMERA ICON */
         .video-icon {
-          width: 22px;
-          height: 22px;
+          width: 24px;
+          height: 24px;
           background: black;
           mask: url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/camera-video-fill.svg') no-repeat center;
           mask-size: contain;
@@ -243,11 +267,15 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
         .video-container {
           position: relative;
           width: 92%;
-          margin: 40px auto 0 auto;
-          aspect-ratio: 3 / 4;
-          border-radius: 25px;
+          max-width: 360px;
+          margin: 0 auto 16px auto;
+          aspect-ratio: 4 / 5;
+          border-radius: 60px;
           overflow: hidden;
           background: #111;
+          border: 1px solid rgba(212, 175, 55, 0.3);
+          box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.2);
+          max-height: calc(100dvh - 280px);
         }
 
         .video-container video {
@@ -259,54 +287,61 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
         /* YOU LABEL */
         .you-label {
           position: absolute;
-          bottom: 15px;
-          left: 15px;
-          background: #1c1c1c;
+          bottom: 24px;
+          left: 24px;
+          background: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
           color: white;
-          padding: 6px 14px;
+          padding: 8px 16px;
           border-radius: 20px;
-          font-size: 14px;
+          font-size: 12px;
+          font-weight: 700;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           z-index: 10;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          font-family: 'Inter', sans-serif;
         }
 
         .you-dot {
-          width: 8px;
-          height: 8px;
-          background: #00ff66;
+          width: 6px;
+          height: 6px;
+          background: #22c55e;
           border-radius: 50%;
+          box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
         }
 
         /* MOBILE SCROLL - Only on mobile devices */
         @media (max-width: 768px) {
-          body {
-            min-height: 100vh;
-            height: auto;
-            overflow-y: auto !important;
+          .mobile-home-container {
+            height: 100dvh;
+            padding-top: 0;
           }
 
-          .mobile-home-container {
-            min-height: auto;
-            overflow: visible;
+          .top-icons {
+            gap: 10px;
+          }
+
+          .start-video-btn {
+            height: 52px;
+            font-size: 16px;
           }
         }
 
-        /* DESKTOP - No scroll */
+        /* DESKTOP - Optimized for small screens */
         @media (min-width: 769px) {
-          body {
+          .mobile-home-container {
             height: 100vh;
-            overflow: hidden;
+            max-width: 430px;
+            margin: 0 auto;
           }
 
-          .mobile-home-container {
-            min-height: 100vh !important;
-            max-height: 100vh !important;
-            overflow: hidden !important;
-            width: 100% !important;
-            max-width: 430px !important;
-            margin: 0 auto !important;
+          .top-icons {
+            gap: 14px;
           }
         }
       `}</style>

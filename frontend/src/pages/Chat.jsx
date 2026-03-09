@@ -2819,7 +2819,7 @@ const Chat = () => {
     if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
       console.log('⏳ Chat: Waiting for valid user UUID from AuthContext...');
       return (
-        <div style={{ width: '100%', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
+        <div style={{ width: '100%', height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
           <div style={{ textAlign: 'center', color: '#fff' }}>
             <div style={{ fontSize: '18px', marginBottom: '16px' }}>Loading...</div>
             <div style={{ fontSize: '12px', color: '#999' }}>Initializing authentication...</div>
@@ -2861,9 +2861,15 @@ const Chat = () => {
               gap: 0.5rem !important;
               overflow: hidden !important;
             }
-            .panel-top, .panel-bottom {
-              flex: 1 1 45% !important;
-              height: 45% !important;
+            .panel-top {
+              flex: 1 1 40% !important;
+              height: 40% !important;
+              width: 100% !important;
+              min-height: 0;
+            }
+            .panel-bottom {
+              flex: 1 1 40% !important;
+              height: 40% !important;
               width: 100% !important;
               min-height: 0;
             }
@@ -3197,7 +3203,7 @@ const Chat = () => {
                 )}
 
                 {/* Message Input */}
-                <div style={{ marginTop: 'auto', width: '100%', padding: '16px', zIndex: 10 }}>
+                <div style={{ marginTop: 'auto', width: '100%', padding: '8px 16px 16px 16px', zIndex: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: 'rgba(17, 17, 17, 0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', height: '56px', paddingLeft: '12px', paddingRight: '12px' }}>
                     <input
                       type="text"
@@ -3288,7 +3294,7 @@ const Chat = () => {
   };
 
   return (
-    <div style={{ width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
+    <div style={{ width: '100%', height: '100dvh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
       {/* 🧪 DEBUG: Log UI state and which screen should render */}
       {console.log('🎨 [RENDER] UI STATE →', { isSearching, partnerFound }, 'Should show:', isSearching && !partnerFound ? 'WAITING SCREEN' : partnerFound ? 'VIDEO CHAT' : 'DASHBOARD')}
 
@@ -3297,7 +3303,7 @@ const Chat = () => {
       {/* Other screens overlay on top with absolute positioning */}
 
       {/* Dashboard with Camera - ALWAYS MOUNTED in background */}
-      <div className="w-full h-screen overflow-hidden relative">
+      <div className="w-full" style={{ height: '100dvh', overflow: 'hidden', position: 'relative' }}>
         {console.log('🎨 [RENDER] Showing DASHBOARD')}
         <IntroScreen 
           user={user}
