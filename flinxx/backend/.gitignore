@@ -1,0 +1,18 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+# Firebase service account - NEVER commit this file
+firebase-service-account.json
+flinx-8a05e-firebase-adminsdk-fbsvc-b87965e6cf.json
+
+# Build & logs
+dist
+*.log
+npm-debug.log*
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo

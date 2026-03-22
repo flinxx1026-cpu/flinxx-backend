@@ -1,0 +1,34 @@
+[
+  {
+    "column_name": "id",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "column_name": "reporter_id",
+    "column_default": null
+  },
+  {
+    "column_name": "reported_user_id",
+    "column_default": null
+  },
+  {
+    "column_name": "created_at",
+    "column_default": "CURRENT_TIMESTAMP"
+  },
+  {
+    "column_name": "updated_at",
+    "column_default": "CURRENT_TIMESTAMP"
+  },
+  {
+    "column_name": "status",
+    "column_default": "'pending'::character varying"
+  },
+  {
+    "column_name": "reason",
+    "column_default": null
+  },
+  {
+    "column_name": "description",
+    "column_default": null
+  }
+]

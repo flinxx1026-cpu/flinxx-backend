@@ -1,0 +1,19 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Yellow background circle -->
+  <circle cx="50" cy="50" r="45" fill="#FFD700"/>
+  
+  <!-- Crown shape -->
+  <g transform="translate(50, 35)">
+    <!-- Left prong -->
+    <polygon points="0,0 -8,-15 -5,-5" fill="#FFA500"/>
+    <!-- Center prong (tallest) -->
+    <polygon points="0,0 0,-22 4,-8" fill="#FFD700"/>
+    <!-- Right prong -->
+    <polygon points="0,0 8,-15 5,-5" fill="#FFA500"/>
+    <!-- Base -->
+    <rect x="-12" y="-5" width="24" height="6" fill="#FFA500" rx="2"/>
+  </g>
+  
+  <!-- Shine effect -->
+  <circle cx="35" cy="30" r="8" fill="white" opacity="0.3"/>
+</svg>
