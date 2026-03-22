@@ -165,7 +165,7 @@ router.post('/create-order', async (req, res) => {
         customer_phone: (user.phone_number || '9999999999').toString().replace(/[^0-9]/g, ''),
       },
       order_note: `${plan.name} subscription for Flinxx`,
-      return_url: `${BASE_URL}/payment-success`,
+      return_url: `${BASE_URL}/payment-success?orderId={order_id}`,
       notify_url: `${BASE_URL}/api/payments/webhook`,
     };
 
@@ -337,7 +337,7 @@ router.post('/get-payment-link', async (req, res) => {
         customer_phone: (user.phone_number || '9999999999').toString().replace(/[^0-9]/g, ''),
       },
       order_note: `${plan.name} subscription for Flinxx`,
-      return_url: `${BASE_URL}/payment-success`,
+      return_url: `${BASE_URL}/payment-success?orderId={order_id}`,
       notify_url: `${BASE_URL}/api/payments/webhook`,
     };
 
