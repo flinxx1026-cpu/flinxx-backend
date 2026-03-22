@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 
 const Search = ({ isModal = false, onClose = null }) => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -6,7 +6,7 @@ const Search = ({ isModal = false, onClose = null }) => {
   const [isSearching, setIsSearching] = useState(false)
   const [friendRequestStates, setFriendRequestStates] = useState({})
   const [sendingRequest, setSendingRequest] = useState(null)
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+  const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
   const getCurrentUser = () => {
     try {
@@ -160,6 +160,7 @@ const Search = ({ isModal = false, onClose = null }) => {
     handleSearch(value)
   }
 
+  // ✅ Return conditional JSX - avoid hooks violation from early return
   if (isModal) {
     return (
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -179,7 +180,10 @@ const Search = ({ isModal = false, onClose = null }) => {
           <div className="mb-4 md:mb-6">
             <div className="relative">
               <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-400">
-                🔍
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
               </div>
               <input
                 type="text"

@@ -1,6 +1,7 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import React from 'react'
+import { FaUser, FaSearch, FaHeart, FaComment, FaTrophy, FaClock } from 'react-icons/fa'
 import ProfileModal from '../components/ProfileModal'
 import SearchFriendsModal from '../components/SearchFriendsModal'
 import SubscriptionsPage from '../components/SubscriptionsPage'
@@ -359,19 +360,19 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
           />
         ) : (
           <div className="icon" onClick={handleProfileClick} title="Profile">
-            <i className="material-icons-round">person</i>
+            <FaUser size={20} />
           </div>
         )}
         
         {/* Search Icon */}
         <div className="icon" onClick={handleSearchClick} title="Search" style={{ cursor: 'pointer' }}>
-          <i className="material-icons-round">search</i>
+          <FaSearch size={20} />
         </div>
         
         {/* Heart Icon */}
         <div style={{ position: 'relative', overflow: 'visible' }}>
           <div className="icon" onClick={handleFavoritesClick} title="Likes" style={{ cursor: 'pointer' }}>
-            <i className="material-icons-round">favorite</i>
+            <FaHeart size={20} />
           </div>
           {incomingRequests && incomingRequests.length > 0 && (
             <span
@@ -403,7 +404,7 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
         {/* Message Icon */}
         <div style={{ position: 'relative', overflow: 'visible' }}>
           <div className="icon" onClick={handleMessagesClick} title="Messages" style={{ cursor: 'pointer' }}>
-            <i className="material-icons-round">mail</i>
+            <FaComment size={20} />
           </div>
           {unreadCount > 0 && (
             <span
@@ -434,12 +435,12 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
         
         {/* Trophy Icon */}
         <div className="icon" onClick={handleAwardsClick} title="Awards" style={{ cursor: 'pointer' }}>
-          <i className="material-icons-round">emoji_events</i>
+          <FaTrophy size={20} />
         </div>
         
         {/* Timer Icon */}
         <div className="icon" onClick={handleMatchHistoryClick} title="History" style={{ cursor: 'pointer' }}>
-          <i className="material-icons-round">timer</i>
+          <FaClock size={20} />
         </div>
       </div>
 

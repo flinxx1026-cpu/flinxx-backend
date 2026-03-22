@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useContext } from 'react';
+﻿import React, { useEffect, useRef, useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import useDirectCallWebRTC from '../hooks/useDirectCallWebRTC';
 
@@ -10,10 +10,13 @@ const IncomingCallScreen = ({
   isLoading = false,
   localStream = null,  // ✅ Accept MediaStream directly
   directCallData = null,  // ✅ NEW: Call metadata (callerId, receiverId, etc)
+  isFriend = false,  // ✅ NEW: Friend status for icon display
 }) => {
   const { user } = useContext(AuthContext);
   const localVideoPreviewRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const [actualFriendStatus, setActualFriendStatus] = useState(isFriend);
+  const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
   // ✅ Determine if current user is the caller
   const isCurrentUserCaller = directCallData?.callerId === user?.uuid;
@@ -24,6 +27,45 @@ const IncomingCallScreen = ({
   const partnerName = isCurrentUserCaller 
     ? (directCallData?.recipientName || 'Waiting for answer...')  // Show receiver's name (recipientName)
     : (callerName || 'Unknown User');  // Receiver sees caller's name
+
+  // ✅ Get the other user's ID (not current user)
+  const otherUserId = isCurrentUserCaller ? directCallData?.receiverId : directCallData?.callerId;
+
+  // ✅ FETCH ACTUAL FRIEND STATUS when call is active
+  useEffect(() => {
+    if (!otherUserId || !user?.uuid) return;
+
+    // If isFriend was already passed as true, use it
+    if (isFriend) {
+      setActualFriendStatus(true);
+      return;
+    }
+
+    // Otherwise, fetch friend status from API
+    const checkFriendStatus = async () => {
+      try {
+        // Check if the other user is in the current user's friends list
+        const response = await fetch(`${BACKEND_URL}/api/friends/${user.uuid}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (response.ok) {
+          const friendsList = await response.json();
+          const isFriendsNow = Array.isArray(friendsList) && 
+            friendsList.some(f => f.id === otherUserId || f.uuid === otherUserId);
+          setActualFriendStatus(isFriendsNow);
+        }
+      } catch (error) {
+        console.log('Error checking friend status:', error);
+        // Default to isFriend prop if fetch fails
+        setActualFriendStatus(isFriend);
+      }
+    };
+
+    checkFriendStatus();
+  }, [otherUserId, user?.uuid, isFriend]);
 
   // ✅ Initialize WebRTC for direct call
   useDirectCallWebRTC({
@@ -69,17 +111,6 @@ const IncomingCallScreen = ({
               <p className="text-yellow-400 text-xs font-medium">You</p>
             </div>
           </div>
-          
-          {/* End Call Button */}
-          <div className="absolute top-6 right-6 z-20">
-            <button 
-              onClick={onReject}
-              disabled={isLoading}
-              className="w-12 h-12 bg-red-700 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-2xl transition-all duration-200 border border-white/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="material-symbols-outlined text-2xl">call_end</span>
-            </button>
-          </div>
 
           {/* Show local camera if available, otherwise show placeholder */}
           {localStream ? (
@@ -124,18 +155,30 @@ const IncomingCallScreen = ({
         <div className="relative bg-black border-2 border-yellow-600 rounded-2xl flex flex-col overflow-hidden">
           
           {/* Header with Caller Info */}
-          <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/80 to-transparent p-4 flex items-center gap-4">
-            {/* Avatar */}
-            <div className="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-600/50 border-2 border-white/20">
-              {callerAvatar || partnerName?.charAt(0).toUpperCase() || 'U'}
+          <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-b from-black/80 to-transparent p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              {/* Avatar */}
+              <div className="w-12 h-12 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-600/50 border-2 border-white/20">
+                {callerAvatar || partnerName?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              
+              {/* Caller Name and Status */}
+              <div>
+                <h2 className="text-white font-bold text-lg leading-tight">
+                  {partnerName}
+                </h2>
+              </div>
             </div>
-            
-            {/* Caller Name and Status */}
-            <div>
-              <h2 className="text-white font-bold text-lg leading-tight">
-                {partnerName}
-              </h2>
-            </div>
+
+            {/* End Call Button */}
+            <button 
+              onClick={onReject}
+              disabled={isLoading}
+              className="w-12 h-12 bg-red-700 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-2xl transition-all duration-200 border-2 border-white/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="End Call"
+            >
+              <span className="material-symbols-outlined text-2xl">call_end</span>
+            </button>
           </div>
           
           {/* Remote video element */}

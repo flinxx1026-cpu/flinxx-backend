@@ -1,8 +1,8 @@
-import React, { useContext } from 'react';
+﻿import React, { useContext } from 'react';
 import { useUnread } from '../context/UnreadContext';
 import { AuthContext } from '../context/AuthContext';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
 const TopActions = ({ 
   currentUser, 

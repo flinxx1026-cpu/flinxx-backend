@@ -23,7 +23,7 @@ const Auth = () => {
     setIsLoading(true)
     setAuthMethod('google')
     setError(null)
-    
+
     try {
       console.log('📱 Starting Google login...')
       await signInWithGoogle()
@@ -45,7 +45,7 @@ const Auth = () => {
     setIsLoading(true)
     setAuthMethod('facebook')
     setError(null)
-    
+
     try {
       console.log('📱 Starting Facebook login...')
       await signInWithFacebook()
@@ -69,7 +69,7 @@ const Auth = () => {
       startedAt: new Date().getTime(),
       expiresAt: new Date().getTime() + 120000 // 2 minutes
     }
-    
+
     // Store guest session info
     localStorage.setItem('isGuest', 'true')
     localStorage.setItem('guestSession', JSON.stringify(guestSession))
@@ -79,7 +79,7 @@ const Auth = () => {
       displayName: 'Guest User',
       authProvider: 'guest'
     }))
-    
+
     // Redirect to chat - guest timer will run there
     window.location.href = '/chat'
   }
@@ -124,11 +124,10 @@ const Auth = () => {
             <button
               onClick={handleGoogleLogin}
               disabled={isLoading}
-              className={`w-full flex items-center justify-center gap-3 px-6 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-2xl ${
-                isLoading && authMethod === 'google'
+              className={`w-full flex items-center justify-center gap-3 px-6 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-2xl ${isLoading && authMethod === 'google'
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-white hover:bg-gray-50 text-gray-900'
-              }`}
+                }`}
             >
               {isLoading && authMethod === 'google' ? (
                 <>
@@ -146,11 +145,10 @@ const Auth = () => {
             <button
               onClick={handleFacebookLogin}
               disabled={isLoading}
-              className={`w-full flex items-center justify-center gap-4 px-6 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-2xl ${
-                isLoading && authMethod === 'facebook'
+              className={`w-full flex items-center justify-center gap-4 px-6 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-2xl ${isLoading && authMethod === 'facebook'
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
+                }`}
             >
               {isLoading && authMethod === 'facebook' ? (
                 <>
@@ -178,11 +176,10 @@ const Auth = () => {
           <button
             onClick={handleGuestLogin}
             disabled={isLoading}
-            className={`w-full px-6 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 ${
-              isLoading && authMethod === 'guest'
+            className={`w-full px-6 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 ${isLoading && authMethod === 'guest'
                 ? 'bg-gray-500/30 cursor-not-allowed text-gray-400'
                 : 'bg-white/20 hover:bg-white/30 border-2 border-white/50 text-white'
-            }`}
+              }`}
           >
             {isLoading && authMethod === 'guest' ? (
               <>
@@ -201,7 +198,6 @@ const Auth = () => {
             <a
               href="/terms"
               className="text-white/70 hover:text-white underline"
-              onClick={(e) => { e.preventDefault(); window.location.href = '/terms'; }}
             >
               TERMS & CONDITIONS
             </a>
@@ -209,9 +205,8 @@ const Auth = () => {
             <a
               href="/privacy-policy"
               className="text-white/70 hover:text-white underline"
-              onClick={(e) => { e.preventDefault(); window.location.href = '/privacy-policy'; }}
             >
-              Privacy Policy
+              PRIVACY POLICY
             </a>
           </p>
 

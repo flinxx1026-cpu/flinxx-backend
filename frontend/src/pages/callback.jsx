@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ProfileSetupModal from "../components/ProfileSetupModal";
 
@@ -41,7 +41,11 @@ export default function Callback() {
           console.log("✅ User data saved:", user);
 
           // Check if profile is completed
-          if (!user.profileCompleted) {
+          // Profile is complete if: profileCompleted is true OR user has profile data (birthday + gender)
+          const hasProfileData = user.birthday && user.gender
+          const isProfileComplete = user.profileCompleted === true || hasProfileData
+          
+          if (!isProfileComplete) {
             console.log("ℹ️ Profile not completed, showing setup modal");
             setUserData(user);
             setShowProfileSetup(true);

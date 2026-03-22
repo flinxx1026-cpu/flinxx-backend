@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import socket from '../services/socketService'
 
 export const useWebRTC = (socketId, onRemoteStream) => {
@@ -24,22 +24,23 @@ export const useWebRTC = (socketId, onRemoteStream) => {
   }
 
   const createPeerConnection = async () => {
-    const res = await fetch("https://flinxx-admin-backend.onrender.com/api/get-turn-credentials", {
+    const res = await fetch(import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL + "/api/get-turn-credentials", {
       method: "POST"
     });
     const data = await res.json();
     
-    // ✅ Enhanced TURN configuration to force TURN when STUN fails
-    // Include explicit STUN + TURN servers with username/credential
+    // ✅ ICE configuration with self-hosted TURN on EC2
     const iceServers = [
       {
+        urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"],
+      },
+      {
         urls: [
-          "stun:global.xirsys.net",
-          "turn:global.xirsys.net:3478?transport=udp",
-          "turn:global.xirsys.net:3478?transport=tcp"
+          "turn:15.206.146.133:3478?transport=udp",
+          "turn:15.206.146.133:3478?transport=tcp"
         ],
-        username: "nkhlvdv",
-        credential: "a8e244b8-cf5b-11f0-8771-0242ac140002"
+        username: "test",
+        credential: "test123"
       },
       ...(data.iceServers || []) // Add servers from API as backup
     ];

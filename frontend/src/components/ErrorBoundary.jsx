@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 
 /**
  * ErrorBoundary component for handling errors in React

@@ -1,5 +1,5 @@
 import ErrorBoundary from './ErrorBoundary'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import React, { Suspense, lazy } from 'react'
 import Home from '../pages/Home'
 import Login from '../pages/Login'
@@ -12,9 +12,15 @@ import GoogleCallback from '../pages/GoogleCallback'
 import FacebookCallback from '../pages/FacebookCallback'
 import OAuthHandler from '../pages/OAuthHandler'
 import OAuthSuccess from '../pages/oauth-success'
-import Terms from '../pages/Terms'
+import OAuthCallbackHandler from '../pages/OAuthCallbackHandler'
 import PrivacyPolicy from '../pages/PrivacyPolicy'
+import Terms from '../pages/Terms'
+import CommunityGuidelines from '../pages/CommunityGuidelines'
+import About from '../pages/About'
+import Contact from '../pages/Contact'
+import PaymentSuccessHandler from './PaymentSuccessHandler'
 import ProtectedChatRoute from './ProtectedChatRoute'
+import VideoMatchingTestPage from '../pages/VideoMatchingTest'
 import { DuoSquadProvider, useDuoSquad } from '../context/DuoSquadContext'
 import GlobalFriendRequestPopup from './GlobalFriendRequestPopup'
 import GlobalCallPopup from './GlobalCallPopup'
@@ -30,10 +36,18 @@ const DuoPanel = lazy(() => import('./DuoPanel'))
 
 function LayoutContent() {
   const { isDuoSquadOpen, closeDuoSquad } = useDuoSquad();
-  const { accountWarning, setAccountWarning } = useAuth();
+  const { isAuthenticated, accountWarning, setAccountWarning, user } = useAuth();
+  const location = useLocation();
   
-  console.log('🔍 [LAYOUT] isDuoSquadOpen:', isDuoSquadOpen);
-  console.log('🔍 [LAYOUT] accountWarning:', accountWarning);
+  // ✅ Route visibility logic
+  const isBanned = user?.isBanned || accountWarning?.type === 'banned';
+  const isPublicPage = ['/', '/login', '/community-guidelines'].includes(location.pathname);
+  
+  // Modal sirf logged-in banned/warned users ko hi protected routes pe dikhna chahiye
+  const showWarningModal = isAuthenticated && (!!accountWarning || isBanned) && !isPublicPage;
+
+  console.log('🔍 [LAYOUT] isBanned:', isBanned);
+  console.log('🔍 [LAYOUT] showWarningModal:', showWarningModal);
 
   const handleCloseWarning = () => {
     console.log('✅ [LAYOUT] Closing warning modal');
@@ -55,9 +69,9 @@ function LayoutContent() {
         <GlobalCallPopup />
       </div>
 
-      {/* ⚠️ ACCOUNT WARNING MODAL - Shows on ANY screen */}
+      {/* ⚠️ ACCOUNT WARNING MODAL */}
       <WarningModal 
-        isOpen={!!accountWarning} 
+        isOpen={showWarningModal} 
         onClose={handleCloseWarning}
         warningData={accountWarning}
       />
@@ -94,18 +108,24 @@ function LayoutContent() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/terms-and-conditions" element={<Terms />} />
+          <Route path="/community-guidelines" element={<CommunityGuidelines />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/callback" element={<Callback />} />
           <Route path="/auth-success" element={<AuthSuccess />} />
           <Route path="/auth/google/callback" element={<GoogleCallback />} />
           <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
           <Route path="/oauth-handler" element={<OAuthHandler />} />
           <Route path="/oauth-success" element={<OAuthSuccess />} />
+          <Route path="/oauth-callback-handler" element={<OAuthCallbackHandler />} />
+          <Route path="/payment-success" element={<PaymentSuccessHandler />} />
+          <Route path="/subscription-success" element={<PaymentSuccessHandler />} />
           <Route path="/chat" element={<ProtectedChatRoute><Suspense fallback={<div style={{ width: '100%', minHeight: '100vh', background: '#000' }} />}><Chat /></Suspense></ProtectedChatRoute>} />
           <Route path="/dashboard" element={<ProtectedChatRoute><Suspense fallback={<div style={{ width: '100%', minHeight: '100vh', background: '#000' }} />}><Chat /></Suspense></ProtectedChatRoute>} />
           <Route path="/matching" element={<Matching />} />
+          <Route path="/test-matching" element={<VideoMatchingTestPage />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 
 const BirthdayPicker = ({ value, onChange, maxDate }) => {
   // Format maxDate to YYYY-MM-DD for the date input max attribute

@@ -1,5 +1,6 @@
-import React from 'react'
+﻿import React from 'react'
 import './DesktopWaitingScreen.css'
+import AnimatedWaitingText from './AnimatedWaitingText'
 
 function DesktopWaitingScreen({ onCancelSearch }) {
   return (
@@ -30,9 +31,10 @@ function DesktopWaitingScreen({ onCancelSearch }) {
               </div>
             </div>
             <div className="space-y-3">
-              <h1 className="text-3xl md:text-4xl font-bold text-primary gold-text-glow tracking-tight">
-                Looking for a partner...
-              </h1>
+              <AnimatedWaitingText 
+                as="h1"
+                className="text-3xl md:text-4xl font-bold text-primary gold-text-glow tracking-tight"
+              />
               <p className="text-primary/70 text-lg md:text-xl font-light">
                 Matching you with someone nearby
               </p>

@@ -1,8 +1,8 @@
-// 🚀 QUICK INVITE SERVICE - Real-time popup invites (NO pending requests)
+﻿// 🚀 QUICK INVITE SERVICE - Real-time popup invites (NO pending requests)
 // Used by profile icon for instant friend invites
 // Different from SearchModal which creates pending requests
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
 /**
  * 🚀 Send a quick friend invite (real-time popup, no pending request)

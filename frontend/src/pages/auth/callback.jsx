@@ -39,7 +39,7 @@ const Callback = () => {
 
         // Fetch user profile from backend using token
         console.log('📡 Fetching user profile...')
-        fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/profile`, {
+        fetch(`${import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL}/api/profile`, {
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

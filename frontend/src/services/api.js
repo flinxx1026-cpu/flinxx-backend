@@ -1,20 +1,32 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+﻿const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
 /**
- * Get auth token from localStorage
+ * Get auth token from localStorage with fallback keys
  * ✅ Used by ALL protected API endpoints
  */
-const getToken = () => localStorage.getItem('token');
+const getToken = () => {
+  const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+  console.log("TOKEN:", token);
+  return token;
+};
 
 /**
  * Create headers with Authorization token
  * ✅ Use this for consistency across all API calls
  */
-const getAuthHeaders = (customHeaders = {}) => ({
-  'Authorization': `Bearer ${getToken()}`,
-  'Content-Type': 'application/json',
-  ...customHeaders
-});
+const getAuthHeaders = (customHeaders = {}) => {
+  const token = getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...customHeaders
+  };
+  
+  if (token && token !== 'null' && token !== 'undefined') {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
 
 /**
  * Fetch accepted friends for the message panel
@@ -319,6 +331,30 @@ export const sendFriendRequest = async (senderPublicId, receiverPublicId) => {
     return { success: true, data };
   } catch (err) {
     console.error('Error sending friend request:', err);
+    return { success: false };
+  }
+};
+
+/**
+ * Mark premium popup as seen in database
+ */
+export const markPremiumPopupAsSeen = async () => {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/users/premium-popup-seen`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+
+    if (!response.ok) {
+      console.error('❌ Premium popup seen API error:', response.status);
+      return { success: false };
+    }
+
+    const data = await response.json();
+    console.log('✅ Premium popup marked as seen', data);
+    return { success: true, data };
+  } catch (err) {
+    console.error('Error marking premium popup as seen:', err);
     return { success: false };
   }
 };

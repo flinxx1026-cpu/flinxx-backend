@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 // ✅ DEFERRED: Socket is loaded dynamically to avoid TDZ
 // import socket from '../services/socketService'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 import MobileWaitingScreen from './MobileWaitingScreen'
+import GuidelinesPopup from '../components/GuidelinesPopup'
 
 const Matching = () => {
   const navigate = useNavigate()
@@ -11,6 +12,8 @@ const Matching = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769)
   const [countdown, setCountdown] = useState(5)
   const [isAutoNext, setIsAutoNext] = useState(true)
+  const [showGuidelinesPopup, setShowGuidelinesPopup] = useState(false)
+  const [isAcceptingGuidelines, setIsAcceptingGuidelines] = useState(false)
   const [userProfiles, setUserProfiles] = useState([
     { id: 1, username: 'Alex_24', name: 'Alex', age: 24, country: 'USA', avatar: '👨', status: 'Online' },
     { id: 2, username: 'Jordan_22', name: 'Jordan', age: 22, country: 'UK', avatar: '👩', status: 'Online' },
@@ -43,6 +46,77 @@ const Matching = () => {
     
     loadSocket();
   }, []);
+
+  // ✅ CHECK GUIDELINES on component mount
+  useEffect(() => {
+    const checkGuidelinesAcceptance = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.warn('⚠️  No token found');
+          return;
+        }
+
+        const response = await fetch('/api/users/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          console.log('👤 User data fetched:', userData);
+          
+          if (!userData.accepted_guidelines) {
+            console.log('📋 User has NOT accepted guidelines - showing popup');
+            setShowGuidelinesPopup(true);
+          } else {
+            console.log('✅ User has accepted guidelines');
+          }
+        } else {
+          console.error('❌ Failed to fetch user profile:', response.status);
+        }
+      } catch (error) {
+        console.error('❌ Error checking guidelines:', error);
+      }
+    };
+
+    checkGuidelinesAcceptance();
+  }, []);
+
+  // ✅ HANDLE GUIDELINES ACCEPTANCE
+  const handleAcceptGuidelines = async () => {
+    try {
+      setIsAcceptingGuidelines(true);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        console.error('❌ No token found');
+        return;
+      }
+
+      const response = await fetch('/api/user/accept-guidelines', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Guidelines accepted successfully:', result);
+        setShowGuidelinesPopup(false);
+      } else {
+        console.error('❌ Failed to accept guidelines:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ Error accepting guidelines:', error);
+    } finally {
+      setIsAcceptingGuidelines(false);
+    }
+  }
 
   useEffect(() => {
     const handleResize = () => {
@@ -120,6 +194,13 @@ const Matching = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 flex flex-col">
+      {/* Guidelines Popup Modal */}
+      <GuidelinesPopup 
+        isOpen={showGuidelinesPopup} 
+        onAccept={handleAcceptGuidelines}
+        isLoading={isAcceptingGuidelines}
+      />
+
       {/* Header */}
       <div className="relative z-20 w-full bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 shadow-lg">
         <div className="px-6 py-6 flex justify-between items-center">

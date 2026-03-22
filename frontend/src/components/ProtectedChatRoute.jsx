@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+﻿import React, { useState } from 'react'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import ProfileSetupModal from './ProfileSetupModal'
 
@@ -7,6 +7,7 @@ const ProtectedChatRoute = ({ children }) => {
   const navigate = useNavigate()
   const { user, isAuthenticated, isLoading } = useAuth()
   const [showProfileSetup, setShowProfileSetup] = useState(false)
+
 
   console.log('[ProtectedChatRoute] Render:');
   console.log('  - isLoading:', isLoading);
@@ -54,13 +55,20 @@ const ProtectedChatRoute = ({ children }) => {
   // ✅ Step 2: Check if user is authenticated
   if (!isAuthenticated || !user) {
     console.log('[ProtectedChatRoute] ❌ Not authenticated, redirecting to /login');
-    navigate('/login', { replace: true });
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
   // ✅ Step 3: Check if profile is complete
-  if (!user.profileCompleted) {
+  // User profile is complete if:
+  // 1. profileCompleted is explicitly true, OR
+  // 2. User has actual profile data (birthday + gender)
+  const hasProfileData = user.birthday && user.gender
+  const isProfileComplete = user.profileCompleted === true || hasProfileData
+
+  if (!isProfileComplete) {
     console.log('[ProtectedChatRoute] ⚠️  Profile incomplete, showing setup modal');
+    console.log('[ProtectedChatRoute]   - profileCompleted:', user.profileCompleted);
+    console.log('[ProtectedChatRoute]   - hasProfileData:', hasProfileData);
     return (
       <>
         {!showProfileSetup ? (
@@ -80,4 +88,3 @@ const ProtectedChatRoute = ({ children }) => {
 }
 
 export default ProtectedChatRoute
-

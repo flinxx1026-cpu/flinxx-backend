@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+﻿import React, { useState, useEffect, useContext, useRef } from 'react';
 import './DuoPanel.css';
 import { getFriends, markMessagesAsRead } from '../services/api';
 import { AuthContext } from '../context/AuthContext';
@@ -13,7 +13,7 @@ const DuoPanel = ({ isOpen = true, onClose }) => {
   const [friends, setFriends] = useState(null); // null = loading, array = loaded (never reset)
   const [activeChat, setActiveChat] = useState(null);
   const hasFetchedRef = useRef(false); // Track if data has been fetched in this render lifecycle
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
   // Debug: Log when DuoPanel mounts
   useEffect(() => {

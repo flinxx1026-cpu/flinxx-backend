@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import "./GenderFilterModal.css";
 
 const GenderFilterModal = ({ isOpen, onClose, currentGender = "both", onOpenPremium }) => {

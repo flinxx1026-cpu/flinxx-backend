@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+﻿import { useEffect, useRef } from 'react';
 import socketWrapper from '../services/socketService';
 import { getIceServers } from '../utils/webrtcUtils';
 
@@ -186,11 +186,11 @@ export const useDirectCallWebRTC = ({
 
     // Set up socket listeners for offer/answer/ICE
     const handleOffer = async (data) => {
-      console.log('\n📨 ===== ANSWERER RECEIVED OFFER =====');
-      console.log('📨 From:', data.from?.substring(0, 8) + '...');
+      console.log('\n📩 ===== ANSWERER RECEIVED OFFER =====');
+      console.log('📩 From:', data.from?.substring(0, 8) + '...');
 
       if (!peerConnectionRef.current) {
-        console.log('📨 Creating peer connection for answer...');
+        console.log('📩 Creating peer connection for answer...');
         await createPeerConnection();
       }
 
@@ -198,7 +198,7 @@ export const useDirectCallWebRTC = ({
 
       try {
         // Flush buffered ICE candidates
-        console.log('📨 Flushing buffered ICE candidates...');
+        console.log('📩 Flushing buffered ICE candidates...');
         while (iceCandidateBufferRef.current.length > 0) {
           const candidate = iceCandidateBufferRef.current.shift();
           try {
@@ -208,7 +208,7 @@ export const useDirectCallWebRTC = ({
           }
         }
 
-        console.log('📨 Setting remote description (offer)...');
+        console.log('📩 Setting remote description (offer)...');
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
         console.log('✅ Remote description set');
 

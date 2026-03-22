@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+﻿import { useEffect, useState, useContext } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
@@ -40,7 +40,7 @@ export default function AuthSuccess() {
         }
 
         // Fetch full user data from backend using the JWT token
-        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
         console.log("📡 Fetching from backend:", `${BACKEND_URL}/auth-success?token=${encodeURIComponent(token).substring(0, 20)}...`);
         
         const response = await fetch(`${BACKEND_URL}/auth-success?token=${encodeURIComponent(token)}`);
@@ -86,7 +86,9 @@ export default function AuthSuccess() {
             name: user.name || user.display_name || 'User',
             email: user.email,
             picture: user.picture || user.photo_url,
-            profileCompleted: user.profileCompleted || false
+            birthday: user.birthday,
+            gender: user.gender,
+            profileCompleted: user.profileCompleted
           };
           
           console.log('✅ User data normalized for storage (UUID ONLY):', { 
@@ -135,7 +137,9 @@ export default function AuthSuccess() {
               name: responseData?.user?.name || 'User',
               email: responseData?.user?.email || 'unknown@example.com',
               picture: responseData?.user?.picture || null,
-              profileCompleted: responseData?.user?.profileCompleted || false
+              birthday: responseData?.user?.birthday,
+              gender: responseData?.user?.gender,
+              profileCompleted: responseData?.user?.profileCompleted
             };
             
             localStorage.setItem("token", token);

@@ -1,10 +1,10 @@
-import { useNavigate } from 'react-router-dom'
+﻿import { useNavigate } from 'react-router-dom'
 
 const PrivacyPolicy = () => {
   const navigate = useNavigate()
 
   return (
-    <div className="bg-black text-zinc-200 min-h-screen font-sans antialiased selection:bg-gold-500 selection:text-black relative" style={{ background: '#000000' }}>
+    <div className="bg-black text-zinc-200 font-sans antialiased selection:bg-gold-500 selection:text-black relative" style={{ background: '#000000' }}>
       {/* Background Blur Elements */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-yellow-900/10 rounded-full blur-[100px] animate-pulse-slow"></div>
@@ -13,7 +13,7 @@ const PrivacyPolicy = () => {
       </div>
 
       {/* Navigation Bar */}
-      <nav className="fixed top-0 w-full z-50 glass-panel border-b" style={{ 
+      <nav className="fixed top-0 w-full z-10 glass-panel border-b header-divider" style={{ 
         backdropFilter: 'blur(20px)', 
         WebkitBackdropFilter: 'blur(20px)', 
         border: '1px solid rgba(212, 175, 55, 0.15)',
@@ -21,14 +21,13 @@ const PrivacyPolicy = () => {
         background: 'rgba(5, 5, 5, 0.8)'
       }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-24">
+          <div className="flex items-center justify-between h-20">
             <div className="flex-shrink-0 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ 
-                background: 'linear-gradient(135deg, #DEB72B 0%, #B29222 100%)',
-                boxShadow: 'rgb(212, 175, 55) 0px 0px 20px'
-              }}>
-                <span className="material-symbols-outlined text-black text-xl font-bold">videocam</span>
-              </div>
+              <img 
+                src="/favicon.png" 
+                alt="Flinxx Logo" 
+                className="w-10 h-10 rounded-xl shadow-lg ring-2 ring-yellow-400/40 object-cover"
+              />
               <span className="font-bold text-2xl tracking-tight text-white">
                 Flinxx
               </span>
@@ -38,9 +37,18 @@ const PrivacyPolicy = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="relative z-10 pt-32 md:pt-40 pb-20 px-4 sm:px-6 lg:px-8 min-h-screen flex flex-col items-center justify-start">
-        <div className="text-center mb-8 max-w-2xl mx-auto">
-          <h1 className="font-bold text-4xl md:text-6xl text-white mb-6 tracking-tight relative z-20">
+      <main className="relative z-10 pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-8 max-w-3xl mx-auto flex flex-col items-center">
+          <div className="legal-badge inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 shadow-[0_0_10px_rgba(212,175,55,0.1)]" style={{
+            background: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(6px)',
+            border: '1px solid rgba(212, 175, 55, 0.3)',
+            color: 'rgb(212, 175, 55)'
+          }}>
+            <span className="material-symbols-outlined text-base">privacy_tip</span>
+            <span className="text-sm font-semibold">Legal Information</span>
+          </div>
+          <h1 className="font-bold text-4xl md:text-6xl text-white mb-6 tracking-tight">
             Privacy <span style={{ 
               background: 'linear-gradient(to right, #FBF5D5, #D4AF37, #B29222)',
               WebkitBackgroundClip: 'text',
@@ -48,108 +56,55 @@ const PrivacyPolicy = () => {
               backgroundClip: 'text'
             }}>Policy</span>
           </h1>
-          <p className="text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed relative z-20">
-            Your privacy is paramount. Experience Flinxx with confidence, knowing how we protect your luxury of connection.
+          <p className="text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed">
+            Please read this privacy policy carefully to understand how Flinxx handles your information.
           </p>
         </div>
 
-        <div className="w-full max-w-4xl mx-auto rounded-3xl p-1 shadow-2xl" style={{
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(212, 175, 55, 0.15)',
-          boxShadow: '0 4px 30px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 0, 0, 0.9)'
-        }}>
-          <div className="bg-black/80 rounded-2xl overflow-hidden relative backdrop-blur-sm">
-            <div className="w-full p-8 md:p-12 overflow-y-auto custom-scrollbar relative bg-gradient-to-br from-black to-[#050505] max-h-[70vh]">
-              <div className="max-w-3xl mx-auto space-y-8">
-                {/* Introduction */}
+        <div className="max-w-4xl mx-auto bg-black/40 border border-amber-700/30 rounded-2xl p-8">
+          <div className="terms-content">
+                {/* Section 1 */}
                 <div>
-                  <h2 className="text-2xl font-bold mb-4 text-white flex items-center gap-3">
-                    <span className="w-1 h-8 rounded-full block" style={{ background: 'linear-gradient(135deg, #DEB72B 0%, #B29222 100%)' }}></span>
-                    Introduction
-                  </h2>
                   <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    By accessing or using <strong className="font-semibold" style={{ color: 'rgb(212, 175, 55)' }}>Flinxx</strong>, you agree to this Privacy Policy. Flinxx is a premium live interaction platform. Due to the inherent nature of live streaming, we emphasize that absolute privacy in public rooms cannot be guaranteed.
+                    This Privacy Policy explains how Flinxx handles user information when you access or use the platform. Flinxx is owned and operated by Nikhil Yadav and provides a platform where users can interact with strangers through random text, audio, or video conversations online. By using Flinxx, you agree to this Privacy Policy. If you do not agree with this policy, you should discontinue using the website.
                   </p>
                 </div>
 
-                {/* Live Content Warning */}
+                {/* Section 2 */}
                 <div>
-                  <h3 className="text-xl font-bold mb-3 flex items-center gap-2" style={{ color: 'rgb(212, 175, 55)' }}>
-                    <span className="material-symbols-outlined" style={{ color: 'rgb(222, 183, 43)' }}>warning_amber</span>
-                    Live Content Warning
-                  </h3>
                   <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Flinxx hosts live interactions. You understand that other users may record, capture, or share interactions without your explicit consent on external platforms. Please exercise discretion.
+                    Flinxx is a live interaction platform and because of the nature of real-time communication, complete privacy cannot be guaranteed. Users may record, screenshot, stream, or share interactions on external platforms without notice. Flinxx does not control or monitor every user interaction and cannot guarantee that content shared during a session will remain private.
                   </p>
                 </div>
 
-                {/* User Responsibility */}
+                {/* Section 3 */}
                 <div>
-                  <h3 className="text-xl font-bold mb-3 text-white">User Responsibility</h3>
-                  <p className="text-zinc-300 leading-relaxed mb-4 text-base font-light">
-                    You are the guardian of your own privacy. Flinxx assumes no liability for recordings made by third parties.
-                  </p>
                   <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Your interactions may be monitored for quality assurance, safety, and compliance with our premium community standards.
+                    Flinxx does not require users to reveal their real identity. Users may remain anonymous or use pseudonyms. If a user voluntarily shares personal information such as their real name, social media accounts, contact details, or identity during conversations, they do so entirely at their own risk. Flinxx does not encourage the sharing of personal identity information and is not responsible for any consequences that arise from such disclosure.
                   </p>
                 </div>
 
-                {/* Liability */}
+                {/* Section 4 */}
                 <div>
-                  <h3 className="text-xl font-bold mb-3 text-white">Liability</h3>
-                  <ul className="space-y-4 list-none pl-0">
-                    <li className="flex items-start gap-3">
-                      <span className="material-symbols-outlined mt-0.5 text-lg" style={{ color: 'rgb(222, 183, 43)' }}>check_circle</span>
-                      <span className="text-zinc-300 font-light">Flinxx is not liable for content distributed outside the platform.</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="material-symbols-outlined mt-0.5 text-lg" style={{ color: 'rgb(222, 183, 43)' }}>check_circle</span>
-                      <span className="text-zinc-300 font-light">Usage of the platform constitutes acceptance of these risks.</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="material-symbols-outlined mt-0.5 text-lg" style={{ color: 'rgb(222, 183, 43)' }}>check_circle</span>
-                      <span className="text-zinc-300 font-light">We do not endorse user-generated content.</span>
-                    </li>
-                  </ul>
+                  <p className="text-zinc-300 leading-relaxed text-base font-light">
+                    For safety, moderation, and service improvement, Flinxx may monitor certain interactions or technical data related to the use of the platform. This helps maintain community standards, detect misuse, and improve the service. However, monitoring does not guarantee that all content or interactions are reviewed.
+                  </p>
                 </div>
 
-                {/* Footer with Buttons */}
-                <div className="border-t pt-8 mt-10" style={{ borderColor: 'rgba(212, 175, 55, 0.1)' }}>
-                  <p className="text-sm text-zinc-500 italic mb-6">
-                    If you have questions regarding this policy, please contact our concierge support.
+                {/* Section 5 */}
+                <div>
+                  <p className="text-zinc-300 leading-relaxed text-base font-light">
+                    Flinxx is not responsible for any recordings, screenshots, or content that users may distribute outside the platform on social media or other websites. Any content shared externally is the responsibility of the user who created or shared it. By continuing to use Flinxx, users acknowledge and accept the risks associated with live online interactions.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <button 
-                      onClick={() => navigate('/', { replace: true })}
-                      className="px-8 py-3 text-black rounded-xl font-bold transition-all shadow-lg active:scale-95"
-                      style={{ 
-                        background: 'linear-gradient(to right, #AA8C2C, #D4AF37, #AA8C2C)',
-                        filter: 'brightness(1)'
-                      }}
-                      onMouseOver={(e) => e.target.style.filter = 'brightness(1.1)'}
-                      onMouseOut={(e) => e.target.style.filter = 'brightness(1)'}
-                    >
-                      Accept Policy
-                    </button>
-                    <button 
-                      onClick={() => navigate('/', { replace: true })}
-                      className="px-8 py-3 rounded-xl font-medium transition-colors border"
-                      style={{ 
-                        background: 'transparent',
-                        color: 'rgb(212, 175, 55)',
-                        borderColor: 'rgba(212, 175, 55, 0.3)'
-                      }}
-                      onMouseOver={(e) => e.target.style.background = 'rgba(212, 175, 55, 0.05)'}
-                      onMouseOut={(e) => e.target.style.background = 'transparent'}
-                    >
-                      Decline
-                    </button>
-                  </div>
+                </div>
+
+                {/* Section 6 */}
+                <div>
+                  <p className="text-zinc-300 leading-relaxed text-base font-light">
+                    Flinxx may update this Privacy Policy from time to time to reflect changes in platform features or legal requirements. Continued use of the platform after updates indicates acceptance of the revised policy. For any privacy-related questions or support requests, please contact us at <a href="mailto:contact.flinxx@gmail.com" className="text-white hover:underline">contact.flinxx@gmail.com</a>.
+                  </p>
                 </div>
               </div>
-            </div>
-          </div>
         </div>
       </main>
 
@@ -175,9 +130,28 @@ const PrivacyPolicy = () => {
         .animate-pulse-slow {
           animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+        .header-divider {
+          z-index: 1;
+        }
+        .legal-badge {
+          margin-top: 32px;
+          position: relative;
+          z-index: 20;
+        }
+        .terms-content {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          height: auto;
+          overflow: visible;
+        }
+        .terms-content p {
+          margin-bottom: 10px;
+          line-height: 1.6;
+        }
         @media (max-width: 768px) {
-          main {
-            padding-top: 8rem !important;
+          .legal-badge {
+            margin-top: 40px;
           }
         }
       `}</style>

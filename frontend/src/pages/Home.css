@@ -250,6 +250,12 @@
   height: 12px;
   width: 12px;
   background: #16a34a;
+  animation: subtlePulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes subtlePulse {
+  0% { opacity: 0.8; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1.05); }
 }
 
 @keyframes ping {
@@ -264,6 +270,17 @@
   font-size: 0.875rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.counter-number {
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  min-width: 44px; /* Ensure space for up to 2,000 avoids layout jumps */
+  text-align: right;
+  transition: color 0.3s ease;
 }
 
 .header-right {
@@ -526,6 +543,28 @@
   background: rgba(255, 215, 0, 0.2);
 }
 
+/* ✅ REACT ICONS - Replace material-icons styling */
+.feature-icon {
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  background: #1a1405;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4af37;
+  font-size: 22px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.feature-card:hover .feature-icon {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: rgba(212, 175, 55, 0.6);
+  color: #fbbf24;
+}
+
 .card-icon-box .material-icons {
   color: #fbbf24;
   font-size: 1.5rem;
@@ -652,8 +691,19 @@
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
+  html, body {
+    height: auto !important;
+    overflow-y: auto !important;
+  }
+
+  .homepage-wrapper {
+    min-height: auto;
+    height: auto;
+  }
+
   .main-content {
     padding: 1.5rem 1rem 4rem 1rem;
+    min-height: auto;
   }
 
   .hero-section {

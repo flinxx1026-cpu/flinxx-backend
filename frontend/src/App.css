@@ -31,19 +31,32 @@
 
 /* Custom Scrollbar Styling */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 0 !important;
+  display: none !important;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: transparent !important;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-  transition: background 0.3s ease;
+  background: transparent !important;
+  display: none !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.4);
+  background: transparent !important;
+  display: none !important;
+}
+
+/* Hide scrollbar for Firefox */
+* {
+  scrollbar-width: none !important;
+}
+
+/* Hide scrollbar for all browsers absolutely */
+html, body {
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }

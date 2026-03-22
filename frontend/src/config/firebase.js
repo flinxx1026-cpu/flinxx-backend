@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app'
+﻿import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
 import { getAnalytics } from 'firebase/analytics'

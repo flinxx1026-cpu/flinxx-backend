@@ -1,7 +1,7 @@
-import React, { createContext, useState, useEffect, useContext } from 'react'
+﻿import React, { createContext, useState, useEffect, useContext } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../config/firebase'
-import { getSentRequests, getNotifications } from '../services/api'
+import { getSentRequests, getNotifications, markPremiumPopupAsSeen as markPremiumPopupSeenApi } from '../services/api'
 import socketWrapper from '../services/socketService'
 
 // Create Auth Context
@@ -52,7 +52,14 @@ export const AuthProvider = ({ children }) => {
   const [localStream, setLocalStream] = useState(null)
 
   // ✅ ACCOUNT WARNING STATE - Show warning modal
-  const [accountWarning, setAccountWarning] = useState(null)
+  const [accountWarning, setAccountWarning] = useState(() => {
+    try {
+      const cached = localStorage.getItem('flinx_pending_warning');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  })
 
   // ✅ SETUP GLOBAL SOCKET LISTENER FOR FRIEND REQUESTS
   // This runs ONCE on mount and keeps listening throughout the app lifecycle
@@ -213,6 +220,27 @@ export const AuthProvider = ({ children }) => {
     // ✅ Attach specific listener
     socketWrapper.on('call_ended', handleCallEnded);
     
+    // ✅ ACCOUNT BANNED LISTENER
+    const handleAccountBanned = () => {
+      console.log('\n' + '='.repeat(80))
+      console.log('❌ ❌ ❌ [AuthContext LISTENER] ACCOUNT BANNED RECEIVED ❌ ❌ ❌')
+      console.log('\n' + '='.repeat(80))
+      
+      const banState = {
+        type: 'banned',
+        message: 'Your account has been permanently suspended.',
+        reason: 'Violation of Community Standards'
+      }
+      
+      setAccountWarning(banState)
+      localStorage.setItem('flinx_pending_warning', JSON.stringify(banState))
+      
+      // ✅ Removed automatic logout - User can still read guidelines
+    };
+
+    socketWrapper.on('user_banned', handleAccountBanned);
+    window.addEventListener('account_banned', handleAccountBanned);
+
     // ✅ ACCOUNT WARNING LISTENER - When admin sends warning to user
     const handleAccountWarning = (warningData) => {
       console.log('\n' + '='.repeat(80))
@@ -280,6 +308,22 @@ export const AuthProvider = ({ children }) => {
     console.log('✅ [AuthContext] ✓ account_warning listener attached - READY TO HANDLE WARNINGS');
     console.log('✅ [AuthContext] ✓ universal event listener attached - backup for call_ended and account_warning');
 
+    // ✅ GLOBAL FETCH INTERCEPTOR FOR 403 BANS
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      if (response.status === 403) {
+        try {
+          const clone = response.clone();
+          const data = await clone.json();
+          if (data.error === 'ACCOUNT_BANNED') {
+            window.dispatchEvent(new CustomEvent('account_banned'));
+          }
+        } catch (e) { }
+      }
+      return response;
+    };
+
     // Cleanup on unmount
     return () => {
       console.log('🔔 [AuthContext] Removing all socket listeners');
@@ -289,35 +333,52 @@ export const AuthProvider = ({ children }) => {
       socketWrapper.off('call_accepted', handleCallAccepted);
       socketWrapper.off('call_ended', handleCallEnded);
       socketWrapper.off('account_warning', handleAccountWarning);
+      socketWrapper.off('user_banned', handleAccountBanned);
       socketWrapper.offAny(handleAnyEvent);
       window.removeEventListener('account_warning', handleWindowWarning);
+      window.removeEventListener('account_banned', handleAccountBanned);
+      window.fetch = originalFetch;
     };
   }, []); // Empty dependency - attach once, never re-attach
 
   // ✅ REGISTER USER WITH SOCKET.IO WHEN AUTHENTICATED
   useEffect(() => {
+    let heartbeatInterval = null
+
     if (user?.uuid && isAuthenticated && !isLoading) {
       console.log(`\n📢 [AuthContext] Ready to register user ${user.uuid.substring(0, 8)}...`)
       console.log(`   Socket connected: ${socketWrapper.connected}`)
       
-      if (!socketWrapper.connected) {
-        console.warn('⚠️ Socket not connected yet - waiting for connection...')
-        
-        // Wait for socket connection
-        const handleConnect = () => {
-          console.log('✅ Socket connected - now registering user')
-          socketWrapper.emit('register_user', user.uuid)
-          console.log(`📢 [AuthContext] register_user emitted for ${user.uuid.substring(0, 8)}...`)
-          socketWrapper.off('connect', handleConnect)
-        }
-        
-        socketWrapper.on('connect', handleConnect)
-      } else {
-        // Socket already connected
-        console.log(`📢 [AuthContext] Registering user ${user.uuid.substring(0, 8)}... with Socket.IO`)
+      const registerAndStartHeartbeat = () => {
+        console.log('✅ [AuthContext] Registering user + starting heartbeat')
         socketWrapper.emit('register_user', user.uuid)
         console.log(`📢 [AuthContext] register_user emitted for ${user.uuid.substring(0, 8)}...`)
+        
+        // Clear any existing heartbeat
+        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        // Send heartbeat every 20 seconds to keep Redis TTL alive (30s expiry)
+        heartbeatInterval = setInterval(() => {
+          socketWrapper.emit('heartbeat', { userId: user.uuid })
+        }, 20000)
       }
+      
+      // Always emit register_user on every (re)connect
+      const handleConnect = () => {
+        console.log('✅ Socket (re)connected - registering user')
+        registerAndStartHeartbeat()
+      }
+      
+      // Listen for ALL future reconnections (do NOT remove after first fire)
+      socketWrapper.on('connect', handleConnect)
+      
+      // If already connected right now, register immediately
+      if (socketWrapper.connected) {
+        registerAndStartHeartbeat()
+      }
+    }
+
+    return () => {
+      if (heartbeatInterval) clearInterval(heartbeatInterval)
     }
   }, [user?.uuid, isAuthenticated, isLoading]);
 
@@ -358,7 +419,7 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('authToken');
         if (!token) return;
 
-        const response = await fetch(`http://localhost:5000/api/user/${user.uuid}/warning-status`, {
+        const response = await fetch(`${import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL}/api/user/${user.uuid}/warning-status`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -551,6 +612,49 @@ export const AuthProvider = ({ children }) => {
             console.log('🔵 [AuthContext] INITIALIZATION COMPLETE (JWT) - isLoading=false');
             console.log('🔵 [AuthContext] ═══════════════════════════════════════════\n');
             
+            // 🔄 BACKGROUND REFRESH: Fetch fresh profile from backend to update premium status
+            // This ensures hasUnlimitedSkip/isPremium are current, not stale from cache
+            (async () => {
+              try {
+                const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
+                const profileResponse = await fetch(`${BACKEND_URL}/api/profile`, {
+                  method: 'GET',
+                  headers: {
+                    'Authorization': `Bearer ${storedToken}`,
+                    'Content-Type': 'application/json'
+                  }
+                });
+                
+                if (profileResponse.ok) {
+                  const profileData = await profileResponse.json();
+                  if (profileData.success && profileData.user) {
+                    const freshUser = {
+                      ...profileData.user,
+                      publicId: profileData.user.public_id || profileData.user.publicId,
+                      uuid: profileData.user.uuid,
+                      hasSeenPremiumPopup: !!(profileData.user.hasSeenPremiumPopup || profileData.user.has_seen_premium_popup),
+                      isPremium: !!(profileData.user.isPremium || profileData.user.is_premium),
+                      hasUnlimitedSkip: !!(profileData.user.hasUnlimitedSkip || profileData.user.has_unlimited_skip),
+                      has_unlimited_skip: profileData.user.has_unlimited_skip,
+                      unlimited_skip_expires_at: profileData.user.unlimited_skip_expires_at,
+                      unlimitedSkipExpiresAt: profileData.user.unlimited_skip_expires_at,
+                      dailySkipCount: profileData.user.dailySkipCount || profileData.user.daily_skip_count || 0,
+                      lastSkipResetDate: profileData.user.lastSkipResetDate || profileData.user.last_skip_reset_date || null
+                    };
+                    console.log('🔄 [AuthContext] Background profile refresh complete:', {
+                      isPremium: freshUser.isPremium,
+                      hasUnlimitedSkip: freshUser.hasUnlimitedSkip,
+                      dailySkipCount: freshUser.dailySkipCount
+                    });
+                    setUser(freshUser);
+                    localStorage.setItem('user', JSON.stringify(freshUser));
+                  }
+                }
+              } catch (err) {
+                console.warn('🔄 [AuthContext] Background profile refresh failed (non-critical):', err.message);
+              }
+            })();
+            
             // 🚨 RETURN EARLY - DO NOT CONTINUE TO FIREBASE
             return;
           } catch (err) {
@@ -584,8 +688,12 @@ export const AuthProvider = ({ children }) => {
               localStorage.setItem('idToken', idToken)
               console.log('🔐 Firebase ID token stored for Socket.IO')
               
+              // ✅ Also store as authToken for rest of app
+              localStorage.setItem('authToken', idToken)
+              console.log('🔐 ✅ ID token also stored as authToken in localStorage')
+              
               // Fetch full profile from backend
-              const BACKEND_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+              const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
               console.log('🔵 [AuthContext] Calling /api/profile with ID token...');
               const profileResponse = await fetch(`${BACKEND_URL}/api/profile`, {
                 method: 'GET',
@@ -614,7 +722,15 @@ export const AuthProvider = ({ children }) => {
                   const userWithIds = {
                     ...profileData.user,
                     publicId: profileData.user.public_id || profileData.user.publicId,
-                    uuid: profileData.user.uuid // ✅ Use UUID from backend ONLY
+                    uuid: profileData.user.uuid, // ✅ Use UUID from backend ONLY
+                    hasSeenPremiumPopup: !!(profileData.user.hasSeenPremiumPopup || profileData.user.has_seen_premium_popup),
+                    isPremium: !!(profileData.user.isPremium || profileData.user.is_premium),
+                    hasUnlimitedSkip: !!(profileData.user.hasUnlimitedSkip || profileData.user.has_unlimited_skip),
+                    has_unlimited_skip: profileData.user.has_unlimited_skip,
+                    unlimited_skip_expires_at: profileData.user.unlimited_skip_expires_at,
+                    unlimitedSkipExpiresAt: profileData.user.unlimited_skip_expires_at,
+                    dailySkipCount: profileData.user.dailySkipCount || profileData.user.daily_skip_count || 0,
+                    lastSkipResetDate: profileData.user.lastSkipResetDate || profileData.user.last_skip_reset_date || null
                   }
                   
                   // Safe error check - DO NOT auto-fill
@@ -622,7 +738,8 @@ export const AuthProvider = ({ children }) => {
                     console.error('❌ UUID missing from backend user object');
                   }
                   
-                  setUser(userWithIds)
+                   localStorage.setItem('user', JSON.stringify(userWithIds))
+                   setUser(userWithIds)
                   setIsAuthenticated(true)
                   setIsLoading(false)
                   return
@@ -636,6 +753,8 @@ export const AuthProvider = ({ children }) => {
             }
             
             // Fallback: Create minimal userInfo if profile fetch failed
+            // ✅ IMPORTANT: Don't default to false - instead determine by actual data
+            // If user has birthday/gender, they completed their profile
             const userInfo = {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
@@ -643,11 +762,19 @@ export const AuthProvider = ({ children }) => {
               photoURL: firebaseUser.photoURL,
               publicId: firebaseUser.uid, // Use UID as temporary publicId
               authProvider: authProvider,
-              profileCompleted: false  // Default to false if not found
+              // ✅ Only set to false if we have no profile data
+              // If user has any profile fields, assume complete
+              profileCompleted: false,  // Fallback - will only be used if no profile data exists at all
+              isPremium: false,
+              hasUnlimitedSkip: false,
+              has_unlimited_skip: false,
+              unlimited_skip_expires_at: null,
+              unlimitedSkipExpiresAt: null,
+              dailySkipCount: 0
             }
             
             console.log('[AuthContext] Using fallback userInfo (database fetch failed):', userInfo.email)
-            console.log('[AuthContext] ⚠️ WARNING: profileCompleted not loaded from database, defaulting to false');
+            console.log('[AuthContext] ⚠️ WARNING: profileCompleted not available from API, will check on next profile fetch');
             setUser(userInfo)
             setIsAuthenticated(true)
             localStorage.setItem('userInfo', JSON.stringify(userInfo))
@@ -696,6 +823,63 @@ export const AuthProvider = ({ children }) => {
     initializeAuth()
   }, [])
 
+  const refreshProfile = async () => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+      if (!token) return { success: false, error: 'No token found' };
+
+      const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
+      const profileResponse = await fetch(`${BACKEND_URL}/api/profile`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const status = profileResponse.status;
+      if (!profileResponse.ok) {
+        let body = null;
+        try {
+          body = await profileResponse.json();
+        } catch {
+          // ignore
+        }
+        console.error('[AuthContext] /api/profile failed', { status, body });
+        return { success: false, error: body?.error || 'Failed to fetch profile', status };
+      }
+
+      const profileData = await profileResponse.json();
+      if (profileData.success && profileData.user) {
+          const userWithIds = {
+            ...profileData.user,
+            publicId: profileData.user.public_id || profileData.user.publicId,
+            uuid: profileData.user.uuid, // ✅ Use UUID from backend ONLY
+            hasSeenPremiumPopup: !!(profileData.user.hasSeenPremiumPopup || profileData.user.has_seen_premium_popup),
+            isPremium: !!(profileData.user.isPremium || profileData.user.is_premium),
+            hasUnlimitedSkip: !!(profileData.user.hasUnlimitedSkip || profileData.user.has_unlimited_skip),
+            has_unlimited_skip: profileData.user.has_unlimited_skip,
+            unlimited_skip_expires_at: profileData.user.unlimited_skip_expires_at,
+            unlimitedSkipExpiresAt: profileData.user.unlimited_skip_expires_at,
+            dailySkipCount: profileData.user.dailySkipCount || profileData.user.daily_skip_count || 0,
+            lastSkipResetDate: profileData.user.lastSkipResetDate || profileData.user.last_skip_reset_date || null
+          }
+          setUser(userWithIds);
+          localStorage.setItem('user', JSON.stringify(userWithIds));
+          return { success: true, user: userWithIds };
+      }
+
+      console.error('[AuthContext] /api/profile unexpected payload', {
+        success: profileData?.success,
+        hasUser: !!profileData?.user
+      });
+      return { success: false, error: 'Failed to fetch profile', status: profileResponse.status };
+    } catch (err) {
+      console.error('[AuthContext] Error refreshing profile:', err);
+      return { success: false, error: err.message, status: 0 };
+    }
+  };
+
   const logout = () => {
     setUser(null)
     setIsAuthenticated(false)
@@ -704,6 +888,84 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('authProvider')
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+  }
+
+  const incrementSkipCount = () => {
+    setUser(prevUser => {
+      if (!prevUser) return prevUser;
+      
+      const unlimitedSkipExpiresAt =
+        prevUser.unlimitedSkipExpiresAt || prevUser.unlimited_skip_expires_at;
+      const hasActiveUnlimitedSkip = !!(
+        (prevUser.hasUnlimitedSkip || prevUser.has_unlimited_skip) &&
+        (!unlimitedSkipExpiresAt || new Date(unlimitedSkipExpiresAt).getTime() > Date.now())
+      );
+
+      // ✅ Don't increment for premium users / active unlimited skip
+      if (prevUser.isPremium || prevUser.is_premium || hasActiveUnlimitedSkip) {
+        return prevUser;
+      }
+
+      const updatedUser = {
+        ...prevUser,
+        dailySkipCount: (prevUser.dailySkipCount || 0) + 1
+      };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  }
+
+  // ✅ Check if user has reached skip limit
+  const hasReachedSkipLimit = () => {
+    if (!user) return false;
+    
+    const skipLimit = 1;
+
+    const unlimitedSkipExpiresAt =
+      user.unlimitedSkipExpiresAt || user.unlimited_skip_expires_at;
+    const hasActiveUnlimitedSkip = !!(
+      (user.hasUnlimitedSkip || user.has_unlimited_skip) &&
+      (!unlimitedSkipExpiresAt || new Date(unlimitedSkipExpiresAt).getTime() > Date.now())
+    );
+
+    // ✅ Premium/unlimited (active) users can always skip
+    if (user.isPremium || user.is_premium || hasActiveUnlimitedSkip) {
+      console.log('[AuthContext] ✅ User has unlimited skip - no skip limit');
+      return false;
+    }
+    
+    // ✅ Check if daily skip count >= 1
+    const currentSkipCount = user.dailySkipCount || 0;
+    const hasLimit = currentSkipCount >= skipLimit;
+    
+    if (hasLimit) {
+      console.log(`[AuthContext] ⛔ Skip limit reached: ${currentSkipCount}/${skipLimit} skip(s)`);
+    } else {
+      console.log(`[AuthContext] ✅ Skip available: ${currentSkipCount}/${skipLimit} skip(s)`);
+    }
+    
+    return hasLimit;
+  }
+
+  // ✅ Get remaining skips for display
+  const getRemainingSkips = () => {
+    const skipLimit = 1;
+    if (!user) return skipLimit;
+    
+    const unlimitedSkipExpiresAt =
+      user.unlimitedSkipExpiresAt || user.unlimited_skip_expires_at;
+    const hasActiveUnlimitedSkip = !!(
+      (user.hasUnlimitedSkip || user.has_unlimited_skip) &&
+      (!unlimitedSkipExpiresAt || new Date(unlimitedSkipExpiresAt).getTime() > Date.now())
+    );
+
+    // ✅ Return unlimited for premium users / active unlimited skip
+    if (user.isPremium || user.is_premium || hasActiveUnlimitedSkip) {
+      return Infinity;
+    }
+
+    const currentSkipCount = user.dailySkipCount || 0;
+    return Math.max(0, skipLimit - currentSkipCount);
   }
 
   const setAuthToken = (token, userData) => {
@@ -723,7 +985,16 @@ export const AuthProvider = ({ children }) => {
       email: userData?.email,
       picture: userData?.picture,
       location: userData?.location || null,
-      profileCompleted: userData?.profileCompleted || false
+      profileCompleted: userData?.profileCompleted || false,
+      isBanned: !!userData?.is_banned,
+      hasSeenPremiumPopup: !!(userData?.hasSeenPremiumPopup || userData?.has_seen_premium_popup),
+      isPremium: !!userData?.isPremium,
+      hasUnlimitedSkip: !!(userData?.hasUnlimitedSkip || userData?.has_unlimited_skip),
+      has_unlimited_skip: userData?.has_unlimited_skip || false,
+      unlimited_skip_expires_at: userData?.unlimited_skip_expires_at || null,
+      unlimitedSkipExpiresAt: userData?.unlimited_skip_expires_at || null,
+      dailySkipCount: userData?.dailySkipCount || 0,
+      lastSkipResetDate: userData?.lastSkipResetDate || null
     }
     
     // Safe error check: UUID must be exactly 36 chars
@@ -753,6 +1024,10 @@ export const AuthProvider = ({ children }) => {
       authPending, 
       setAuthPending, 
       setAuthToken,
+      refreshProfile,
+      incrementSkipCount,
+      hasReachedSkipLimit,
+      getRemainingSkips,
       // ✅ SENT REQUESTS (requests sent BY user - for SearchFriendsModal)
       sentRequests,
       refreshSentRequests,
@@ -776,7 +1051,26 @@ export const AuthProvider = ({ children }) => {
       setLocalStream,
       // ✅ ACCOUNT WARNING (show warning modal)
       accountWarning,
-      setAccountWarning
+      setAccountWarning,
+      // ✅ PREMIUM POPUP SEEN helper
+      markPremiumPopupAsSeen: async () => {
+        try {
+          const result = await markPremiumPopupSeenApi();
+          if (result.success) {
+            setUser(prevUser => {
+              const updatedUser = prevUser ? { ...prevUser, hasSeenPremiumPopup: true } : prevUser;
+              if (updatedUser) {
+                localStorage.setItem('user', JSON.stringify(updatedUser)); // Keep cache in sync
+              }
+              return updatedUser;
+            });
+          }
+          return result;
+        } catch (err) {
+          console.error('Error marking premium popup as seen:', err);
+          return { success: false };
+        }
+      }
     }}>
       {children}
     </AuthContext.Provider>

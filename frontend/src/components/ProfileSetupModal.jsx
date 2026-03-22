@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import CommunityStandardsModal from './CommunityStandardsModal'
 
@@ -51,7 +51,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
     setError(null)
 
     try {
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+      const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
       
       // Get the user ID from the user object (uuid from AuthContext)
       const userId = user.uuid || user.id || user.uid || user.googleId
@@ -98,12 +98,15 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
       localStorage.setItem('profileCompleted', 'true')
       localStorage.setItem('user', JSON.stringify(updatedUser))
 
-      // Store updated user data for later use after Community Standards acceptance
+      // Store updated user data
       setUpdatedUserData(updatedUser)
 
-      // Show Community Standards screen instead of redirecting immediately
+      // Redirect to chat directly after profile is saved
       setLoading(false)
-      setShowCommunityStandards(true)
+      setTimeout(() => {
+        console.log('✅ Profile completed - redirecting to chat');
+        window.location.href = '/chat?view=home'
+      }, 300)
     } catch (err) {
       console.error('❌ Error saving profile:', err)
       setError(err.message || 'Network error. Please try again.')
@@ -129,8 +132,16 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
     return null
   }
 
+  // When showing Community Standards, return ONLY that modal without ProfileSetupModal wrapper
+  if (showCommunityStandards) {
+    return <CommunityStandardsModal 
+      isOpen={showCommunityStandards} 
+      onAccept={handleCommunityStandardsAccept}
+    />
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto p-4 sm:p-6">
+    <div className="fixed inset-0 flex items-center justify-center z-50 overflow-y-auto p-4 sm:p-6 bg-black bg-opacity-50">
       <style>{`
         input[type="date"]::-webkit-calendar-picker-indicator {
           filter: invert(1) brightness(1.2);
@@ -143,8 +154,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
         {/* Top gradient line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-60"></div>
         
-        {/* Profile Form - Hidden when showing community standards */}
-        {!showCommunityStandards && (
+        {/* Profile Form */}
         <div className="p-8 md:p-12 pt-32">
           {/* Header with Avatar */}
           <div className="flex flex-col md:flex-row items-start md:items-center gap-8 mb-8 border-b border-[#334155] border-opacity-40 pb-6">
@@ -289,14 +299,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
             Your birthday and gender cannot be changed after saving.
           </p>
         </div>
-        )}
       </div>
-
-      {/* Community Standards Modal - Shows after profile is saved */}
-      <CommunityStandardsModal 
-        isOpen={showCommunityStandards} 
-        onAccept={handleCommunityStandardsAccept}
-      />
     </div>
   )
 }

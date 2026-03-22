@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useContext } from 'react';
+﻿import React, { useState, useEffect, useContext } from 'react';
+import { FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import './SubscriptionsPage.css';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
 const SubscriptionsPage = ({ onClose }) => {
-  const { user } = useContext(AuthContext);
+  const { user, refreshProfile } = useContext(AuthContext);
   const [loading, setLoading] = useState(null); // planId currently loading
   const [userFeatures, setUserFeatures] = useState({});
   const [featureExpiry, setFeatureExpiry] = useState({});
@@ -59,6 +60,53 @@ const SubscriptionsPage = ({ onClose }) => {
     fetchFeatures();
   }, [user?.uuid]);
 
+  // Check for payment success and show message
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const successPlan = params.get('payment_success');
+    
+    if (successPlan) {
+      // Map plan ID to plan name
+      const planNames = {
+        'blue_tick': 'Blue Tick',
+        'match_boost': 'Match Boost',
+        'unlimited_skip': 'Unlimited Skip'
+      };
+      
+      setPaymentSuccess(planNames[successPlan] || successPlan);
+      
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Refetch features to show updated status
+      if (user?.uuid) {
+        const refetchFeatures = async () => {
+          try {
+            const res = await fetch(`${BACKEND_URL}/api/payments/features?userId=${user.uuid}`);
+            const data = await res.json();
+            if (data.success) {
+              setUserFeatures(data.features);
+              if (data.expiry) setFeatureExpiry(data.expiry);
+              
+              // ✅ CRITICAL: Refresh global AuthContext profile so Chat.jsx knows we are premium!
+              if (refreshProfile) {
+                console.log('🔄 [Subscriptions] Refreshing global user profile...');
+                await refreshProfile();
+              }
+            }
+          } catch (err) {
+            console.error('Error refetching features:', err);
+          }
+        };
+        // Small delay to ensure backend has updated
+        setTimeout(refetchFeatures, 500);
+      }
+      
+      // Clear message after 5 seconds
+      setTimeout(() => setPaymentSuccess(null), 5000);
+    }
+  }, []);
+
   // Handle BUY NOW click
   const handleBuyNow = async (plan) => {
     if (!user?.uuid) {
@@ -69,8 +117,11 @@ const SubscriptionsPage = ({ onClose }) => {
     setLoading(plan.planId);
 
     try {
-      // 1. Create order on backend
-      const orderRes = await fetch(`${BACKEND_URL}/api/payments/create-order`, {
+      console.log('🛒 Starting payment flow for plan:', plan.planId);
+
+      // Get payment session from backend
+      console.log('🔗 Fetching payment session from backend...');
+      const linkRes = await fetch(`${BACKEND_URL}/api/payments/get-payment-link`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,81 +130,103 @@ const SubscriptionsPage = ({ onClose }) => {
         body: JSON.stringify({ planId: plan.planId, userId: user.uuid }),
       });
 
-      const orderData = await orderRes.json();
-      if (!orderData.success) {
-        alert('Failed to create order: ' + (orderData.error || 'Unknown error'));
+      console.log('📋 Response status:', linkRes.status);
+      
+      const responseText = await linkRes.text();
+      console.log('📋 Response text:', responseText.substring(0, 300));
+      
+      let linkData;
+      try {
+        linkData = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error('❌ Failed to parse response:', parseErr.message);
+        alert(`Backend error: ${linkRes.status}\n\n${responseText.substring(0, 200)}`);
+        setLoading(null);
+        return;
+      }
+      
+      if (!linkData.success) {
+        alert('Failed to get payment session: ' + (linkData.error || 'Unknown error'));
         setLoading(null);
         return;
       }
 
-      // 2. Open Razorpay Checkout
-      const options = {
-        key: orderData.key,
-        amount: orderData.order.amount,
-        currency: orderData.order.currency,
-        name: 'Flinxx',
-        description: orderData.plan.description,
-        order_id: orderData.order.id,
-        handler: async function (response) {
-          // 3. Verify payment on backend
-          try {
-            const verifyRes = await fetch(`${BACKEND_URL}/api/payments/verify`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                userId: user.uuid,
-                planId: plan.planId,
-              }),
-            });
+      const sessionId = linkData.sessionId;
+      const orderId = linkData.orderId;
+      const isMock = linkData.isMock;
 
-            const verifyData = await verifyRes.json();
-            if (verifyData.success) {
-              setPaymentSuccess(plan.name);
-              setUserFeatures(prev => ({ ...prev, [plan.planId]: true }));
-              if (verifyData.expiresAt) {
-                setFeatureExpiry(prev => ({ ...prev, [plan.planId]: verifyData.expiresAt }));
-              }
-              setTimeout(() => setPaymentSuccess(null), 4000);
-            } else {
-              alert('Payment verification failed: ' + (verifyData.error || 'Unknown error'));
-            }
-          } catch (err) {
-            console.error('Verification error:', err);
-            alert('Payment verification failed. Please contact support.');
-          }
-          setLoading(null);
-        },
-        prefill: {
-          name: user.display_name || user.name || '',
-          email: user.email || '',
-        },
-        theme: {
-          color: '#EAB308',
-        },
-        modal: {
-          ondismiss: () => {
-            setLoading(null);
-          },
-        },
-      };
+      console.log('✅ Got session ID:', sessionId.substring(0, 50) + '...');
 
-      const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response) {
-        console.error('Payment failed:', response.error);
-        alert(`Payment failed: ${response.error.description}`);
+      // Handle MOCK PAYMENTS (development mode)
+      if (isMock) {
+        console.log('🎭 [MOCK MODE] Skipping SDK and redirecting to mock payment success');
+        window.location.href = `${window.location.origin}/payment-success?orderId=${orderId}&mock=true`;
         setLoading(null);
-      });
-      rzp.open();
+        return;
+      }
+
+      // ===== REAL CASHFREE PAYMENT - Use SDK v3 =====
+      console.log('💳 Loading Cashfree SDK...');
+      
+      // Load Cashfree SDK
+      if (window.Cashfree && typeof window.Cashfree === 'function') {
+        console.log('✅ SDK already loaded');
+        openCheckout(sessionId);
+      } else {
+        // Load the script dynamically
+        const script = document.createElement('script');
+        script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+        script.async = true;
+        script.onload = () => {
+          console.log('✅ Cashfree SDK script loaded');
+          // Give it a moment to initialize
+          setTimeout(() => {
+            openCheckout(sessionId);
+          }, 300);
+        };
+        script.onerror = () => {
+          console.error('❌ Failed to load Cashfree SDK');
+          alert('Failed to load payment gateway. Please try again.');
+          setLoading(null);
+        };
+        document.head.appendChild(script);
+      }
+
+      function openCheckout(sessionId) {
+        try {
+          console.log('🚀 Opening Cashfree checkout with session:', sessionId.substring(0, 50) + '...');
+          console.log('📊 window.Cashfree type:', typeof window.Cashfree);
+          
+          // Cashfree SDK v3 - correct initialization (no 'new' keyword)
+          const cashfree = window.Cashfree({
+            mode: 'production' // Use production mode for real payments
+          });
+          
+          console.log('✅ Cashfree instance created successfully');
+          
+          // Cashfree SDK v3 - redirect will be handled by backend based on return_url
+          // The return_url is set in the backend payment configuration
+          
+          // Open checkout with correct v3 API (no 'new' keyword, redirectTarget not returnUrl)
+          // Note: For Cashfree v3, the redirect URL should be whitelisted in Merchant Dashboard
+          cashfree.checkout({
+            paymentSessionId: sessionId,
+            redirectTarget: '_self'
+            // Return URL is controlled by Cashfree backend and should match whitelisted domain
+          });
+          
+          setLoading(null);
+        } catch (err) {
+          console.error('❌ Error opening checkout:', err);
+          console.error('❌ Stack:', err.stack);
+          alert('Error opening payment checkout: ' + err.message);
+          setLoading(null);
+        }
+      }
 
     } catch (err) {
-      console.error('Error initiating payment:', err);
-      alert('Something went wrong. Please try again.');
+      console.error('❌ Error in payment flow:', err);
+      alert('Error starting payment: ' + (err.message || 'Something went wrong.'));
       setLoading(null);
     }
   };
@@ -165,7 +238,7 @@ const SubscriptionsPage = ({ onClose }) => {
         <header className="subscriptions-header">
           <h2 className="subscriptions-title">Flinxx Subscriptions</h2>
           <button className="subscriptions-close-btn" onClick={onClose} title="Close">
-            <span className="material-symbols-outlined">close</span>
+            <FaTimes size={24} />
           </button>
         </header>
 

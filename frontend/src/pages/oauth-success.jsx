@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+﻿import { useEffect, useState, useContext } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
@@ -63,7 +63,7 @@ export default function OAuthSuccess() {
 
         // Now try to fetch full user data from backend for additional fields
         // But don't fail if this doesn't work - we have what we need from the JWT
-        const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
         console.log("📡 [OAuthSuccess] Attempting to fetch full user profile from backend...");
         
         let userFromBackend = null;
@@ -105,7 +105,9 @@ export default function OAuthSuccess() {
               email: userFromBackend.email,
               picture: userFromBackend.picture || userFromBackend.photo_url,
               location: userFromBackend.location || null,
-              profileCompleted: userFromBackend.profileCompleted || false
+              birthday: userFromBackend.birthday,
+              gender: userFromBackend.gender,
+              profileCompleted: userFromBackend.profileCompleted
             };
             console.log('✅ [OAuthSuccess] ✓ Valid UUID from backend, using backend user data', validUUID.substring(0, 8) + '...');
           } else {
@@ -143,7 +145,9 @@ export default function OAuthSuccess() {
             name: decoded.name || 'User',
             email: decoded.email,
             picture: decoded.picture || null,
-            profileCompleted: decoded.profileCompleted || false
+            birthday: decoded.birthday,
+            gender: decoded.gender,
+            profileCompleted: decoded.profileCompleted
           };
           console.log('✅ [OAuthSuccess] ✓ Valid UUID from JWT, using JWT user data', validUUID.substring(0, 8) + '...');
         }

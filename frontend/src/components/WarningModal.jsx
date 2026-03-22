@@ -1,9 +1,26 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const WarningModal = ({ isOpen, onClose, warningData }) => {
   const [isClosing, setIsClosing] = useState(false)
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  // New states for the appeal modal
+  const [isAppealModalOpen, setIsAppealModalOpen] = useState(false)
+  const [appealMessage, setAppealMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [appealSuccess, setAppealSuccess] = useState(false)
+  const [appealError, setAppealError] = useState('')
+
+  const charCount = appealMessage.length;
+
+  // Decide if this is a ban or a warning
+  const isBanned = warningData?.type === 'banned' || user?.isBanned;
 
   useEffect(() => {
+    if (!isOpen) return;
     console.log('\n' + '='.repeat(80))
     console.log('🔍 [WarningModal] Component rendered with:')
     console.log(`   isOpen: ${isOpen}`)
@@ -13,7 +30,6 @@ const WarningModal = ({ isOpen, onClose, warningData }) => {
   }, [isOpen, isClosing, warningData])
 
   if (!isOpen) {
-    console.log('📭 [WarningModal] Not rendering - isOpen is false')
     return null
   }
 
@@ -29,28 +45,81 @@ const WarningModal = ({ isOpen, onClose, warningData }) => {
 
   const handleUnderstand = () => {
     console.log('✅ [WarningModal] User acknowledged warning')
-    handleClose()
+    if (isBanned) {
+      console.log('🚪 [WarningModal] Banned user clicking Return to Login - Logging out...')
+      logout()
+    } else {
+      handleClose()
+    }
   }
 
   const handleViewGuidelines = () => {
     console.log('📖 [WarningModal] Opening community guidelines')
-    // Open guidelines in new tab or modal
-    window.open('https://flinxx.in/guidelines', '_blank')
+    onClose() // Close modal first
+    navigate('/community-guidelines') // Then navigate
+  }
+
+  const handleSubmitAppeal = async () => {
+    if (charCount < 30) {
+      setAppealError('Please enter at least 30 characters.')
+      return
+    }
+    if (charCount > 1000) {
+      setAppealError('Maximum 1000 characters allowed.')
+      return
+    }
+
+    setIsSubmitting(true)
+    setAppealError('')
+
+    try {
+      const token = localStorage.getItem('token')
+      const apiUrl = import.meta.env.MODE === 'development' ? 'http://localhost:3001' : import.meta.env.VITE_BACKEND_URL // Since user specified accessing the admin backend for the user api endpoint
+      const res = await fetch(`${apiUrl}/api/appeals`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: appealMessage })
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        setAppealSuccess(true)
+        setTimeout(() => {
+          setIsAppealModalOpen(false)
+        }, 2000)
+      } else {
+        setAppealError(data.message || 'Failed to submit appeal. Please try again.')
+      }
+    } catch (err) {
+      setAppealError('Network error. Please try again later.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   console.log('✨ [WarningModal] Rendering modal - SHOULD BE VISIBLE NOW!')
 
   return (
     <>
-      {/* Backdrop */}
-      <div className={`fixed inset-0 z-40 transition-all duration-300 ${isOpen && !isClosing ? 'bg-black/70 backdrop-blur-sm' : 'bg-black/0'}`} onClick={handleClose} />
+      {/* Backdrop - No blur or dim overlay per user request */}
+      <div
+        className="fixed bg-transparent"
+        style={{ top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 999998 }}
+        onClick={isBanned ? undefined : handleClose}
+      />
 
       {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pointer-events-none">
+      <div
+        className="fixed flex items-center justify-center px-4 pointer-events-none"
+        style={{ top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 999999 }}
+      >
         <div
-          className={`relative w-full max-w-[480px] glass-bg modal-border rounded-xl gold-glow overflow-hidden transform transition-all duration-300 pointer-events-auto ${
-            isOpen && !isClosing ? 'scale-100 opacity-100' : 'scale-90 opacity-0'
-          }`}
+          className={`relative w-full max-w-[480px] glass-bg modal-border rounded-xl gold-glow overflow-hidden transform transition-all duration-300 pointer-events-auto ${isOpen && !isClosing ? 'scale-100 opacity-100' : 'scale-90 opacity-0'
+            }`}
           style={{
             background: 'rgba(18, 17, 10, 0.95)',
             backdropFilter: 'blur(12px)',
@@ -86,76 +155,161 @@ const WarningModal = ({ isOpen, onClose, warningData }) => {
 
             {/* Title */}
             <h2 className="text-3xl font-extrabold text-white mb-4 tracking-tight">
-              Account Warning
+              {isAppealModalOpen ? (appealSuccess ? 'Appeal Submitted' : 'Submit an Appeal') : (isBanned ? 'Account Suspended' : 'Account Warning')}
             </h2>
 
-            {/* Main Message */}
-            <p className="text-lg text-slate-300 leading-relaxed mb-4">
-              Our system has detected activity that violates our&nbsp;
-              <span className="font-semibold" style={{ color: '#f2b90d' }}>
-                Premium Community Standards
-              </span>
-              . Continued use of automated tools or third-party scripts is strictly prohibited.
-            </p>
+            {isAppealModalOpen ? (
+              <div className="w-full flex flex-col gap-4 text-left">
+                {appealSuccess ? (
+                  <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-center text-green-400">
+                    <span className="material-icons mb-2 text-4xl">check_circle</span>
+                    <p>Your appeal has been submitted successfully.</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-slate-300 mb-2 text-center">
+                      Please explain why you believe your account suspension was a mistake. We will review your case shortly.
+                    </p>
+                    {appealError && (
+                      <div className="p-3 text-sm rounded bg-red-500/10 border border-red-500/20 text-red-400">
+                        {appealError}
+                      </div>
+                    )}
+                    <textarea
+                      value={appealMessage}
+                      onChange={(e) => {
+                        const newText = e.target.value;
+                        if (newText.length <= 1000 || newText.length < appealMessage.length) {
+                          setAppealMessage(newText);
+                          if (appealError) setAppealError('');
+                        } else {
+                          setAppealError('Maximum 1000 characters allowed.');
+                        }
+                      }}
+                      placeholder="Enter your appeal reason here (min 30, max 1000 characters)..."
+                      className="w-full h-32 p-3 rounded-lg bg-black/40 border border-yellow-500/30 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-yellow-500/70 transition-colors resize-none"
+                      disabled={isSubmitting}
+                      required
+                    ></textarea>
 
-            {/* Subtext Violation Warning */}
-            <div
-              className="flex items-start gap-3 p-4 rounded-lg mb-10 w-full"
-              style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                borderColor: 'rgba(239, 68, 68, 0.2)',
-                border: '1px solid rgba(239, 68, 68, 0.2)'
-              }}
-            >
-              <span
-                className="material-icons text-sm mt-0.5"
-                style={{ color: '#ef4444', flexShrink: 0 }}
-              >
-                error_outline
-              </span>
-              <p className="text-sm text-left leading-snug" style={{ color: '#f87171' }}>
-                <strong>Important:</strong> Repeated violations of these terms may lead to permanent account suspension
-                and forfeiture of your premium subscription status.
-              </p>
-            </div>
+                    <div className={`text-right text-xs mt-1 ${charCount > 1000 ? 'text-red-400 font-medium' : 'text-slate-400'}`}>
+                      {charCount} / 1000 chars
+                    </div>
+                    
+                    <div className="flex gap-3 mt-2">
+                      <button
+                        onClick={() => setIsAppealModalOpen(false)}
+                        className="flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition-colors duration-200 border border-slate-600 text-slate-300 hover:bg-slate-800"
+                        disabled={isSubmitting}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSubmitAppeal}
+                        className="flex-1 py-3 px-4 rounded-lg font-bold text-sm text-gray-900 transition-all duration-300"
+                        style={{
+                          backgroundImage: 'linear-gradient(to bottom right, #f2b90d, #d9a50b, #c2930a)',
+                          opacity: isSubmitting ? 0.7 : 1,
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? 'Submitting...' : 'Submit Appeal'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Main Message */}
+                <p className="text-lg text-slate-300 leading-relaxed mb-4">
+                  {isBanned ? (
+                    <>Your account has been permanently suspended due to severe or repeated violations of our&nbsp;
+                      <span
+                        onClick={handleViewGuidelines}
+                        className="font-semibold transition-all hover:underline cursor-pointer"
+                        style={{ color: '#f2b90d' }}
+                      >
+                        Community Guidelines
+                      </span>.</>
+                  ) : (
+                    <>Our system has detected activity that violates our&nbsp;
+                      <span
+                        onClick={handleViewGuidelines}
+                        className="font-semibold transition-all hover:underline cursor-pointer"
+                        style={{ color: '#f2b90d' }}
+                      >
+                        Community Guidelines
+                      </span>.
+                      Continued use of automated tools or third-party scripts is strictly prohibited.</>
+                  )}
+                </p>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col w-full gap-4">
-              <button
-                onClick={handleUnderstand}
-                className="w-full py-4 px-6 rounded-lg font-bold text-lg transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 text-gray-900"
-                style={{
-                  backgroundImage: 'linear-gradient(to bottom right, #f2b90d, #d9a50b, #c2930a)',
-                  boxShadow: 'rgba(242, 185, 13, 0.3) 0px 0px 20px'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.boxShadow = 'rgba(242, 185, 13, 0.5) 0px 0px 25px'
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.boxShadow = 'rgba(242, 185, 13, 0.3) 0px 0px 20px'
-                }}
-              >
-                I Understand
-              </button>
+                {/* Subtext Violation Warning */}
+                <div
+                  className="flex items-start gap-3 p-4 rounded-lg mb-10 w-full"
+                  style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderColor: 'rgba(239, 68, 68, 0.2)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)'
+                  }}
+                >
+                  <span
+                    className="material-icons text-sm mt-0.5"
+                    style={{ color: '#ef4444', flexShrink: 0 }}
+                  >
+                    error_outline
+                  </span>
+                  <p className="text-sm text-left leading-snug" style={{ color: '#f87171' }}>
+                    <strong>Important:</strong> {warningData?.type === 'banned'
+                      ? "Your account has been permanently disabled. You can submit an appeal if you believe this was a mistake."
+                      : "Repeated violations of these terms may lead to permanent account suspension and forfeiture of your premium subscription status."}
+                  </p>
+                </div>
 
-              <button
-                onClick={handleViewGuidelines}
-                className="w-full py-4 px-6 rounded-lg font-semibold text-base transition-colors duration-200"
-                style={{
-                  borderColor: 'rgba(242, 185, 13, 0.4)',
-                  border: '1px solid rgba(242, 185, 13, 0.4)',
-                  color: '#f2b90d'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'rgba(242, 185, 13, 0.1)'
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent'
-                }}
-              >
-                View Community Guidelines
-              </button>
-            </div>
+                {/* Action Buttons */}
+                <div className="flex flex-col w-full gap-4">
+                  <button
+                    onClick={warningData?.type === 'banned' ? () => { window.location.href = '/login'; localStorage.clear(); } : handleUnderstand}
+                    className="w-full py-4 px-6 rounded-lg font-bold text-lg transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 text-gray-900"
+                    style={{
+                      backgroundImage: 'linear-gradient(to bottom right, #f2b90d, #d9a50b, #c2930a)',
+                      boxShadow: 'rgba(242, 185, 13, 0.3) 0px 0px 20px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.boxShadow = 'rgba(242, 185, 13, 0.5) 0px 0px 25px'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.boxShadow = 'rgba(242, 185, 13, 0.3) 0px 0px 20px'
+                    }}
+                  >
+                    {isBanned ? 'Return to Login' : 'I Understand'}
+                  </button>
+
+                  <button
+                    onClick={isBanned
+                      ? (appealSuccess ? null : () => setIsAppealModalOpen(true))
+                      : handleViewGuidelines}
+                    className="w-full py-4 px-6 rounded-lg font-semibold text-base transition-colors duration-200"
+                    style={{
+                      borderColor: 'rgba(242, 185, 13, 0.4)',
+                      border: '1px solid rgba(242, 185, 13, 0.4)',
+                      color: appealSuccess && isBanned ? 'rgba(242, 185, 13, 0.5)' : '#f2b90d',
+                      cursor: appealSuccess && isBanned ? 'not-allowed' : 'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!appealSuccess || !isBanned) e.target.style.backgroundColor = 'rgba(242, 185, 13, 0.1)'
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!appealSuccess || !isBanned) e.target.style.backgroundColor = 'transparent'
+                    }}
+                    disabled={appealSuccess && isBanned}
+                  >
+                    {isBanned ? (appealSuccess ? 'Appeal Submitted' : 'Appeal') : 'View Community Guidelines'}
+                  </button>
+                </div>
+              </>
+            )}
 
             {/* Subtle Brand Tag */}
             <div className="mt-8 flex items-center justify-center gap-2 opacity-30 grayscale pointer-events-none">

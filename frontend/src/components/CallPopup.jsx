@@ -34,20 +34,20 @@ const CallPopup = ({
           <div className="acrylic-blur bg-black/40 border border-yellow-500/60 rounded-full px-5 py-3 flex items-center gap-5 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.6)] min-w-[420px] h-20 transition-all duration-300 hover:border-yellow-500">
           
           {/* CALLER AVATAR WITH STATUS */}
-          <div className="relative flex-shrink-0">
+          <div className="relative w-12 h-12 flex-shrink-0">
             <div className="status-pulse"></div>
             {callerAvatar ? (
               <img 
                 alt={callerName} 
-                className="w-12 h-12 rounded-full object-cover ring-2 ring-black/50" 
+                className="w-full h-full rounded-full object-cover ring-2 ring-black/50 block" 
                 src={callerAvatar}
               />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg">
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg">
                 {callerName?.charAt(0).toUpperCase() || 'U'}
               </div>
             )}
-            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-primary border-2 border-black rounded-full"></div>
+            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-primary border-2 border-black rounded-full z-10"></div>
           </div>
 
           {/* CALLER INFO */}

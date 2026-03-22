@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Profile Management Utilities
  * Handles profile-related API calls and localStorage operations
  */
@@ -24,7 +24,7 @@ export const resetUserProfile = async () => {
     console.log('[profileUtils] User ID:', userId);
     console.log('[profileUtils] Calling /api/users/reset-profile endpoint...');
     
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
     const response = await fetch(`${BACKEND_URL}/api/users/reset-profile`, {
       method: 'POST',
       headers: {

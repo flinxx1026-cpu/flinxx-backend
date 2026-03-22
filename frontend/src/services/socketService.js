@@ -1,4 +1,4 @@
-import io from 'socket.io-client'
+﻿import io from 'socket.io-client'
 
 // Determine correct socket URL based on environment
 const getSocketUrl = () => {
@@ -10,7 +10,7 @@ const getSocketUrl = () => {
     return import.meta.env.VITE_BACKEND_URL;
   }
   // Default to localhost backend
-  return 'http://localhost:5000';
+  return import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 };
 
 const SOCKET_URL = getSocketUrl();

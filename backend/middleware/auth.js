@@ -17,8 +17,21 @@ const authMiddleware = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    console.error('❌ Auth middleware error:', err.message);
-    return res.status(401).json({ message: 'Invalid or expired token' });
+    console.error('❌ Auth middleware error:', err.name, '-', err.message);
+    
+    // Handle specific JWT errors
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        message: 'Token expired, please login again',
+        code: 'TOKEN_EXPIRED'
+      });
+    }
+    
+    // Handle other JWT errors (invalid, malformed, etc.)
+    return res.status(401).json({ 
+      message: 'Invalid or expired token',
+      code: 'INVALID_TOKEN'
+    });
   }
 };
 

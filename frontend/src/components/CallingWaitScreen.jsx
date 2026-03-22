@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+﻿import React, { useEffect, useRef } from 'react';
 
 const CallingWaitScreen = ({ 
   callerName,  // ✅ Now actually the recipient's name (person being called)

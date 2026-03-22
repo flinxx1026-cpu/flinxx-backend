@@ -1,20 +1,9 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 import googleIcon from '../assets/google-icon.svg'
-import TermsConfirmationModal from '../components/TermsConfirmationModal'
+import TermsConsentModal from '../components/TermsConsentModal'
 import './Login.css'
-
-// Helper function to check if terms are accepted
-const isTermsAccepted = () => {
-  try {
-    const termsAccepted = localStorage.getItem('termsAccepted')
-    return termsAccepted === 'true'
-  } catch (error) {
-    console.error('❌ Error checking terms acceptance:', error)
-    return false
-  }
-}
 
 // Helper function to mark terms as accepted
 const acceptTerms = () => {
@@ -31,35 +20,10 @@ const Login = () => {
   const [isSigningIn, setIsSigningIn] = useState(false)
   const [error, setError] = useState(null)
   const [showTermsModal, setShowTermsModal] = useState(false)
-  const [pendingLoginProvider, setPendingLoginProvider] = useState(null)
+  const [pendingLogin, setPendingLogin] = useState(null) // 'google' or 'facebook'
 
   useEffect(() => {
-    // 🔥 PRIORITY 1: Handle Google OAuth callback from URL
-    const params = new URLSearchParams(window.location.search)
-    const tokenFromUrl = params.get('token')
-    const userFromUrl = params.get('user')
-
-    console.log('🔵 [Login useEffect] Checking OAuth callback:')
-    console.log('   - tokenFromUrl:', !!tokenFromUrl)
-    console.log('   - userFromUrl:', !!userFromUrl)
-
-    // Handle Google OAuth callback
-    if (tokenFromUrl && userFromUrl) {
-      console.log('✅ [Login useEffect] Google OAuth callback received!')
-      try {
-        // Decode user if it's base64 or URL-encoded
-        const decodedUser = typeof userFromUrl === 'string' ? JSON.parse(decodeURIComponent(userFromUrl)) : userFromUrl
-        localStorage.setItem('token', tokenFromUrl)
-        localStorage.setItem('user', JSON.stringify(decodedUser))
-        console.log('✅ [Login useEffect] OAuth credentials stored, redirecting to /chat')
-        navigate('/chat', { replace: true })
-        return
-      } catch (err) {
-        console.error('❌ [Login useEffect] Error handling OAuth callback:', err)
-      }
-    }
-
-    // 🔥 PRIORITY 2: Check if user already logged in (normal case)
+    // ✅ Check if user already logged in
     const storedToken = localStorage.getItem('token')
     const storedUser = localStorage.getItem('user')
     
@@ -70,10 +34,10 @@ const Login = () => {
     if (storedToken && storedUser) {
       try {
         const user = JSON.parse(storedUser)
-        console.log('✅ [Login useEffect] User already authenticated, redirecting to /chat:', user.email)
+        console.log('✅ [Login useEffect] User already authenticated, redirecting to /dashboard:', user.email)
         // Redirect after a small delay
         setTimeout(() => {
-          navigate('/chat', { replace: true })
+          navigate('/dashboard', { replace: true })
         }, 300)
       } catch (err) {
         console.error('Error parsing stored user:', err)
@@ -81,75 +45,171 @@ const Login = () => {
     }
   }, [navigate])
 
-  // Trigger Google OAuth via backend
+  // ✅ Listen for OAuth popup completion via localStorage 'storage' event
+  // NOTE: We use 'storage' event instead of postMessage because window.opener
+  // gets nullified after cross-origin navigation through Google's OAuth pages.
+  // The 'storage' event fires in ALL other windows/tabs when localStorage changes.
+  useEffect(() => {
+    let checkInterval;
+    
+    // Core function to check if auth is complete
+    const checkAuthStatus = () => {
+      // First check for error
+      const oauthError = localStorage.getItem('oauth_error')
+      if (oauthError) {
+        console.error('❌ [Login] OAuth error:', oauthError)
+        setError(oauthError)
+        setIsSigningIn(false)
+        localStorage.removeItem('oauth_error')
+        localStorage.removeItem('oauth_complete')
+        return true // handled
+      }
+      
+      // Then check for success
+      const isComplete = localStorage.getItem('oauth_complete')
+      if (isComplete) {
+        console.log('✅ [Login] Detected oauth_complete in localStorage!')
+        
+        const token = localStorage.getItem('token')
+        const userStr = localStorage.getItem('user')
+        
+        if (token && userStr) {
+          console.log('✅ [Login] Auth data found in localStorage - navigating to /chat')
+          setIsSigningIn(false)
+          
+          // Clean up the completion flag
+          localStorage.removeItem('oauth_complete')
+          localStorage.removeItem('is_oauth_popup')
+          
+          // Force a full Flinxx page reload so AuthContext reads the new token
+          window.location.href = '/chat'
+        } else {
+          console.error('❌ [Login] oauth_complete fired but no auth data found')
+          setError('Login failed. Please try again.')
+          setIsSigningIn(false)
+          localStorage.removeItem('oauth_complete')
+        }
+        return true // handled
+      }
+      return false // not handled yet
+    }
+  
+    const handleStorageChange = (event) => {
+      if (event.key === 'oauth_complete' || event.key === 'oauth_error') {
+        checkAuthStatus()
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Fallback polling mechanism (checks every 500ms)
+    // Sometimes 'storage' events don't fire across tabs in certain browser configurations
+    checkInterval = setInterval(() => {
+      const handled = checkAuthStatus()
+      if (handled) {
+        clearInterval(checkInterval)
+      }
+    }, 500)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      if (checkInterval) clearInterval(checkInterval)
+    }
+  }, [navigate])
+
+  // ✅ Open OAuth in a POPUP WINDOW (not full page redirect)
+  const openOAuthPopup = (url, provider) => {
+    const width = 500
+    const height = 600
+    const left = window.screenX + (window.outerWidth - width) / 2
+    const top = window.screenY + (window.outerHeight - height) / 2
+    
+    // Set a reliable localStorage flag to tell OAuthHandler we used a popup
+    localStorage.setItem('is_oauth_popup', 'true')
+    
+    const popup = window.open(
+      url,
+      `${provider}OAuthPopup`,
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+    )
+    
+    // Check if popup was blocked
+    if (!popup || popup.closed) {
+      setError('Popup was blocked. Please allow popups for this site.')
+      setIsSigningIn(false)
+      return null
+    }
+    
+    // Monitor popup close (user closes manually without completing auth)
+    const checkPopupClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkPopupClosed)
+        setIsSigningIn(false)
+      }
+    }, 500)
+    
+    return popup
+  }
+
+  // Trigger Google OAuth via POPUP window
   const triggerGoogleLogin = () => {
-    const BACKEND_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
-    console.log('🔗 [Google] Redirecting to backend OAuth endpoint:', `${BACKEND_URL}/auth/google`)
+    console.log('🔗 [Google] Opening Google OAuth in popup')
     setIsSigningIn(true)
-    window.location.href = `${BACKEND_URL}/auth/google`
+    acceptTerms()
+    
+    const backendUrl = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
+    const googleAuthUrl = `${backendUrl}/auth/google?popup=true`
+    
+    console.log('🔗 [Google] Opening popup for:', googleAuthUrl)
+    openOAuthPopup(googleAuthUrl, 'google')
   }
 
-  // Trigger Facebook OAuth via backend
+  // Trigger Facebook OAuth via POPUP window
   const triggerFacebookLogin = () => {
-    const BACKEND_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
-    console.log('🔗 [Facebook] Redirecting to backend OAuth endpoint:', `${BACKEND_URL}/auth/facebook`)
+    console.log('🔗 [Facebook] Opening Facebook OAuth in popup')
     setIsSigningIn(true)
-    window.location.href = `${BACKEND_URL}/auth/facebook`
+    acceptTerms()
+    
+    const backendUrl = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
+    const facebookAuthUrl = `${backendUrl}/auth/facebook?popup=true`
+    
+    console.log('🔗 [Facebook] Opening popup for:', facebookAuthUrl)
+    openOAuthPopup(facebookAuthUrl, 'facebook')
   }
 
-  // Handle showing terms modal before login
-  const handleShowTermsModal = (provider) => {
-    console.log(`📋 Showing Terms modal for ${provider}`)
-    setPendingLoginProvider(provider)
+  // Handle Google OAuth login - show terms modal first
+  const handleGoogleClick = () => {
+    console.log('🔐 Google login clicked')
+    setPendingLogin('google')
     setShowTermsModal(true)
   }
 
-  // Handle terms modal cancellation
-  const handleTermsCancel = () => {
-    console.log('❌ User cancelled terms modal')
-    setShowTermsModal(false)
-    setPendingLoginProvider(null)
-  }
-
-  // Handle terms acceptance and trigger login
-  const handleTermsContinue = () => {
-    console.log('✅ User accepted terms')
-    acceptTerms()
-    setShowTermsModal(false)
-    
-    if (pendingLoginProvider === 'google') {
-      console.log('🔐 Proceeding with Google login after terms acceptance')
-      triggerGoogleLogin()
-    } else if (pendingLoginProvider === 'facebook') {
-      console.log('🔐 Proceeding with Facebook login after terms acceptance')
-      triggerFacebookLogin()
-    }
-    
-    setPendingLoginProvider(null)
-  }
-
-  const handleGoogleClick = () => {
-    console.log('🔐 Google login clicked - checking terms acceptance')
-    
-    if (isTermsAccepted()) {
-      console.log('✅ Terms already accepted - proceeding with Google login')
-      triggerGoogleLogin()
-    } else {
-      console.log('⚠️ Terms not accepted - showing modal first')
-      handleShowTermsModal('google')
-    }
-  }
-
+  // Handle Facebook OAuth login - show terms modal first
   const handleFacebookClick = () => {
-    console.log('🔐 Facebook login clicked - checking terms acceptance')
+    console.log('🔐 Facebook login clicked')
+    setPendingLogin('facebook')
+    setShowTermsModal(true)
+  }
+
+  const handleAcceptTerms = () => {
+    localStorage.setItem('terms_consent_accepted', 'true')
+    setShowTermsModal(false)
     
-    if (isTermsAccepted()) {
-      console.log('✅ Terms already accepted - proceeding with Facebook login')
+    // Proceed with the pending login
+    if (pendingLogin === 'google') {
+      triggerGoogleLogin()
+    } else if (pendingLogin === 'facebook') {
       triggerFacebookLogin()
-    } else {
-      console.log('⚠️ Terms not accepted - showing modal first')
-      handleShowTermsModal('facebook')
     }
+    setPendingLogin(null)
+  }
+
+  const handleDeclineTerms = () => {
+    // User declined - cancel login and close modal
+    setShowTermsModal(false)
+    setIsSigningIn(false)
+    setPendingLogin(null)
+    console.log('User declined terms - login cancelled')
   }
 
   return (
@@ -215,38 +275,39 @@ const Login = () => {
 
         <p className="text-xs text-center text-gray-500 mb-11 max-w-xs mx-auto leading-relaxed">
           By signing in, you agree to our 
-          <a href="/terms" className="text-gold-400 hover:text-white transition-colors underline decoration-gold-400/30 underline-offset-4"> Terms &amp; Conditions</a> and 
+          <a href="/terms" className="text-gold-400 hover:text-white transition-colors underline decoration-gold-400/30 underline-offset-4"> Terms & Conditions</a>
+          {' '}and{' '}
           <a href="/privacy-policy" className="text-gold-400 hover:text-white transition-colors underline decoration-gold-400/30 underline-offset-4"> Privacy Policy</a>
         </p>
 
         <div className="space-y-4 flex flex-col items-start w-full max-w-xs mx-auto text-sm text-gray-300 font-medium">
           <div className="flex items-center space-x-4 group">
             <span className="flex items-center justify-center w-9 h-9 rounded-full bg-gold-400/10 gold-border-subtle group-hover:border-gold-400/40 group-hover:bg-gold-400/20 transition-all duration-300 flex-shrink-0">
-              <span className="material-icons-round text-gold-400 text-sm">bolt</span>
+              <span className="material-icons-round text-gold-400 text-sm">shield</span>
             </span>
-            <span className="group-hover:text-white transition-colors">Fast connection</span>
+            <span className="group-hover:text-white transition-colors">Community Guidelines</span>
           </div>
           <div className="flex items-center space-x-4 group">
             <span className="flex items-center justify-center w-9 h-9 rounded-full bg-gold-400/10 gold-border-subtle group-hover:border-gold-400/40 group-hover:bg-gold-400/20 transition-all duration-300 flex-shrink-0">
-              <span className="material-icons-round text-gold-400 text-sm">auto_awesome</span>
+              <span className="material-icons-round text-gold-400 text-sm">flag</span>
             </span>
-            <span className="group-hover:text-white transition-colors">Clean &amp; modern design</span>
+            <span className="group-hover:text-white transition-colors">Report Abuse</span>
           </div>
           <div className="flex items-center space-x-4 group">
             <span className="flex items-center justify-center w-9 h-9 rounded-full bg-gold-400/10 gold-border-subtle group-hover:border-gold-400/40 group-hover:bg-gold-400/20 transition-all duration-300 flex-shrink-0">
-              <span className="material-icons-round text-gold-400 text-sm">person</span>
+              <span className="material-icons-round text-gold-400 text-sm">lock</span>
             </span>
-            <span className="group-hover:text-white transition-colors">Smart matching with real users</span>
+            <span className="group-hover:text-white transition-colors">Safety</span>
           </div>
         </div>
 
         {/* Terms Confirmation Modal */}
-        {showTermsModal && (
-          <TermsConfirmationModal
-            onCancel={handleTermsCancel}
-            onContinue={handleTermsContinue}
-          />
-        )}
+        <TermsConsentModal 
+          isOpen={showTermsModal}
+          onAccept={handleAcceptTerms}
+          onDecline={handleDeclineTerms}
+        />
+
       </div>
     </div>
   )

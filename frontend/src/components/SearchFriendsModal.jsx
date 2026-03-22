@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+﻿import React, { useState, useEffect, useContext, useRef } from 'react';
 import './SearchFriendsModal.css';
 import { getFriends, markMessagesAsRead, getNotifications } from '../services/api';
 import { MessageContext } from '../context/MessageContext';
 import { AuthContext } from '../context/AuthContext';
 import { useUnread } from '../context/UnreadContext';
 import ChatBox from './ChatBox';
+import socketWrapper from '../services/socketService';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
   const { markAsRead } = useContext(MessageContext) || {};
   const { user, sentRequests, refreshSentRequests } = useContext(AuthContext) || {};
   const { setUnreadCount, refetchUnreadCount } = useUnread();
-  
+
   const [search, setSearch] = useState('');
   const [results, setResults] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,12 +22,13 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const [activeChat, setActiveChat] = useState(null);
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
-  
+  const [friendOnlineStatus, setFriendOnlineStatus] = useState({}); // Track online status for each friend
+
   const isNotificationMode = mode === 'notifications';
   const isMessageMode = mode === 'message';
   const isLikesMode = mode === 'likes';
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-  
+  const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
+
   // Fetch current user from backend and store in localStorage
   const ensureCurrentUser = async () => {
     try {
@@ -120,22 +122,22 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       try {
         // Dynamically import socket to avoid TDZ
         const socketService = await import('../services/socketService').then(m => m.default);
-        
+
         // Log all events to debug
         const handleAnyEvent = (eventName, data) => {
           if (!['ping', 'pong', 'connect', 'disconnect'].includes(eventName)) {
             console.log(`📬 [SearchFriendsModal] Socket event: "${eventName}"`, data);
           }
-          
+
           // Listen for message-related events
           if (eventName === 'receive_message' || eventName === 'new_message') {
             console.log('✅ Message event received:', data);
-            
+
             // Update friends list - increment unread count for this sender
             setFriends(prevFriends => {
               return prevFriends.map(friend => {
                 const senderId = data.senderId || data.sender_id || data.from;
-                
+
                 if (friend.id === senderId && senderId !== activeChat?.id) {
                   // Only increment if not currently in that chat
                   console.log(`📊 Incrementing unread for ${friend.display_name}:`, friend.unreadCount + 1);
@@ -171,16 +173,21 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // ✅ ALWAYS load friends when modal opens
   useEffect(() => {
     if (!isOpen) return;
-    
+
     if (user?.uuid && user.uuid.length === 36) {
-      console.log('📨 Loading friends for message mode');
+      console.log('📩 Loading friends for message mode');
       getFriends(user.uuid).then(data => {
         const sorted = Array.isArray(data) ? data.sort((a, b) => {
           const timeA = a.last_message_at ? new Date(a.last_message_at) : new Date(0);
           const timeB = b.last_message_at ? new Date(b.last_message_at) : new Date(0);
           return timeB - timeA;
         }) : [];
-        setFriends(sorted);
+        // ✅ Ensure each friend has unreadCount initialized
+        const friendsWithUnread = sorted.map(friend => ({
+          ...friend,
+          unreadCount: friend.unreadCount || 0
+        }));
+        setFriends(friendsWithUnread);
       }).catch(err => {
         console.error('❌ Error loading friends:', err);
         setFriends([]);
@@ -191,7 +198,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // ✅ REFRESH friends list when returning from a chat
   useEffect(() => {
     if (activeChat === null && friends.length > 0) {
-      console.log('📨 Refreshing friends after closing chat');
+      console.log('📩 Refreshing friends after closing chat');
       if (user?.uuid && user.uuid.length === 36) {
         getFriends(user.uuid).then(data => {
           const sorted = Array.isArray(data) ? data.sort((a, b) => {
@@ -199,7 +206,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
             const timeB = b.last_message_at ? new Date(b.last_message_at) : new Date(0);
             return timeB - timeA;
           }) : [];
-          setFriends(sorted);
+          // ✅ Ensure each friend has unreadCount initialized
+          const friendsWithUnread = sorted.map(friend => ({
+            ...friend,
+            unreadCount: friend.unreadCount || 0
+          }));
+          setFriends(friendsWithUnread);
         }).catch(err => {
           console.error('❌ Error refreshing friends:', err);
         });
@@ -212,7 +224,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     if (!isOpen) return;
     // Refresh in both notification and likes modes
     if (!isNotificationMode && !isLikesMode) return;
-    
+
     if (user?.uuid && user.uuid.length === 36 && refreshSentRequests) {
       console.log('🔄 Refreshing sent requests when panel opens');
       refreshSentRequests();
@@ -222,13 +234,13 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   // ✅ FETCH INCOMING REQUESTS when Likes mode opens
   useEffect(() => {
     if (!isOpen || !isLikesMode) return;
-    
+
     const fetchIncomingRequests = async () => {
       if (!user?.uuid || user.uuid.length !== 36) {
         console.warn('⛔ Cannot fetch incoming requests - invalid user UUID');
         return;
       }
-      
+
       setNotificationsLoading(true);
       try {
         console.log('📥 Fetching incoming friend requests...');
@@ -242,15 +254,58 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         setNotificationsLoading(false);
       }
     };
-    
+
     fetchIncomingRequests();
   }, [isOpen, isLikesMode, user?.uuid]);
+
+  // ✅ TRACK ONLINE STATUS FOR FRIENDS in message mode
+  useEffect(() => {
+    if (!isOpen || !isMessageMode || friends.length === 0) return;
+
+    // Fetch initial online status for all friends
+    const fetchFriendStatuses = async () => {
+      const statusMap = {};
+      for (const friend of friends) {
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/user/status/${friend.id}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            statusMap[friend.id] = data.isOnline || false;
+          }
+        } catch (err) {
+          console.log(`⚠️ Could not fetch status for friend ${friend.id}`);
+          statusMap[friend.id] = false;
+        }
+      }
+      setFriendOnlineStatus(statusMap);
+    };
+
+    fetchFriendStatuses();
+
+    // Listen for real-time status changes via socket
+    const handleStatusChange = (data) => {
+      setFriendOnlineStatus(prev => ({
+        ...prev,
+        [data.friendId]: data.isOnline
+      }));
+    };
+
+    socketWrapper?.on('friend_status_change', handleStatusChange);
+
+    return () => {
+      socketWrapper?.off('friend_status_change', handleStatusChange);
+    };
+  }, [isOpen, isMessageMode, friends, BACKEND_URL]);
 
   // ✅ Sent requests come from centralized AuthContext (single source of truth)
   // These are requests sent BY the user to others (shown in Friends & Requests list)
   // Incoming requests are handled ONLY via socket popup event
   const pendingRequests = sentRequests || [];
-  
+
   // 🔍 DEBUG: Log what we're displaying
   useEffect(() => {
     if (isLikesMode && pendingRequests.length > 0) {
@@ -270,12 +325,12 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
       // Also increment unread count if the message is from a different friend than the active chat
       const updatedFriends = prevFriends.map(friend =>
         friend.id === friendId
-          ? { 
-              ...friend, 
-              last_message_at: messageTime,
-              // Only increment unread if we're not currently viewing this chat
-              unreadCount: activeChat?.id === friendId ? friend.unreadCount : (friend.unreadCount || 0) + 1
-            }
+          ? {
+            ...friend,
+            last_message_at: messageTime,
+            // Only increment unread if we're not currently viewing this chat
+            unreadCount: activeChat?.id === friendId ? friend.unreadCount : (friend.unreadCount || 0) + 1
+          }
           : friend
       );
 
@@ -292,27 +347,27 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
     // Mark this friend's messages as read in database
     if (friend?.id && user?.uuid && user.uuid.length === 36) {
       await markMessagesAsRead(user.uuid, friend.id);
-      
+
       // Update local state to clear the unread badge for this friend
       setFriends(prevFriends =>
         prevFriends.map(f =>
           f.id === friend.id ? { ...f, unreadCount: 0 } : f
         )
       );
-      
+
       // 🔥 CRITICAL FIX: Refetch global unread count after marking as read
       // This ensures badge resets to 0 when all chats are opened
       await refetchUnreadCount();
     }
-    
+
     // Mark this friend's messages as read in local context
     if (markAsRead && friend.id) {
       markAsRead(friend.id);
     }
-    
+
     // ✅ Decrement unread count locally (no API call needed)
     setUnreadCount(prev => Math.max(prev - 1, 0));
-    
+
     // Just set the active chat - ChatBox component will handle socket room joining
     setActiveChat(friend);
   };
@@ -322,9 +377,9 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const handleSearch = async (value) => {
     // Optional safety check: prevent accidental wrong search requests
     if (typeof value !== 'string') return;
-    
+
     setSearch(value);
-    
+
     if (!value.trim()) {
       setResults([]);
       return;
@@ -347,7 +402,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
       const data = await response.json();
       setResults(Array.isArray(data) ? data : []);
-      
+
       // Check friend request status for each result
       if (Array.isArray(data)) {
         data.forEach(user => {
@@ -365,14 +420,14 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
   const getButtonText = (userId) => {
     const status = friendRequestStates[userId];
     if (status === 'pending') return 'SENT';
-    if (status === 'accepted') return 'MESSAGE';
+    if (status === 'accepted') return 'Friends';
     return 'FRIEND';
   };
 
   const getButtonEmoji = (userId) => {
     const status = friendRequestStates[userId];
     if (status === 'pending') return '⏳';
-    if (status === 'accepted') return '💬';
+    if (status === 'accepted') return '🤝';
     return '🤝';
   };
 
@@ -390,7 +445,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
       // Use uuid or publicId for sender - try multiple possible fields
       const senderId = currentUserData?.uuid || currentUserData?.id || currentUserData?.publicId || currentUserData?.public_id;
-      
+
       if (!senderId) {
         console.error('Current user id not found', currentUserData);
         return;
@@ -402,7 +457,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           senderPublicId: String(senderId),
           receiverPublicId: String(targetUserId)
         })
@@ -415,14 +470,14 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
           [targetUserId]: 'pending'
         }));
         console.log('Friend request sent to:', targetUserId);
-        
+
         // ✅ CRITICAL FIX: Refresh sent requests immediately after sending
         // This ensures the request appears in Friends & Requests modal right away
         if (refreshSentRequests) {
           console.log('🔄 Refreshing sent requests after search modal friend request...');
           refreshSentRequests();
         }
-        
+
         // ✅ DO NOT call refreshNotifications() here
         // Backend will emit socket event to receiver
         // AuthContext socket listener will update real-time popup
@@ -450,10 +505,10 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
       if (response.ok) {
         console.log('✅ Friend request accepted:', requestId);
-        
+
         // ✅ Remove from incoming requests list
         setIncomingRequests(prev => prev.filter(req => req.id !== requestId));
-        
+
         // ✅ Update friend state if senderId exists
         if (senderId) {
           setFriendRequestStates(prev => ({
@@ -463,7 +518,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         }
 
         // ✅ REFRESH FRIENDS LIST to show the newly accepted friend
-        console.log('📨 Refreshing friends list after acceptance');
+        console.log('📩 Refreshing friends list after acceptance');
         if (user?.uuid && user.uuid.length === 36) {
           getFriends(user.uuid).then(data => {
             const sorted = Array.isArray(data) ? data.sort((a, b) => {
@@ -498,7 +553,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
 
       if (response.ok) {
         console.log('❌ Friend request rejected:', requestId);
-        
+
         // ✅ Remove from incoming requests list immediately
         setIncomingRequests(prev => prev.filter(req => req.id !== requestId));
       } else {
@@ -515,10 +570,10 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
         {/* Header */}
         <div className="search-friends-header">
           <h2>
-            {isMessageMode ? 'Messages' : 
-             isNotificationMode ? 'Friend Requests' : 
-             isLikesMode ? '❤️ Friends & Requests' :
-             'Search Friends'}
+            {isMessageMode ? 'Messages' :
+              isNotificationMode ? 'Friend Requests' :
+                isLikesMode ? '❤️ Friends & Requests' :
+                  'Search Friends'}
           </h2>
           <button className="search-close-btn" onClick={onClose}>✖</button>
         </div>
@@ -549,8 +604,8 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
               </div>
             ) : (
               results.map((user, index) => (
-                <div 
-                  key={`user-${user.shortId}-${index}`} 
+                <div
+                  key={`user-${user.shortId}-${index}`}
                   className="search-result-item"
                   onClick={() => {
                     if (onUserSelect) {
@@ -559,50 +614,52 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                     onClose();
                   }}
                 >
-                <div className="result-avatar">
-                  {user.avatar && user.avatar.startsWith('http') ? (
-                    <img
-                      src={user.avatar}
-                      alt="avatar"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: '50%',
-                        objectFit: 'cover'
-                      }}
-                    />
-                  ) : (
-                    '👤'
-                  )}
-                </div>
-                <div className="result-info">
-                  <div className="result-name-row">
-                    <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-                      <p className="result-name" style={{ margin: 0 }}>{user.name}</p>
-                      {user.hasBlueTick && (
-                        <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '3px', marginTop: '-7px', marginBottom: '-11px', flexShrink: 0, objectFit: 'contain', display: 'block' }} />
+                  <div className="avatar-wrapper">
+                    <div className="result-avatar">
+                      {user.avatar && user.avatar.startsWith('http') ? (
+                        <img
+                          src={user.avatar}
+                          alt="avatar"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            borderRadius: '50%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      ) : (
+                        '👤'
                       )}
                     </div>
-                    <button
-                      className="friend-badge-btn"
-                      title="Send Friend Request"
-                      disabled={friendRequestStates[user.publicId] === 'pending'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        sendFriendRequest(user.publicId);
-                      }}
-                    >
-                      <span className="friend-emoji" aria-hidden="true">{getButtonEmoji(user.publicId)}</span>
-                      <span className="friend-text">{getButtonText(user.publicId)}</span>
-                    </button>
                   </div>
-                  <p className="tap-to-chat">
-                    {friendRequestStates[user.publicId] === 'accepted' && user.unreadCount > 0 ? (
-                      user.unreadCount >= 4 ? `${user.unreadCount}+ new messages` : `${user.unreadCount} new message${user.unreadCount > 1 ? 's' : ''}`
-                    ) : 'Tap to chat'}
-                  </p>
+                  <div className="result-info">
+                    <div className="result-name-row">
+                      <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                        <p className="result-name" style={{ margin: 0 }}>{user.name}</p>
+                        {user.hasBlueTick && (
+                          <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '6px', flexShrink: 0, objectFit: 'contain' }} />
+                        )}
+                      </div>
+                      <button
+                        className="friend-badge-btn"
+                        title={friendRequestStates[user.publicId] === 'accepted' ? 'Already friends' : 'Send Friend Request'}
+                        disabled={friendRequestStates[user.publicId] === 'pending' || friendRequestStates[user.publicId] === 'accepted'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (friendRequestStates[user.publicId] !== 'accepted') {
+                            sendFriendRequest(user.publicId);
+                          }
+                        }}
+                      >
+                        <span className="friend-emoji" aria-hidden="true">{getButtonEmoji(user.publicId)}</span>
+                        <span className="friend-text">{getButtonText(user.publicId)}</span>
+                      </button>
+                    </div>
+                    <p className="tap-to-chat">
+                      ID: {user.publicId}
+                    </p>
+                  </div>
                 </div>
-              </div>
               ))
             )}
           </div>
@@ -680,7 +737,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   <h3 style={{ margin: '8px 0 4px 0', color: '#fff', fontSize: '16px', fontWeight: '600' }}>
                     {req.display_name}
                   </h3>
-                  
+
                   <p style={{ margin: '0 0 16px 0', color: 'rgba(255, 255, 255, 0.7)', fontSize: '14px' }}>
                     wants to be your friend
                   </p>
@@ -764,25 +821,30 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                   </p>
                 ) : (
                   friends.map(friend => (
-                    <div 
+                    <div
                       key={friend.id}
                       className="search-result-item friend-row"
                       onClick={() => openChat(friend)}
                     >
-                      <div className="result-avatar">
-                        {friend.photo_url ? (
-                          <img 
-                            src={friend.photo_url} 
-                            alt={friend.display_name}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              borderRadius: '50%',
-                              objectFit: 'cover'
-                            }}
-                          />
-                        ) : (
-                          '👤'
+                      <div className="avatar-wrapper">
+                        <div className="result-avatar">
+                          {friend.photo_url ? (
+                            <img
+                              src={friend.photo_url}
+                              alt={friend.display_name}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                borderRadius: '50%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                          ) : (
+                            '👤'
+                          )}
+                        </div>
+                        {friendOnlineStatus[friend.id] && (
+                          <span className="online-dot"></span>
                         )}
                       </div>
 
@@ -794,9 +856,10 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                           )}
                         </div>
                         <p className="tap-to-chat" style={{ margin: 0, marginTop: '2px' }}>
-                          {friend.unreadCount > 0 ? (
-                            friend.unreadCount >= 4 ? `${friend.unreadCount}+ new messages` : `${friend.unreadCount} new message${friend.unreadCount > 1 ? 's' : ''}`
-                          ) : 'Tap to chat'}
+                          {friend.unreadCount && friend.unreadCount > 0
+                            ? `${friend.unreadCount} new message${friend.unreadCount === 1 ? '' : 's'}`
+                            : 'Tap to chat'
+                          }
                         </p>
                       </div>
                     </div>

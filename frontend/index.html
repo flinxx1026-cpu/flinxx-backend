@@ -5,23 +5,113 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="/favicon.png?v=2026020701" sizes="32x32">
     <link rel="apple-touch-icon" href="/favicon.png">
-    <title>Flinxx - Premium Video Chat</title>
+    <title>Flinxx: Meet New People Instantly</title>
+    <meta name="description" content="Flinxx is a global video chat platform where you can meet strangers online instantly. Easy, fast, and fun way to connect with people.">
 
     <!-- Preconnect to Google Fonts for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-    <!-- Material Icons Font (icon fonts already use font-display:block by default) -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap" rel="stylesheet">
-    <!-- Material Symbols Outlined Font — display=block hides text while font loads -->
+    <!-- Material Icons Font — use display=block to prevent FOUC -->
+    <link rel="preload" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" as="style">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=block" rel="stylesheet">
+    <link rel="preload" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=block" as="style">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=block" rel="stylesheet">
+    <!-- Material Symbols Outlined Font — preload + display=block for faster loading -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" as="style">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
     <!-- Playfair Display & Inter Fonts — swap is fine for text fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Preload Cashfree SDK for faster loading -->
+    <link rel="preload" as="script" href="https://sdk.cashfree.com/js/v3/cashfree.js">
+    
     <!-- Google Sign-In SDK -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <!-- Razorpay Checkout SDK -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    
+    <!-- Font Loading: display=block in font URLs handles FOUC natively -->
+    <script>
+      // Mark fonts as loaded for any components that check
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+          document.body.classList.add('fonts-loaded');
+        });
+      } else {
+        window.addEventListener('load', () => {
+          document.body.classList.add('fonts-loaded');
+        });
+      }
+    </script>
+    
+    <!-- Cashfree Web Checkout SDK v3 -->
+    <script 
+      id="cashfree-sdk"
+      src="https://sdk.cashfree.com/js/v3/cashfree.js"
+      async 
+      defer
+      onload="window.cashfreeLoaded = true; console.log('✅ [SDK] Cashfree SDK v3 loaded successfully'); window.dispatchEvent(new Event('cashfreeSDKLoaded'));"
+      onerror="console.error('❌ [SDK] Failed to load Cashfree SDK v3'); window.cashfreeFailed = true; window.dispatchEvent(new Event('cashfreeSDKFailed'));">
+    </script>
+    
+    <!-- Cashfree SDK Initialization & Fallback -->
+    <script>
+      // Initialize Cashfree when it becomes available
+      const initCashfree = () => {
+        if (typeof window.Cashfree !== 'undefined' && window.Cashfree) {
+          console.log('✅ [SDK] Cashfree SDK detected and initialized');
+          window.cashfreeSDKReady = true;
+          return true;
+        }
+        return false;
+      };
+
+      // Listen for SDK loaded event
+      window.addEventListener('cashfreeSDKLoaded', () => {
+        console.log('📢 [SDK] cashfreeSDKLoaded event triggered');
+        initCashfree();
+      });
+
+      // Try initialization immediately (if loaded synchronously)
+      if (!initCashfree()) {
+        console.log('⏳ [SDK] Waiting for Cashfree SDK to initialize...');
+        
+        // Fallback: Check periodically if SDK loaded
+        let attempts = 0;
+        const initInterval = setInterval(() => {
+          attempts++;
+          if (initCashfree()) {
+            clearInterval(initInterval);
+            console.log(`✅ [SDK] SDK initialized after ${attempts} attempts`);
+          } else if (attempts > 50) {
+            // After 5 seconds, log warning but don't fail
+            clearInterval(initInterval);
+            console.warn('⚠️ [SDK] SDK initialization took longer than expected, but will retry on demand');
+          }
+        }, 100);
+      }
+
+      // Manual fallback: Reload SDK if needed
+      window.reloadCashfreeSDK = () => {
+        console.log('🔄 [SDK] Manual SDK reload triggered');
+        if (document.getElementById('cashfree-sdk')) {
+          document.getElementById('cashfree-sdk').remove();
+        }
+        const script = document.createElement('script');
+        script.id = 'cashfree-sdk';
+        script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          window.cashfreeLoaded = true;
+          console.log('✅ [SDK] SDK reloaded successfully');
+          initCashfree();
+        };
+        script.onerror = () => {
+          console.error('❌ [SDK] SDK reload failed');
+        };
+        document.head.appendChild(script);
+      };
+    </script>
 
     <style>
         body {
@@ -50,19 +140,6 @@
             contain: layout paint;
             font-feature-settings: 'liga';
             text-rendering: optimizeLegibility;
-            /* Hide fallback text immediately until icon font loads */
-            color: transparent;
-            text-indent: -9999px;
-        }
-        
-        /* Restore text color once Material Icons font is loaded */
-        @supports (font-variation-settings: normal) {
-            .material-icons,
-            .material-icons-round,
-            .material-symbols-outlined {
-                color: inherit;
-                text-indent: 0;
-            }
         }
 
         /* === Icon Button Containers === */

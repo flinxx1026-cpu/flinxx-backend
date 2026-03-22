@@ -1,9 +1,9 @@
-import { useState, useEffect, useContext } from 'react'
+﻿import { useState, useEffect, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
 import flinxxLogo from '../assets/flinxx-logo.svg'
 
-const Profile = ({ isModal = false, onClose = null }) => {
+const Profile = ({ isModal = false, onClose = null, onOpenPremium = null }) => {
   const navigate = useNavigate()
   const { user: contextUser } = useContext(AuthContext) || {}
 
@@ -51,7 +51,7 @@ const Profile = ({ isModal = false, onClose = null }) => {
           return
         }
 
-        const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
+        const API_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
         console.log(`📋 Profile Component - Fetching from: ${API_URL}/api/user/profile?email=${user.email}`)
 
         const response = await fetch(`${API_URL}/api/user/profile?email=${encodeURIComponent(user.email)}`, {
@@ -178,7 +178,16 @@ const Profile = ({ isModal = false, onClose = null }) => {
             </div>
 
             {/* Flinxx Premium Button */}
-            <button className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold py-3 rounded-full transition-all transform hover:scale-105 mb-6 flex items-center justify-center gap-2">
+            <button 
+              onClick={() => {
+                if (onOpenPremium) {
+                  onOpenPremium()
+                } else {
+                  // Navigate to chat and let it open subscriptions
+                  navigate('/chat')
+                }
+              }}
+              className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold py-3 rounded-full transition-all transform hover:scale-105 mb-6 flex items-center justify-center gap-2">
               <span>🔒</span>
               <span>Flinxx Premium</span>
             </button>

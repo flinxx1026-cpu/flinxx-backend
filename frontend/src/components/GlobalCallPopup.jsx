@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+﻿import React, { useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import socketWrapper from '../services/socketService';
@@ -16,6 +16,9 @@ const GlobalCallPopup = ({ onAccept, onReject }) => {
   const { user, incomingCall, setIncomingCall, callType, setCallType, directCallData, setDirectCallData, localStream, setLocalStream } = useContext(AuthContext);
   const navigate = useNavigate();
   const [isAccepting, setIsAccepting] = useState(false);
+  const [noResponseToast, setNoResponseToast] = useState(false);
+  const callerTimeoutRef = useRef(null);
+  const receiverTimeoutRef = useRef(null);
 
   const hasCall = !!incomingCall;
   const callerName = incomingCall?.callerName || 'Unknown User';
@@ -61,6 +64,71 @@ const GlobalCallPopup = ({ onAccept, onReject }) => {
     }
   }, [user, incomingCall]); // Only trigger when there's an actual incoming call
 
+  // ✅ 18-SECOND TIMEOUT FOR CALLER - Auto end call if no response
+  useEffect(() => {
+    // Only run when caller is waiting (CallingWaitScreen is shown)
+    const isCallerWaiting = callType === 'direct' && directCallData && directCallData.callerId === user?.uuid && !directCallData.callAccepted;
+    
+    if (isCallerWaiting) {
+      console.log('⏱️ [GlobalCallPopup] Starting 18-second caller timeout...');
+      callerTimeoutRef.current = setTimeout(() => {
+        console.log('⏱️ [GlobalCallPopup] 18 seconds passed - No response from user');
+        
+        // ✅ Emit call_no_answer FIRST to save missed call message in DB
+        console.log('📵 [GlobalCallPopup] Emitting call_no_answer to save missed call in chat...');
+        socketWrapper.emit('call_no_answer', {
+          callerId: directCallData.callerId,
+          receiverId: directCallData.receiverId,
+          callerName: user?.name || 'Unknown',
+          timestamp: new Date().toISOString()
+        });
+        
+        // Emit call_ended to backend
+        socketWrapper.emit('call_ended', {
+          callerId: directCallData.callerId,
+          receiverId: directCallData.receiverId,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Show "No response" toast
+        setNoResponseToast(true);
+        
+        // Clean up call state
+        setCallType(null);
+        setDirectCallData(null);
+        setIncomingCall(null);
+        
+        // Hide toast after 3 seconds
+        setTimeout(() => setNoResponseToast(false), 3000);
+      }, 18000);
+    }
+    
+    return () => {
+      if (callerTimeoutRef.current) {
+        clearTimeout(callerTimeoutRef.current);
+        callerTimeoutRef.current = null;
+      }
+    };
+  }, [callType, directCallData?.callAccepted, directCallData?.callerId, user?.uuid]);
+
+  // ✅ 18-SECOND TIMEOUT FOR RECEIVER - Auto dismiss incoming call popup
+  useEffect(() => {
+    if (incomingCall && !directCallData?.callAccepted) {
+      console.log('⏱️ [GlobalCallPopup] Starting 18-second receiver popup timeout...');
+      receiverTimeoutRef.current = setTimeout(() => {
+        console.log('⏱️ [GlobalCallPopup] 18 seconds passed - Auto dismissing incoming call popup');
+        setIncomingCall(null);
+      }, 18000);
+    }
+    
+    return () => {
+      if (receiverTimeoutRef.current) {
+        clearTimeout(receiverTimeoutRef.current);
+        receiverTimeoutRef.current = null;
+      }
+    };
+  }, [incomingCall, directCallData?.callAccepted]);
+
   // Show IncomingCallScreen if call was accepted (for both caller and receiver)
   if (callType === 'direct' && directCallData && directCallData.callAccepted) {
     console.log('📞 [GlobalCallPopup] ACTIVE CALL - Showing IncomingCallScreen');
@@ -92,6 +160,7 @@ const GlobalCallPopup = ({ onAccept, onReject }) => {
         isLoading={isAccepting}
         localStream={localStream}
         directCallData={directCallData}
+        isFriend={directCallData?.isFriend || false}
       />
     );
   }
@@ -116,6 +185,15 @@ const GlobalCallPopup = ({ onAccept, onReject }) => {
         localStream={localStream}
         onCancel={() => {
           console.log('❌ [GlobalCallPopup → CallingWaitScreen] Caller ended call');
+          
+          // ✅ EMIT call_no_answer FIRST to save missed call in DB
+          console.log('📵 [GlobalCallPopup] Caller cancelled - saving missed call to DB...');
+          socketWrapper.emit('call_no_answer', {
+            callerId: directCallData.callerId,
+            receiverId: directCallData.receiverId,
+            callerName: user?.name || 'Unknown',
+            timestamp: new Date().toISOString()
+          });
           
           // ✅ EMIT CALL_ENDED EVENT TO BACKEND
           console.log('📡 [GlobalCallPopup] Emitting call_ended event to backend...');
@@ -156,7 +234,8 @@ const GlobalCallPopup = ({ onAccept, onReject }) => {
       callerName: incomingCall.callerName,
       receiverId: incomingCall.receiverId,
       timestamp: incomingCall.timestamp,
-      callAccepted: true  // ✅ Flag to show IncomingCallScreen instead of popup
+      callAccepted: true,  // ✅ Flag to show IncomingCallScreen instead of popup
+      isFriend: true  // ✅ Calls are initiated from friends list - both are friends
     });
 
     // ✅ EMIT CALL_ACCEPTED EVENT TO BACKEND
@@ -181,6 +260,23 @@ const GlobalCallPopup = ({ onAccept, onReject }) => {
   const handleReject = async () => {
     console.log('❌ [GlobalCallPopup] Call rejected:', incomingCall.callerName);
     
+    // ✅ EMIT call_no_answer to save missed call message in DB
+    console.log('📵 [GlobalCallPopup] Receiver rejected - saving missed call to DB...');
+    socketWrapper.emit('call_no_answer', {
+      callerId: incomingCall.callerId,
+      receiverId: incomingCall.receiverId || user?.uuid,
+      callerName: incomingCall.callerName || 'Unknown',
+      timestamp: new Date().toISOString()
+    });
+    
+    // ✅ EMIT call_ended to notify caller immediately
+    console.log('📡 [GlobalCallPopup] Emitting call_ended to dismiss caller\'s CallingWaitScreen...');
+    socketWrapper.emit('call_ended', {
+      callerId: incomingCall.callerId,
+      receiverId: incomingCall.receiverId || user?.uuid,
+      timestamp: new Date().toISOString()
+    });
+    
     if (onReject) {
       await onReject(incomingCall);
     }
@@ -198,9 +294,42 @@ const GlobalCallPopup = ({ onAccept, onReject }) => {
   };
 
   // Only show CallPopup notification if there's an incoming call from someone else
-  if (!incomingCall) {
+  if (!incomingCall && !noResponseToast) {
     return null;
   }
+
+  // ✅ SHOW "No response from user" TOAST
+  if (noResponseToast) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+        <div style={{
+          background: 'linear-gradient(135deg, #1f2937, #111827)',
+          color: '#fff',
+          padding: '16px 32px',
+          borderRadius: '999px',
+          fontSize: '16px',
+          fontWeight: '600',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 15px rgba(239, 68, 68, 0.3)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          animation: 'fadeInUp 0.3s ease-out'
+        }}>
+          <span style={{ fontSize: '20px' }}>📵</span>
+          No response from user
+        </div>
+        <style>{`
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (!incomingCall) return null;
 
   // Show notification popup (CallPopup)
   return (

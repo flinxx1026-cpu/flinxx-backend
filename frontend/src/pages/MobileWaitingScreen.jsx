@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './MobileWaitingScreen.css'
+import AnimatedWaitingText from '../components/AnimatedWaitingText'
 
 /**
  * MobileWaitingScreen - Mobile Waiting/Matching Screen
@@ -118,7 +119,10 @@ const MobileWaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
 
             {/* Text Content */}
             <div className="text-content">
-              <h2 className="matching-title">Looking for a partner...</h2>
+              <AnimatedWaitingText 
+                as="h2"
+                className="matching-title"
+              />
               <p className="matching-subtitle">Matching you with someone nearby</p>
             </div>
 

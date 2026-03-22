@@ -16,13 +16,15 @@ import messagesRoutes from './routes/messages.js'
 import matchesRoutes, { setMatchesPool } from './routes/matches.js'
 import paymentsRoutes, { setPaymentsPool, setPaymentsPrisma } from './routes/payments.js'
 import { initializeFirebaseAdmin, verifyFirebaseToken } from './firebaseAdmin.js'
+import MatchingServiceOptimized from './services/matchingServiceOptimized.js'
+import setupMatchingHandlers from './sockets/matchingHandlers.js'
 
 // Load environment variables in correct order:
 // 1. First load .env.local (development overrides) with override: true to ensure it takes precedence
 // 2. Then load .env (fallbacks) without override to fill in missing values
 
 // Load .env.local first (development/local environment)
-dotenv.config({ 
+dotenv.config({
   path: '.env.local',
   override: true  // Force .env.local to override any existing process.env values
 })
@@ -47,6 +49,31 @@ console.log('📍   GOOGLE_CALLBACK_URL value:', process.env.GOOGLE_CALLBACK_URL
 console.log('📍   GOOGLE_REDIRECT_URI value:', process.env.GOOGLE_REDIRECT_URI)
 console.log('📍 ═══════════════════════════════════════════════════════')
 console.log('📍 ✅ All environment variables loaded successfully!')
+
+// ===== GLOBAL CRASH PROTECTION =====
+// Prevent server from crashing on unhandled errors
+process.on('uncaughtException', (err) => {
+  console.error('🚨 ═══════════════════════════════════════════════════════')
+  console.error('🚨 UNCAUGHT EXCEPTION - Server recovery activated')
+  console.error('🚨 ═══════════════════════════════════════════════════════')
+  console.error('🚨 Error:', err.message)
+  console.error('🚨 Stack:', err.stack)
+  console.error('🚨 ═══════════════════════════════════════════════════════')
+  // Continue running instead of crashing
+})
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 ═══════════════════════════════════════════════════════')
+  console.error('🚨 UNHANDLED REJECTION - Server recovery activated')
+  console.error('🚨 ═══════════════════════════════════════════════════════')
+  console.error('🚨 Promise:', promise)
+  console.error('🚨 Reason:', reason)
+  if (reason && reason.stack) {
+    console.error('🚨 Stack:', reason.stack)
+  }
+  console.error('🚨 ═══════════════════════════════════════════════════════')
+  // Continue running instead of crashing
+})
 
 // 🔥 Initialize Firebase Admin SDK
 console.log('🔥 Initializing Firebase Admin SDK...')
@@ -125,6 +152,8 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id);
       CREATE INDEX IF NOT EXISTS idx_users_provider ON users(auth_provider, provider_id);
       CREATE INDEX IF NOT EXISTS idx_users_profile_completed ON users("profileCompleted");
+      ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS accepted_guidelines BOOLEAN DEFAULT false;
+      ALTER TABLE IF EXISTS users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT false;
     `)
 
     // Create premium table
@@ -219,7 +248,7 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_matches_created_at ON matches(created_at);
     `)
 
-    // Create payments table for Razorpay transactions
+    // Create payments table for Cashfree transactions
     await pool.query(`
       CREATE TABLE IF NOT EXISTS payments (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -228,17 +257,29 @@ async function initializeDatabase() {
         plan_name VARCHAR(100) NOT NULL,
         amount INTEGER NOT NULL,
         currency VARCHAR(10) DEFAULT 'INR',
-        razorpay_order_id VARCHAR(255),
-        razorpay_payment_id VARCHAR(255),
-        razorpay_signature TEXT,
         status VARCHAR(50) DEFAULT 'created',
         paid_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `)
+
+    // Add Cashfree columns if they don't exist (for existing tables)
+    await pool.query(`
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS cashfree_order_id VARCHAR(255);
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS cashfree_payment_id VARCHAR(255);
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS cashfree_session_id VARCHAR(255);
+    `)
+
+    // Create indexes for payments table
+    await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
-      CREATE INDEX IF NOT EXISTS idx_payments_order_id ON payments(razorpay_order_id);
       CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+    `)
+
+    // Create index on cashfree_order_id (after column is guaranteed to exist)
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_payments_order_id ON payments(cashfree_order_id);
     `)
 
     // Add premium feature columns to users table
@@ -251,6 +292,7 @@ async function initializeDatabase() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS unlimited_skip_expires_at TIMESTAMP;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_skip_count INTEGER DEFAULT 0;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_skip_reset_date DATE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS has_seen_premium_popup BOOLEAN DEFAULT false;
     `)
 
     console.log('✅ PostgreSQL tables initialized')
@@ -263,171 +305,233 @@ async function initializeDatabase() {
 let redis = null
 
 // ===== IN-MEMORY QUEUE FALLBACK (when Redis is unavailable) =====
-let inMemoryMatchingQueue = []; // For sorted set: [{score, value}, ...]
+let inMemoryMatchingQueue = {}; // For sorted sets by key: { 'matching_queue': [{score, value}, ...] }
 let inMemoryUserStatus = new Map();
 let inMemoryOnlineUsers = new Set();
+let inMemorySets = {}; // For Redis sets: { 'online_males': Set, 'online_females': Set, 'active_users': Set }
 
 // Function to safely initialize Redis
 async function initializeRedis() {
-  console.log("[STARTUP] Skipping Redis initialization for now (development)");
-  console.log("[STARTUP] Using in-memory queue as fallback");
-  
-  // Return a fallback object with in-memory implementations
-  return {
-    // ===== SORTED SET COMMANDS (used by matching queue) =====
-    zAdd: async (key, ...args) => {
-      if (key === 'matching_queue') {
-        // args can be {score, value} object or multiple
-        const items = Array.isArray(args[0]) ? args[0] : args;
-        for (const item of items) {
-          const { score, value } = item;
-          // Remove existing entry with same value (dedup)
-          inMemoryMatchingQueue = inMemoryMatchingQueue.filter(e => e.value !== value);
-          inMemoryMatchingQueue.push({ score, value });
-          // Sort by score ascending (boost users with score 0 first)
-          inMemoryMatchingQueue.sort((a, b) => a.score - b.score);
-          const parsed = JSON.parse(value);
-          console.log(`   [IN-MEMORY] zAdd: Added User ${parsed.userId} with score ${score}, queue has ${inMemoryMatchingQueue.length} items`);
-        }
-        return items.length;
-      }
-      return 0;
-    },
+  const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+  const USE_MEMORY_FALLBACK = process.env.REDIS_FALLBACK === 'true' || process.env.NODE_ENV === 'development';
 
-    zRange: async (key, start, end) => {
-      if (key === 'matching_queue') {
-        const endIdx = end === -1 ? undefined : end + 1;
-        const result = inMemoryMatchingQueue.slice(start, endIdx).map(e => e.value);
-        console.log(`   [IN-MEMORY] zRange(${start}, ${end}): Returning ${result.length} items`);
-        return result;
-      }
-      return [];
-    },
+  try {
+    console.log(`\n[REDIS] 🔴 Attempting to connect to Redis...`);
+    console.log(`[REDIS] URL: ${REDIS_URL}`);
 
-    zRem: async (key, value) => {
-      if (key === 'matching_queue') {
-        const before = inMemoryMatchingQueue.length;
-        inMemoryMatchingQueue = inMemoryMatchingQueue.filter(e => e.value !== value);
-        const removed = before - inMemoryMatchingQueue.length;
-        if (removed > 0) {
-          console.log(`   [IN-MEMORY] zRem: Removed entry, queue has ${inMemoryMatchingQueue.length} items`);
-        }
-        return removed;
+    const redisClient = createClient({
+      url: REDIS_URL,
+      socket: {
+        connectTimeout: 5000,
+        // ✅ ALWAYS reconnect — disabling this causes silent matching failures
+        reconnectStrategy: (retries) => Math.min(retries * 50, 2000),
+        keepAlive: 30000
       }
-      return 0;
-    },
+    });
 
-    zCard: async (key) => {
-      if (key === 'matching_queue') {
-        return inMemoryMatchingQueue.length;
-      }
-      return 0;
-    },
+    // Handle connection events
+    redisClient.on('connect', () => {
+      console.log('✅ [REDIS] 🟢 Connected to Redis successfully!');
+    });
 
-    // ===== LIST COMMANDS (kept for compatibility) =====
-    lPush: async (key, value) => {
-      if (key === 'matching_queue') {
-        const parsed = JSON.parse(value);
-        console.log(`   [IN-MEMORY] lPush: Adding User ${parsed.userId} to LEFT (beginning)`);
-        inMemoryMatchingQueue.unshift({ score: Date.now(), value });
-        console.log(`   [IN-MEMORY] lPush: Queue now has ${inMemoryMatchingQueue.length} items`);
-        return inMemoryMatchingQueue.length;
+    redisClient.on('error', (err) => {
+      console.error('❌ [REDIS] Connection error:', err.message);
+      if (USE_MEMORY_FALLBACK) {
+        console.log('[REDIS] Switching to in-memory fallback...');
       }
-      return null;
-    },
-    
-    rPop: async (key) => {
-      if (key === 'matching_queue') {
-        const item = inMemoryMatchingQueue.pop();
-        console.log(`   [IN-MEMORY] rPop: Removing from RIGHT (end), queue now has ${inMemoryMatchingQueue.length} items`);
-        return item?.value || null;
-      }
-      return null;
-    },
-    
-    lRange: async (key, start, end) => {
-      if (key === 'matching_queue') {
-        const result = inMemoryMatchingQueue.slice(start, end === -1 ? undefined : end + 1).map(e => e.value);
-        console.log(`   [IN-MEMORY] lRange: Returning ${result.length} items from queue`);
-        return result;
-      }
-      return [];
-    },
-    
-    lLen: async (key) => {
-      if (key === 'matching_queue') {
-        return inMemoryMatchingQueue.length;
-      }
-      return 0;
-    },
-    
-    lRem: async (key, count, value) => {
-      if (key === 'matching_queue') {
-        const before = inMemoryMatchingQueue.length;
-        inMemoryMatchingQueue = inMemoryMatchingQueue.filter(e => e.value !== value);
-        const removed = before - inMemoryMatchingQueue.length;
-        if (removed > 0) {
-          console.log(`   [IN-MEMORY] lRem: Removed, queue now has ${inMemoryMatchingQueue.length} items`);
-        }
-        return removed;
-      }
-      return 0;
-    },
-    
-    keys: async (pattern) => {
-      // Simple pattern matching for development
-      if (pattern === 'user:*:online') {
-        return Array.from(inMemoryUserStatus.keys()).filter(k => k.includes(':online'));
-      }
-      return [];
-    },
-    
-    set: async (key, value) => {
-      inMemoryUserStatus.set(key, value);
-      return 'OK';
-    },
-    
-    setEx: async (key, ttl, value) => {
-      inMemoryUserStatus.set(key, value);
-      // Set expiration timeout (for development, we'll just store without actual expiration)
-      return 'OK';
-    },
-    
-    get: async (key) => {
-      return inMemoryUserStatus.get(key) || null;
-    },
-    
-    del: async (key) => {
-      return inMemoryUserStatus.delete(key) ? 1 : 0;
-    },
-    
-    sAdd: async (key, value) => {
-      if (key === 'online_users' || key === 'active_sessions') {
-        if (key === 'online_users') {
-          inMemoryOnlineUsers.add(value);
-        } else if (key === 'active_sessions') {
-          inMemoryUserStatus.set(`session:${value}`, true);
-        }
-        return 1;
-      }
-      return 0;
-    },
-    
-    sRem: async (key, value) => {
-      if (key === 'online_users') {
-        return inMemoryOnlineUsers.delete(value) ? 1 : 0;
-      }
-      return 0;
-    },
-    
-    sMembers: async (key) => {
-      if (key === 'online_users') {
-        return Array.from(inMemoryOnlineUsers);
-      }
-      return [];
+    });
+
+    redisClient.on('ready', () => {
+      console.log('✅ [REDIS] Ready for commands');
+    });
+
+    // Try to connect
+    await redisClient.connect();
+    console.log('✅ [REDIS] ⚡ Redis initialized - All operations will use real Redis!');
+
+    return redisClient;
+  } catch (error) {
+    console.error('❌ [REDIS] Connection failed:', error.message);
+
+    if (!USE_MEMORY_FALLBACK) {
+      console.error('❌ [REDIS] CRITICAL: Redis required but connection failed');
+      console.error('Set REDIS_FALLBACK=true or provide valid REDIS_URL');
+      throw error;
     }
-  };
+
+    console.log('[REDIS] ⚠️  Using in-memory fallback (development mode)');
+    console.log('[REDIS] NOTE: This will NOT persist data and will lose data on restart!\n');
+
+    // In-memory list storage for Redis list commands
+    const inMemoryLists = {};
+
+    // Return in-memory fallback
+    return {
+      // ===== SORTED SET OPERATIONS =====
+      zAdd: async (key, items) => {
+        if (!inMemoryMatchingQueue[key]) inMemoryMatchingQueue[key] = [];
+        const itemsArr = Array.isArray(items) ? items : [items];
+        for (const item of itemsArr) {
+          const { score, value } = item;
+          inMemoryMatchingQueue[key] = inMemoryMatchingQueue[key].filter(e => e.value !== value);
+          inMemoryMatchingQueue[key].push({ score, value });
+          inMemoryMatchingQueue[key].sort((a, b) => a.score - b.score);
+        }
+        return itemsArr.length;
+      },
+      zRange: async (key, start, end) => {
+        const queue = inMemoryMatchingQueue[key] || [];
+        const endIdx = end === -1 ? undefined : end + 1;
+        return queue.slice(start, endIdx).map(e => e.value);
+      },
+      zRem: async (key, value) => {
+        if (!inMemoryMatchingQueue[key]) return 0;
+        const before = inMemoryMatchingQueue[key].length;
+        inMemoryMatchingQueue[key] = inMemoryMatchingQueue[key].filter(e => e.value !== value);
+        return before - inMemoryMatchingQueue[key].length;
+      },
+      zCard: async (key) => (inMemoryMatchingQueue[key] || []).length,
+
+      // ===== LIST OPERATIONS (required by matchingServiceOptimized.js) =====
+      rPush: async (key, value) => {
+        if (!inMemoryLists[key]) inMemoryLists[key] = [];
+        inMemoryLists[key].push(value);
+        return inMemoryLists[key].length;
+      },
+
+      lPop: async (key) => {
+        if (!inMemoryLists[key] || inMemoryLists[key].length === 0) return null;
+        return inMemoryLists[key].shift();
+      },
+
+      lIndex: async (key, index) => {
+        const list = inMemoryLists[key] || [];
+        if (index < 0) index = list.length + index;
+        return list[index] || null;
+      },
+      lRem: async (key, count, value) => {
+        if (!inMemoryLists[key]) return 0;
+        let removed = 0;
+        const absCount = Math.abs(count) || inMemoryLists[key].length;
+        inMemoryLists[key] = inMemoryLists[key].filter(item => {
+          if (removed >= absCount) return true;
+          if (item === value) { removed++; return false; }
+          return true;
+        });
+        return removed;
+      },
+      lLen: async (key) => (inMemoryLists[key] || []).length,
+      lPos: async (key, value) => {
+        const list = inMemoryLists[key] || [];
+        const idx = list.indexOf(value);
+        return idx === -1 ? null : idx;
+      },
+      lRange: async (key, start, end) => {
+        const list = inMemoryLists[key] || [];
+        const endIdx = end === -1 ? list.length : end + 1;
+        return list.slice(start, endIdx);
+      },
+
+      // ===== KEY-VALUE OPERATIONS =====
+      setEx: async (key, ttl, value) => {
+        inMemoryUserStatus.set(key, value);
+        // In fallback, we don't actually expire keys, but would need a timer for production
+        if (ttl && ttl > 0) {
+          // Schedule deletion after TTL seconds
+          setTimeout(() => inMemoryUserStatus.delete(key), ttl * 1000);
+        }
+        return 'OK';
+      },
+
+      get: async (key) => inMemoryUserStatus.get(key) || null,
+      set: async (key, value) => { inMemoryUserStatus.set(key, value); return 'OK'; },
+      del: async (key) => {
+        let deleted = 0;
+        if (inMemoryUserStatus.delete(key)) deleted = 1;
+        if (inMemoryLists[key]) { delete inMemoryLists[key]; deleted = 1; }
+        return deleted;
+      },
+      sAdd: async (key, value) => {
+        if (key === 'online_users') { inMemoryOnlineUsers.add(value); return 1; }
+        if (!inMemorySets[key]) inMemorySets[key] = new Set();
+        inMemorySets[key].add(value);
+        return 1;
+      },
+      sRem: async (key, value) => {
+        if (key === 'online_users') return inMemoryOnlineUsers.delete(value) ? 1 : 0;
+        if (inMemorySets[key]) return inMemorySets[key].delete(value) ? 1 : 0;
+        return 0;
+      },
+      sMembers: async (key) => {
+        if (key === 'online_users') return Array.from(inMemoryOnlineUsers);
+        return inMemorySets[key] ? Array.from(inMemorySets[key]) : [];
+      },
+      sCard: async (key) => {
+        if (key === 'online_users') return inMemoryOnlineUsers.size;
+        return inMemorySets[key] ? inMemorySets[key].size : 0;
+      },
+      expire: async (key, seconds) => 1,
+      keys: async (pattern) => Array.from(inMemoryUserStatus.keys()).filter(k => k.match(pattern.replace('*', '.*'))),
+      exists: async (key) => inMemoryUserStatus.has(key) ? 1 : 0,
+      scriptLoad: async (script) => 'fallback_script',
+      evalSHA: async () => null,
+
+      // ===== LUA SCRIPT EXECUTION (fallback) =====
+      eval: async (script, numKeys, ...args) => {
+        // Simple fallback for matching Lua script
+        // Expects: eval(script, 3, queueKey, waitingPrefix, matchedPrefix, userId, userEntry, timeout)
+        const queueKey = args[0];
+        const waitingPrefix = args[1];
+        const matchedPrefix = args[2];
+        const newUserId = args[3];
+        const newEntry = args[4];
+        const timeout = parseInt(args[5]);
+
+        console.log('[REDIS_FALLBACK] eval() called - simulating Lua matching');
+        console.log('[REDIS_FALLBACK]   queueKey:', queueKey);
+        console.log('[REDIS_FALLBACK]   newUserId:', newUserId);
+
+        try {
+          // Get first user in queue
+          const list = inMemoryLists[queueKey] || [];
+          if (list.length > 0) {
+            // Match found - pop from queue
+            const firstEntry = list.shift();
+            const partner = JSON.parse(firstEntry);
+
+            // Mark both as matched
+            inMemoryUserStatus.set(`${matchedPrefix}${newUserId}`, partner.userId);
+            inMemoryUserStatus.set(`${matchedPrefix}${partner.userId}`, newUserId);
+            inMemoryUserStatus.delete(`${waitingPrefix}${newUserId}`);
+            inMemoryUserStatus.delete(`${waitingPrefix}${partner.userId}`);
+
+            console.log('[REDIS_FALLBACK] MATCHED:', newUserId, '↔️', partner.userId);
+            return ['MATCHED', partner.userId, partner.socketId, String(Date.now())];
+          } else {
+            // No match - add to queue
+            if (!inMemoryLists[queueKey]) inMemoryLists[queueKey] = [];
+            inMemoryLists[queueKey].push(newEntry);
+            inMemoryUserStatus.set(`${waitingPrefix}${newUserId}`, '1');
+
+            const queueSize = inMemoryLists[queueKey].length;
+            console.log('[REDIS_FALLBACK] WAITING: added to queue, size:', queueSize);
+            return ['WAITING', String(queueSize)];
+          }
+        } catch (err) {
+          console.error('[REDIS_FALLBACK] eval() error:', err.message);
+          throw err;
+        }
+      },
+
+      ping: async () => 'PONG',
+
+      dbSize: async () => inMemoryUserStatus.size + inMemoryOnlineUsers.size
+    };
+  }
 }
+
+// ===== INITIALIZE REDIS ON STARTUP =====
+redis = await initializeRedis();
 
 // ===== EXPRESS & SOCKET.IO SETUP =====
 
@@ -441,6 +545,12 @@ const FRONTEND_URL = process.env.CLIENT_URL || 'http://localhost:3000'
 
 // Allowed origins for CORS
 const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:5175",
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:3002",
@@ -463,9 +573,6 @@ const allowedOrigins = [
   "http://127.0.0.1:3008",
   "http://127.0.0.1:3009",
   "http://127.0.0.1:3010",
-  "https://flinxx-backend-frontend.vercel.app",
-  "https://flinxx-admin-panel.vercel.app",
-  "https://flinxx-frontend.vercel.app",
   "https://flinxx.in",
   "https://www.flinxx.in",
   "https://d1pphanrf0qsx7.cloudfront.net"
@@ -492,16 +599,16 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Credentials', 'true')
     res.setHeader('Access-Control-Max-Age', '86400')
   }
-  
+
   // Security Headers (COOP/COEP for SharedArrayBuffer support)
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
   res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp')
-  
+
   // Additional security headers
   res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader('X-Frame-Options', 'SAMEORIGIN')
   res.setHeader('X-XSS-Protection', '1; mode=block')
-  
+
   next()
 })
 
@@ -517,6 +624,26 @@ const io = new Server(httpServer, {
 setFriendsIO(io)
 console.log('✅ [server.js] Socket.IO passed to friends routes')
 
+// ✅ INITIALIZE MATCHING SYSTEM
+console.log('\n🚀 [server.js] ==================== INITIALIZING MATCHING SYSTEM ====================');
+console.log('[server.js] 📞 Calling setupMatchingHandlers...');
+setupMatchingHandlers(io, redis, prisma)
+console.log('✅ [server.js] setupMatchingHandlers() returned - Lua scripts loading async in background');
+console.log('[server.js] 💡 TIP: Check server logs for "[LUA]" prefix to see script loading progress');
+console.log('[server.js] ==================== MATCHING SYSTEM READY FOR CONNECTIONS ====================\n');
+
+// ===== HTTP SERVER ERROR HANDLERS =====
+httpServer.on('error', (err) => {
+  console.error('🚨 [HTTP_SERVER_ERROR] HTTP server error:', err.message)
+  console.error('   Code:', err.code)
+  console.error('   Stack:', err.stack)
+})
+
+io.on('error', (err) => {
+  console.error('🚨 [IO_ERROR] Socket.IO error:', err.message)
+  console.error('   Stack:', err.stack)
+})
+
 // Middleware - Enable CORS for all routes
 app.use(cors(corsOptions))
 
@@ -531,82 +658,99 @@ const verifyUserToken = async (req, res, next) => {
     console.log("\n🔐 [verifyUserToken] ═══════════════════════════════════════════");
     console.log("🔐 [verifyUserToken] MIDDLEWARE CALLED");
     console.log("AUTH HEADER:", req.headers.authorization);
-    
+
     if (!req.headers.authorization) {
       console.error("🔐 [verifyUserToken] ❌ NO AUTHORIZATION HEADER");
       return res.status(401).json({ error: 'Missing authorization header' });
     }
-    
+
     const token = req.headers.authorization?.split(" ")[1];
     console.log("🔐 [verifyUserToken] TOKEN EXTRACTED:", token ? "✓ Present" : "✗ Missing");
-    
+
     if (!token) {
       console.error("🔐 [verifyUserToken] ❌ TOKEN NOT FOUND IN HEADER");
       return res.status(401).json({ error: 'Missing token' });
     }
-    
+
     console.log("🔐 [verifyUserToken] Token length:", token.length);
-    
+
     let decoded;
     try {
-      // Try JWT verification first
+      // Try JWT verification
       decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log("🔐 [verifyUserToken] ✓ JWT VERIFIED SUCCESSFULLY");
       console.log("DECODED TOKEN:", decoded);
       console.log("🔐 [verifyUserToken] DECODED USER:", JSON.stringify(decoded, null, 2));
     } catch (jwtError) {
-      console.warn("🔐 [verifyUserToken] ⚠️ JWT verification failed, trying base64 decode...");
-      console.warn("🔐 [verifyUserToken] JWT Error:", jwtError.message);
-      
-      // Fallback to base64 decoding
-      try {
-        decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
-        console.log("🔐 [verifyUserToken] ✓ BASE64 DECODE SUCCESSFUL");
-        console.log("DECODED TOKEN:", decoded);
-        console.log("🔐 [verifyUserToken] DECODED USER:", JSON.stringify(decoded, null, 2));
-      } catch (base64Error) {
-        console.error("🔐 [verifyUserToken] ❌ BOTH METHODS FAILED");
-        console.error("🔐 [verifyUserToken] Base64 error:", base64Error.message);
-        return res.status(401).json({ error: 'Invalid token format' });
+      console.error("🔐 [verifyUserToken] JWT Error:", jwtError.name, "-", jwtError.message);
+
+      // Handle specific JWT errors
+      if (jwtError.name === "TokenExpiredError") {
+        console.warn("🔐 [verifyUserToken] ⚠️ TOKEN EXPIRED");
+        return res.status(401).json({
+          error: 'Token expired, please login again',
+          code: 'TOKEN_EXPIRED'
+        });
       }
+
+      // For other JWT errors (invalid signature, malformed, etc.)
+      console.error("🔐 [verifyUserToken] ❌ JWT verification failed:", jwtError.message);
+      return res.status(401).json({
+        error: 'Invalid token',
+        code: 'INVALID_TOKEN'
+      });
     }
-    
+
     // Check if user ID exists
     if (!decoded?.id && !decoded?.userId) {
       console.error("🔐 [verifyUserToken] ❌ USER ID NOT FOUND IN TOKEN");
       console.error("🔐 [verifyUserToken] Decoded payload:", JSON.stringify(decoded, null, 2));
       return res.status(401).json({ message: "Invalid token payload" });
     }
-    
+
     const userId = decoded.id || decoded.userId;
     console.log("🔐 [verifyUserToken] User ID from token:", userId);
-    
+
     // Fetch user from database
     console.log("🔐 [verifyUserToken] Fetching user from database...");
     const user = await prisma.users.findUnique({
       where: { id: userId }
     });
-    
+
     if (!user) {
       console.error("🔐 [verifyUserToken] ❌ USER NOT FOUND IN DATABASE");
       console.error("🔐 [verifyUserToken] Searched for ID:", userId);
       return res.status(401).json({ error: 'User not found' });
     }
-    
+
+    // Check if user is banned using Raw Query (bypasses Prisma schema generation requirement)
+    try {
+      const rawUser = await prisma.$queryRaw`SELECT is_banned FROM users WHERE id = ${userId}::uuid`;
+      if (rawUser && rawUser.length > 0 && rawUser[0].is_banned) {
+        console.error("🔐 [verifyUserToken] ❌ USER IS BANNED");
+        return res.status(403).json({
+          error: 'ACCOUNT_BANNED',
+          message: 'Your account has been banned due to violations of our community guidelines.'
+        });
+      }
+    } catch (err) {
+      console.error("🔐 [verifyUserToken] Error checking ban status:", err);
+    }
+
     console.log("🔐 [verifyUserToken] ✓ USER FOUND IN DATABASE");
     console.log("🔐 [verifyUserToken] User email:", user.email);
     console.log("🔐 [verifyUserToken] User UUID:", user.id);
-    
+
     // Set req.decoded for use in route handler
     req.decoded = {
       id: user.id,
       userId: userId,
       email: user.email
     };
-    
+
     console.log("🔐 [verifyUserToken] ✓ MIDDLEWARE COMPLETE - Calling next()");
     console.log("🔐 [verifyUserToken] ═══════════════════════════════════════════\n");
-    
+
     next();
   } catch (error) {
     console.error('🔐 [verifyUserToken] ❌ MIDDLEWARE ERROR:', error.message);
@@ -637,6 +781,8 @@ app.use('/api/payments', paymentsRoutes)
 const userSockets = new Map() // socketId -> userId mapping
 const activeSessions = new Map() // sessionId -> session details
 const partnerSockets = new Map() // socketId -> partnerSocketId mapping (for WebRTC pairs)
+io._partnerSockets = partnerSockets // ✅ Export to be used by matchingHandlers.js
+const activeChats = new Set() // Track users currently in active chats to prevent duplicate matches
 
 // ===== HELPER FUNCTIONS =====
 
@@ -654,12 +800,12 @@ async function generateUniquePublicId() {
 
   while (exists && attempts < maxAttempts) {
     publicId = generate8DigitId()
-    
+
     // Check if already exists in database
     const existingUser = await prisma.users.findUnique({
       where: { public_id: publicId }
     })
-    
+
     exists = !!existingUser
     attempts++
   }
@@ -741,23 +887,83 @@ async function getRandomOnlineUser(excludeUserId) {
 async function addToMatchingQueue(userId, socketId, userData) {
   try {
     console.log(`\n📝 [QUEUE] Adding user ${userId} to queue...`)
-    
+    console.log(`📝 [QUEUE] Incoming userData:`, JSON.stringify(userData, null, 2))
+
+    // ✅ CRITICAL: Check if user is already in an active chat session
+    if (activeChats.has(userId)) {
+      console.warn(`⚠️ [QUEUE] User ${userId} is already in active chat - BLOCKING re-add to queue`)
+      return // Prevent matched users from being added back to queue
+    }
+
+    // ✅ CRITICAL: VALIDATE userData BEFORE storing to Redis
+    // If userData is missing key fields, fetch from DB immediately
+    const needsDBFetch = !userData ||
+      !userData.userName ||
+      userData.userName === 'Anonymous' ||
+      !userData.userLocation ||
+      userData.userLocation === 'Unknown'
+
+    if (needsDBFetch) {
+      console.log(`⚠️ [QUEUE] userData incomplete - fetching from DB`)
+      try {
+        const dbUser = await prisma.users.findUnique({
+          where: { id: userId },
+          select: { display_name: true, location: true, age: true, profile_picture_url: true }
+        })
+
+        if (dbUser) {
+          console.log(`✅ [QUEUE] Fetched from DB: ${dbUser.display_name} from ${dbUser.location}`)
+          userData = {
+            userId: userId,
+            userName: dbUser.display_name || 'Anonymous',
+            userAge: dbUser.age || 18,
+            userLocation: dbUser.location || 'Unknown',
+            userPicture: dbUser.profile_picture_url || null
+          }
+        } else {
+          console.warn(`⚠️ [QUEUE] User not found in DB - using defaults`)
+          userData = {
+            userId: userId,
+            userName: 'Anonymous',
+            userAge: 18,
+            userLocation: 'Unknown',
+            userPicture: null
+          }
+        }
+      } catch (dbErr) {
+        console.warn(`⚠️ [QUEUE] DB fetch failed:`, dbErr.message)
+        userData = userData || {
+          userId: userId,
+          userName: 'Anonymous',
+          userAge: 18,
+          userLocation: 'Unknown',
+          userPicture: null
+        }
+      }
+    }
+
+    console.log(`✅ [QUEUE] Validated userData for storage:`, JSON.stringify(userData, null, 2))
+
     // CRITICAL: Check if this user is already in the queue (e.g., from a previous session)
     const existingMembers = await redis.zRange('matching_queue', 0, -1)
     let removedCount = 0
-    
+
     for (const entry of existingMembers) {
-      const queuedUser = JSON.parse(entry)
-      if (queuedUser.userId === userId) {
-        console.warn(`⚠️ DUPLICATE ENTRY FOUND: User ${userId} already in queue`)
-        console.warn(`   Old socket: ${queuedUser.socketId}`)
-        console.warn(`   New socket: ${socketId}`)
-        console.warn(`   Removing old entry...`)
-        await redis.zRem('matching_queue', entry)
-        removedCount++
+      try {
+        const queuedUser = JSON.parse(entry)
+        if (queuedUser.userId === userId) {
+          console.warn(`⚠️ DUPLICATE ENTRY FOUND: User ${userId} already in queue`)
+          console.warn(`   Old socket: ${queuedUser.socketId}`)
+          console.warn(`   New socket: ${socketId}`)
+          console.warn(`   Removing old entry...`)
+          await redis.zRem('matching_queue', entry)
+          removedCount++
+        }
+      } catch (parseErr) {
+        console.error(`❌ Failed to parse existing queue entry: ${parseErr.message}`)
+        // Continue instead of crashing
       }
     }
-    
     if (removedCount > 0) {
       console.log(`✅ REMOVED ${removedCount} duplicate queue entries for user ${userId}`)
     }
@@ -765,9 +971,9 @@ async function addToMatchingQueue(userId, socketId, userData) {
     // Check if user has Match Boost
     let hasMatchBoost = false;
     try {
-      const boostUser = await prisma.users.findUnique({ 
-        where: { id: userId }, 
-        select: { has_match_boost: true, match_boost_expires_at: true } 
+      const boostUser = await prisma.users.findUnique({
+        where: { id: userId },
+        select: { has_match_boost: true, match_boost_expires_at: true }
       });
       hasMatchBoost = !!(boostUser?.has_match_boost && boostUser?.match_boost_expires_at && new Date(boostUser.match_boost_expires_at) > new Date());
     } catch (e) {
@@ -785,11 +991,13 @@ async function addToMatchingQueue(userId, socketId, userData) {
       timestamp: Date.now()
     })
 
+    console.log(`📋 [QUEUE] Final entry to store: { userId: "${userData?.userId}", userName: "${userData?.userName}", location: "${userData?.userLocation}", age: ${userData?.userAge} })`)
+
     // Boost users get score 0 (highest priority), normal users get timestamp score
     const score = hasMatchBoost ? 0 : Date.now();
     await redis.zAdd('matching_queue', { score, value: queueData })
     console.log(`✅ [QUEUE] User ${userId} added with socket ${socketId} ${hasMatchBoost ? '🚀 (MATCH BOOST - PRIORITY)' : '(normal)'}`)
-    
+
     // Verify it was added and log full queue state
     const queueLen = await redis.zCard('matching_queue')
     const allEntries = await redis.zRange('matching_queue', 0, -1)
@@ -798,8 +1006,18 @@ async function addToMatchingQueue(userId, socketId, userData) {
       const entry = JSON.parse(allEntries[i])
       console.log(`   [${i}] User ${entry.userId} - Socket ${entry.socketId.substring(0, 8)}... ${entry.hasMatchBoost ? '🚀 BOOST' : ''}`)
     }
+
+    // ✅ TRIGGER INSTANT MATCH if queue has 2+ users
+    console.log(`\n🎯 [CRITICAL] ABOUT TO CALL triggerInstantMatch()`)
+    console.log(`   Queue length at this moment: ${queueLen}`)
+    console.log(`   Should proceed? ${queueLen >= 2 ? 'YES ✅' : 'NO - need 2+ users'}`)
+
+    await triggerInstantMatch()
+
+    console.log(`✅ [CRITICAL] triggerInstantMatch() COMPLETED`)
   } catch (error) {
     console.error('❌ Error adding to queue:', error)
+    console.error('   Stack:', error.stack)
   }
 }
 
@@ -807,14 +1025,20 @@ async function getNextFromQueue() {
   try {
     const queueLen = await redis.zCard('matching_queue')
     console.log(`\n🔍 [QUEUE] Attempting to pop from sorted queue (${queueLen} users waiting)`)
-    
+
     // Get the member with lowest score (boost users first, then oldest normal users)
     const members = await redis.zRange('matching_queue', 0, 0)
-    
+
     if (members && members.length > 0) {
       const data = members[0]
       await redis.zRem('matching_queue', data)
-      const parsed = JSON.parse(data)
+      let parsed
+      try {
+        parsed = JSON.parse(data)
+      } catch (parseErr) {
+        console.error(`❌ Failed to parse queue entry in getNextFromQueue: ${parseErr.message}`)
+        return null
+      }
       const newQueueLen = await redis.zCard('matching_queue')
       console.log(`✅ [QUEUE] Popped user ${parsed.userId} - socket ${parsed.socketId.substring(0, 8)}... ${parsed.hasMatchBoost ? '🚀 BOOST' : ''}`)
       console.log(`📊 [QUEUE] Queue now has ${newQueueLen} users after pop`)
@@ -834,17 +1058,22 @@ async function removeUserFromQueue(userId) {
     // Get all queue entries from sorted set
     const allEntries = await redis.zRange('matching_queue', 0, -1)
     let removedCount = 0
-    
+
     // Find and remove entries matching this userId
     for (const entry of allEntries) {
-      const queuedUser = JSON.parse(entry)
-      if (queuedUser.userId === userId) {
-        await redis.zRem('matching_queue', entry)
-        removedCount++
-        console.log(`✅ Removed user ${userId} from queue (${removedCount} entry)`)
+      try {
+        const queuedUser = JSON.parse(entry)
+        if (queuedUser.userId === userId) {
+          await redis.zRem('matching_queue', entry)
+          removedCount++
+          console.log(`✅ Removed user ${userId} from queue (${removedCount} entry)`)
+        }
+      } catch (parseErr) {
+        console.error(`❌ Failed to parse queue entry for removal: ${parseErr.message}`)
+        // Continue to next entry instead of crashing
       }
     }
-    
+
     if (removedCount > 0) {
       console.log(`✅ Totally removed ${removedCount} queue entries for user ${userId}`)
     }
@@ -864,6 +1093,455 @@ async function getQueueLength() {
   }
 }
 
+/**
+ * ✅ CHECK IF TWO USERS RECENTLY MATCHED (cooldown mechanism)
+ * Prevents same users from matching again within 25-30 seconds
+ */
+async function areRecentPartners(userId1, userId2) {
+  try {
+    // Check both directions (user1:user2 and user2:user1)
+    const key1 = `recent:${userId1}:${userId2}`
+    const key2 = `recent:${userId2}:${userId1}`
+
+    const exists1 = await redis.exists(key1)
+    const exists2 = await redis.exists(key2)
+
+    const isRecent = exists1 > 0 || exists2 > 0
+
+    if (isRecent) {
+      console.log(`⏸️ [COOLDOWN] Users ${userId1} and ${userId2} recently matched - skipping`)
+    }
+
+    return isRecent
+  } catch (error) {
+    console.error('❌ Error checking recent partners:', error)
+    return false // On error, allow match to be safe
+  }
+}
+
+/**
+ * ✅ SET RECENT PARTNER COOLDOWN (25-30 seconds)
+ * Called when users disconnect, skip, or end call
+ */
+async function setRecentPartnerCooldown(userId1, userId2, ttlSeconds = 25) {
+  try {
+    const key1 = `recent:${userId1}:${userId2}`
+    const key2 = `recent:${userId2}:${userId1}`
+
+    await Promise.all([
+      redis.setEx(key1, ttlSeconds, '1'),
+      redis.setEx(key2, ttlSeconds, '1')
+    ])
+
+    console.log(`✅ [COOLDOWN] Set ${ttlSeconds}s cooldown between ${userId1} and ${userId2}`)
+  } catch (error) {
+    console.error('❌ Error setting recent partner cooldown:', error)
+  }
+}
+
+/**
+ * ✅ GET SKIP-BASED COOLDOWN DURATION
+ * Returns cooldown duration based on skip count between two users
+ * More skips = longer cooldown (30s → 120s → 600s)
+ */
+async function getSkipBasedCooldownDuration(userId1, userId2) {
+  const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+
+  try {
+    // Try to get from database (if migration is done)
+    const record = await prisma.user_pair_skip_history.findUnique({
+      where: {
+        user1_id_user2_id: {
+          user1_id: userId1,
+          user2_id: userId2
+        }
+      }
+    }).catch(() => null); // Silently fail if table doesn't exist
+
+    if (!record) {
+      console.log(`📊 [Skip Cooldown] No skip history found for ${userId1} vs ${userId2}`);
+      return 25; // Default cooldown
+    }
+
+    // Check if reset date passed (new day)
+    const lastResetDate = new Date(record.reset_at_time).toISOString().split('T')[0]
+    if (lastResetDate !== today) {
+      // Reset skip count for new day
+      try {
+        await prisma.user_pair_skip_history.update({
+          where: {
+            user1_id_user2_id: {
+              user1_id: userId1,
+              user2_id: userId2
+            }
+          },
+          data: {
+            skip_count: 0,
+            reset_at_time: new Date()
+          }
+        }).catch(() => null);
+      } catch (e) {
+        console.warn(`⚠️ Could not reset skip count (table may not exist yet)`);
+      }
+      return 25; // Default cooldown
+    }
+
+    // Calculate cooldown based on skip count
+    const skipCount = record.skip_count || 0;
+    let cooldownSeconds = 25; // Default
+
+    if (skipCount >= 5) {
+      cooldownSeconds = 600; // 10 minutes
+      console.log(`🔴 [Skip Cooldown] User ${userId1} vs ${userId2}: ${skipCount} skips → 10 MINUTES cooldown`);
+    } else if (skipCount >= 3) {
+      cooldownSeconds = 120; // 2 minutes
+      console.log(`🟡 [Skip Cooldown] User ${userId1} vs ${userId2}: ${skipCount} skips → 2 MINUTES cooldown`);
+    } else if (skipCount >= 1) {
+      cooldownSeconds = 30; // 30 seconds
+      console.log(`🟢 [Skip Cooldown] User ${userId1} vs ${userId2}: ${skipCount} skips → 30 SECONDS cooldown`);
+    } else {
+      cooldownSeconds = 25; // Default
+      console.log(`🟢 [Skip Cooldown] User ${userId1} vs ${userId2}: ${skipCount} skips → 25 SECONDS cooldown`);
+    }
+
+    return cooldownSeconds;
+
+  } catch (error) {
+    console.error('❌ Error getting skip-based cooldown:', error.message);
+    return 25; // Default safe duration
+  }
+}
+
+/**
+ * ✅ INCREMENT SKIP COUNT & SET DYNAMIC COOLDOWN
+ * Called when users skip each other
+ * Tracks skip history per user pair
+ */
+async function incrementSkipCountAndSetCooldown(userId1, userId2) {
+  const today = new Date().toISOString().split('T')[0]
+
+  try {
+    // For both directions (user1→user2 and user2→user1)
+    for (const [u1, u2] of [[userId1, userId2], [userId2, userId1]]) {
+      try {
+        const record = await prisma.user_pair_skip_history.upsert({
+          where: {
+            user1_id_user2_id: {
+              user1_id: u1,
+              user2_id: u2
+            }
+          },
+          update: {
+            skip_count: {
+              increment: 1
+            },
+            last_skip_time: new Date()
+          },
+          create: {
+            user1_id: u1,
+            user2_id: u2,
+            skip_count: 1,
+            reset_at_time: new Date()
+          }
+        }).catch(() => null);
+
+        if (record) {
+          console.log(`📊 [Skip Count] ${u1.substring(0, 8)}... vs ${u2.substring(0, 8)}...: Skip count = ${record.skip_count}`);
+        }
+      } catch (e) {
+        console.warn(`⚠️ Could not update skip count (table may not exist yet)`);
+      }
+    }
+
+    // Get cooldown duration based on skip count
+    const cooldownSeconds = await getSkipBasedCooldownDuration(userId1, userId2);
+
+    // Set Redis cooldown with dynamic duration
+    await setRecentPartnerCooldown(userId1, userId2, cooldownSeconds);
+
+  } catch (error) {
+    console.error('❌ Error incrementing skip count:', error);
+  }
+}
+
+/**
+ * ✅ ALLOW RE-MATCH IF QUEUE IS TOO LOW
+ * Override cooldown when very few users available
+ * For better UX when user base is small
+ */
+async function shouldAllowEmergencyReMatch(userId1, userId2, queueLength) {
+  try {
+    // If more than 3 users waiting, enforce cooldown normally
+    if (queueLength > 3) {
+      return false; // Use normal cooldown
+    }
+
+    // If queue < 3, check time since last match
+    const key1 = `recent:${userId1}:${userId2}`
+    const key2 = `recent:${userId2}:${userId1}`
+
+    // Get remaining TTL (time-to-live) in seconds
+    const ttl1 = await redis.ttl(key1).catch(() => -2);
+    const ttl2 = await redis.ttl(key2).catch(() => -2);
+
+    const maxTtl = Math.max(ttl1, ttl2);
+
+    // maxTtl > 0 means cooldown is still active
+    // For emergency matching with queue < 3:
+    // - If only 2 users total and cooldown > 60 seconds remaining, allow after 60 seconds minimum
+    if (queueLength === 2 && maxTtl > 0 && maxTtl <= 65) {
+      console.log(`🚨 [EMERGENCY RE-MATCH] Queue has only 2 users + cooldown ${maxTtl}s remaining → ALLOW RE-MATCH`);
+      return true; // Allow despite cooldown
+    }
+
+    return false; // Normal cooldown enforcement
+
+  } catch (error) {
+    console.error('❌ Error checking emergency re-match:', error);
+    return false; // Safe: enforce cooldown
+  }
+}
+
+/**
+ * ✅ GET NEXT PARTNER FROM QUEUE (with cooldown filtering)
+ * - Checks sorted queue (lowest score = highest priority)
+ * - Filters out users in cooldown
+ * - Filters out user's own ID to prevent self-match
+ * - Returns safely if no valid match found
+ */
+async function getNextFromQueueOptimized(currentUserId) {
+  try {
+    const maxAttempts = 50 // Limit iterations to prevent infinite loops
+    let attempts = 0
+
+    while (attempts < maxAttempts) {
+      attempts++
+
+      const queueLen = await redis.zCard('matching_queue')
+      console.log(`\n🔍 [QUEUE-GET] Attempt #${attempts} - Queue length: ${queueLen}`)
+
+      if (queueLen === 0) {
+        console.log(`⏳ [QUEUE-GET] Queue is empty - no users available`)
+        return null
+      }
+
+      // Get user with lowest score (highest priority)
+      const members = await redis.zRange('matching_queue', 0, 0)
+      if (!members || members.length === 0) {
+        console.log(`⏳ [QUEUE-GET] Queue check returned empty`)
+        return null
+      }
+
+      const data = members[0]
+      let parsed
+      try {
+        parsed = JSON.parse(data)
+      } catch (parseErr) {
+        console.error(`❌ Failed to parse queue entry: ${parseErr.message}`)
+        await redis.zRem('matching_queue', data)
+        continue
+      }
+
+      console.log(`🔍 [QUEUE-GET] Retrieved from Redis:`)
+      console.log(`   User ID: ${parsed.userId}`)
+      console.log(`   User Name: ${parsed.userName}`)
+      console.log(`   Socket: ${parsed.socketId.substring(0, 8)}...`)
+
+      // ✅ FILTER 1: Skip if it's the same user (self-match)
+      if (parsed && parsed.userId === currentUserId) {
+        console.log(`🔄 [QUEUE-GET] User ${parsed.userId} is same as current user - removing from queue`)
+        await redis.zRem('matching_queue', data)
+        continue // Try next user
+      }
+
+      // ✅ FILTER 1.5: CRITICAL - Skip if user is already in activeChats (already matched!)
+      const isInActiveChat = activeChats.has(parsed.userId)
+      console.log(`🔐 [QUEUE-GET] Is user ${parsed.userId} in activeChats? ${isInActiveChat}`)
+      console.log(`   (Total in activeChats: ${activeChats.size})`)
+
+      if (isInActiveChat) {
+        console.warn(`⚠️ [QUEUE-GET] CRITICAL: User ${parsed.userId} is already in an active chat!`)
+        console.warn(`   This user should NOT be in the queue - removing them now`)
+        await redis.zRem('matching_queue', data)
+        continue // Try next user
+      }
+
+      // ✅ FILTER 2: Skip if users recently matched (cooldown)
+      const isRecent = await areRecentPartners(currentUserId, parsed.userId)
+      if (isRecent) {
+        // Check if emergency re-match allowed
+        const allowEmergency = await shouldAllowEmergencyReMatch(
+          currentUserId,
+          parsed.userId,
+          queueLen
+        );
+
+        if (!allowEmergency) {
+          // Normal cooldown: move to back
+          console.log(`🔄 [QUEUE-GET] User ${parsed.userId} is in cooldown - returning to queue (low priority)`);
+          await redis.zRem('matching_queue', data);
+          const newScore = Date.now();
+          await redis.zAdd('matching_queue', { score: newScore, value: data });
+          continue; // Try next user
+        } else {
+          // Emergency: override cooldown
+          console.log(`🚨 [EMERGENCY OVERRIDE] Ignoring cooldown due to low queue (${queueLen} users)`);
+          // Fall through to match this user despite cooldown
+        }
+      }
+
+      // ✅ ALL CHECKS PASSED - Remove from queue and return
+      console.log(`\n✅ [QUEUE-GET] User passed all filters - removing from queue...`)
+      const removalResult = await redis.zRem('matching_queue', data)
+      console.log(`✅ [QUEUE-GET] Removal result: ${removalResult} (1 = removed, 0 = not found)`)
+
+      const newQueueLen = await redis.zCard('matching_queue')
+      console.log(`✅ [QUEUE-GET] Matched user ${parsed.userId} - "${parsed.userName}" (${parsed.userAge}) from "${parsed.userLocation}"`)
+      console.log(`✅ [QUEUE-GET] Queue length after retrieval: ${newQueueLen}`)
+      return parsed
+    }
+
+    console.warn(`⚠️ [QUEUE-GET] Exceeded max attempts (${maxAttempts}) - returning null`)
+    return null
+  } catch (error) {
+    console.error('❌ Error optimizing queue retrieval:', error)
+    console.error('   Stack:', error.stack)
+    return null
+  }
+}
+
+/**
+ * ✅ TRIGGER INSTANT MATCH (called when new user joins queue)
+ * Performs server-side matching if queue has 2+ users
+ */
+async function triggerInstantMatch() {
+  console.log(`\n🔔 [INSTANT-MATCH] 🔔 FUNCTION CALLED 🔔 - This should be logged every time a user joins!`)
+  try {
+    const queueLen = await redis.zCard('matching_queue')
+    console.log(`📊 [INSTANT-MATCH] Queue length check: ${queueLen} users in queue`)
+
+    if (queueLen >= 2) {
+      console.log(`\n🚀 [INSTANT-MATCH] Queue has ${queueLen} users - PROCEEDING WITH INSTANT MATCH 🚀`)
+      console.log(`🔐 [INSTANT-MATCH] Current activeChats: ${activeChats.size} users`)
+      console.log(`   Users in activeChats:`, Array.from(activeChats))
+
+      // ✅ CRITICAL: Get first two users from queue and match them directly
+      const firstTwoUsers = await redis.zRange('matching_queue', 0, 1)
+      console.log(`📥 [INSTANT-MATCH] Retrieved users from Redis:`)
+      console.log(`   Count: ${firstTwoUsers?.length || 0}`)
+      console.log(`   Expected: 2`)
+
+      if (firstTwoUsers && firstTwoUsers.length === 2) {
+        let user1, user2
+
+        try {
+          user1 = JSON.parse(firstTwoUsers[0])
+          user2 = JSON.parse(firstTwoUsers[1])
+          console.log(`✅ [INSTANT-MATCH] Successfully parsed both users`)
+          console.log(`   User1: ${user1.userId} - ${user1.userName}`)
+          console.log(`   User2: ${user2.userId} - ${user2.userName}`)
+        } catch (parseErr) {
+          console.error(`❌ [INSTANT-MATCH] Failed to parse queue entries:`, parseErr.message)
+          return
+        }
+
+        // ✅ CRITICAL SAFETY CHECK: Verify neither user is already in activeChats
+        const user1InChat = activeChats.has(user1.userId)
+        const user2InChat = activeChats.has(user2.userId)
+
+        console.log(`🔐 [INSTANT-MATCH] activeChats safety check:`)
+        console.log(`   User1 (${user1.userId}) in activeChats? ${user1InChat}`)
+        console.log(`   User2 (${user2.userId}) in activeChats? ${user2InChat}`)
+
+        if (user1InChat || user2InChat) {
+          console.error(`❌ [INSTANT-MATCH] CRITICAL ERROR: One or both users already in activeChats!`)
+          console.error(`   This means they're already matched - cannot re-match!`)
+          console.error(`   User1 in chat: ${user1InChat}`)
+          console.error(`   User2 in chat: ${user2InChat}`)
+          console.error(`   Removing invalid users from queue...`)
+
+          if (user1InChat) {
+            await redis.zRem('matching_queue', firstTwoUsers[0])
+            console.log(`   ✅ Removed invalid user1 from queue`)
+          }
+          if (user2InChat) {
+            await redis.zRem('matching_queue', firstTwoUsers[1])
+            console.log(`   ✅ Removed invalid user2 from queue`)
+          }
+
+          return // Don't proceed with match
+        }
+
+        console.log(`✅ [INSTANT-MATCH] Found 2 users to match:`)
+        console.log(`   User1: ${user1.userId} (${user1.userName})`)
+        console.log(`   User2: ${user2.userId} (${user2.userName})`)
+
+        // Verify sockets exist before matching
+        const socket1Exists = io.sockets.sockets.has(user1.socketId)
+        const socket2Exists = io.sockets.sockets.has(user2.socketId)
+
+        console.log(`🔌 [INSTANT-MATCH] Socket verification:`)
+        console.log(`   Socket1 exists? ${socket1Exists}`)
+        console.log(`   Socket2 exists? ${socket2Exists}`)
+
+        if (socket1Exists && socket2Exists) {
+          console.log(`✅ [INSTANT-MATCH] Both sockets are valid - executing match...`)
+          console.log(`\n⚠️ [CRITICAL] NOW CALLING matchUsers() WITH:`)
+          console.log(`   socketId1: ${user1.socketId}`)
+          console.log(`   userId1: ${user1.userId}`)
+          console.log(`   socketId2: ${user2.socketId}`)
+          console.log(`   userId2: ${user2.userId}`)
+
+          // Call matchUsers directly
+          try {
+            await matchUsers(
+              user1.socketId,
+              user1.userId,
+              user2.socketId,
+              user2.userId,
+              user1,
+              user2
+            )
+            console.log(`✅ [INSTANT-MATCH] ✅ MATCH SUCCESSFUL - Both users connected`)
+
+            // Recursively trigger next match if more users in queue
+            const remainingQueueLen = await redis.zCard('matching_queue')
+            if (remainingQueueLen >= 2) {
+              console.log(`\n📊 [INSTANT-MATCH] Queue still has ${remainingQueueLen} users - triggering next match...`)
+              setTimeout(() => triggerInstantMatch(), 100) // Small delay to avoid blocking
+            }
+          } catch (matchErr) {
+            console.error(`❌ [INSTANT-MATCH] Error executing match:`, matchErr.message)
+            console.error(`   Stack:`, matchErr.stack)
+          }
+        } else {
+          console.warn(`⚠️ [INSTANT-MATCH] One or both sockets are no longer connected`)
+          console.warn(`   User1 socket (${user1.socketId.substring(0, 8)}...): ${socket1Exists}`)
+          console.warn(`   User2 socket (${user2.socketId.substring(0, 8)}...): ${socket2Exists}`)
+
+          // Try to remove invalid sockets from queue
+          if (!socket1Exists) {
+            await redis.zRem('matching_queue', firstTwoUsers[0])
+            console.log(`✅ Removed disconnected user1 from queue`)
+          }
+          if (!socket2Exists) {
+            await redis.zRem('matching_queue', firstTwoUsers[1])
+            console.log(`✅ Removed disconnected user2 from queue`)
+          }
+        }
+      } else {
+        console.log(`⏳ [INSTANT-MATCH] Expected 2+ users but got ${firstTwoUsers?.length || 0}`)
+        console.log(`   This might indicate a timing issue or users disconnecting`)
+      }
+    } else {
+      console.log(`⏳ [INSTANT-MATCH] Queue has ${queueLen} users - need 2+ for match (cannot proceed)`)
+    }
+  } catch (error) {
+    console.error('❌ Error triggering instant match:', error.message)
+    console.error('   Stack:', error.stack)
+  }
+}
+
 // Generate unique 8-digit user ID
 async function generateUniqueShortId() {
   let shortId
@@ -874,12 +1552,12 @@ async function generateUniqueShortId() {
   while (exists && attempts < maxAttempts) {
     // Generate random 8-digit number
     shortId = Math.floor(10000000 + Math.random() * 90000000).toString()
-    
+
     // Check if it already exists in database
     const existingUser = await prisma.users.findUnique({
       where: { short_id: shortId }
     })
-    
+
     exists = !!existingUser
     attempts++
   }
@@ -919,14 +1597,11 @@ app.options('*', (req, res) => {
     "http://127.0.0.1:3008",
     "http://127.0.0.1:3009",
     "http://127.0.0.1:3010",
-    "https://flinxx-backend-frontend.vercel.app",
-    "https://flinxx-admin-panel.vercel.app",
-    "https://flinxx-frontend.vercel.app",
     "https://flinxx.in",
     "https://www.flinxx.in",
     "https://d1pphanrf0qsx7.cloudfront.net"
   ]
-  
+
   if (allowedOriginsList.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin)
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS')
@@ -934,7 +1609,7 @@ app.options('*', (req, res) => {
     res.setHeader('Access-Control-Allow-Credentials', 'true')
     res.setHeader('Access-Control-Max-Age', '86400')
   }
-  
+
   res.sendStatus(200)
 })
 
@@ -946,8 +1621,8 @@ app.get('/api/health', (req, res) => {
 // 🔍 DEBUG ENDPOINT - Check matching queue status
 app.get('/api/debug/queue', async (req, res) => {
   try {
-    const queueLength = await redis.lLen('matching_queue')
-    const queueEntries = await redis.lRange('matching_queue', 0, -1)
+    const queueLength = await redis.zCard('matching_queue')
+    const queueEntries = await redis.zRange('matching_queue', 0, -1)
     const parsedEntries = queueEntries.map(entry => {
       try {
         return JSON.parse(entry)
@@ -955,7 +1630,7 @@ app.get('/api/debug/queue', async (req, res) => {
         return { error: 'Failed to parse', raw: entry }
       }
     })
-    
+
     res.json({
       status: 'OK',
       queueLength,
@@ -981,14 +1656,14 @@ app.post('/api/debug/test-match', async (req, res) => {
     console.log('\n🧪 MANUAL TEST ENDPOINT CALLED')
     const queueLen = await getQueueLength()
     console.log(`Current queue length: ${queueLen}`)
-    
+
     if (queueLen < 1) {
       return res.json({
         message: 'Queue has fewer than 1 users - cannot test',
         queueLength: queueLen
       })
     }
-    
+
     const user = await getNextFromQueue()
     res.json({
       message: 'Popped user from queue',
@@ -1007,54 +1682,54 @@ app.post('/api/debug/test-match', async (req, res) => {
 app.post('/api/auth/firebase', async (req, res) => {
   try {
     console.log('\n🔐 [/api/auth/firebase] Firebase authentication request')
-    
+
     // Get Firebase ID token from Authorization header
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.error('❌ Missing or invalid Authorization header')
       return res.status(401).json({ error: 'Missing Firebase ID token' })
     }
-    
+
     const firebaseIdToken = authHeader.substring(7)
     console.log('📍 Firebase ID token received, length:', firebaseIdToken.length)
-    
+
     // 🔥 VERIFY Firebase token using Firebase Admin SDK
     console.log('🔥 Verifying Firebase token with Admin SDK...')
     const decodedToken = await verifyFirebaseToken(firebaseIdToken)
-    
+
     if (!decodedToken) {
       console.error('❌ Firebase token verification failed')
       return res.status(401).json({ error: 'Invalid or expired Firebase token' })
     }
-    
+
     // Extract user data from verified Firebase token
     const firebaseUid = decodedToken.uid
     const email = decodedToken.email
     const name = decodedToken.name || 'User'
     const picture = decodedToken.picture || null
-    
+
     if (!firebaseUid || !email) {
       console.error('❌ Firebase token missing required fields')
       return res.status(401).json({ error: 'Invalid Firebase token data' })
     }
-    
+
     console.log('✅ Firebase token verified successfully')
     console.log('🔍 Firebase user:', { firebaseUid, email, name })
-    
+
     // Find or create user in database
     let user = await prisma.users.findUnique({
       where: { email }
     })
-    
+
     if (!user) {
       console.log('👤 Creating new user...')
-      
+
       // Generate unique public_id
       let publicId
       let publicIdExists = true
       const maxAttempts = 100
       let attempts = 0
-      
+
       while (publicIdExists && attempts < maxAttempts) {
         publicId = Math.floor(10000000 + Math.random() * 90000000).toString()
         const existing = await prisma.users.findUnique({
@@ -1063,12 +1738,12 @@ app.post('/api/auth/firebase', async (req, res) => {
         publicIdExists = !!existing
         attempts++
       }
-      
+
       if (attempts >= maxAttempts) {
         console.error('❌ Failed to generate unique public_id')
         return res.status(500).json({ error: 'Failed to create user' })
       }
-      
+
       user = await prisma.users.create({
         data: {
           email,
@@ -1078,13 +1753,26 @@ app.post('/api/auth/firebase', async (req, res) => {
           provider_id: firebaseUid,
           google_id: firebaseUid,
           public_id: publicId,
-          profileCompleted: false
+          profileCompleted: false,
+          accepted_guidelines: false
         }
       })
-      
+
       console.log('✅ New user created:', user.email)
-    } else {
-      console.log('👤 User found, updating last login...')
+      // Check if user is banned using Raw Query
+      try {
+        const rawUser = await prisma.$queryRaw`SELECT is_banned FROM users WHERE email = ${email}`;
+        if (rawUser && rawUser.length > 0 && rawUser[0].is_banned) {
+          console.error('❌ User login blocked - ACCOUNT_BANNED')
+          return res.status(403).json({
+            error: 'ACCOUNT_BANNED',
+            message: 'Your account has been banned due to violations of our community guidelines.'
+          })
+        }
+      } catch (err) {
+        console.error("❌ Error checking ban status at login:", err);
+      }
+
       // Update last login time
       user = await prisma.users.update({
         where: { email },
@@ -1093,7 +1781,7 @@ app.post('/api/auth/firebase', async (req, res) => {
         }
       })
     }
-    
+
     // Generate JWT token for frontend
     const backendJWT = jwt.sign(
       {
@@ -1104,11 +1792,11 @@ app.post('/api/auth/firebase', async (req, res) => {
         authProvider: user.auth_provider
       },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
+      { expiresIn: '365d' }
     )
-    
+
     console.log('✅ Backend JWT generated successfully')
-    
+
     // Return JWT and user info
     return res.json({
       success: true,
@@ -1120,16 +1808,54 @@ app.post('/api/auth/firebase', async (req, res) => {
         name: user.display_name,
         picture: user.photo_url,
         publicId: user.public_id,
-        profileCompleted: user.profileCompleted
+        profileCompleted: user.profileCompleted,
+        is_banned: user.is_banned
       }
     })
-    
+
   } catch (error) {
     console.error('❌ Firebase authentication error:', error)
     console.error('📍 Error details:', error.message)
     return res.status(500).json({ error: 'Authentication failed', details: error.message })
   }
 })
+
+// Internal Webhook for Admin Panel to kick banned users
+app.post('/api/internal/kick-user', express.json(), async (req, res) => {
+  try {
+    const { userId } = req.body
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' })
+    }
+
+    // Broadcast the ban event to all sockets connected as this user
+    console.log(`🔌 [WEBHOOK] Broadcasting user_banned to room: ${userId}`)
+    io.to(userId).emit('user_banned')
+
+    // Find specific socket ID to forcefully disconnect it
+    const socketId = onlineUsers.get(userId)
+    if (socketId) {
+      const socket = io.sockets.sockets.get(socketId)
+      if (socket) {
+        console.log(`🔌 [WEBHOOK] Force disconnecting socket: ${socketId} for user ${userId}`)
+        setTimeout(() => socket.disconnect(true), 1500)
+      }
+    }
+
+    // Update online status in Redis if configured
+    if (redis) {
+      await redis.sRem('online_users', String(userId))
+      await redis.sRem('online_males', String(userId))
+      await redis.sRem('online_females', String(userId))
+    }
+
+    res.json({ success: true, socketFound: !!socketId })
+  } catch (error) {
+    console.error('❌ Error in /api/internal/kick-user:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
 
 app.get('/api/stats', async (req, res) => {
   try {
@@ -1165,89 +1891,121 @@ app.get('/api/turn/credentials', async (req, res) => {
 })
 
 // ===== TURN ENDPOINTS =====
+// Handle preflight for TURN endpoints
+app.options("/api/turn", cors(corsOptions));
+app.options("/api/get-turn-credentials", cors(corsOptions));
+
 // ===== TURN CREDENTIALS ENDPOINT =====
 app.post("/api/get-turn-credentials", async (req, res) => {
   try {
-    const getTurnServers = async () => {
-      try {
-        const ident = process.env.XIRSYS_IDENT;
-        const secret = process.env.XIRSYS_SECRET;
-        const channel = process.env.XIRSYS_CHANNEL || "MyFirstApp";
+    // ✅ Set CORS headers explicitly for this endpoint
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003",
+      "http://localhost:3004", "http://localhost:3005", "http://localhost:3006", "http://localhost:3007",
+      "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:3002", "http://127.0.0.1:3003", "https://flinxx.in", "https://www.flinxx.in",
+      "https://d1pphanrf0qsx7.cloudfront.net"
+    ];
 
-        if (!ident || !secret) {
-          console.error("❌ Missing XIRSYS_IDENT or XIRSYS_SECRET environment variables");
-          return null;
-        }
-
-        const auth = Buffer.from(`${ident}:${secret}`).toString("base64");
-
-        const res = await fetch(
-          `https://global.xirsys.net/_turn/${channel}`,
-          {
-            method: "PUT",
-            headers: {
-              Authorization: `Basic ${auth}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ format: "urls" }),
-          }
-        );
-
-        const data = await res.json();
-        console.log("✅ Xirsys TURN response:", data);
-
-        if (Array.isArray(data.v.iceServers)) {
-          return data.v.iceServers;
-        } else {
-          console.error("❌ Invalid Xirsys response format");
-          return null;
-        }
-      } catch (err) {
-        console.error("❌ TURN fetch failed:", err);
-        return null;
-      }
-    };
-
-    const iceServers = await getTurnServers();
-    
-    if (!iceServers) {
-      console.warn("⚠️ Failed to fetch TURN servers, returning error");
-      return res.status(500).json({ error: "TURN fetch failed", iceServers: [] });
+    // Allow requests from any of the allowed origins
+    if (allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, Accept');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Max-Age', '86400');
     }
 
+    // ✅ Self-hosted TURN server on EC2 (coturn)
+    const iceServers = [
+      {
+        urls: ["turn:15.206.146.133:3478?transport=udp", "turn:15.206.146.133:3478?transport=tcp"],
+        username: "test",
+        credential: "test123"
+      }
+    ];
+
+    console.log("✅ [TURN CREDENTIALS] Returning self-hosted TURN server to origin:", origin);
+    console.log("   CORS headers set:", !!res.getHeader('Access-Control-Allow-Origin'));
     res.json({ iceServers });
 
   } catch (err) {
-    console.error("TURN ERROR:", err);
-    res.status(500).json({ error: "TURN fetch failed", iceServers: [] });
+    console.error("❌ [TURN CREDENTIALS] Error:", err);
+
+    // ✅ Still set CORS headers on error
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003",
+      "http://localhost:3004", "http://localhost:3005", "http://localhost:3006", "http://localhost:3007",
+      "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:3002", "http://127.0.0.1:3003", "https://flinxx.in", "https://www.flinxx.in",
+      "https://d1pphanrf0qsx7.cloudfront.net"
+    ];
+
+    if (allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, Accept');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+
+    res.status(500).json({ error: "Failed to get TURN servers", iceServers: [] });
   }
 });
 
-// ===== XIRSYS TURN ENDPOINT =====
+// ===== TURN ENDPOINT =====
 app.get("/api/turn", async (req, res) => {
-    try {
-        const ident = process.env.XIRSYS_IDENT;
-        const secret = process.env.XIRSYS_SECRET;
-        const channel = process.env.XIRSYS_CHANNEL;
+  try {
+    // ✅ Set CORS headers explicitly for this endpoint
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003",
+      "http://localhost:3004", "http://localhost:3005", "http://localhost:3006", "http://localhost:3007",
+      "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:3002", "http://127.0.0.1:3003", "https://flinxx.in", "https://www.flinxx.in",
+      "https://d1pphanrf0qsx7.cloudfront.net"
+    ];
 
-        const auth = Buffer.from(`${ident}:${secret}`).toString("base64");
-
-        const response = await fetch(`https://global.xirsys.net/_turn/${channel}`, {
-            method: "PUT",
-            headers: {
-                "Authorization": `Basic ${auth}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ format: "urls" })
-        });
-
-        const data = await response.json();
-
-        res.json(data);
-    } catch (err) {
-        console.error("TURN API Error:", err);
-        res.status(500).json({ error: "Failed to get TURN servers" });
+    // Allow requests from any of the allowed origins
+    if (allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, Accept');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Max-Age', '86400');
     }
+
+    // ✅ Self-hosted TURN server on EC2 (coturn)
+    const iceServers = [
+      {
+        urls: ["turn:15.206.146.133:3478?transport=udp", "turn:15.206.146.133:3478?transport=tcp"],
+        username: "test",
+        credential: "test123"
+      }
+    ];
+
+    console.log("✅ [TURN API] Returning self-hosted TURN server to origin:", origin);
+    console.log("   CORS headers set:", !!res.getHeader('Access-Control-Allow-Origin'));
+    res.json({ iceServers });
+  } catch (err) {
+    console.error("❌ [TURN API] Error:", err);
+
+    // ✅ Still set CORS headers on error
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003",
+      "http://localhost:3004", "http://localhost:3005", "http://localhost:3006", "http://localhost:3007",
+      "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:3002", "http://127.0.0.1:3003", "https://flinxx.in", "https://www.flinxx.in",
+      "https://d1pphanrf0qsx7.cloudfront.net"
+    ];
+
+    if (allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, Accept');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+
+    res.status(500).json({ error: "Failed to get TURN servers", iceServers: [] });
+  }
 });
 
 // ===== USER MANAGEMENT ENDPOINTS =====
@@ -1267,20 +2025,20 @@ app.post('/api/users/save', async (req, res) => {
 
     // CRITICAL: Use Prisma for consistency with OAuth flow
     ensurePrismaAvailable()
-    
+
     // Check if user already exists
     let user = await prisma.users.findUnique({
       where: { email: email }
     })
-    
+
     let isNewUser = false
     if (!user) {
       console.log(`📝 [/api/users/save] New user detected, creating account...`)
-      
+
       // Generate unique public ID
       const publicId = await generateUniquePublicId()
       console.log(`✅ [/api/users/save] Generated public_id:`, publicId)
-      
+
       // Create user with Prisma
       console.log(`💾 [/api/users/save] Calling prisma.users.create()...`)
       user = await prisma.users.create({
@@ -1292,7 +2050,8 @@ app.post('/api/users/save', async (req, res) => {
           provider_id: uid,
           public_id: publicId,
           profileCompleted: false,
-          termsAccepted: false
+          termsAccepted: false,
+          accepted_guidelines: false
         }
       })
       isNewUser = true
@@ -1309,17 +2068,17 @@ app.post('/api/users/save', async (req, res) => {
         console.log(`✅ [/api/users/save] Generated public_id for existing user:`, publicId)
       }
     }
-    
+
     // Verify user was actually saved
     console.log(`🔍 [/api/users/save] Verifying user was saved to database...`)
     const verifyUser = await prisma.users.findUnique({
       where: { id: user.id }
     })
-    
+
     if (!verifyUser) {
       throw new Error('CRITICAL: User creation failed - could not verify user in database')
     }
-    
+
     console.log(`✅ [/api/users/save] Database verification successful:`, verifyUser.email)
 
     res.json({
@@ -1356,7 +2115,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
     console.log('[PROFILE SAVE] Request body:', JSON.stringify(req.body, null, 2));
     console.log('[PROFILE SAVE] Request body type:', typeof req.body);
     console.log('[PROFILE SAVE] Request body keys:', req.body ? Object.keys(req.body) : 'no body');
-    
+
     const { userId, birthday, gender } = req.body
 
     console.log('[PROFILE SAVE] Extracted fields:');
@@ -1405,12 +2164,12 @@ app.post('/api/users/complete-profile', async (req, res) => {
 
     // Verify user exists in database
     console.log('[PROFILE SAVE] Checking if user exists in database...');
-    
+
     // Try to find user by ID (UUID from frontend) first
     let existingUser = await prisma.users.findUnique({
       where: { id: userId }
     })
-    
+
     // If not found by ID, try by public_id for backward compatibility
     if (!existingUser) {
       console.log('[PROFILE SAVE] User not found by UUID, trying by public_id...');
@@ -1450,12 +2209,12 @@ app.post('/api/users/complete-profile', async (req, res) => {
 
     // Calculate age from birthday
     console.log('[PROFILE SAVE] Calculating age from birthday:', birthday);
-    
+
     // Parse the date more explicitly to avoid timezone issues
     // Birthday format is YYYY-MM-DD
     const [year, month, day] = birthday.split('-').map(Number);
     const birthDate = new Date(year, month - 1, day, 12, 0, 0); // Set to noon to avoid timezone issues
-    
+
     // Validate date is valid
     if (isNaN(birthDate.getTime())) {
       console.error(`[PROFILE SAVE] ❌ VALIDATION ERROR: Invalid date value: ${birthday}`);
@@ -1474,7 +2233,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
     // Check if user is 18 or older
     if (age < 18) {
       console.warn(`[PROFILE SAVE] ⚠️ AGE VALIDATION FAILED: User ${userId} is under 18 (age: ${age})`);
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'You must be 18+ to use this app',
         code: 'UNDERAGE_USER'
       })
@@ -1488,7 +2247,7 @@ app.post('/api/users/complete-profile', async (req, res) => {
     console.log(`  - gender: ${genderLowercase}`);
     console.log(`  - age: ${age}`);
     console.log(`  - profileCompleted: true`);
-    
+
     const user = await prisma.users.update({
       where: { id: existingUser.id },
       data: {
@@ -1523,10 +2282,10 @@ app.post('/api/users/complete-profile', async (req, res) => {
       console.error('[PROFILE SAVE] Error code:', error.code);
     }
     console.error('[PROFILE SAVE] Full error:', JSON.stringify(error, null, 2));
-    
+
     // Return more detailed error message for debugging
-    res.status(500).json({ 
-      error: 'Failed to complete profile', 
+    res.status(500).json({
+      error: 'Failed to complete profile',
       details: error.message,
       type: error.constructor.name
     })
@@ -1539,30 +2298,30 @@ app.post('/api/users/reset-profile', async (req, res) => {
     console.log('\n\n📋 ===== RESET PROFILE ENDPOINT CALLED =====');
     console.log('[RESET PROFILE] Request received');
     console.log('[RESET PROFILE] Request body:', JSON.stringify(req.body, null, 2));
-    
+
     const { userId } = req.body;
-    
+
     console.log('[RESET PROFILE] Extracted userId:', userId);
-    
+
     if (!userId) {
       console.error('[RESET PROFILE] ❌ VALIDATION ERROR: Missing userId');
       return res.status(400).json({ error: 'Missing required field: userId' });
     }
-    
+
     // Find user
     console.log('[RESET PROFILE] Finding user with id:', userId);
     const user = await prisma.users.findUnique({
       where: { id: userId }
     });
-    
+
     if (!user) {
       console.error('[RESET PROFILE] ❌ User not found:', userId);
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     console.log('[RESET PROFILE] ✓ User found:', user.email);
     console.log('[RESET PROFILE] Current profileCompleted status:', user.profileCompleted);
-    
+
     // Reset profileCompleted to false
     console.log('[RESET PROFILE] Resetting profileCompleted to false...');
     const updatedUser = await prisma.users.update({
@@ -1574,7 +2333,7 @@ app.post('/api/users/reset-profile', async (req, res) => {
         age: null
       }
     });
-    
+
     console.log('[RESET PROFILE] ✅ Profile reset successfully');
     console.log('[RESET PROFILE] Updated user data:', {
       id: updatedUser.id,
@@ -1584,7 +2343,7 @@ app.post('/api/users/reset-profile', async (req, res) => {
       gender: updatedUser.gender,
       age: updatedUser.age
     });
-    
+
     res.json({
       success: true,
       message: 'Profile reset successfully',
@@ -1609,30 +2368,30 @@ app.post('/api/users/accept-terms', async (req, res) => {
   try {
     console.log('\n\n📋 ===== ACCEPT-TERMS ENDPOINT CALLED =====');
     console.log('[ACCEPT TERMS] Request body:', JSON.stringify(req.body, null, 2));
-    
+
     const { userId } = req.body;
-    
+
     console.log('[ACCEPT TERMS] Extracted userId:', userId);
-    
+
     if (!userId) {
       console.error('[ACCEPT TERMS] ❌ VALIDATION ERROR: Missing userId');
       return res.status(400).json({ error: 'Missing required field: userId' });
     }
-    
+
     // Find user
     console.log('[ACCEPT TERMS] Finding user with id:', userId);
     const user = await prisma.users.findUnique({
       where: { id: userId }
     });
-    
+
     if (!user) {
       console.error('[ACCEPT TERMS] ❌ User not found:', userId);
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     console.log('[ACCEPT TERMS] ✓ User found:', user.email);
     console.log('[ACCEPT TERMS] Current termsAccepted status:', user.termsAccepted);
-    
+
     // Update termsAccepted to true
     console.log('[ACCEPT TERMS] Setting termsAccepted to true...');
     const updatedUser = await prisma.users.update({
@@ -1641,7 +2400,7 @@ app.post('/api/users/accept-terms', async (req, res) => {
         termsAccepted: true
       }
     });
-    
+
     console.log('[ACCEPT TERMS] ✅ TERMS ACCEPTED SUCCESSFULLY');
     console.log('[ACCEPT TERMS] User email:', updatedUser.email);
     console.log('[ACCEPT TERMS] Updated user data:', {
@@ -1649,7 +2408,7 @@ app.post('/api/users/accept-terms', async (req, res) => {
       email: updatedUser.email,
       termsAccepted: updatedUser.termsAccepted
     });
-    
+
     res.json({
       success: true,
       message: 'Terms accepted successfully',
@@ -1663,6 +2422,53 @@ app.post('/api/users/accept-terms', async (req, res) => {
     console.error('[ACCEPT TERMS] ❌ ERROR:', error.message);
     console.error('[ACCEPT TERMS] Stack:', error.stack);
     res.status(500).json({ error: 'Failed to accept terms', details: error.message });
+  }
+});
+
+// Accept Community Guidelines endpoint
+// Get current authenticated user profile
+app.get('/api/users/profile', verifyUserToken, async (req, res) => {
+  try {
+    console.log('[GET PROFILE] Fetching profile for user:', req.decoded?.id);
+
+    const userId = req.decoded?.id;
+
+    if (!userId) {
+      console.error('[GET PROFILE] ❌ User ID not found in token');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const user = await prisma.users.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      console.error('[GET PROFILE] ❌ User not found:', userId);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log('[GET PROFILE] ✅ User profile fetched:', user.email);
+
+    res.json({
+      uuid: user.id,
+      id: user.public_id,
+      email: user.email,
+      displayName: user.display_name,
+      photoURL: user.photo_url,
+      authProvider: user.auth_provider,
+      googleId: user.google_id,
+      birthday: user.birthday,
+      gender: user.gender,
+      age: user.age,
+      profileCompleted: user.profileCompleted,
+      termsAccepted: user.termsAccepted,
+      accepted_guidelines: user.accepted_guidelines,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    });
+  } catch (error) {
+    console.error('[GET PROFILE] ❌ Error fetching user profile:', error);
+    res.status(500).json({ error: 'Failed to fetch user profile', details: error.message });
   }
 });
 
@@ -1694,6 +2500,8 @@ app.get('/api/users/:userId', async (req, res) => {
       gender: user.gender,
       age: user.age,
       profileCompleted: user.profileCompleted,
+      termsAccepted: user.termsAccepted,
+      accepted_guidelines: user.accepted_guidelines,
       createdAt: user.created_at,
       updatedAt: user.updated_at
     })
@@ -1731,6 +2539,8 @@ app.get('/api/users/email/:email', async (req, res) => {
       gender: user.gender,
       age: user.age,
       profileCompleted: user.profileCompleted,
+      termsAccepted: user.termsAccepted,
+      accepted_guidelines: user.accepted_guidelines,
       createdAt: user.created_at,
       updatedAt: user.updated_at
     })
@@ -1763,18 +2573,18 @@ app.get('/api/user/status/:userId', async (req, res) => {
 app.get('/api/user/profile', verifyUserToken, async (req, res) => {
   try {
     const decoded = req.decoded;
-    
+
     console.log("\n📡 [/api/user/profile] ═══════════════════════════════════════════");
     console.log("📡 [/api/user/profile] ENDPOINT CALLED");
     console.log("📡 [/api/user/profile] User UUID:", decoded.id);
     console.log("📡 [/api/user/profile] User email:", decoded.email);
-    
+
     // Check if user ID exists
     if (!decoded?.id) {
       console.error("📡 [/api/user/profile] ❌ USER ID NOT FOUND IN TOKEN");
       return res.status(401).json({ message: "Invalid token payload" });
     }
-    
+
     console.log("\n📝 [UPDATE LAST_SEEN] ═══════════════════════════════════════════");
     console.log("📝 [UPDATE LAST_SEEN] Updating last_seen for user:", decoded.id);
     console.log("USER ID USED FOR UPDATE:", decoded.id);
@@ -1801,10 +2611,19 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
         display_name: true,
         photo_url: true,
         location: true,
+        gender: true,
+        birthday: true,
         auth_provider: true,
+        has_seen_premium_popup: true,
         created_at: true,
         updated_at: true,
-        last_seen: true
+        last_seen: true,
+        is_premium: true,
+        premium_expiry: true,
+        has_unlimited_skip: true,
+        unlimited_skip_expires_at: true,
+        daily_skip_count: true,
+        last_skip_reset_date: true
       }
     });
 
@@ -1816,11 +2635,11 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
     console.log("📖 [FETCH PROFILE] ✓ Profile fetched successfully");
     console.log("📖 [FETCH PROFILE] Email:", user.email);
     console.log("📖 [FETCH PROFILE] Last_seen in DB:", user.last_seen);
-    
+
     console.log("\n✅ [/api/user/profile] ═══════════════════════════════════════════");
     console.log("✅ [/api/user/profile] RESPONSE SUCCESS");
     console.log("✅ [/api/user/profile] Sending response to frontend...\n");
-    
+
     res.json({
       success: true,
       user: {
@@ -1829,10 +2648,17 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
         name: user.display_name,
         picture: user.photo_url,
         location: user.location || null,
+        gender: user.gender,
+        birthday: user.birthday,
         authProvider: user.auth_provider,
+        hasSeenPremiumPopup: !!user.has_seen_premium_popup,
         createdAt: user.created_at,
         updatedAt: user.updated_at,
-        lastSeen: user.last_seen
+        lastSeen: user.last_seen,
+        isPremium: !!(user.is_premium && (!user.premium_expiry || new Date(user.premium_expiry) > new Date())),
+        hasUnlimitedSkip: !!(user.has_unlimited_skip && (!user.unlimited_skip_expires_at || new Date(user.unlimited_skip_expires_at) > new Date())),
+        dailySkipCount: user.daily_skip_count || 0,
+        lastSkipResetDate: user.last_skip_reset_date
       }
     });
   } catch (error) {
@@ -1840,6 +2666,66 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
     console.error('❌ [/api/user/profile] Full error:', error);
     console.error('❌ [/api/user/profile] ═══════════════════════════════════════════\n');
     res.status(500).json({ error: 'Failed to fetch profile', details: error.message });
+  }
+});
+
+// Accept Community Guidelines endpoint
+app.post('/api/user/accept-guidelines', verifyUserToken, async (req, res) => {
+  try {
+    const decoded = req.decoded;
+
+    console.log('\n\n📋 ===== ACCEPT-GUIDELINES ENDPOINT CALLED =====');
+    console.log('[ACCEPT GUIDELINES] User ID from token:', decoded?.id);
+
+    if (!decoded?.id) {
+      console.error('[ACCEPT GUIDELINES] ❌ VALIDATION ERROR: Missing user ID from token');
+      return res.status(401).json({ error: 'Invalid or missing authentication token' });
+    }
+
+    // Find user
+    console.log('[ACCEPT GUIDELINES] Finding user with id:', decoded.id);
+    const user = await prisma.users.findUnique({
+      where: { id: decoded.id }
+    });
+
+    if (!user) {
+      console.error('[ACCEPT GUIDELINES] ❌ User not found:', decoded.id);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log('[ACCEPT GUIDELINES] ✓ User found:', user.email);
+    console.log('[ACCEPT GUIDELINES] Current accepted_guidelines status:', user.accepted_guidelines);
+
+    // Update accepted_guidelines to true
+    console.log('[ACCEPT GUIDELINES] Setting accepted_guidelines to true...');
+    const updatedUser = await prisma.users.update({
+      where: { id: decoded.id },
+      data: {
+        accepted_guidelines: true
+      }
+    });
+
+    console.log('[ACCEPT GUIDELINES] ✅ GUIDELINES ACCEPTED SUCCESSFULLY');
+    console.log('[ACCEPT GUIDELINES] User email:', updatedUser.email);
+    console.log('[ACCEPT GUIDELINES] Updated user data:', {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      accepted_guidelines: updatedUser.accepted_guidelines
+    });
+
+    res.json({
+      success: true,
+      message: 'Community guidelines accepted successfully',
+      user: {
+        uuid: updatedUser.id,
+        email: updatedUser.email,
+        accepted_guidelines: updatedUser.accepted_guidelines
+      }
+    });
+  } catch (error) {
+    console.error('[ACCEPT GUIDELINES] ❌ ERROR:', error.message);
+    console.error('[ACCEPT GUIDELINES] Stack:', error.stack);
+    res.status(500).json({ error: 'Failed to accept guidelines', details: error.message });
   }
 });
 
@@ -1865,12 +2751,12 @@ const getGoogleTokens = async (code) => {
         redirect_uri: redirectUri
       })
     })
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(`Failed to get tokens: ${response.status} - ${errorText}`)
     }
-    
+
     return await response.json()
   } catch (error) {
     console.error('❌ Error getting Google tokens:', error)
@@ -1886,11 +2772,11 @@ const getGoogleUserInfo = async (accessToken) => {
         Authorization: `Bearer ${accessToken}`
       }
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to get user info: ${response.status}`)
     }
-    
+
     return await response.json()
   } catch (error) {
     console.error('❌ Error getting Google user info:', error)
@@ -1918,12 +2804,12 @@ const getFacebookTokens = async (code) => {
         redirect_uri: callbackUrl
       })
     })
-    
+
     if (!response.ok) {
       const errorText = await response.text()
       throw new Error(`Failed to get tokens: ${response.status} - ${errorText}`)
     }
-    
+
     return await response.json()
   } catch (error) {
     console.error('❌ Error getting Facebook tokens:', error)
@@ -1939,11 +2825,11 @@ const getFacebookUserInfo = async (accessToken) => {
         Authorization: `Bearer ${accessToken}`
       }
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to get user info: ${response.status}`)
     }
-    
+
     const data = await response.json()
     return {
       id: data.id,
@@ -1973,7 +2859,7 @@ app.get('/api/search-user', async (req, res) => {
 
     // Search by public_id field (8-digit user ID)
     console.log('[SEARCH USER] Searching database for public_id:', searchId);
-    
+
     const user = await prisma.users.findFirst({
       where: {
         public_id: searchId  // 8-digit ID exact match
@@ -2015,9 +2901,9 @@ app.get('/api/search-user', async (req, res) => {
   } catch (error) {
     console.error('[SEARCH USER] ❌ Search error:', error.message);
     console.error('[SEARCH USER] Error stack:', error.stack);
-    res.status(500).json({ 
-      error: 'Search failed', 
-      details: error.message 
+    res.status(500).json({
+      error: 'Search failed',
+      details: error.message
     });
   }
 })
@@ -2076,11 +2962,11 @@ app.post('/api/friends/send', async (req, res) => {
     // ✅ FIX: Use UUID for lookup, not numeric ID (frontend sends UUID in register_user)
     const receiverUuid = receiver.uuid
     const receiverSocketId = onlineUsers.get(receiverUuid)
-    
+
     console.log(`🔍 [LOOKUP] Looking for receiver UUID: ${receiverUuid.substring(0, 8)}...`)
     console.log(`🔍 [LOOKUP] Found socket ID: ${receiverSocketId ? receiverSocketId.substring(0, 8) + '...' : 'NOT FOUND'}`)
     console.log(`🔍 [LOOKUP] Current online users: ${onlineUsers.size}`)
-    
+
     if (receiverSocketId) {
       const eventPayload = {
         requestId: request.id,
@@ -2095,9 +2981,9 @@ app.post('/api/friends/send', async (req, res) => {
       console.log(`📢 Target Socket ID: ${receiverSocketId.substring(0, 8)}...`);
       console.log(`📢 Target User: ${receiver.public_id}`);
       console.log(`📢 Payload:`, eventPayload);
-      
+
       io.to(receiverSocketId).emit('friend_request_received', eventPayload);
-      
+
       console.log(`✅ Event emitted successfully to ${receiver.public_id}`);
     } else {
       console.log(`⚠️ Receiver ${receiver.public_id} is offline - request saved to DB only`)
@@ -2143,7 +3029,7 @@ app.post('/api/friends/accept', async (req, res) => {
     try {
       const senderId = request.sender_id;
       const receiverId = request.receiver_id;
-      
+
       // Find socket IDs for both users
       for (const [socketId, userId] of userSockets.entries()) {
         if (userId === senderId || userId === receiverId) {
@@ -2245,9 +3131,9 @@ app.get('/api/friends/status', async (req, res) => {
 app.get('/api/friends/requests/incoming', authMiddleware, async (req, res) => {
   try {
     const receiverId = req.user.id // UUID from authMiddleware
-    
+
     console.log('📬 Fetching incoming requests for user:', receiverId)
-    
+
     const result = await pool.query(
       `
       SELECT
@@ -2278,9 +3164,9 @@ app.get('/api/friends/requests', authMiddleware, async (req, res) => {
   try {
     const receiverId = req.user.id // UUID from authMiddleware
     const publicId = req.user.publicId
-    
+
     console.log('📬 Fetching friend requests for user:', { receiverId, publicId })
-    
+
     // Query for all friend requests where this user is the receiver
     const result = await pool.query(
       `
@@ -2307,6 +3193,64 @@ app.get('/api/friends/requests', authMiddleware, async (req, res) => {
   }
 })
 
+// Submit user report
+app.post('/api/report-user', authMiddleware, async (req, res) => {
+  try {
+    const { reportedUserId, reason } = req.body;
+    const reporterId = req.user.id; // From authMiddleware (UUID string)
+
+    if (!reportedUserId || !reason) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    // Check if report already exists
+    const existing = await pool.query(
+      `SELECT id FROM reports WHERE reporter_id = $1 AND reported_user_id = $2 LIMIT 1`,
+      [reporterId, reportedUserId]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'You have already reported this user.' });
+    }
+
+    // Insert new report
+    await pool.query(
+      `INSERT INTO reports (reporter_id, reported_user_id, reason, status)
+       VALUES ($1, $2, $3, 'pending')`,
+      [reporterId, reportedUserId, reason]
+    );
+
+    console.log(`✅ User ${reporterId} reported user ${reportedUserId} for: ${reason}`);
+
+    // Check if user has 5+ unique reports
+    const countResult = await pool.query(
+      `SELECT COUNT(DISTINCT reporter_id) as count FROM reports WHERE reported_user_id = $1`,
+      [reportedUserId]
+    );
+
+    if (parseInt(countResult.rows[0].count) >= 5) {
+      console.log(`🚨 Auto-Banning User ${reportedUserId} due to 5+ reports.`);
+
+      // Update users table
+      await pool.query(
+        `UPDATE users SET is_banned = true WHERE id = $1`,
+        [reportedUserId]
+      );
+
+      // Update all their pending reports to banned
+      await pool.query(
+        `UPDATE reports SET status = 'banned' WHERE reported_user_id = $1 AND status = 'pending'`,
+        [reportedUserId]
+      );
+    }
+
+    res.json({ success: true, message: 'Report submitted successfully' });
+  } catch (error) {
+    console.error('❌ Error submitting report:', error);
+    res.status(500).json({ success: false, message: 'Error submitting report', error: error.message });
+  }
+});
+
 // Step 1: Redirect to Google OAuth consent screen
 app.get('/auth/google', (req, res) => {
   try {
@@ -2315,13 +3259,13 @@ app.get('/auth/google', (req, res) => {
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET
     // FALLBACK: Support both GOOGLE_REDIRECT_URI and GOOGLE_CALLBACK_URL
     const redirectUri = process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_CALLBACK_URL
-    
+
     console.log(`🔗 [/auth/google] GOOGLE_CLIENT_ID exists:`, !!clientId)
     console.log(`🔗 [/auth/google] GOOGLE_CLIENT_SECRET exists:`, !!clientSecret)
     console.log(`🔗 [/auth/google] GOOGLE_REDIRECT_URI exists:`, !!process.env.GOOGLE_REDIRECT_URI)
     console.log(`🔗 [/auth/google] GOOGLE_CALLBACK_URL exists:`, !!process.env.GOOGLE_CALLBACK_URL)
     console.log(`🔗 [/auth/google] Final redirectUri using:`, process.env.GOOGLE_REDIRECT_URI ? 'GOOGLE_REDIRECT_URI' : 'GOOGLE_CALLBACK_URL')
-    
+
     if (!clientId) {
       throw new Error('GOOGLE_CLIENT_ID environment variable is not set')
     }
@@ -2331,17 +3275,23 @@ app.get('/auth/google', (req, res) => {
     if (!redirectUri) {
       throw new Error('Neither GOOGLE_REDIRECT_URI nor GOOGLE_CALLBACK_URL environment variable is set')
     }
-    
-    console.log(`🔗 [/auth/google] Google OAuth initiated with redirect_uri: ${redirectUri}`)
+
+    // ✅ Pass popup flag through to callback via state parameter
+    const isPopup = req.query.popup === 'true'
+    const stateData = JSON.stringify({ popup: isPopup })
+    const stateEncoded = Buffer.from(stateData).toString('base64')
+
+    console.log(`🔗 [/auth/google] Google OAuth initiated with redirect_uri: ${redirectUri}, popup: ${isPopup}`)
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'openid profile email',
       access_type: 'offline',
-      prompt: 'consent'
+      prompt: 'consent',
+      state: stateEncoded
     })
-    
+
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
     console.log(`🔗 [/auth/google] Redirecting to Google consent screen`)
     res.redirect(authUrl)
@@ -2355,52 +3305,52 @@ app.get('/auth/google', (req, res) => {
 app.get('/auth/google/callback', async (req, res) => {
   try {
     const { code, error } = req.query
-    
+
     console.log(`\n🔐 [AUTH/GOOGLE/CALLBACK] Starting Google OAuth callback...`)
-    
+
     if (error) {
       console.error(`❌ [AUTH/GOOGLE/CALLBACK] Google OAuth error: ${error}`)
       const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
       return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=${error}`)
     }
-    
+
     if (!code) {
       console.error('❌ [AUTH/GOOGLE/CALLBACK] No authorization code received')
       const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
       return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=no_code`)
     }
-    
+
     console.log(`📝 [AUTH/GOOGLE/CALLBACK] Received authorization code: ${code.substring(0, 10)}...`)
-    
+
     // Verify Prisma is available
     ensurePrismaAvailable()
-    
+
     // Exchange code for tokens
     console.log(`🔐 [AUTH/GOOGLE/CALLBACK] Exchanging code for tokens...`)
     const tokens = await getGoogleTokens(code)
     console.log(`✅ [AUTH/GOOGLE/CALLBACK] Got access token from Google`)
-    
+
     // Get user info
     console.log(`🔐 [AUTH/GOOGLE/CALLBACK] Retrieving user info...`)
     const userInfo = await getGoogleUserInfo(tokens.access_token)
     console.log(`✅ [AUTH/GOOGLE/CALLBACK] Retrieved user info:`, userInfo.email)
-    
+
     // Check if user already exists
     console.log(`🔍 [AUTH/GOOGLE/CALLBACK] Checking if user exists in database...`)
     let existingUser = await prisma.users.findUnique({
       where: { email: userInfo.email }
     })
     console.log(`${existingUser ? '✅' : '📝'} [AUTH/GOOGLE/CALLBACK] User exists: ${!!existingUser}`)
-    
+
     let isNewUser = false
     let user
-    
+
     if (!existingUser) {
       // NEW USER - Generate unique public ID
       console.log(`📝 [AUTH/GOOGLE/CALLBACK] New user detected, creating account...`)
       const publicId = await generateUniquePublicId()
       console.log(`✅ [AUTH/GOOGLE/CALLBACK] Generated public_id:`, publicId)
-      
+
       console.log(`💾 [AUTH/GOOGLE/CALLBACK] Calling prisma.users.create()...`)
       user = await prisma.users.create({
         data: {
@@ -2415,12 +3365,12 @@ app.get('/auth/google/callback', async (req, res) => {
           termsAccepted: false
         }
       })
-      
+
       console.log(`✅ [AUTH/GOOGLE/CALLBACK] User created in database:`, user.email)
       console.log(`✅ [AUTH/GOOGLE/CALLBACK] User ID: ${user.id}`)
       console.log(`✅ [AUTH/GOOGLE/CALLBACK] Email: ${user.email}`)
       console.log(`✅ [AUTH/GOOGLE/CALLBACK] Public ID: ${user.public_id}`)
-      
+
       // CRITICAL: Verify user was actually saved before proceeding
       console.log(`🔍 [AUTH/GOOGLE/CALLBACK] Verifying user was saved to database...`)
       const verifyUser = await prisma.users.findUnique({
@@ -2430,12 +3380,12 @@ app.get('/auth/google/callback', async (req, res) => {
         throw new Error('CRITICAL: User creation failed - user not found after create()')
       }
       console.log(`✅ [AUTH/GOOGLE/CALLBACK] Database verification successful`)
-      
+
       isNewUser = true
     } else {
       // EXISTING USER
       console.log(`✅ [AUTH/GOOGLE/CALLBACK] Existing user found:`, existingUser.email)
-      
+
       // Ensure existing user has a public_id (migrate if needed)
       if (!existingUser.public_id) {
         console.log(`⚠️ [AUTH/GOOGLE/CALLBACK] Existing user missing public_id, generating one...`)
@@ -2450,17 +3400,17 @@ app.get('/auth/google/callback', async (req, res) => {
       }
       isNewUser = false
     }
-    
+
     // Create a proper JWT token (NOT base64)
     const token = jwt.sign({
       id: user.id,
       userId: user.id,
       email: user.email,
       publicId: user.public_id
-    }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    
+    }, process.env.JWT_SECRET, { expiresIn: '365d' });
+
     console.log("✅ [AUTH/GOOGLE/CALLBACK] JWT token created with id:", user.id);
-    
+
     // Build response data
     const responseData = {
       isNewUser: isNewUser,
@@ -2470,22 +3420,24 @@ app.get('/auth/google/callback', async (req, res) => {
         publicId: user.public_id,
         email: user.email,
         name: user.display_name,
-        picture: user.photo_url
+        picture: user.photo_url,
+        birthday: user.birthday,
+        gender: user.gender
       }
     }
-    
+
     // Encode response data in URL
     const encodedResponse = encodeURIComponent(JSON.stringify(responseData))
-    
+
     // Redirect to frontend with token and response data
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
-    
+
     // ✅ SIMPLE APPROACH: Just pass token in URL
     const tokenParam = encodeURIComponent(token);
-    
+
     // ✅ REDIRECT TO OAUTH-SUCCESS PAGE WITH TOKEN
-    console.log(`✅ [AUTH/GOOGLE/CALLBACK] Redirecting to /oauth-success with token`)
-    
+    console.log(`✅ [AUTH/GOOGLE/CALLBACK] Redirecting to /oauth-handler with token`)
+
     // Set token as secure httpOnly cookie and redirect
     res.cookie('authToken', token, {
       httpOnly: true,
@@ -2493,20 +3445,31 @@ app.get('/auth/google/callback', async (req, res) => {
       sameSite: 'Lax',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     })
-    
-    // Redirect to oauth-success page with token in URL
-    // Use FRONTEND_URL environment variable instead of hardcoded URL
+
+    // ✅ Check if this was a popup request (via state parameter)
+    let isPopup = false
+    try {
+      const stateParam = req.query.state
+      if (stateParam) {
+        const stateData = JSON.parse(Buffer.from(stateParam, 'base64').toString())
+        isPopup = stateData.popup === true
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not parse state parameter:', e.message)
+    }
+
     const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
-    
-    // 🔍 DEBUG: Log which URL is being used
-    console.log('🔍 [AUTH/GOOGLE/CALLBACK] FRONTEND URL RESOLUTION:')
-    console.log('   - FRONTEND_URL env:', process.env.FRONTEND_URL)
-    console.log('   - CLIENT_URL env:', process.env.CLIENT_URL)
-    console.log('   - Using URL:', frontendUrl)
-    console.log('   - NODE_ENV:', process.env.NODE_ENV)
-    console.log('   - Full redirect URL:', `${frontendUrl}/oauth-success?token=${tokenParam.substring(0, 20)}...`)
-    
-    res.redirect(`${frontendUrl}/oauth-success?token=${tokenParam}`)
+    const userEncoded = encodeURIComponent(JSON.stringify(responseData.user))
+    const tokenEncoded = encodeURIComponent(token)
+
+    console.log('🔍 [AUTH/GOOGLE/CALLBACK] Auth complete:')
+    console.log('   - FRONTEND_URL:', frontendUrl)
+    console.log('   - isPopup:', isPopup)
+
+    // ✅ Always redirect to frontend /oauth-handler - it handles both popup and normal mode
+    const popupParam = isPopup ? '&popup=true' : ''
+    console.log(`✅ [AUTH/GOOGLE/CALLBACK] Redirecting to /oauth-handler (popup=${isPopup})`)
+    res.redirect(`${frontendUrl}/oauth-handler?token=${tokenEncoded}&user=${userEncoded}${popupParam}`)
   } catch (error) {
     console.error('\n❌ [AUTH/GOOGLE/CALLBACK] CRITICAL ERROR in callback:', error.message)
     console.error('   Stack:', error.stack)
@@ -2520,7 +3483,7 @@ app.get('/auth/google/callback', async (req, res) => {
 app.get('/auth-success', async (req, res) => {
   try {
     const token = req.query.token
-    
+
     if (!token) {
       console.error('❌ [AUTH-SUCCESS] No token provided')
       return res.status(400).json({
@@ -2528,10 +3491,10 @@ app.get('/auth-success', async (req, res) => {
         error: 'No token provided'
       })
     }
-    
+
     // Verify Prisma is available
     ensurePrismaAvailable()
-    
+
     // Decode JWT token
     console.log(`🔐 [AUTH-SUCCESS] Verifying JWT token: ${token.substring(0, 10)}...`)
     let decoded;
@@ -2546,13 +3509,24 @@ app.get('/auth-success', async (req, res) => {
         error: 'Invalid token'
       })
     }
-    
+
     // Fetch full user data from database using userId string
     console.log(`🔍 [AUTH-SUCCESS] Fetching user from database...`)
     const user = await prisma.users.findUnique({
-      where: { id: decoded.id }
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        email: true,
+        display_name: true,
+        photo_url: true,
+        location: true,
+        birthday: true,
+        gender: true,
+        profileCompleted: true,
+        termsAccepted: true
+      }
     })
-    
+
     if (!user) {
       console.error(`❌ [AUTH-SUCCESS] CRITICAL: User ${decoded.id} not found in database!`)
       console.error(`   Email was: ${decoded.email}`)
@@ -2562,9 +3536,9 @@ app.get('/auth-success', async (req, res) => {
         error: 'User not found in database - signup may have failed'
       })
     }
-    
+
     console.log(`✅ [AUTH-SUCCESS] User found in database: ${user.email}`)
-    
+
     // Return user data with profileCompleted and termsAccepted flags
     console.log('[AUTH-SUCCESS] About to return user with:', {
       id_type: typeof user.id,
@@ -2580,6 +3554,8 @@ app.get('/auth-success', async (req, res) => {
         name: user.display_name,
         picture: user.photo_url,
         location: user.location || null,
+        birthday: user.birthday,
+        gender: user.gender,
         profileCompleted: user.profileCompleted,
         termsAccepted: user.termsAccepted
       }
@@ -2597,18 +3573,18 @@ app.get('/auth-success', async (req, res) => {
 app.get('/auth/google/success', (req, res) => {
   try {
     const token = req.query.token
-    
+
     if (!token) {
       return res.status(400).json({
         success: false,
         error: 'No token provided'
       })
     }
-    
+
     // Verify JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('✅ JWT decoded:', decoded.email)
-    
+
     res.json({
       success: true,
       token: token,
@@ -2635,19 +3611,26 @@ app.get('/auth/facebook', (req, res) => {
     if (!callbackUrl) {
       throw new Error('FACEBOOK_CALLBACK_URL environment variable is not set')
     }
-    
+
+    // ✅ Pass popup flag through to callback via state parameter
+    const isPopup = req.query.popup === 'true'
+    const stateData = JSON.stringify({ popup: isPopup })
+    const stateEncoded = Buffer.from(stateData).toString('base64')
+
     console.log('🔗 [/auth/facebook] Facebook OAuth Configuration:')
     console.log('   - FACEBOOK_CALLBACK_URL env:', process.env.FACEBOOK_CALLBACK_URL)
     console.log('   - NODE_ENV:', process.env.NODE_ENV)
+    console.log('   - popup:', isPopup)
     console.log(`🔗 [/auth/facebook] Facebook OAuth initiated with callback_url: ${callbackUrl}`)
-    
+
     const params = new URLSearchParams({
       client_id: process.env.FACEBOOK_APP_ID,
       redirect_uri: callbackUrl,
       scope: 'public_profile,email',
-      response_type: 'code'
+      response_type: 'code',
+      state: stateEncoded
     })
-    
+
     const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`
     console.log(`🔗 [/auth/facebook] Redirecting to Facebook consent screen`)
     res.redirect(authUrl)
@@ -2661,52 +3644,52 @@ app.get('/auth/facebook', (req, res) => {
 app.get('/auth/facebook/callback', async (req, res) => {
   try {
     const { code, error } = req.query
-    
+
     console.log(`\n🔐 [AUTH/FACEBOOK/CALLBACK] Starting Facebook OAuth callback...`)
-    
+
     if (error) {
       console.error(`❌ [AUTH/FACEBOOK/CALLBACK] Facebook OAuth error: ${error}`)
       const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
       return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=${error}`)
     }
-    
+
     if (!code) {
       console.error('❌ [AUTH/FACEBOOK/CALLBACK] No authorization code received')
       const frontendUrl = process.env.NODE_ENV === 'production' ? process.env.CLIENT_URL_PROD : process.env.CLIENT_URL
       return res.redirect(`${frontendUrl || 'http://localhost:3003'}?error=no_code`)
     }
-    
+
     console.log(`📝 [AUTH/FACEBOOK/CALLBACK] Received Facebook authorization code: ${code.substring(0, 10)}...`)
-    
+
     // Verify Prisma is available
     ensurePrismaAvailable()
-    
+
     // Exchange code for tokens
     console.log(`🔐 [AUTH/FACEBOOK/CALLBACK] Exchanging code for tokens...`)
     const tokens = await getFacebookTokens(code)
     console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Got access token from Facebook`)
-    
+
     // Get user info
     console.log(`🔐 [AUTH/FACEBOOK/CALLBACK] Retrieving user info...`)
     const userInfo = await getFacebookUserInfo(tokens.access_token)
     console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Retrieved user info:`, userInfo.email)
-    
+
     // Check if user already exists
     console.log(`🔍 [AUTH/FACEBOOK/CALLBACK] Checking if user exists in database...`)
     let existingUser = await prisma.users.findUnique({
       where: { email: userInfo.email }
     })
     console.log(`${existingUser ? '✅' : '📝'} [AUTH/FACEBOOK/CALLBACK] User exists: ${!!existingUser}`)
-    
+
     let isNewUser = false
     let user
-    
+
     if (!existingUser) {
       // NEW USER - Generate unique public ID
       console.log(`📝 [AUTH/FACEBOOK/CALLBACK] New user detected, creating account...`)
       const publicId = await generateUniquePublicId()
       console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Generated public_id:`, publicId)
-      
+
       console.log(`💾 [AUTH/FACEBOOK/CALLBACK] Calling prisma.users.create()...`)
       user = await prisma.users.create({
         data: {
@@ -2720,12 +3703,12 @@ app.get('/auth/facebook/callback', async (req, res) => {
           termsAccepted: false
         }
       })
-      
+
       console.log(`✅ [AUTH/FACEBOOK/CALLBACK] User created in database:`, user.email)
       console.log(`✅ [AUTH/FACEBOOK/CALLBACK] User ID: ${user.id}`)
       console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Email: ${user.email}`)
       console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Public ID: ${user.public_id}`)
-      
+
       // CRITICAL: Verify user was actually saved before proceeding
       console.log(`🔍 [AUTH/FACEBOOK/CALLBACK] Verifying user was saved to database...`)
       const verifyUser = await prisma.users.findUnique({
@@ -2735,12 +3718,12 @@ app.get('/auth/facebook/callback', async (req, res) => {
         throw new Error('CRITICAL: User creation failed - user not found after create()')
       }
       console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Database verification successful`)
-      
+
       isNewUser = true
     } else {
       // EXISTING USER
       console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Existing user found:`, existingUser.email)
-      
+
       // Ensure existing user has a public_id (migrate if needed)
       if (!existingUser.public_id) {
         console.log(`⚠️ [AUTH/FACEBOOK/CALLBACK] Existing user missing public_id, generating one...`)
@@ -2755,17 +3738,17 @@ app.get('/auth/facebook/callback', async (req, res) => {
       }
       isNewUser = false
     }
-    
+
     // Create a proper JWT token (NOT base64)
     const token = jwt.sign({
       id: user.id,
       userId: user.id,
       email: user.email,
       publicId: user.public_id
-    }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    
+    }, process.env.JWT_SECRET, { expiresIn: '365d' });
+
     console.log("✅ [AUTH/FACEBOOK/CALLBACK] JWT token created with id:", user.id);
-    
+
     // Build response data
     const responseData = {
       isNewUser: isNewUser,
@@ -2775,32 +3758,56 @@ app.get('/auth/facebook/callback', async (req, res) => {
         publicId: user.public_id,
         email: user.email,
         name: user.display_name,
-        picture: user.photo_url
+        picture: user.photo_url,
+        birthday: user.birthday,
+        gender: user.gender
       }
     }
-    
+
     // Encode response data in URL
     const encodedResponse = encodeURIComponent(JSON.stringify(responseData))
-    
+
     // Redirect to frontend with token
     const baseUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3003'
-    
+
     // ✅ SIMPLE APPROACH: Just pass token in URL
     const tokenParam = encodeURIComponent(token);
-    
+
     // 🔍 DEBUG: Log which URL is being used
-    console.log('🔍 [AUTH/FACEBOOK/CALLBACK] FRONTEND URL RESOLUTION:')
+    console.log('🔍 [AUTH/FACEBOOK/CALLBACK] Redirecting to frontend:')
     console.log('   - FRONTEND_URL env:', process.env.FRONTEND_URL)
     console.log('   - CLIENT_URL env:', process.env.CLIENT_URL)
     console.log('   - Using URL:', baseUrl)
-    console.log('   - NODE_ENV:', process.env.NODE_ENV)
-    console.log('   - Full redirect URL:', `${baseUrl}/oauth-success?token=${tokenParam.substring(0, 20)}...`)
-    
-    // Redirect to /oauth-success with token in URL
-    const redirectUrl = `${baseUrl}/oauth-success?token=${tokenParam}`;
-    
-    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Redirecting to /oauth-success with token`)
-    res.redirect(redirectUrl)
+
+    // Set token as secure httpOnly cookie
+    res.cookie('authToken', tokenParam, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    })
+
+    // ✅ Check if this was a popup request (via state parameter)
+    let isPopup = false
+    try {
+      const stateParam = req.query.state
+      if (stateParam) {
+        const stateData = JSON.parse(Buffer.from(stateParam, 'base64').toString())
+        isPopup = stateData.popup === true
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not parse Facebook state parameter:', e.message)
+    }
+
+    const userEncoded = encodeURIComponent(JSON.stringify(responseData.user))
+
+    console.log('🔍 [AUTH/FACEBOOK/CALLBACK] Auth complete:')
+    console.log('   - isPopup:', isPopup)
+
+    // ✅ Always redirect to frontend /oauth-handler - it handles both popup and normal mode
+    const popupParam = isPopup ? '&popup=true' : ''
+    console.log(`✅ [AUTH/FACEBOOK/CALLBACK] Redirecting to /oauth-handler (popup=${isPopup})`)
+    res.redirect(`${baseUrl}/oauth-handler?token=${tokenParam}&user=${userEncoded}${popupParam}`)
   } catch (error) {
     console.error('\n❌ [AUTH/FACEBOOK/CALLBACK] CRITICAL ERROR in callback:', error.message)
     console.error('   Stack:', error.stack)
@@ -2814,102 +3821,161 @@ app.get('/auth/facebook/callback', async (req, res) => {
 app.get('/api/profile', async (req, res) => {
   try {
     console.log('[PROFILE API] Request received')
+
     const authHeader = req.headers.authorization
-    console.log('[PROFILE API] Auth header:', authHeader ? 'Present' : 'Missing')
-    
+    console.log('[PROFILE API] Headers debug:', {
+      authorizationPresent: !!authHeader,
+      authorizationPrefix: authHeader ? authHeader.slice(0, 12) : null,
+      cookiePresent: !!req.headers.cookie
+    })
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('[PROFILE API] ❌ Missing or invalid Bearer token')
-      return res.status(401).json({
+      return res.status(400).json({
         success: false,
         error: 'Missing or invalid authorization header'
       })
     }
-    
+
     const token = authHeader.substring(7) // Remove 'Bearer ' prefix
-    console.log('[PROFILE API] Token received, verifying as JWT...')
-    
-    // Verify JWT token (not base64)
-    let decoded
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET)
-      console.log('[PROFILE API] ✅ JWT token verified for user:', decoded.email, 'userId:', decoded.userId || decoded.id)
-    } catch (jwtErr) {
-      console.log('[PROFILE API] JWT verification failed, trying base64 decode as fallback...')
-      try {
-        decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'))
-        console.log('[PROFILE API] ✅ Token decoded (base64) for user:', decoded.email, 'userId:', decoded.userId)
-      } catch (b64Err) {
-        console.error('[PROFILE API] ❌ Both JWT and base64 decode failed')
-        return res.status(401).json({
-          success: false,
-          error: 'Invalid token format'
+    console.log('[PROFILE API] Token received, trying Firebase verification first...')
+
+    // Premium/skip logic depends on DB state, so we MUST reliably resolve the user from the token.
+    // Frontend sends Firebase ID token in `Authorization: Bearer <idToken>`.
+    const userSelect = {
+      id: true,
+      public_id: true,
+      email: true,
+      display_name: true,
+      photo_url: true,
+      gender: true,
+      birthday: true,
+      location: true,
+      profileCompleted: true,
+      auth_provider: true,
+      has_blue_tick: true,
+      blue_tick_expires_at: true,
+      has_seen_premium_popup: true,
+      created_at: true,
+      updated_at: true,
+      is_premium: true,
+      premium_expiry: true,
+      has_unlimited_skip: true,
+      unlimited_skip_expires_at: true,
+      daily_skip_count: true,
+      last_skip_reset_date: true
+    }
+
+    let user = null
+    let authType = 'unknown'
+    let decodedFirebase = null
+    let decodedJwt = null
+
+    // 1) Firebase token path
+    decodedFirebase = await verifyFirebaseToken(token)
+    if (decodedFirebase?.uid) {
+      authType = 'firebase'
+      const googleIdUsed = decodedFirebase.uid
+      console.log('[PROFILE API] ✅ Firebase token verified', {
+        google_id: googleIdUsed,
+        email: decodedFirebase.email
+      })
+
+      console.log(`[PROFILE API] Fetching user by google_id: ${googleIdUsed}`)
+      user = await prisma.users.findFirst({
+        where: { google_id: googleIdUsed },
+        select: userSelect
+      })
+
+      if (!user) {
+        console.log(`[PROFILE API] User not found by google_id, trying provider_id fallback: ${googleIdUsed}`)
+        user = await prisma.users.findFirst({
+          where: { provider_id: googleIdUsed },
+          select: userSelect
         })
       }
-    }
-    
-    // Fetch full user data from database
-    const userId = decoded.userId || decoded.id
-    console.log('[PROFILE API] Fetching user from database with id:', userId)
-    const user = await prisma.users.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        public_id: true,
-        email: true,
-        display_name: true,
-        photo_url: true,
-        gender: true,
-        birthday: true,
-        location: true,
-        profileCompleted: true,
-        auth_provider: true,
-        has_blue_tick: true,
-        blue_tick_expires_at: true,
-        created_at: true,
-        updated_at: true
+    } else {
+      console.log('[PROFILE API] Firebase verification failed/null. Trying JWT verification...')
+      // 2) JWT token path (legacy/other flows)
+      try {
+        decodedJwt = jwt.verify(token, process.env.JWT_SECRET)
+        authType = 'jwt'
+        const userId = decodedJwt.userId || decodedJwt.id
+        console.log('[PROFILE API] ✅ JWT token verified', { userId })
+
+        user = await prisma.users.findUnique({
+          where: { id: userId },
+          select: userSelect
+        })
+      } catch (jwtErr) {
+        console.log('[PROFILE API] ❌ JWT token invalid:', jwtErr.message)
+        return res.status(400).json({ success: false, error: 'Invalid token' })
       }
+    }
+
+    console.log('[PROFILE API] User fetch result:', user ? 'FOUND' : 'NOT FOUND', {
+      authType,
+      has_unlimited_skip: user?.has_unlimited_skip,
+      unlimited_skip_expires_at: user?.unlimited_skip_expires_at
     })
-    console.log('[PROFILE API] User fetch result:', user ? 'Found' : 'Not found')
-    
+
     if (!user) {
-      console.log('[PROFILE API] ❌ User not found in database:', userId)
       return res.status(404).json({
         success: false,
         error: 'User not found in database'
       })
     }
-    
-    console.log('[PROFILE API] ✅ User found, returning profile')
-    // ✅ CRITICAL: Return ONLY uuid (the 36-char ID), never numeric id
-    // user.id is the UUID from database, NOT numeric
-    console.log('[PROFILE API] About to return user with:', {
-      id_type: typeof user.id,
-      id_length: user.id?.length,
-      id_value: user.id?.substring(0, 8) + '...',
-      public_id: user.public_id
-    })
-    res.json({
+
+    // ✅ AUTO-DETERMINE profileCompleted
+    let profileCompleted = user.profileCompleted === true
+    if (!profileCompleted && user.birthday && user.gender) {
+      profileCompleted = true
+    }
+
+    // ✅ PRODUCTION-SAFE PREMIUM LOGIC
+    const isPremium = user.has_unlimited_skip === true && (
+      !user.unlimited_skip_expires_at ||
+      new Date(user.unlimited_skip_expires_at).getTime() > Date.now()
+    );
+
+    const skipCount = user.daily_skip_count || 0;
+    console.log(`[PROFILE FINAL] userId: ${user.id}, isPremium: ${isPremium}, skipCount: ${skipCount}`)
+
+    return res.json({
       success: true,
       user: {
-        uuid: user.id,                    // ✅ 36-char UUID from users.id
-        publicId: user.public_id,         // ✅ 8-digit public ID for display
+        uuid: user.id,
+        id: user.id,
+        isPremium: isPremium,
+        has_unlimited_skip: user.has_unlimited_skip || false,
+        unlimited_skip_expires_at: user.unlimited_skip_expires_at || null,
+        daily_skip_count: skipCount,
+
+        // Essential profile fields
+        publicId: user.public_id,
+        public_id: user.public_id,
         email: user.email,
         name: user.display_name,
         picture: user.photo_url,
         gender: user.gender,
         birthday: user.birthday,
         location: user.location || null,
-        profileCompleted: user.profileCompleted,
+        profileCompleted: profileCompleted,
         authProvider: user.auth_provider,
-        hasBlueTick: !!(user.has_blue_tick && user.blue_tick_expires_at && new Date(user.blue_tick_expires_at) > new Date())
+        hasBlueTick: !!(user.has_blue_tick && user.blue_tick_expires_at && new Date(user.blue_tick_expires_at) > new Date()),
+        hasSeenPremiumPopup: !!user.has_seen_premium_popup,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+        last_skip_reset_date: user.last_skip_reset_date
       }
     })
   } catch (error) {
-    console.error('[PROFILE API] ❌ Error in /api/profile:', error.message)
-    console.error('[PROFILE API] Stack:', error.stack)
-    res.status(400).json({
+    console.error('[PROFILE API] CRITICAL ERROR:', error.message)
+    // Return 400 for token errors, 500 only for unexpected failures
+    const status = (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') ? 400 : 500
+    return res.status(status).json({
       success: false,
-      error: 'Invalid token',
+      error: 'Profile fetch failed',
       details: error.message
     })
   }
@@ -2957,6 +4023,42 @@ app.post('/api/users/update-location', async (req, res) => {
   }
 })
 
+// ✅ MARK PREMIUM POPUP AS SEEN
+app.post('/api/users/premium-popup-seen', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, error: 'Missing authorization' });
+    }
+
+    const token = authHeader.substring(7);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtErr) {
+      try {
+        decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf8'));
+      } catch (b64Err) {
+        return res.status(401).json({ success: false, error: 'Invalid token' });
+      }
+    }
+
+    const userId = decoded.userId || decoded.id;
+    console.log(`🛡️ [PREMIUM POPUP API] Marking popup as seen for user ${userId}`);
+
+    await prisma.users.update({
+      where: { id: userId },
+      data: { has_seen_premium_popup: true }
+    });
+
+    console.log(`🛡️ [PREMIUM POPUP API] ✅ Status updated successfully`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('🛡️ [PREMIUM POPUP API] ❌ Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+})
+
 // ✅ GET CHAT HISTORY between two users
 app.get('/api/messages', async (req, res) => {
   const { user1, user2 } = req.query;
@@ -2968,7 +4070,7 @@ app.get('/api/messages', async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT sender_id, receiver_id, message, created_at
+      SELECT sender_id, receiver_id, message, message_type, created_at
       FROM messages
       WHERE
         (sender_id = $1 AND receiver_id = $2)
@@ -2991,11 +4093,14 @@ io.on('connection', (socket) => {
   console.log(`\n✅ [CONNECTION] New socket connection: ${socket.id}`)
   console.log(`📊 [CONNECTION] Total active connections: ${io.engine.clientsCount}`)
   console.log(`📊 [CONNECTION] Current queue length: ${redis ? 'pending redis check' : 0}`)
-  
+
   // Log queue state on each new connection
   redis.lLen('matching_queue').then(queueLen => {
     console.log(`📊 [CONNECTION] Matching queue size: ${queueLen} users waiting`)
-  }).catch(err => console.error('Error checking queue on connect:', err))
+  }).catch(err => {
+    console.error('❌ [CONNECTION] Error checking queue:', err.message)
+    // Continue anyway - don't let queue check crash connection
+  })
 
   // ✅ REGISTER USER (when user comes online)
   socket.on('register_user', async (userId) => {
@@ -3003,6 +4108,10 @@ io.on('connection', (socket) => {
       onlineUsers.set(userId, socket.id)
       // ✅ JOIN SOCKET TO ROOM WITH USER UUID (CRITICAL for io.to(uuid).emit())
       socket.join(userId)
+
+      // ✅ Store userId on socket for disconnect cleanup
+      socket.userId = userId
+
       console.log(`\n✅ [REGISTER_USER] User registered successfully`)
       console.log(`   User UUID: ${userId.substring(0, 8)}...`)
       console.log(`   Socket ID: ${socket.id.substring(0, 8)}...`)
@@ -3011,6 +4120,38 @@ io.on('connection', (socket) => {
       console.log(`👥 [ONLINE USERS] Total connected: ${onlineUsers.size}`)
       console.log(`   UUIDs: ${Array.from(onlineUsers.keys()).map(k => k.substring(0, 8) + '...').join(', ')}`)
       console.log()
+
+      // ✅ REDIS: Track active user by gender (online_males / online_females)
+      try {
+        const userRecord = await prisma.users.findUnique({
+          where: { id: userId },
+          select: { gender: true }
+        })
+        const gender = userRecord?.gender?.toLowerCase() || null
+        socket.userGender = gender // Store on socket for disconnect cleanup
+
+        // Add to active_users set
+        await redis.sAdd('active_users', userId)
+
+        // Add to gender-specific set
+        if (gender === 'male') {
+          await redis.sAdd('online_males', userId)
+          console.log(`👤 [REDIS] Added ${userId.substring(0, 8)}... to online_males`)
+        } else if (gender === 'female') {
+          await redis.sAdd('online_females', userId)
+          console.log(`👤 [REDIS] Added ${userId.substring(0, 8)}... to online_females`)
+        }
+
+        // Set heartbeat key with 30s TTL
+        await redis.setEx(`heartbeat:${userId}`, 30, '1')
+
+        const maleCount = await redis.sCard('online_males')
+        const femaleCount = await redis.sCard('online_females')
+        const activeCount = await redis.sCard('active_users')
+        console.log(`📊 [REDIS] Active: ${activeCount} | Males: ${maleCount} | Females: ${femaleCount}`)
+      } catch (err) {
+        console.error('❌ [REDIS] Error tracking active user:', err.message)
+      }
 
       // ✅ Broadcast online status to all friends of this user
       try {
@@ -3032,6 +4173,69 @@ io.on('connection', (socket) => {
     }
   })
 
+  // ✅ HANDLE SOCKET ERRORS
+  socket.on('error', (error) => {
+    console.error(`🚨 [SOCKET_ERROR] Socket ${socket.id.substring(0, 8)}... encountered error:`, error.message)
+    console.error('   Error stack:', error.stack)
+  })
+
+  socket.on('connect_error', (error) => {
+    console.error(`🚨 [CONNECT_ERROR] Socket connection error:`, error.message)
+    console.error('   Error data:', error)
+  })
+
+  // ✅ HEARTBEAT - Frontend sends this every 20s to keep user alive in Redis
+  // Also auto-registers user in Redis sets if not already present (fallback for missed register_user)
+  socket.on('heartbeat', async (data) => {
+    const userId = socket.userId || data?.userId
+    if (userId) {
+      try {
+        await redis.setEx(`heartbeat:${userId}`, 30, '1')
+
+        // Auto-register in Redis if not already tracked
+        const isTracked = await redis.sIsMember('active_users', userId)
+        if (!isTracked) {
+          console.log(`🔄 [HEARTBEAT] Auto-registering user ${userId.substring(0, 8)}... (missed register_user)`)
+
+          // Store userId on socket
+          socket.userId = userId
+          onlineUsers.set(userId, socket.id)
+          socket.join(userId)
+
+          // Add to active_users
+          await redis.sAdd('active_users', userId)
+
+          // Fetch gender and add to gender set
+          try {
+            const userRecord = await prisma.users.findUnique({
+              where: { id: userId },
+              select: { gender: true }
+            })
+            const gender = userRecord?.gender?.toLowerCase() || null
+            socket.userGender = gender
+
+            if (gender === 'male') {
+              await redis.sAdd('online_males', userId)
+              console.log(`👤 [HEARTBEAT] Added ${userId.substring(0, 8)}... to online_males`)
+            } else if (gender === 'female') {
+              await redis.sAdd('online_females', userId)
+              console.log(`👤 [HEARTBEAT] Added ${userId.substring(0, 8)}... to online_females`)
+            }
+          } catch (dbErr) {
+            console.error('❌ [HEARTBEAT] Error fetching gender:', dbErr.message)
+          }
+
+          const maleCount = await redis.sCard('online_males')
+          const femaleCount = await redis.sCard('online_females')
+          const activeCount = await redis.sCard('active_users')
+          console.log(`📊 [HEARTBEAT] Active: ${activeCount} | Males: ${maleCount} | Females: ${femaleCount}`)
+        }
+      } catch (err) {
+        // Silent - heartbeat failures should not spam logs
+      }
+    }
+  })
+
   // ✅ HANDLE DISCONNECT
   socket.on('disconnect', async () => {
     // Find and remove the user from onlineUsers map
@@ -3040,6 +4244,35 @@ io.on('connection', (socket) => {
         onlineUsers.delete(userId)
         console.log(`👤 [DISCONNECT] User ${userId} disconnected`)
         console.log(`👥 [ONLINE USERS] ${onlineUsers.size} users currently online`)
+
+        // ✅ REDIS: Remove from active user sets
+        try {
+          await redis.sRem('active_users', userId)
+
+          const gender = socket.userGender
+          if (gender === 'male') {
+            await redis.sRem('online_males', userId)
+            console.log(`👤 [REDIS] Removed ${userId.substring(0, 8)}... from online_males`)
+          } else if (gender === 'female') {
+            await redis.sRem('online_females', userId)
+            console.log(`👤 [REDIS] Removed ${userId.substring(0, 8)}... from online_females`)
+          } else {
+            // Safety: remove from both sets if gender unknown
+            await redis.sRem('online_males', userId)
+            await redis.sRem('online_females', userId)
+            console.log(`👤 [REDIS] Removed ${userId.substring(0, 8)}... from both gender sets (gender unknown)`)
+          }
+
+          // Delete heartbeat key
+          await redis.del(`heartbeat:${userId}`)
+
+          const maleCount = await redis.sCard('online_males')
+          const femaleCount = await redis.sCard('online_females')
+          const activeCount = await redis.sCard('active_users')
+          console.log(`📊 [REDIS] After disconnect - Active: ${activeCount} | Males: ${maleCount} | Females: ${femaleCount}`)
+        } catch (err) {
+          console.error('❌ [REDIS] Error removing active user on disconnect:', err.message)
+        }
 
         // ✅ Update last_seen in database and broadcast offline status to friends
         const now = new Date()
@@ -3110,7 +4343,7 @@ io.on('connection', (socket) => {
 
     // ✅ GET RECEIVER'S SOCKET ROOM
     const receiverSocketId = onlineUsers.get(data.receiverPublicId)
-    
+
     if (!receiverSocketId) {
       console.warn('⚠️ [QUICK INVITE - BACKEND] Receiver not online:', data.receiverPublicId)
       console.log('📊 [QUICK INVITE - BACKEND] Available online users:', Array.from(onlineUsers.keys()).map(k => k.substring(0, 8) + '...').join(', '))
@@ -3141,10 +4374,10 @@ io.on('connection', (socket) => {
   // ✅ JOIN CHAT ROOM (shared room for sender + receiver)
   socket.on('join_chat', ({ senderId, receiverId }) => {
     // Create deterministic room ID (same for both users)
-    const roomId = senderId < receiverId 
-      ? `${senderId}_${receiverId}` 
+    const roomId = senderId < receiverId
+      ? `${senderId}_${receiverId}`
       : `${receiverId}_${senderId}`
-    
+
     socket.join(roomId)
     console.log(`✅ User ${senderId} joined chat room: ${roomId}`)
   })
@@ -3152,7 +4385,7 @@ io.on('connection', (socket) => {
   // ✅ HANDLE INCOMING CALL (caller initiates call)
   socket.on('init_call', (data) => {
     const { callerId, callerName, callerProfileImage, receiverId, recipientName } = data
-    
+
     console.log('\n' + '='.repeat(80))
     console.log('📞 [INIT_CALL] ====== INCOMING CALL INITIATED ======')
     console.log('='.repeat(80))
@@ -3166,20 +4399,20 @@ io.on('connection', (socket) => {
     console.log('\n📍 Looking up receiver in onlineUsers map...')
     console.log('   Total online users:', onlineUsers.size)
     console.log('   Available UUIDs:', Array.from(onlineUsers.keys()).map(k => k.substring(0, 8) + '...').join(', '))
-    
+
     const receiverSocket = onlineUsers.get(receiverId)
     console.log(`   Receiver ${receiverId?.substring(0, 8)}... found:`, receiverSocket ? `✅ YES (socket: ${receiverSocket?.substring(0, 8)}...)` : `❌ NO`)
-    
+
     if (!receiverSocket) {
       console.warn(`⚠️  Receiver ${receiverId?.substring(0, 8)}... is NOT online - call will be lost`)
       return
     }
-    
+
     // ✅ Emit to receiver's socket room
     const receiverSocketRoom = receiverId
     console.log(`\n📡 Emitting incoming_call event...`)
     console.log(`   Target room: ${receiverSocketRoom?.substring(0, 8)}...`)
-    
+
     io.to(receiverSocketRoom).emit('incoming_call', {
       callerId,
       callerName,
@@ -3208,7 +4441,7 @@ io.on('connection', (socket) => {
     console.log('\n📍 Looking up caller in onlineUsers map...')
     const callerSocket = onlineUsers.get(callerId)
     console.log(`   Caller ${callerId?.substring(0, 8)}... found:`, callerSocket ? `✅ YES` : `❌ NO`)
-    
+
     if (!callerSocket) {
       console.warn(`⚠️  Caller ${callerId?.substring(0, 8)}... is NOT online - call acceptance will be lost`)
       return
@@ -3218,7 +4451,7 @@ io.on('connection', (socket) => {
     const callerSocketRoom = callerId
     console.log(`\n📡 Emitting call_accepted event...`)
     console.log(`   Target room: ${callerSocketRoom?.substring(0, 8)}...`)
-    
+
     io.to(callerSocketRoom).emit('call_accepted', {
       callerId,
       receiverId,
@@ -3253,7 +4486,7 @@ io.on('connection', (socket) => {
       // Get online status
       const callerOnlineSocketId = onlineUsers.get(callerId)
       const receiverOnlineSocketId = onlineUsers.get(receiverId)
-      
+
       console.log(`\n📍 User Online Status:`)
       console.log(`   Caller ${callerId.substring(0, 8)}... → Socket: ${callerOnlineSocketId ? callerOnlineSocketId.substring(0, 8) + '...' : '❌ OFFLINE'}`)
       console.log(`   Receiver ${receiverId.substring(0, 8)}... → Socket: ${receiverOnlineSocketId ? receiverOnlineSocketId.substring(0, 8) + '...' : '❌ OFFLINE'}`)
@@ -3267,18 +4500,18 @@ io.on('connection', (socket) => {
 
       // ✅ BROADCAST using both room-based and socket-based methods for maximum reliability
       console.log(`\n📡 BROADCASTING call_ended event:`)
-      
+
       // Method 1: Broadcast via UUID-based rooms (this will reach sockets in those rooms)
       console.log(`   📤 Method 1: Broadcasting to room "${callerId.substring(0, 8)}..."`)
       io.to(callerId).emit('call_ended', callEndedData)
-      
+
       console.log(`   📤 Method 2: Broadcasting to room "${receiverId.substring(0, 8)}..."`)
       io.to(receiverId).emit('call_ended', callEndedData)
-      
+
       // Method 2: Direct socket emit for sender as backup (in case they're not in their own room yet)
       console.log(`   📤 Method 3: Direct emit to sender socket`)
       socket.emit('call_ended', callEndedData)
-      
+
       // Method 3: Explicit socket targeting if we have socket IDs
       if (receiverOnlineSocketId && receiverOnlineSocketId !== senderSocketId) {
         console.log(`   📤 Method 4: Direct emit to receiver's socket`)
@@ -3288,27 +4521,102 @@ io.on('connection', (socket) => {
         console.log(`   📤 Method 5: Direct emit to caller's socket`)
         io.to(callerOnlineSocketId).emit('call_ended', callEndedData)
       }
-      
+
       console.log('\n✅ call_ended BROADCAST COMPLETE - using 5 delivery methods\n')
     }
-    
+
+    console.log('='.repeat(80) + '\n')
+  })
+
+  // ✅ CALL NO ANSWER - Save TWO messages: missed_call for receiver, outgoing_call for caller
+  socket.on('call_no_answer', async (data) => {
+    const { callerId, receiverId, callerName } = data
+
+    console.log('\n' + '='.repeat(80))
+    console.log('📵 [CALL_NO_ANSWER] ====== SAVING CALL MESSAGES TO DB ======')
+    console.log('='.repeat(80))
+    console.log('📵 Caller ID:', callerId?.substring(0, 8) + '...')
+    console.log('📵 Receiver ID:', receiverId?.substring(0, 8) + '...')
+    console.log('📵 Caller Name:', callerName)
+    console.log('='.repeat(80))
+
+    if (!callerId || !receiverId) {
+      console.warn('❌ [CALL_NO_ANSWER] Missing callerId or receiverId')
+      return
+    }
+
+    try {
+      // ✅ DEDUP CHECK: Don't insert if call messages already exist in last 30 seconds
+      const dupeCheck = await pool.query(
+        `SELECT id FROM messages 
+         WHERE sender_id = $1 AND receiver_id = $2 
+         AND message_type IN ('missed_call', 'outgoing_call')
+         AND created_at > NOW() - INTERVAL '30 seconds'
+         LIMIT 1`,
+        [callerId, receiverId]
+      )
+
+      if (dupeCheck.rows.length > 0) {
+        console.log('⚠️ [CALL_NO_ANSWER] Duplicate call messages detected within 30s - skipping')
+      } else {
+        // ✅ MESSAGE 1: "Missed call" for RECEIVER (sender_id = caller, receiver_id = receiver)
+        await pool.query(
+          `INSERT INTO messages (sender_id, receiver_id, message, message_type, is_read)
+           VALUES ($1, $2, $3, $4, false)`,
+          [callerId, receiverId, 'Missed call', 'missed_call']
+        )
+        console.log('✅ [CALL_NO_ANSWER] Missed call message saved (for receiver)')
+
+        // ✅ MESSAGE 2: "Video call" for CALLER (sender_id = caller, receiver_id = receiver)
+        await pool.query(
+          `INSERT INTO messages (sender_id, receiver_id, message, message_type, is_read)
+           VALUES ($1, $2, $3, $4, true)`,
+          [callerId, receiverId, 'Video call', 'outgoing_call']
+        )
+        console.log('✅ [CALL_NO_ANSWER] Outgoing call message saved (for caller)')
+      }
+
+      // ✅ Emit targeted real-time events so each user sees the correct bubble
+      const roomId = callerId < receiverId
+        ? `${callerId}_${receiverId}`
+        : `${receiverId}_${callerId}`
+
+      // Emit missed_call to RECEIVER only
+      io.to(receiverId).emit('receive_message', {
+        senderId: callerId,
+        message: 'Missed call',
+        message_type: 'missed_call'
+      })
+
+      // Emit outgoing_call to CALLER only
+      io.to(callerId).emit('receive_message', {
+        senderId: callerId,
+        message: 'Video call',
+        message_type: 'outgoing_call'
+      })
+
+      console.log('✅ [CALL_NO_ANSWER] Targeted call notifications emitted')
+    } catch (err) {
+      console.error('❌ [CALL_NO_ANSWER] Error saving call messages:', err.message)
+    }
+
     console.log('='.repeat(80) + '\n')
   })
 
   // ✅ DIRECT CALL - WebRTC OFFER (Caller sends offer to Receiver)
   socket.on('direct_call:offer', (data) => {
     const { offer, from, to } = data
-    
+
     console.log('\n' + '='.repeat(80))
     console.log('📋 [DIRECT CALL:OFFER] WebRTC Offer from caller')
     console.log('='.repeat(80))
     console.log('📋 From (Caller):', from?.substring(0, 8) + '...')
     console.log('📋 To (Receiver):', to?.substring(0, 8) + '...')
     console.log('📋 Offer SDP length:', offer?.sdp?.length || 0, 'chars')
-    
+
     if (from && to && offer) {
       const receiverSocketId = onlineUsers.get(to)
-      
+
       if (receiverSocketId) {
         console.log('📤 Receiver online - relaying offer via socket:', receiverSocketId.substring(0, 8) + '...')
         io.to(receiverSocketId).emit('direct_call:offer', {
@@ -3320,24 +4628,24 @@ io.on('connection', (socket) => {
         console.warn('⚠️ Receiver not online - offer NOT delivered')
       }
     }
-    
+
     console.log('='.repeat(80) + '\n')
   })
 
   // ✅ DIRECT CALL - WebRTC ANSWER (Receiver sends answer to Caller)
   socket.on('direct_call:answer', (data) => {
     const { answer, from, to } = data
-    
+
     console.log('\n' + '='.repeat(80))
     console.log('📋 [DIRECT CALL:ANSWER] WebRTC Answer from receiver')
     console.log('='.repeat(80))
     console.log('📋 From (Receiver):', from?.substring(0, 8) + '...')
     console.log('📋 To (Caller):', to?.substring(0, 8) + '...')
     console.log('📋 Answer SDP length:', answer?.sdp?.length || 0, 'chars')
-    
+
     if (from && to && answer) {
       const callerSocketId = onlineUsers.get(to)
-      
+
       if (callerSocketId) {
         console.log('📤 Caller online - relaying answer via socket:', callerSocketId.substring(0, 8) + '...')
         io.to(callerSocketId).emit('direct_call:answer', {
@@ -3349,19 +4657,19 @@ io.on('connection', (socket) => {
         console.warn('⚠️ Caller not online - answer NOT delivered')
       }
     }
-    
+
     console.log('='.repeat(80) + '\n')
   })
 
   // ✅ DIRECT CALL - WebRTC ICE CANDIDATE (Both sides exchange ICE candidates)
   socket.on('direct_call:ice_candidate', (data) => {
     const { candidate, from, to } = data
-    
+
     console.log('🧊 [DIRECT CALL:ICE] Relaying ICE candidate from:', from?.substring(0, 8) + '... to:', to?.substring(0, 8) + '...')
-    
+
     if (from && to && candidate) {
       const peerSocketId = onlineUsers.get(to)
-      
+
       if (peerSocketId) {
         io.to(peerSocketId).emit('direct_call:ice_candidate', {
           candidate,
@@ -3371,6 +4679,25 @@ io.on('connection', (socket) => {
         console.warn('⚠️ Peer not online - ICE candidate NOT delivered')
       }
     }
+  })
+
+  // ✅ TYPING INDICATOR - Relay typing status to partner in shared room
+  socket.on('typing', (data) => {
+    const { senderId, receiverId } = data
+    if (!senderId || !receiverId) return
+    const roomId = senderId < receiverId
+      ? `${senderId}_${receiverId}`
+      : `${receiverId}_${senderId}`
+    socket.to(roomId).emit('typing', { senderId })
+  })
+
+  socket.on('stop_typing', (data) => {
+    const { senderId, receiverId } = data
+    if (!senderId || !receiverId) return
+    const roomId = senderId < receiverId
+      ? `${senderId}_${receiverId}`
+      : `${receiverId}_${senderId}`
+    socket.to(roomId).emit('stop_typing', { senderId })
   })
 
   // ✅ SEND MESSAGE (friend DM to shared room)
@@ -3394,8 +4721,8 @@ io.on('connection', (socket) => {
 
     try {
       // Create deterministic room ID (same for both users)
-      const roomId = senderId < receiverId 
-        ? `${senderId}_${receiverId}` 
+      const roomId = senderId < receiverId
+        ? `${senderId}_${receiverId}`
         : `${receiverId}_${senderId}`
 
       // 1. Save message to database
@@ -3424,394 +4751,707 @@ io.on('connection', (socket) => {
 
   // Handle finding partner
   socket.on('find_partner', async (userData) => {
-    console.log('\n\n═══════════════════════════════════════════════════════════════');
-    console.log('🔍 [find_partner] EVENT FIRED - STARTING MATCH LOGIC');
-    console.log('═══════════════════════════════════════════════════════════════');
-    console.log(`🔌 [find_partner] Current socket.id: ${socket.id}`)
-    console.log(`🔌 [find_partner] Socket connected: ${socket.connected}`)
-    console.log(`📊 [find_partner] Total active sockets: ${io.engine.clientsCount}`)
-    
-    // CRITICAL: Get userId from frontend data (NOT generate new UUID)
-    const userId = userData?.userId
-    
-    if (!userId) {
-      console.error('❌ [find_partner] No userId provided by frontend')
-      socket.emit('error', 'UserId is required')
-      return
-    }
-
-    // Store the mapping: socket.id -> userId (from frontend)
-    userSockets.set(socket.id, userId)
-    console.log(`✅ [find_partner] Stored mapping - socket ${socket.id.substring(0, 8)}... → user ${userId}`)
-    
-    // ✅ CRITICAL: Always use DB location (most up-to-date from IP detection)
     try {
-      const dbUser = await prisma.users.findUnique({ where: { id: userId }, select: { location: true } });
-      if (dbUser?.location) {
-        console.log(`📍 [find_partner] DB location: ${dbUser.location} (frontend sent: ${userData.userLocation})`);
-        userData.userLocation = dbUser.location;
-      }
-      
-      // ✅ SERVER-SIDE FALLBACK: If DB location has country name or is missing, detect from IP
-      const needsServerDetection = !userData.userLocation || 
-        userData.userLocation === 'Unknown' || 
-        /\b(India|Pakistan|Bangladesh|Nepal|Sri Lanka|United States|United Kingdom|Canada|Australia)\b/i.test(userData.userLocation);
-      
-      if (needsServerDetection) {
-        console.log(`📍 [find_partner] Location needs server-side detection (current: ${userData.userLocation})`);
-        try {
-          const clientIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0]?.trim() || socket.handshake.address;
-          const ipUrl = clientIP && clientIP !== '::1' && clientIP !== '127.0.0.1' 
-            ? `http://ip-api.com/json/${clientIP}?fields=status,city,regionName`
-            : `http://ip-api.com/json/?fields=status,city,regionName`;
-          
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 3000);
-          const ipRes = await fetch(ipUrl, { signal: controller.signal });
-          clearTimeout(timeout);
-          const ipData = await ipRes.json();
-          console.log(`📍 [find_partner] Server IP detection result:`, JSON.stringify(ipData));
-          
-          if (ipData.status === 'success' && ipData.city && ipData.regionName) {
-            const newLocation = `${ipData.city}, ${ipData.regionName}`;
-            userData.userLocation = newLocation;
-            // Also update DB with fresh location
-            await prisma.users.update({ where: { id: userId }, data: { location: newLocation } });
-            console.log(`📍 [find_partner] ✅ Server-side location detected & saved: ${newLocation}`);
-          }
-        } catch (ipErr) {
-          console.log(`📍 [find_partner] Server IP detection failed:`, ipErr.message);
-        }
-      }
-    } catch (e) {
-      console.warn(`📍 [find_partner] Could not fetch DB location:`, e.message);
-    }
-    console.log(`📍 [find_partner] Final userLocation: ${userData?.userLocation || 'Unknown'}`)
-    
-    // Log queue state BEFORE processing
-    const queueLenBefore = await getQueueLength()
-    const queueEntriesBefore = await redis.lRange('matching_queue', 0, -1)
-    console.log(`\n📊 [find_partner] QUEUE STATE BEFORE`)
-    console.log(`   Total users waiting: ${queueLenBefore}`)
-    for (let i = 0; i < queueEntriesBefore.length; i++) {
-      const parsed = JSON.parse(queueEntriesBefore[i])
-      console.log(`   [${i}] User ${parsed.userId} - Socket ${parsed.socketId.substring(0, 8)}...`)
-    }
-    
-    console.log(`\n👤 [find_partner] User ${userId} looking for partner`)
-    console.log(`   userName: ${userData?.userName || 'Anonymous'}`)
+      console.log('\n\n═══════════════════════════════════════════════════════════════');
+      console.log('🔍 [find_partner] EVENT FIRED - STARTING MATCH LOGIC');
+      console.log('═══════════════════════════════════════════════════════════════');
 
-    // Set user as online in Redis
-    await setUserOnline(userId, socket.id)
+      // LOG INCOMING DATA IMMEDIATELY
+      console.log('📥 [find_partner] RECEIVED RAW DATA:');
+      console.log('   Type:', typeof userData);
+      console.log('   Is null/undefined?', userData == null);
+      console.log('   Keys:', userData ? Object.keys(userData) : 'N/A');
+      console.log('   Full data:', JSON.stringify(userData, null, 2));
 
-    // Check if there's someone in the queue, skip if it's the same user
-    let waitingUser = await getNextFromQueue()
-    
-    // CRITICAL: Loop until we find a DIFFERENT user
-    let skippedCount = 0
-    while (waitingUser && waitingUser.userId === userId) {
-      skippedCount++
-      console.log(`⚠️ [find_partner] SKIPPING SELF-MATCH #${skippedCount}`)
-      console.log(`   Waiting user: ${waitingUser.userId}`)
-      console.log(`   Current user: ${userId}`)
-      waitingUser = await getNextFromQueue() // Try next user
-    }
-    
-    if (skippedCount > 0) {
-      console.log(`✅ [find_partner] Skipped ${skippedCount} self-match attempts`)
-    }
-    
-    if (waitingUser) {
-      console.log(`\n🎯 [find_partner] 🎯 MATCH FOUND! 🎯`)
-      console.log(`   Current user: ${userId} (socket ${socket.id.substring(0, 8)}...)`)
-      console.log(`   Partner user: ${waitingUser.userId} (socket ${waitingUser.socketId.substring(0, 8)}...)`)
-      
-      // Verify sockets are valid
-      const socket1Exists = io.sockets.sockets.has(socket.id)
-      const socket2Exists = io.sockets.sockets.has(waitingUser.socketId)
-      console.log(`🔌 [find_partner] Socket validity check:`)
-      console.log(`   Current socket exists? ${socket1Exists}`)
-      console.log(`   Partner socket exists? ${socket2Exists}`)
-      
-      if (!socket1Exists || !socket2Exists) {
-        console.error(`❌ [find_partner] One or both sockets are INVALID!`)
-        // Re-add current user to queue and try again
-        console.log(`🔄 [find_partner] Re-adding ${userId} to queue...`)
-        await addToMatchingQueue(userId, socket.id, userData)
-        socket.emit('waiting', { message: 'Waiting for a partner...' })
+      console.log(`🔌 [find_partner] Current socket.id: ${socket.id}`)
+      console.log(`🔌 [find_partner] Socket connected: ${socket.connected}`)
+      console.log(`📊 [find_partner] Total active sockets: ${io.engine.clientsCount}`)
+
+      // CRITICAL: Get userId from frontend data (NOT generate new UUID)
+      const userId = userData?.userId
+      console.log(`🔑 [find_partner] userId extracted: "${userId}" (type: ${typeof userId})`)
+
+      if (!userId) {
+        console.error('❌ [find_partner] No userId provided by frontend')
+        socket.emit('error', 'UserId is required')
         return
       }
-      
-      // Call the bulletproof matching function
-      console.log(`\n✅ [find_partner] All checks PASSED - now calling matchUsers()...`)
-      console.log(`   socketId1: ${socket.id}`)
-      console.log(`   userId1: ${userId}`)
-      console.log(`   socketId2: ${waitingUser.socketId}`)
-      console.log(`   userId2: ${waitingUser.userId}`)
-      
-      await matchUsers(socket.id, userId, waitingUser.socketId, waitingUser.userId, userData, waitingUser)
-      
-      console.log(`✅ [find_partner] matchUsers() completed successfully`)
-      console.log(`🎉 [find_partner] Both users should have received partner_found event`)
-    } else {
-      // Add to waiting queue
-      console.log(`\n⏳ [find_partner] NO MATCH FOUND - ADDING USER TO QUEUE`);
-      await addToMatchingQueue(userId, socket.id, userData)
-      const queueLen = await getQueueLength()
-      console.log(`✅ [find_partner] Added user ${userId} to queue. Queue length: ${queueLen}`)
-      
-      // Log queue state AFTER adding
-      const queueEntriesAfter = await redis.lRange('matching_queue', 0, -1)
-      console.log(`📊 [find_partner] QUEUE STATE AFTER`)
-      console.log(`   Total users waiting: ${queueLen}`)
-      for (let i = 0; i < queueEntriesAfter.length; i++) {
-        const parsed = JSON.parse(queueEntriesAfter[i])
-        console.log(`   [${i}] User ${parsed.userId} - Socket ${parsed.socketId.substring(0, 8)}...`)
+
+      // Store the mapping: socket.id -> userId (from frontend)
+      userSockets.set(socket.id, userId)
+      console.log(`✅ [find_partner] Stored mapping - socket ${socket.id.substring(0, 8)}... → user ${userId}`)
+
+      // ✅ CLEANUP: Remove stale activeChats entry if user is reconnecting
+      // This handles cases where a previous connection left a stale entry
+      if (activeChats.has(userId)) {
+        console.log(`🧹 [find_partner] CLEANUP: User ${userId} had stale activeChats entry - removing it`)
+        console.log(`   This can happen when:`)
+        console.log(`   1. Browser tab was closed without proper disconnect`)
+        console.log(`   2. Network connection was lost abruptly`)
+        console.log(`   3. Previous socket cleanup didn't fully complete`)
+        activeChats.delete(userId)
+        console.log(`   ✅ Stale entry removed - user can now search for partner`)
       }
-      
-      // Emit waiting event
-      console.log(`📤 [find_partner] Emitting 'waiting' event to socket ${socket.id.substring(0, 8)}...`)
-      socket.emit('waiting', { message: 'Waiting for a partner...' })
-      console.log(`✅ [find_partner] 'waiting' event emitted`)
+
+      // ✅ CRITICAL: Always use DB location + userName (most up-to-date from IP detection and DB)
+      try {
+        const dbUser = await prisma.users.findUnique({ where: { id: userId }, select: { location: true, display_name: true, age: true, profile_picture_url: true } });
+
+        // ✅ Enrich userName from database display_name
+        if (dbUser?.display_name && (!userData.userName || userData.userName === 'Anonymous')) {
+          console.log(`📝 [find_partner] Enriching userName from DB: ${dbUser.display_name} (frontend sent: ${userData.userName})`);
+          userData.userName = dbUser.display_name;
+        }
+
+        // ✅ Enrich other fields from database
+        if (dbUser?.age && (!userData.userAge || userData.userAge === 18)) {
+          userData.userAge = dbUser.age;
+        }
+        if (dbUser?.profile_picture_url && !userData.userPicture) {
+          userData.userPicture = dbUser.profile_picture_url;
+        }
+
+        if (dbUser?.location) {
+          console.log(`📍 [find_partner] DB location: ${dbUser.location} (frontend sent: ${userData.userLocation})`);
+          userData.userLocation = dbUser.location;
+        }
+
+        // ✅ SERVER-SIDE FALLBACK: If DB location has country name or is missing, detect from IP
+        const needsServerDetection = !userData.userLocation ||
+          userData.userLocation === 'Unknown' ||
+          /\b(India|Pakistan|Bangladesh|Nepal|Sri Lanka|United States|United Kingdom|Canada|Australia)\b/i.test(userData.userLocation);
+
+        if (needsServerDetection) {
+          console.log(`📍 [find_partner] Location needs server-side detection (current: ${userData.userLocation})`);
+          try {
+            const clientIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0]?.trim() || socket.handshake.address;
+            const ipUrl = clientIP && clientIP !== '::1' && clientIP !== '127.0.0.1'
+              ? `http://ip-api.com/json/${clientIP}?fields=status,city,regionName`
+              : `http://ip-api.com/json/?fields=status,city,regionName`;
+
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+            const ipRes = await fetch(ipUrl, { signal: controller.signal });
+            clearTimeout(timeout);
+            const ipData = await ipRes.json();
+            console.log(`📍 [find_partner] Server IP detection result:`, JSON.stringify(ipData));
+
+            if (ipData.status === 'success' && ipData.city && ipData.regionName) {
+              const newLocation = `${ipData.city}, ${ipData.regionName}`;
+              userData.userLocation = newLocation;
+              // Also update DB with fresh location
+              await prisma.users.update({ where: { id: userId }, data: { location: newLocation } });
+              console.log(`📍 [find_partner] ✅ Server-side location detected & saved: ${newLocation}`);
+            }
+          } catch (ipErr) {
+            console.log(`📍 [find_partner] Server IP detection failed:`, ipErr.message);
+          }
+        }
+      } catch (e) {
+        console.warn(`📍 [find_partner] Could not fetch DB location:`, e.message);
+      }
+      console.log(`📍 [find_partner] Final userLocation: ${userData?.userLocation || 'Unknown'}`)
+
+      // Log queue state BEFORE processing
+      console.log('\n📊 [find_partner] QUEUE STATE AT START...');
+      let queueLenBefore;
+      let queueEntriesBefore;
+
+      try {
+        console.log('   ℹ️ Calling getQueueLength()...');
+        queueLenBefore = await getQueueLength()
+        console.log(`   ✅ Got queue length: ${queueLenBefore}`);
+      } catch (queueErr) {
+        console.error('   ❌ Error getting queue length:', queueErr.message);
+        queueLenBefore = 0;
+      }
+
+      try {
+        console.log('   ℹ️ Calling redis.zRange()...');
+        queueEntriesBefore = await redis.zRange('matching_queue', 0, -1)
+        console.log(`   ✅ Got queue entries: ${queueEntriesBefore.length} items`);
+      } catch (rangeErr) {
+        console.error('   ❌ Error getting queue entries:', rangeErr.message);
+        queueEntriesBefore = [];
+      }
+
+      console.log(`📊 [find_partner] QUEUE STATE BEFORE PROCESSING`)
+      console.log(`   Total users in queue: ${queueLenBefore}`)
+      console.log(`   Total users in activeChats: ${activeChats.size}`)
+      console.log(`🔐 [find_partner] Users in activeChats:`, Array.from(activeChats))
+      for (let i = 0; i < queueEntriesBefore.length; i++) {
+        try {
+          const parsed = JSON.parse(queueEntriesBefore[i])
+          const inActiveChat = activeChats.has(parsed.userId) ? '⚠️ ALREADY IN CHAT' : '✓'
+          console.log(`   [${i}] User ${parsed.userId} ${inActiveChat} - Socket ${parsed.socketId.substring(0, 8)}...`)
+        } catch (parseErr) {
+          console.error(`   ❌ [${i}] Failed to parse queue entry:`, parseErr.message)
+        }
+      }
+
+      console.log(`\n👤 [find_partner] User ${userId} looking for partner`)
+      console.log(`   userName: ${userData?.userName || 'Anonymous'}`)
+
+      // ✅ CRITICAL: Check if user is already in activeChats - if so, they shouldn't be here!
+      const userAlreadyInChat = activeChats.has(userId)
+      console.log(`\n🔐 [find_partner] CRITICAL PRE-CHECK:`)
+      console.log(`   Is user ${userId} already in activeChats? ${userAlreadyInChat}`)
+      console.log(`   Total users in activeChats: ${activeChats.size}`)
+      console.log(`   Current activeChats:`, Array.from(activeChats))
+
+      if (userAlreadyInChat) {
+        console.error(`❌ [find_partner] ERROR: User is already in an active chat!`)
+        console.error(`   They should NOT be calling find_partner`)
+        console.error(`   Aborting to prevent duplicate matching`)
+        socket.emit('error', { message: 'You are already in an active chat' })
+        return
+      }
+
+      // ✅ VERIFY USER IS NOT INCORRECTLY IN activeChats
+      const isInActiveChats = activeChats.has(userId)
+      console.log(`\n🔐 [find_partner] activeChats status:`)
+      console.log(`   Is ${userId} in activeChats? ${isInActiveChats}`)
+      console.log(`   Total users in activeChats: ${activeChats.size}`)
+      if (isInActiveChats) {
+        console.warn(`⚠️  [find_partner] WARNING: User is in activeChats! They should not be looking for a partner!`)
+        console.warn(`   This might indicate a previous call didn't cleanup properly`)
+      }
+
+      // Set user as online in Redis
+      console.log(`\n🔵 [find_partner] SETTING USER ONLINE...`);
+      try {
+        await setUserOnline(userId, socket.id)
+        console.log(`   ✅ User set as online in Redis`);
+      } catch (onlineErr) {
+        console.error(`   ❌ Error setting user online:`, onlineErr.message);
+        console.error(`       But continuing anyway...`);
+      }
+
+      // ✅ USE OPTIMIZED QUEUE RETRIEVAL WITH COOLDOWN FILTERING
+      console.log(`\n🎯 [find_partner] ATTEMPTING TO GET NEXT FROM QUEUE...`);
+      let waitingUser;
+      try {
+        waitingUser = await getNextFromQueueOptimized(userId)
+        console.log(`   ✅ Got next from queue:`, waitingUser ? 'MATCH FOUND' : 'No match');
+      } catch (queueErr) {
+        console.error(`   ❌ Error getting next from queue:`, queueErr.message);
+        throw queueErr; // Re-throw so it's caught by main catch
+      }
+
+      if (waitingUser) {
+        console.log(`\n🎯 [find_partner] 🎯 MATCH FOUND! 🎯`)
+        console.log(`═════════════════════════════════════════════`)
+        console.log(`   Current user: ${userId} (socket ${socket.id.substring(0, 8)}...)`)
+        console.log(`   Partner user: ${waitingUser.userId} (socket ${waitingUser.socketId.substring(0, 8)}...)`)
+        console.log(`   This user was RETRIEVED from queue (not adding current user to queue)`)
+        console.log(`═════════════════════════════════════════════`)
+
+        // Verify sockets are valid
+        const socket1Exists = io.sockets.sockets.has(socket.id)
+        const socket2Exists = io.sockets.sockets.has(waitingUser.socketId)
+        console.log(`🔌 [find_partner] Socket validity check:`)
+        console.log(`   Current socket exists? ${socket1Exists}`)
+        console.log(`   Partner socket exists? ${socket2Exists}`)
+
+        if (!socket1Exists || !socket2Exists) {
+          console.error(`❌ [find_partner] One or both sockets are INVALID!`)
+          // Re-add current user to queue and try again
+          console.log(`🔄 [find_partner] Re-adding ${userId} to queue...`)
+          try {
+            await addToMatchingQueue(userId, socket.id, userData)
+            console.log(`   ✅ User re-added to queue`);
+          } catch (readdErr) {
+            console.error(`   ❌ Error re-adding to queue:`, readdErr.message);
+          }
+          try {
+            socket.emit('waiting', { message: 'Waiting for a partner...' })
+            console.log(`   ✅ Waiting event emitted`);
+          } catch (emitErr) {
+            console.error(`   ❌ Error emitting waiting event:`, emitErr.message);
+          }
+          return
+        }
+
+        // Call the bulletproof matching function
+        console.log(`\n✅ [find_partner] All checks PASSED - now calling matchUsers()...`)
+        console.log(`   socketId1: ${socket.id}`)
+        console.log(`   userId1: ${userId}`)
+        console.log(`   socketId2: ${waitingUser.socketId}`)
+        console.log(`   userId2: ${waitingUser.userId}`)
+        console.log(`📊 [find_partner] Data being passed to matchUsers:`)
+        console.log(`   Frontend user (userData1): { userName: "${userData?.userName}", userAge: ${userData?.userAge}, location: "${userData?.userLocation}" }`)
+        console.log(`   Queue user (userData2): { userName: "${waitingUser?.userName}", userAge: ${waitingUser?.userAge}, location: "${waitingUser?.userLocation}" }`)
+
+        try {
+          console.log(`   ℹ️ Calling matchUsers()...`);
+          await matchUsers(socket.id, userId, waitingUser.socketId, waitingUser.userId, userData, waitingUser)
+          console.log(`   ✅ matchUsers() completed successfully`);
+        } catch (matchErr) {
+          console.error(`   ❌ Error in matchUsers():`, matchErr.message);
+          throw matchErr; // Re-throw to be caught by main catch
+        }
+
+        console.log(`✅ [find_partner] matchUsers() completed successfully`)
+        console.log(`🎉 [find_partner] Both users should have received partner_found event`)
+      } else {
+        // Add to waiting queue
+        console.log(`\n⏳ [find_partner] NO MATCH FOUND - ADDING USER TO QUEUE`);
+        console.log(`═════════════════════════════════════════════`)
+        console.log(`   No existing waiting user found`)
+        console.log(`   Adding current user ${userId} to matching queue`)
+        console.log(`   Reason: getNextFromQueueOptimized() returned null`)
+        console.log(`═════════════════════════════════════════════`);
+
+        try {
+          console.log(`   ℹ️ Calling addToMatchingQueue(${userId}, ${socket.id.substring(0, 8)}...)`);
+          await addToMatchingQueue(userId, socket.id, userData)
+          console.log(`   ✅ User added to queue successfully`);
+        } catch (addErr) {
+          console.error(`   ❌ Error adding to queue:`, addErr.message);
+          throw addErr; // Re-throw to be caught by main catch
+        }
+
+        let queueLen;
+        try {
+          console.log(`   ℹ️ Calling getQueueLength()...`);
+          queueLen = await getQueueLength()
+          console.log(`✅ [find_partner] Added user ${userId} to queue. Queue length: ${queueLen}`)
+        } catch (lenErr) {
+          console.error(`   ❌ Error getting queue length:`, lenErr.message);
+          queueLen = 0;
+        }
+
+        // Log queue state AFTER adding
+        let queueEntriesAfter;
+        try {
+          console.log(`   ℹ️ Calling redis.zRange() for final state...`);
+          queueEntriesAfter = await redis.zRange('matching_queue', 0, -1)
+          console.log(`   ✅ Got queue entries`);
+        } catch (rangeErr) {
+          console.error(`   ❌ Error getting queue entries:`, rangeErr.message);
+          queueEntriesAfter = [];
+        }
+
+        console.log(`📊 [find_partner] QUEUE STATE AFTER`)
+        console.log(`   Total users waiting: ${queueLen}`)
+        for (let i = 0; i < queueEntriesAfter.length; i++) {
+          try {
+            const parsed = JSON.parse(queueEntriesAfter[i])
+            console.log(`   [${i}] User ${parsed.userId} - Socket ${parsed.socketId.substring(0, 8)}...`)
+          } catch (parseErr) {
+            console.error(`   ❌ [${i}] Failed to parse queue entry:`, parseErr.message)
+          }
+        }
+
+        // Emit waiting event (check socket is still connected)
+        console.log(`📤 [find_partner] Emitting 'waiting' event to socket ${socket.id.substring(0, 8)}...`)
+        if (socket.connected) {
+          socket.emit('waiting', { message: 'Waiting for a partner...' })
+          console.log(`✅ [find_partner] 'waiting' event emitted`)
+        } else {
+          console.warn(`⚠️ [find_partner] Socket disconnected before 'waiting' event could be sent`)
+        }
+      }
+    } catch (error) {
+      console.error('\n\n🚨 🚨 🚨 FIND_PARTNER HANDLER ERROR 🚨 🚨 🚨');
+      console.error('═══════════════════════════════════════════════════════════════');
+      console.error('🚨 [find_partner] ERROR TYPE:', error?.constructor?.name || 'Unknown');
+      console.error('🚨 [find_partner] ERROR MESSAGE:', error?.message || 'No message');
+      console.error('🚨 [find_partner] ERROR STACK:');
+      console.error(error?.stack || 'No stack');
+      console.error('🚨 [find_partner] FULL ERROR OBJECT:');
+      console.error(JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      console.error('═══════════════════════════════════════════════════════════════');
+
+      // Safely emit error to client without crashing
+      try {
+        if (socket && socket.connected) {
+          socket.emit('error', { message: 'An error occurred while finding a partner. Please try again.' })
+        }
+      } catch (emitErr) {
+        console.error('🚨 [find_partner] Could not emit error to socket:', emitErr.message)
+      }
+      // Continue running - don't crash server
     }
   })
 
-  // Handle WebRTC offer
   socket.on('webrtc_offer', (data) => {
-    console.log('\n\n');
-    console.log('📨📨📨 SERVER RECEIVED webrtc_offer 📨📨📨');
-    console.log('📨 Sender socket ID:', socket.id);
-    console.log('📨 Incoming data:', JSON.stringify(data, null, 2));
-    console.log('📨 data.to value:', data.to);
-    console.log('📨 Is data.to empty?', !data.to);
-    console.log('📨 Is data.to undefined?', data.to === undefined);
-    console.log('📨 Is data.to null?', data.to === null);
-    
-    const userId = userSockets.get(socket.id)
-    const partnerSocketId = data.to
-    
-    console.log('📨 userSockets.get(socket.id):', userId);
-    console.log('📨 partnerSocketId extracted from data.to:', partnerSocketId);
-    console.log('📨 TARGET: Will send to socket:', partnerSocketId);
-    
-    if (userId && partnerSocketId) {
-      // ✅ CRITICAL: Track the partnership for disconnect handling
-      partnerSockets.set(socket.id, partnerSocketId)
-      partnerSockets.set(partnerSocketId, socket.id)
-      console.log('✅ Partner relationship tracked:', socket.id, '↔', partnerSocketId)
-      
-      console.log('✅ SERVER: Conditions met - sending webrtc_offer');
-      console.log('✅ SERVER: FROM socket:', socket.id, '→ TO socket:', partnerSocketId);
-      io.to(partnerSocketId).emit('webrtc_offer', {
-        offer: data.offer,
-        from: socket.id
-      })
-      console.log('✅ SERVER: webrtc_offer emitted successfully to:', partnerSocketId)
-    } else {
-      console.error('❌ SERVER: Cannot send webrtc_offer - conditions failed');
-      console.error('   userId exists?', !!userId);
-      console.error('   partnerSocketId exists?', !!partnerSocketId);
+    try {
+      console.log('\n\n');
+      console.log('📨📨📨 SERVER RECEIVED webrtc_offer 📨📨📨');
+      console.log('📨 Sender socket ID:', socket.id);
+      console.log('📨 data.to value:', data.to);
+
+      const partnerSocketId = data.to
+
+      // ✅ FIX: Don't require userId from userSockets - just relay based on target socket ID
+      // userSockets is only populated by find_partner, but user:start_matching uses matchingHandlers.js maps
+      if (partnerSocketId) {
+        // Track the partnership for disconnect handling
+        partnerSockets.set(socket.id, partnerSocketId)
+        partnerSockets.set(partnerSocketId, socket.id)
+        console.log('✅ Partner relationship tracked:', socket.id, '↔', partnerSocketId)
+
+        // Also populate userSockets if we have join data
+        const userId = userSockets.get(socket.id)
+        console.log('📨 userId from userSockets:', userId || 'NOT SET (using matchingHandlers path)');
+
+        console.log('✅ SERVER: Sending webrtc_offer FROM:', socket.id, '→ TO:', partnerSocketId);
+        io.to(partnerSocketId).emit('webrtc_offer', {
+          offer: data.offer,
+          from: socket.id
+        })
+        console.log('✅ SERVER: webrtc_offer emitted successfully to:', partnerSocketId)
+      } else {
+        console.error('❌ SERVER: Cannot send webrtc_offer - no target socket ID (data.to is missing)');
+      }
+    } catch (error) {
+      console.error('🚨 [webrtc_offer] Error:', error.message)
+      console.error('   Stack:', error.stack)
     }
   })
 
   // Handle WebRTC answer
   socket.on('webrtc_answer', (data) => {
-    const userId = userSockets.get(socket.id)
-    const partnerSocketId = data.to
-    console.log('📨 SERVER: Received webrtc_answer from socket:', socket.id)
-    console.log('📨 SERVER: Target partner socket ID:', partnerSocketId)
-    if (userId && partnerSocketId) {
-      // ✅ CRITICAL: Also track partnership when answer is sent (in case offer didn't set it)
-      partnerSockets.set(socket.id, partnerSocketId)
-      partnerSockets.set(partnerSocketId, socket.id)
-      console.log('✅ Partner relationship confirmed via answer:', socket.id, '↔', partnerSocketId)
-      
-      console.log('✅ SERVER: Sending webrtc_answer from', socket.id, 'to', partnerSocketId)
-      io.to(partnerSocketId).emit('webrtc_answer', {
-        answer: data.answer,
-        from: socket.id
-      })
-      console.log('✅ SERVER: webrtc_answer sent successfully')
-    } else {
-      console.error('❌ SERVER: Cannot send webrtc_answer - userId or partnerSocketId missing')
+    try {
+      const partnerSocketId = data.to
+      console.log('📨 SERVER: Received webrtc_answer from socket:', socket.id)
+      console.log('📨 SERVER: Target partner socket ID:', partnerSocketId)
+
+      // ✅ FIX: Don't require userId - just relay based on target socket ID
+      if (partnerSocketId) {
+        // Track partnership
+        partnerSockets.set(socket.id, partnerSocketId)
+        partnerSockets.set(partnerSocketId, socket.id)
+        console.log('✅ Partner relationship confirmed via answer:', socket.id, '↔', partnerSocketId)
+
+        console.log('✅ SERVER: Sending webrtc_answer from', socket.id, 'to', partnerSocketId)
+        io.to(partnerSocketId).emit('webrtc_answer', {
+          answer: data.answer,
+          from: socket.id
+        })
+        console.log('✅ SERVER: webrtc_answer sent successfully')
+      } else {
+        console.error('❌ SERVER: Cannot send webrtc_answer - no target socket ID')
+      }
+    } catch (error) {
+      console.error('🚨 [webrtc_answer] Error:', error.message)
+      console.error('   Stack:', error.stack)
     }
   })
 
   // Handle ICE Candidate
   socket.on('ice_candidate', (data) => {
-    const userId = userSockets.get(socket.id)
-    const partnerSocketId = data.to
-    console.log('🧊 SERVER: Received ICE candidate from socket:', socket.id)
-    console.log('🧊 SERVER: Target partner socket ID:', partnerSocketId)
-    
-    // ✅ CRITICAL: Also track partnership via ICE candidates (belt and suspenders approach)
-    if (partnerSocketId) {
-      partnerSockets.set(socket.id, partnerSocketId)
-      partnerSockets.set(partnerSocketId, socket.id)
+    try {
+      const partnerSocketId = data.to
+
+      // ✅ FIX: Don't require userId - just relay ICE candidates based on target socket ID
+      if (partnerSocketId) {
+        partnerSockets.set(socket.id, partnerSocketId)
+        partnerSockets.set(partnerSocketId, socket.id)
+
+        io.to(partnerSocketId).emit('ice_candidate', {
+          candidate: data.candidate,
+          from: socket.id
+        })
+      } else {
+        console.error('❌ SERVER: Cannot send ICE candidate - no target socket ID')
+      }
+    } catch (error) {
+      console.error('🚨 [ice_candidate] Error:', error.message)
+      console.error('   Stack:', error.stack)
     }
-    
-    if (userId && partnerSocketId) {
-      console.log('✅ SERVER: Sending ICE candidate from', socket.id, 'to', partnerSocketId)
-      io.to(partnerSocketId).emit('ice_candidate', {
-        candidate: data.candidate,
-        from: socket.id
+  })
+
+  // ✅ SKIP USER - Notify partner when user skips (server.js handler with partnerSockets access)
+  socket.on('skip_user', async (data) => {
+    try {
+      const partnerSocketId = data?.partnerSocketId
+
+      console.log('\n⏭️ [SKIP_USER - server.js] Skip request received')
+      console.log('   From socket:', socket.id)
+      console.log('   Target partner socket:', partnerSocketId)
+      console.log('   partnerSockets map size:', partnerSockets.size)
+
+      // ✅ Try data.partnerSocketId first, then fall back to partnerSockets map
+      let targetSocketId = partnerSocketId
+      if (!targetSocketId) {
+        targetSocketId = partnerSockets.get(socket.id)
+        console.log('   Looked up partner from partnerSockets map:', targetSocketId)
+      }
+
+      if (!targetSocketId) {
+        console.error('❌ [SKIP_USER - server.js] No partner found for socket:', socket.id)
+        return
+      }
+
+      // 📤 CRITICAL: Notify partner that they were skipped
+      console.log('📢 [SKIP_USER - server.js] Emitting user_skipped to:', targetSocketId)
+      io.to(targetSocketId).emit('user_skipped', {
+        message: 'Your partner skipped you.',
+        skippedBy: userSockets.get(socket.id) || socket.id
       })
-    } else {
-      console.error('❌ SERVER: Cannot send ICE candidate - userId or partnerSocketId missing')
+      console.log('✅ [SKIP_USER - server.js] user_skipped event SENT to partner')
+
+      // 🧹 Clean up partnerSockets mapping
+      partnerSockets.delete(socket.id)
+      partnerSockets.delete(targetSocketId)
+      console.log('🧹 [SKIP_USER - server.js] Cleaned partnerSockets mapping')
+
+      // 🧹 Clean up activeChats
+      const userId = userSockets.get(socket.id)
+      const partnerUserId = userSockets.get(targetSocketId)
+      if (userId && activeChats.has(userId)) {
+        activeChats.delete(userId)
+        console.log('🧹 [SKIP_USER - server.js] Removed', userId, 'from activeChats')
+      }
+      if (partnerUserId && activeChats.has(partnerUserId)) {
+        activeChats.delete(partnerUserId)
+        console.log('🧹 [SKIP_USER - server.js] Removed', partnerUserId, 'from activeChats')
+      }
+
+      // 🧹 Clean up Redis active_sessions + DB on skip
+      const sessionId = socket.sessionId
+      if (sessionId) {
+        try {
+          await redis.sRem('active_sessions', sessionId)
+          await redis.del(`session:${sessionId}`)
+          activeSessions.delete(sessionId)
+          console.log('🧹 [SKIP_USER] Session removed from Redis:', sessionId)
+
+          // ✅ Emit real-time event to admin panel
+          io.emit('session:removed', {
+            sessionId: sessionId,
+            endedBy: 'skip',
+            endedAt: new Date().toISOString()
+          })
+
+          // Also update DB
+          const durationSeconds = socket.callStartTime
+            ? Math.floor((Date.now() - socket.callStartTime) / 1000)
+            : 0
+          await prisma.sessions.update({
+            where: { id: sessionId },
+            data: { ended_at: new Date(), duration_seconds: durationSeconds }
+          }).catch(e => console.error('DB session update error:', e.message))
+        } catch (redisErr) {
+          console.error('⚠️ [SKIP_USER] Redis cleanup error:', redisErr.message)
+        }
+      }
+
+    } catch (error) {
+      console.error('🚨 [SKIP_USER - server.js] Error:', error.message)
+    }
+  })
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🎯 OMEGLE-STYLE: Handle user inactivity/tab close disconnect
+  // ═══════════════════════════════════════════════════════════════
+  socket.on('user_inactive_disconnect', (data) => {
+    try {
+      const { userId, partnerId, reason } = data || {}
+      console.log('\n🚪 [INACTIVE_DISCONNECT] Reason:', reason, '| User:', userId || socket.id)
+
+      // Find partner socket
+      let targetSocketId = partnerSockets.get(socket.id)
+      if (!targetSocketId && partnerId) {
+        for (const [sockId, uId] of userSockets.entries()) {
+          if (uId === partnerId) { targetSocketId = sockId; break }
+        }
+      }
+
+      if (targetSocketId) {
+        io.to(targetSocketId).emit('user_skipped', {
+          message: 'Your partner disconnected.',
+          skippedBy: userId || socket.id
+        })
+        console.log('📢 [INACTIVE_DISCONNECT] Partner notified:', targetSocketId)
+      }
+
+      // Cleanup
+      partnerSockets.delete(socket.id)
+      if (targetSocketId) partnerSockets.delete(targetSocketId)
+      const socketUserId = userSockets.get(socket.id)
+      const partnerUserId = targetSocketId ? userSockets.get(targetSocketId) : null
+      if (socketUserId) activeChats.delete(socketUserId)
+      if (partnerUserId) activeChats.delete(partnerUserId)
+      console.log('✅ [INACTIVE_DISCONNECT] Cleanup complete')
+    } catch (error) {
+      console.error('🚨 [INACTIVE_DISCONNECT] Error:', error.message)
+    }
+  })
+
+  // ═════════════════════════════════════════════════════════════
+  // 👁️ ADMIN SPECTATOR MODE — Hidden 3rd Peer
+  // Admin connects as receive-only. Users silently send streams.
+  // ═════════════════════════════════════════════════════════════
+
+  // Admin clicks "View" → connects here and asks to spectate
+  socket.on('admin:spectate', (data) => {
+    try {
+      const { sessionId } = data
+      const spectatorSocketId = socket.id
+
+      console.log('\n👁️ [ADMIN SPECTATE] Admin requesting to spectate session:', sessionId)
+      console.log('   Admin socket ID:', spectatorSocketId)
+
+      // Look up the session from in-memory activeSessions map
+      const session = activeSessions.get(sessionId)
+      if (!session) {
+        console.error('❌ [ADMIN SPECTATE] Session not found in activeSessions:', sessionId)
+        socket.emit('spectator:error', { message: 'Session not found or already ended' })
+        return
+      }
+
+      const { socketId1, socketId2 } = session
+      console.log('   User 1 socket:', socketId1)
+      console.log('   User 2 socket:', socketId2)
+
+      // Verify both sockets are still connected
+      const sock1 = io.sockets.sockets.get(socketId1)
+      const sock2 = io.sockets.sockets.get(socketId2)
+
+      if (!sock1 && !sock2) {
+        console.error('❌ [ADMIN SPECTATE] Both users disconnected')
+        socket.emit('spectator:error', { message: 'Both users have disconnected' })
+        return
+      }
+
+      console.log('✅ [ADMIN SPECTATE] Telling users to send streams to admin spectator')
+
+      // Tell each connected user to create a send-only PeerConnection to the spectator
+      // This event is handled SILENTLY on the client — no UI indication
+      if (sock1) {
+        sock1.emit('spectator:send_stream', {
+          spectatorSocketId: spectatorSocketId,
+          sessionId: sessionId,
+          participantLabel: 'user1'
+        })
+        console.log('   → Told user1 (', socketId1, ') to send stream')
+      }
+
+      if (sock2) {
+        sock2.emit('spectator:send_stream', {
+          spectatorSocketId: spectatorSocketId,
+          sessionId: sessionId,
+          participantLabel: 'user2'
+        })
+        console.log('   → Told user2 (', socketId2, ') to send stream')
+      }
+
+      // Confirm to admin that spectator mode is initiated
+      socket.emit('spectator:ready', {
+        sessionId,
+        user1Connected: !!sock1,
+        user2Connected: !!sock2
+      })
+
+    } catch (error) {
+      console.error('🚨 [admin:spectate] Error:', error.message)
+      socket.emit('spectator:error', { message: error.message })
+    }
+  })
+
+  // User created an offer for the spectator — relay to admin
+  socket.on('spectator:offer', (data) => {
+    try {
+      const { offer, to, sessionId, participantLabel } = data
+      console.log('👁️ [SPECTATOR] Offer from user', socket.id, '→ admin', to, '| label:', participantLabel)
+      if (to && offer) {
+        const targetSocket = io.sockets.sockets.get(to)
+        if (targetSocket) {
+          io.to(to).emit('spectator:offer', {
+            offer,
+            from: socket.id,
+            sessionId,
+            participantLabel
+          })
+          console.log('✅ [SPECTATOR] Offer relayed successfully to admin', to)
+        } else {
+          console.error('❌ [SPECTATOR] Admin socket NOT FOUND:', to)
+        }
+      } else {
+        console.error('❌ [SPECTATOR] Missing to or offer in spectator:offer')
+      }
+    } catch (error) {
+      console.error('🚨 [spectator:offer] Error:', error.message)
+    }
+  })
+
+  // Admin sends answer back to user — relay
+  socket.on('spectator:answer', (data) => {
+    try {
+      const { answer, to, sessionId } = data
+      console.log('👁️ [SPECTATOR] Answer from admin', socket.id, '→ user', to)
+      if (to && answer) {
+        const targetSocket = io.sockets.sockets.get(to)
+        if (targetSocket) {
+          io.to(to).emit('spectator:answer', {
+            answer,
+            from: socket.id,
+            sessionId
+          })
+          console.log('✅ [SPECTATOR] Answer relayed successfully to user', to)
+        } else {
+          console.error('❌ [SPECTATOR] User socket NOT FOUND:', to)
+        }
+      } else {
+        console.error('❌ [SPECTATOR] Missing to or answer in spectator:answer')
+      }
+    } catch (error) {
+      console.error('🚨 [spectator:answer] Error:', error.message)
+    }
+  })
+
+  // ICE candidate relay for spectator connections
+  socket.on('spectator:ice_candidate', (data) => {
+    try {
+      const { candidate, to, sessionId } = data
+      if (to && candidate) {
+        io.to(to).emit('spectator:ice_candidate', {
+          candidate,
+          from: socket.id,
+          sessionId
+        })
+      }
+    } catch (error) {
+      console.error('🚨 [spectator:ice_candidate] Error:', error.message)
     }
   })
 
   // Handle skip user
   // Handle cancel matching - user clicks "Back" or navigates away while waiting
   socket.on('cancel_matching', async (data) => {
-    const userId = userSockets.get(socket.id)
-    
-    if (!userId) {
-      console.log(`[cancel_matching] ⚠️ No userId found for socket ${socket.id}`)
-      return
-    }
-    
-    console.log(`\n📋 [cancel_matching] User ${userId} cancelled matching`)
-    console.log(`[cancel_matching] Socket ID: ${socket.id}`)
-    
-    // Remove user from matching queue
-    const removedCount = await removeUserFromQueue(userId)
-    if (removedCount > 0) {
-      console.log(`✅ [cancel_matching] Removed ${removedCount} queue entries for user ${userId}`)
-    } else {
-      console.log(`ℹ️ [cancel_matching] User ${userId} was not in queue`)
-    }
-    
-    // Mark user as offline
-    await setUserOffline(userId)
-    console.log(`✅ [cancel_matching] User ${userId} marked as offline`)
-    
-    // Remove socket mapping
-    userSockets.delete(socket.id)
-    console.log(`✅ [cancel_matching] Removed socket mapping for ${socket.id}`)
-  })
+    try {
+      const userId = userSockets.get(socket.id)
 
-  socket.on('skip_user', async (data) => {
-    const userId = userSockets.get(socket.id)
-    const partnerSocketId = data?.partnerSocketId
-    
-    if (userId && partnerSocketId) {
-      // ===== SKIP LIMIT CHECK (130/day for normal users, unlimited for plan holders) =====
-      try {
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        const { rows: skipRows } = await pool.query(
-          `SELECT daily_skip_count, last_skip_reset_date, has_unlimited_skip, unlimited_skip_expires_at FROM users WHERE id = $1`,
-          [userId]
-        );
-        if (skipRows.length > 0) {
-          const u = skipRows[0];
-          const hasUnlimitedSkip = !!(u.has_unlimited_skip && u.unlimited_skip_expires_at && new Date(u.unlimited_skip_expires_at) > new Date());
-          let currentCount = u.daily_skip_count || 0;
-          const lastReset = u.last_skip_reset_date ? new Date(u.last_skip_reset_date).toISOString().split('T')[0] : null;
-
-          // Reset count if new day
-          if (lastReset !== today) {
-            currentCount = 0;
-            await pool.query(
-              `UPDATE users SET daily_skip_count = 0, last_skip_reset_date = $1 WHERE id = $2`,
-              [today, userId]
-            );
-          }
-
-          if (!hasUnlimitedSkip && currentCount >= 130) {
-            console.log(`[skip_user] ⛔ User ${userId} hit daily skip limit (${currentCount}/130)`);
-            socket.emit('skip_limit_reached', { message: 'You have reached your daily skip limit (130). Upgrade to Unlimited Skip for no limits!', dailyCount: currentCount, limit: 130 });
-            return;
-          }
-
-          // Increment skip count
-          await pool.query(
-            `UPDATE users SET daily_skip_count = daily_skip_count + 1, last_skip_reset_date = $1 WHERE id = $2`,
-            [today, userId]
-          );
-          console.log(`[skip_user] 📊 User ${userId} skip count: ${currentCount + 1}${hasUnlimitedSkip ? ' (unlimited plan)' : '/130'}`)
-        }
-      } catch (skipErr) {
-        console.error(`[skip_user] ⚠️ Error checking skip limit:`, skipErr.message);
-        // Don't block skip on error - allow it
+      if (!userId) {
+        console.log(`[cancel_matching] ⚠️ No userId found for socket ${socket.id}`)
+        return
       }
-      // ===== END SKIP LIMIT CHECK =====
 
-      console.log(`[skip_user] ${userId} skipping ${partnerSocketId}`)
-      
-      // ✅ CRITICAL: Save match to database when skipping - FOR BOTH USERS
-      if (socket.callStartTime && socket.partner) {
-        try {
-          const durationSeconds = Math.floor(
-            (Date.now() - socket.callStartTime) / 1000
-          )
-          
-          console.log(`\n💾 Saving match history for user ${userId} (skip)`)
-          console.log(`   Partner: ${socket.partner.id}`)
-          console.log(`   Duration: ${durationSeconds}s`)
-          
-          // Save match for the skipper
-          await pool.query(
-            `INSERT INTO matches
-             (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [
-              userId,
-              socket.partner.id,
-              socket.partner.name,
-              socket.partner.country,
-              durationSeconds
-            ]
-          )
-          console.log(`✅ Match saved for skipper ${userId}`)
-          
-          // ✅ Also save match for the PARTNER (reverse)
-          const partnerSocket = io.sockets.sockets.get(socket.partner.socketId)
-          const partnerUserId = userSockets.get(socket.partner.socketId)
-          if (partnerSocket && partnerUserId && partnerSocket.partner) {
-            await pool.query(
-              `INSERT INTO matches
-               (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
-               VALUES ($1, $2, $3, $4, $5)`,
-              [
-                partnerUserId,
-                partnerSocket.partner.id,
-                partnerSocket.partner.name,
-                partnerSocket.partner.country,
-                durationSeconds
-              ]
-            )
-            console.log(`✅ Match saved for partner ${partnerUserId} (skip)`)
-            partnerSocket.callStartTime = null
-            partnerSocket.partner = null
-          }
-          
-          // Clear tracking
-          socket.callStartTime = null
-          socket.partner = null
-        } catch (error) {
-          console.error(`❌ Error saving match to database:`, error)
-        }
-      }
-      
-      // Notify partner
-      io.to(partnerSocketId).emit('user_skipped')
-      
-      // Try to find new partner - LOOP UNTIL DIFFERENT USER
-      let waitingUser = await getNextFromQueue()
-      while (waitingUser && waitingUser.userId === userId) {
-        console.log(`[skip_user] ⚠️ Skipping self-match: ${waitingUser.userId} === ${userId}`)
-        waitingUser = await getNextFromQueue()
-      }
-      
-      if (waitingUser) {
-        console.log(`[skip_user] ✅ Found different partner: ${waitingUser.userId}`)
-        matchUsers(socket.id, userId, waitingUser.socketId, waitingUser.userId, {}, waitingUser)
+      console.log(`\n📋 [cancel_matching] User ${userId} cancelled matching`)
+      console.log(`[cancel_matching] Socket ID: ${socket.id}`)
+
+      // Remove user from matching queue
+      const removedCount = await removeUserFromQueue(userId)
+      if (removedCount > 0) {
+        console.log(`✅ [cancel_matching] Removed ${removedCount} queue entries for user ${userId}`)
       } else {
-        socket.emit('waiting', { message: 'Waiting for a new partner...' })
+        console.log(`ℹ️ [cancel_matching] User ${userId} was not in queue`)
       }
-    } else {
-      console.log(`[skip_user] ⚠️ Invalid skip_user request - userId: ${userId}, partnerSocketId: ${partnerSocketId}`)
+
+      // Mark user as offline
+      await setUserOffline(userId)
+      console.log(`✅ [cancel_matching] User ${userId} marked as offline`)
+
+      // Remove socket mapping
+      userSockets.delete(socket.id)
+      console.log(`✅ [cancel_matching] Removed socket mapping for ${socket.id}`)
+    } catch (error) {
+      console.error('🚨 [cancel_matching] Error:', error.message)
+      console.error('   Stack:', error.stack)
+      // Continue without crashing
     }
   })
 
@@ -3819,7 +5459,7 @@ io.on('connection', (socket) => {
   socket.on('skip_profile', (data) => {
     const userId = userSockets.get(socket.id)
     console.log(`[skip_profile] User ${userId} skipped profile at index ${data.currentProfileIndex}`)
-    
+
     // Broadcast to all connected clients that this profile was skipped
     io.emit('profile_skipped', {
       skippedUserId: data.skippedUserId,
@@ -3833,27 +5473,67 @@ io.on('connection', (socket) => {
     console.log(`\n\n\n========================================`)
     console.log(`❌ USER DISCONNECTED: ${socket.id}`)
     console.log(`⏰ Time: ${new Date().toISOString()}`)
-    
+
     const userId = userSockets.get(socket.id)
     const partnerSocketId = partnerSockets.get(socket.id)
-    
+
     console.log(`📋 Disconnect Details:`)
     console.log(`   userId: ${userId || 'NOT FOUND'}`)
     console.log(`   partnerSocketId: ${partnerSocketId || 'NOT FOUND'}`)
     console.log(`   partnerSockets size: ${partnerSockets.size}`)
     console.log(`   All tracked partners:`, Array.from(partnerSockets.entries()))
-    
+
+    // ✅ UPDATE SESSION IN DATABASE - Mark as ended
+    if (socket.sessionId) {
+      try {
+        const durationSeconds = socket.callStartTime
+          ? Math.floor((Date.now() - socket.callStartTime) / 1000)
+          : 0
+
+        await prisma.sessions.update({
+          where: { id: socket.sessionId },
+          data: {
+            ended_at: new Date(),
+            duration_seconds: durationSeconds
+          }
+        })
+        console.log(`✅ Session ${socket.sessionId} marked as ended in database (duration: ${durationSeconds}s)`)
+      } catch (error) {
+        console.error(`❌ Error updating session in database:`, error.message)
+      }
+
+      // ✅ CRITICAL: Remove session from Redis active_sessions
+      try {
+        await redis.sRem('active_sessions', socket.sessionId)
+        await redis.del(`session:${socket.sessionId}`)
+        activeSessions.delete(socket.sessionId)
+        console.log(`✅ Session ${socket.sessionId} removed from Redis active_sessions`)
+
+        // ✅ Emit real-time event to admin panel
+        io.emit('session:removed', {
+          sessionId: socket.sessionId,
+          endedBy: 'disconnect',
+          endedAt: new Date().toISOString()
+        })
+      } catch (redisErr) {
+        console.error(`❌ Error removing session from Redis:`, redisErr.message)
+      }
+    }
+
     // ✅ CRITICAL: Save match to database if call was active - FOR BOTH USERS
+    let partnerUserId = null
     if (userId && socket.callStartTime && socket.partner) {
       try {
         const durationSeconds = Math.floor(
           (Date.now() - socket.callStartTime) / 1000
         )
-        
+
         console.log(`\n💾 Saving match history for user ${userId} (disconnect)`)
         console.log(`   Partner: ${socket.partner.id}`)
         console.log(`   Duration: ${durationSeconds}s`)
-        
+
+        partnerUserId = socket.partner.id
+
         // Save match for the disconnecting user
         await pool.query(
           `INSERT INTO matches
@@ -3868,24 +5548,24 @@ io.on('connection', (socket) => {
           ]
         )
         console.log(`✅ Match saved for disconnecting user ${userId}`)
-        
+
         // ✅ Also save match for the PARTNER (reverse)
         const partnerSocket = io.sockets.sockets.get(socket.partner.socketId)
-        const partnerUserId = userSockets.get(socket.partner.socketId)
-        if (partnerSocket && partnerUserId && partnerSocket.partner) {
+        const realPartnerUserId = userSockets.get(socket.partner.socketId)
+        if (partnerSocket && realPartnerUserId && partnerSocket.partner) {
           await pool.query(
             `INSERT INTO matches
              (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
              VALUES ($1, $2, $3, $4, $5)`,
             [
-              partnerUserId,
+              realPartnerUserId,
               partnerSocket.partner.id,
               partnerSocket.partner.name,
               partnerSocket.partner.country,
               durationSeconds
             ]
           )
-          console.log(`✅ Match saved for partner ${partnerUserId} (disconnect)`)
+          console.log(`✅ Match saved for partner ${realPartnerUserId} (disconnect)`)
           partnerSocket.callStartTime = null
           partnerSocket.partner = null
         }
@@ -3893,39 +5573,51 @@ io.on('connection', (socket) => {
         console.error(`❌ Error saving match to database:`, error)
       }
     }
-    
+
+    // ✅ SET COOLDOWN between users when call ends (25-30 seconds)
+    if (userId && partnerUserId) {
+      await setRecentPartnerCooldown(userId, partnerUserId, 25)
+    }
+
     if (userId) {
       // Mark user as offline in Redis
       await setUserOffline(userId)
-      
+
       // CRITICAL: Remove user from matching queue on disconnect
       // This prevents them from matching with their old queue entry when they reconnect
       const removedCount = await removeUserFromQueue(userId)
       if (removedCount > 0) {
         console.log(`🧹 CRITICAL: Removed ${removedCount} queue entries for user ${userId} from matching queue`)
       }
-      
+
       // Remove from socket mapping
       userSockets.delete(socket.id)
       console.log(`✅ Removed userId mapping for socket: ${socket.id}`)
+
+      // ✅ CRITICAL: Remove user from activeChats when they disconnect
+      if (activeChats.has(userId)) {
+        activeChats.delete(userId)
+        console.log(`✅ [ACTIVE-CHATS] Removed user ${userId} from active chats`)
+        console.log(`   Total active chats now: ${activeChats.size}`)
+      }
     }
-    
+
     // ✅ CRITICAL: Notify partner about disconnection
     if (partnerSocketId) {
       console.log(`\n🔔 🔔 🔔 NOTIFYING PARTNER ABOUT DISCONNECT 🔔 🔔 🔔`)
       console.log(`🔔 Sending partner_disconnected to: ${partnerSocketId}`)
       console.log(`🔔 From disconnected socket: ${socket.id}`)
       console.log(`🔔 Reason: Partner closed browser/tab`)
-      
+
       // Send disconnect event to partner
       io.to(partnerSocketId).emit('partner_disconnected', {
         reason: 'Partner closed browser/tab',
         disconnectedSocketId: socket.id,
         timestamp: new Date().toISOString()
       })
-      
+
       console.log(`✅ partner_disconnected emitted to socket: ${partnerSocketId}`)
-      
+
       // Clean up partner's mapping
       partnerSockets.delete(partnerSocketId)
       console.log(`✅ Cleaned up partner socket mapping for: ${partnerSocketId}`)
@@ -3934,7 +5626,7 @@ io.on('connection', (socket) => {
       console.warn(`⚠️ This peer may have never established WebRTC connection`)
       console.warn(`⚠️ partnerSockets has ${partnerSockets.size} entries`)
     }
-    
+
     // Clean up this socket's partner mapping
     partnerSockets.delete(socket.id)
     console.log(`✅ Disconnection cleanup complete for socket: ${socket.id}`)
@@ -3945,11 +5637,23 @@ io.on('connection', (socket) => {
 // Matching Function - BULLETPROOF VERSION
 async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, userData2) {
   console.log('\n\n╔════════════════════════════════════════════════════════════╗')
-  console.log('║          🎯 MATCHUSERS - BULLETPROOF MATCHING 🎯           ║')
+  console.log('║          🎯 MATCHUSERS CALLED 🎯 - CRITICAL LOG 🎯           ║')
+  console.log('║     This means matching is ABOUT TO HAPPEN                    ║')
   console.log('╚════════════════════════════════════════════════════════════╝')
-  
+
+  // ✅ LOG THE INCOMING DATA
+  console.log('\n📥 [FUNCTION INPUT] matchUsers() called with:')
+  console.log(`   userId1: "${userId1}"`)
+  console.log(`   userId2: "${userId2}"`)
+  console.log(`   socketId1: "${socketId1.substring(0, 8)}..."`)
+  console.log(`   socketId2: "${socketId2.substring(0, 8)}..."`)
+  console.log(`   userData1:`, JSON.stringify(userData1, null, 2))
+  console.log(`   userData2:`, JSON.stringify(userData2, null, 2))
+  console.log(`   userData1.userName: "${userData1?.userName}" (CRITICAL TO TRACK!)`)
+  console.log(`   userData2.userName: "${userData2?.userName}" (CRITICAL TO TRACK!)`)
+
   // CRITICAL: Prevent self-matching with multiple checks
-  
+
   // Check 1: userId must be different
   if (userId1 === userId2) {
     console.error('❌ CRITICAL: ATTEMPTED SELF-MATCH DETECTED (userId comparison)!')
@@ -3958,7 +5662,7 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     console.error('   Aborting match...')
     return
   }
-  
+
   // Check 2: socketId must be different
   if (socketId1 === socketId2) {
     console.error('❌ CRITICAL: ATTEMPTED SELF-MATCH DETECTED (socketId comparison)!')
@@ -3973,10 +5677,10 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   console.log('\n✓ STEP 1: Validating socket connections exist')
   const socket1Exists = io.sockets.sockets.has(socketId1)
   const socket2Exists = io.sockets.sockets.has(socketId2)
-  
+
   console.log(`   Socket1 (${socketId1}) exists?`, socket1Exists)
   console.log(`   Socket2 (${socketId2}) exists?`, socket2Exists)
-  
+
   if (!socket1Exists || !socket2Exists) {
     console.error('❌ CRITICAL: One or both sockets do NOT exist!')
     console.error(`   Socket1: ${socketId1} = ${socket1Exists}`)
@@ -3984,19 +5688,26 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     console.error('   Cannot match users - aborting')
     return
   }
-  
+
   console.log(`✅ SELF-MATCH CHECKS PASSED:`)
   console.log(`   userId1: ${userId1} !== userId2: ${userId2}`)
   console.log(`   socketId1: ${socketId1} !== socketId2: ${socketId2}`)
   console.log(`   Both sockets exist in socket.io`)
-  
-  // ✅ CRITICAL: Fetch location from DATABASE for both users (frontend may send 'Unknown' if IP detection hasn't completed)
+
+  // ✅ CRITICAL: Fetch user data from DATABASE (display_name, location, age, photo_url, etc)
+  let dbUser1, dbUser2;
   try {
-    const [dbUser1, dbUser2] = await Promise.all([
-      prisma.users.findUnique({ where: { id: userId1 }, select: { location: true, display_name: true, has_blue_tick: true, blue_tick_expires_at: true } }),
-      prisma.users.findUnique({ where: { id: userId2 }, select: { location: true, display_name: true, has_blue_tick: true, blue_tick_expires_at: true } })
+    [dbUser1, dbUser2] = await Promise.all([
+      prisma.users.findUnique({ where: { id: userId1 }, select: { location: true, display_name: true, age: true, photo_url: true, has_blue_tick: true, blue_tick_expires_at: true } }),
+      prisma.users.findUnique({ where: { id: userId2 }, select: { location: true, display_name: true, age: true, photo_url: true, has_blue_tick: true, blue_tick_expires_at: true } })
     ]);
-    
+
+    console.log(`\n🔍 [DB FETCH RESULTS]:`)
+    console.log(`   dbUser1 complete object:`, JSON.stringify(dbUser1, null, 2))
+    console.log(`   dbUser2 complete object:`, JSON.stringify(dbUser2, null, 2))
+    console.log(`   dbUser1.display_name value: "${dbUser1?.display_name}" (null? ${dbUser1?.display_name === null}, undefined? ${dbUser1?.display_name === undefined})`)
+    console.log(`   dbUser2.display_name value: "${dbUser2?.display_name}" (null? ${dbUser2?.display_name === null}, undefined? ${dbUser2?.display_name === undefined})`)
+
     // Enrich blue tick status (check expiry)
     const now = new Date();
     if (userData1) {
@@ -4005,37 +5716,146 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     if (userData2) {
       userData2.hasBlueTick = !!(dbUser2?.has_blue_tick && dbUser2?.blue_tick_expires_at && new Date(dbUser2.blue_tick_expires_at) > now);
     }
-    
-    console.log(`📍 [DB LOCATION] User1 DB location: "${dbUser1?.location || 'null'}", Frontend location: "${userData1?.userLocation || 'null'}"`)
-    console.log(`📍 [DB LOCATION] User2 DB location: "${dbUser2?.location || 'null'}", Frontend location: "${userData2?.userLocation || 'null'}"`)
-    
-    // ✅ ALWAYS use DB location (most up-to-date from IP detection)
+
+    console.log(`👤 [DB DATA] User1 - name: "${dbUser1?.display_name || 'null'}", location: "${dbUser1?.location || 'null'}", age: ${dbUser1?.age || 'null'}`)
+    console.log(`👤 [DB DATA] User2 - name: "${dbUser2?.display_name || 'null'}", location: "${dbUser2?.location || 'null'}", age: ${dbUser2?.age || 'null'}`)
+
+    // ✅ Map display_name -> userName, location -> userLocation, age -> userAge, profile_picture_url -> userPicture
     if (userData1) {
+      if (dbUser1?.display_name) {
+        userData1.userName = dbUser1.display_name;
+        console.log(`✅ [MAPPING] User1 name: ${dbUser1.display_name}`);
+      }
       if (dbUser1?.location) {
         userData1.userLocation = dbUser1.location;
       } else if (!userData1.userLocation) {
         userData1.userLocation = 'Unknown';
       }
+      if (dbUser1?.age) {
+        userData1.userAge = dbUser1.age;
+      }
+      if (dbUser1?.photo_url && !userData1.userPicture) {
+        userData1.userPicture = dbUser1.photo_url;
+      }
     }
     if (userData2) {
+      if (dbUser2?.display_name) {
+        userData2.userName = dbUser2.display_name;
+        console.log(`✅ [MAPPING] User2 name: ${dbUser2.display_name}`);
+      }
       if (dbUser2?.location) {
         userData2.userLocation = dbUser2.location;
       } else if (!userData2.userLocation) {
         userData2.userLocation = 'Unknown';
       }
+      if (dbUser2?.age) {
+        userData2.userAge = dbUser2.age;
+      }
+      if (dbUser2?.photo_url && !userData2.userPicture) {
+        userData2.userPicture = dbUser2.photo_url;
+      }
     }
-    console.log(`📍 [FINAL] User1 location: "${userData1?.userLocation}", User2 location: "${userData2?.userLocation}"`)
+    console.log(`✅ [FINAL] User1: ${userData1?.userName || 'Anonymous'} (${userData1?.userAge || 'unknown age'}) from ${userData1?.userLocation}`)
+    console.log(`✅ [FINAL] User2: ${userData2?.userName || 'Anonymous'} (${userData2?.userAge || 'unknown age'}) from ${userData2?.userLocation}`)
   } catch (dbLocErr) {
     console.warn('⚠️ Could not fetch locations from DB:', dbLocErr.message);
+  }
+
+  // ✅ CRITICAL: Clean up any OLD sessions from previous matches for BOTH sockets
+  // This prevents stale/duplicate sessions from appearing in admin Live Sessions
+  try {
+    const socket1Obj = io.sockets.sockets.get(socketId1)
+    const socket2Obj = io.sockets.sockets.get(socketId2)
+    const oldSessionIds = new Set()
+
+    if (socket1Obj?.sessionId) oldSessionIds.add(socket1Obj.sessionId)
+    if (socket2Obj?.sessionId) oldSessionIds.add(socket2Obj.sessionId)
+
+    for (const oldSessionId of oldSessionIds) {
+      console.log(`🧹 [MATCH CLEANUP] Removing old session: ${oldSessionId}`)
+      await redis.sRem('active_sessions', oldSessionId)
+      await redis.del(`session:${oldSessionId}`)
+      activeSessions.delete(oldSessionId)
+
+      // Mark old session as ended in DB
+      try {
+        await prisma.sessions.update({
+          where: { id: oldSessionId },
+          data: {
+            ended_at: new Date(),
+            duration_seconds: socket1Obj?.callStartTime
+              ? Math.floor((Date.now() - socket1Obj.callStartTime) / 1000) : 0
+          }
+        })
+      } catch (e) { /* session may already be ended */ }
+
+      // Notify admin panel to remove stale session
+      io.emit('session:removed', {
+        sessionId: oldSessionId,
+        endedBy: 'rematch',
+        endedAt: new Date().toISOString()
+      })
+    }
+
+    // Clear old session references from both sockets
+    if (socket1Obj) { socket1Obj.sessionId = null; socket1Obj.callStartTime = null; socket1Obj.partner = null; }
+    if (socket2Obj) { socket2Obj.sessionId = null; socket2Obj.callStartTime = null; socket2Obj.partner = null; }
+  } catch (cleanupErr) {
+    console.error('⚠️ [MATCH CLEANUP] Error cleaning old sessions:', cleanupErr.message)
   }
 
   // Create session
   const sessionId = uuidv4()
   const startedAt = new Date()
-  
-  console.log('\n✓ STEP 2: Creating session')
+
+  console.log(`\n✓ STEP 2: Creating session`)
   console.log(`   sessionId: ${sessionId}`)
-  
+
+  // ✅ CRITICAL ORDER: Remove from queue FIRST, then add to activeChats
+  // This prevents another match from grabbing them while we're processing
+
+  console.log(`\n✓ STEP 2A: Removing matched users from queue (PRIORITY 1)`)
+  try {
+    // Build the queue entries to remove
+    const queueEntries = await redis.zRange('matching_queue', 0, -1)
+    let removed1 = false, removed2 = false
+
+    for (const entry of queueEntries) {
+      try {
+        const queuedUser = JSON.parse(entry)
+        if (queuedUser.userId === userId1) {
+          const removalResult = await redis.zRem('matching_queue', entry)
+          removed1 = true
+          console.log(`   ✅ Removed user1 (${userId1}) from queue - result: ${removalResult}`)
+        } else if (queuedUser.userId === userId2) {
+          const removalResult = await redis.zRem('matching_queue', entry)
+          removed2 = true
+          console.log(`   ✅ Removed user2 (${userId2}) from queue - result: ${removalResult}`)
+        }
+      } catch (parseErr) {
+        console.error(`   ❌ Error parsing queue entry:`, parseErr.message)
+      }
+    }
+
+    if (!removed1) console.warn(`   ⚠️ User1 (${userId1}) not found in queue`)
+    if (!removed2) console.warn(`   ⚠️ User2 (${userId2}) not found in queue`)
+
+    const queueLenAfterRemoval = await redis.zCard('matching_queue')
+    console.log(`   📊 Queue length after removal: ${queueLenAfterRemoval}`)
+  } catch (error) {
+    console.error('❌ Error removing users from queue:', error.message)
+  }
+
+  // ✅ STEP 2B: NOW add both users to activeChats AFTER removal
+  console.log(`\n✓ STEP 2B: Adding users to activeChats (PRIORITY 2)`)
+  activeChats.add(userId1)
+  activeChats.add(userId2)
+  console.log(`✅ [ACTIVE-CHATS] Added users to active chats:`)
+  console.log(`   ${userId1} -> activeChats`)
+  console.log(`   ${userId2} -> activeChats`)
+  console.log(`   Total active chats: ${activeChats.size}`)
+  console.log(`   All activeChat users:`, Array.from(activeChats))
+
   activeSessions.set(sessionId, {
     id: sessionId,
     socketId1: socketId1,
@@ -4055,22 +5875,49 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
       startedAt: startedAt.toISOString()
     })
     await redis.setEx(`session:${sessionId}`, 3600, sessionData) // 1 hour TTL
-    
+
     // Add to active sessions set
     await redis.sAdd('active_sessions', sessionId)
     console.log(`   ✅ Session stored in Redis`)
+
+    // ✅ Emit real-time event to admin panel
+    io.emit('session:live', {
+      sessionId: sessionId,
+      userId1: userId1,
+      userId2: userId2,
+      startedAt: startedAt.toISOString()
+    })
   } catch (error) {
     console.error('❌ Error storing session in Redis:', error)
+  }
+
+  // Store session in PostgreSQL database for admin panel visibility
+  try {
+    const dbSession = await prisma.sessions.create({
+      data: {
+        id: sessionId,
+        user1_id: userId1,
+        user2_id: userId2,
+        started_at: startedAt,
+        ended_at: null,
+        duration_seconds: 0,
+        quality: 'good'
+      }
+    })
+    console.log(`   ✅ Session stored in PostgreSQL database`)
+  } catch (error) {
+    console.error('❌ Error storing session in database:', error.message)
+    // Continue anyway - Redis session is stored
   }
 
   // CRITICAL: Join both users to a shared room before starting chat
   console.log('\n✓ STEP 3: Joining both users to shared room')
   const roomId = `${sessionId}:chat`
-  
+
   try {
     const socket1Obj = io.sockets.sockets.get(socketId1)
     const socket2Obj = io.sockets.sockets.get(socketId2)
-    
+
     if (!socket1Obj) {
       console.error(`❌ Cannot join room - Socket1 object is null!`)
     } else {
@@ -4079,7 +5926,7 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
       console.log(`✅ Socket1 joined room: ${roomId}`)
       console.log(`   Socket1 is now in ${roomsForSocket1.length} room(s): ${roomsForSocket1.join(', ')}`)
     }
-    
+
     if (!socket2Obj) {
       console.error(`❌ Cannot join room - Socket2 object is null!`)
     } else {
@@ -4088,7 +5935,7 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
       console.log(`✅ Socket2 joined room: ${roomId}`)
       console.log(`   Socket2 is now in ${roomsForSocket2.length} room(s): ${roomsForSocket2.join(', ')}`)
     }
-    
+
     // Verify both are in the same room
     const roomSockets = io.sockets.adapter.rooms.get(roomId)
     console.log(`\n📍 [ROOM CHECK] Room "${roomId}" now contains:`)
@@ -4111,22 +5958,22 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   console.log(`   ✅ Partner mapping stored:`)
   console.log(`      ${socketId1} <-> ${socketId2}`)
   console.log(`      ${socketId2} <-> ${socketId1}`)
-  
+
   // CRITICAL: Emit partner_found to BOTH users with full data
   console.log('\n✓ STEP 5: Emitting partner_found to BOTH users')
   console.log('╔════════════════════════════════════════════════════════════╗')
   console.log('║              🚀 SENDING PARTNER_FOUND EVENTS 🚀             ║')
   console.log('╚════════════════════════════════════════════════════════════╝')
-  
+
   // VERIFY SOCKETS ARE STILL CONNECTED BEFORE EMITTING
   const socket1Connected = io.sockets.sockets.has(socketId1)
   const socket2Connected = io.sockets.sockets.has(socketId2)
-  
+
   console.log(`\n🔌 [EMIT CHECK] Socket connection status:`)
   console.log(`   Socket1 (${socketId1.substring(0, 8)}...) connected? ${socket1Connected}`)
   console.log(`   Socket2 (${socketId2.substring(0, 8)}...) connected? ${socket2Connected}`)
   console.log(`   Total connected sockets on server: ${io.engine.clientsCount}`)
-  
+
   if (!socket1Connected || !socket2Connected) {
     console.error(`❌ [EMIT ERROR] One or both sockets disconnected AFTER partner check!`)
     console.error(`   Socket1 exists: ${socket1Connected}`)
@@ -4134,11 +5981,11 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     console.error(`   Cannot emit partner_found - sockets unavailable`)
     return
   }
-  
+
   // Get actual socket objects to verify they're valid
   const actualSocket1 = io.sockets.sockets.get(socketId1)
   const actualSocket2 = io.sockets.sockets.get(socketId2)
-  
+
   console.log(`\n🔍 [SOCKET DETAILS] Verifying socket object properties:`)
   console.log(`   Socket1:`)
   console.log(`     - exists: ${!!actualSocket1}`)
@@ -4148,7 +5995,39 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   console.log(`     - exists: ${!!actualSocket2}`)
   console.log(`     - connected: ${actualSocket2?.connected || false}`)
   console.log(`     - handshake.auth: ${!!actualSocket2?.handshake?.auth}`)
-  
+
+  // ✅ CRITICAL: Before building partner events, ensure userData has all required fields from DB
+  console.log(`\n🔍 [DATA CHECK] Verifying userData before building partner events:`)
+  console.log(`   userData1.userName: "${userData1?.userName}" (from DB: "${dbUser1?.display_name}")`)
+  console.log(`   userData2.userName: "${userData2?.userName}" (from DB: "${dbUser2?.display_name}")`)
+
+  // Ensure userData1 has correct userName from DB
+  if (!userData1 || !userData1.userName || userData1.userName === 'Anonymous') {
+    if (dbUser1?.display_name) {
+      if (!userData1) userData1 = {}
+      userData1.userName = dbUser1.display_name
+      console.log(`⚠️ [DATA FIX] Set userData1.userName from DB: ${dbUser1.display_name}`)
+    }
+  }
+
+  // Ensure userData2 has correct userName from DB
+  if (!userData2 || !userData2.userName || userData2.userName === 'Anonymous') {
+    if (dbUser2?.display_name) {
+      if (!userData2) userData2 = {}
+      userData2.userName = dbUser2.display_name
+      console.log(`⚠️ [DATA FIX] Set userData2.userName from DB: ${dbUser2.display_name}`)
+    }
+  }
+
+  console.log(`\n✅ [FINAL] Building partner events with confirmed data:`)
+  console.log(`   userData1: { userName: "${userData1?.userName}", userAge: ${userData1?.userAge}, userLocation: "${userData1?.userLocation}" }`)
+  console.log(`   userData2: { userName: "${userData2?.userName}", userAge: ${userData2?.userAge}, userLocation: "${userData2?.userLocation}" }`)
+
+  // ✅ CRITICAL: Verify what came from DB for each user
+  console.log(`\n🔍 [DB COMPARISON] What we got from database:`)
+  console.log(`   dbUser1.display_name: "${dbUser1?.display_name}" → userData1.userName: "${userData1?.userName}"`)
+  console.log(`   dbUser2.display_name: "${dbUser2?.display_name}" → userData2.userName: "${userData2?.userName}"`)
+
   // User 1 receives User 2's info
   const partnerFoundEvent1 = {
     partnerId: userId2,
@@ -4160,14 +6039,18 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     userPicture: userData2?.userPicture || null,
     hasBlueTick: userData2?.hasBlueTick || false
   }
-  
-  console.log(`\n📤 [EMIT1] Sending partner_found to User1 socket ${socketId1.substring(0, 8)}...`)
-  console.log(`   Partner: ${userId2} (${userData2?.userName || 'Anonymous'})`)
-  console.log(`   Event payload:`, JSON.stringify(partnerFoundEvent1, null, 2))
-  
+
+  console.log(`\n📤 [EMIT1] BEFORE sending - partner_found event to User1:`)
+  console.log(`   ⚠️ CRITICAL - What we're sending:`)
+  console.log(`   userData2 object:`, JSON.stringify(userData2, null, 2))
+  console.log(`   → userName field: "${userData2?.userName}"`)
+  console.log(`   → Result in event: "${partnerFoundEvent1.userName}"`)
+  console.log(`   Full payload being sent:`, JSON.stringify(partnerFoundEvent1, null, 2))
+
   try {
     // Use the actual socket object to emit
     if (actualSocket1) {
+      actualSocket1.sessionId = sessionId // Store sessionId on socket for later
       actualSocket1.emit('partner_found', partnerFoundEvent1)
       console.log(`✅ [EMIT1] partner_found emitted via socket object`)
     } else {
@@ -4179,7 +6062,7 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     console.error(`❌ [EMIT1] CRITICAL ERROR emitting to User1:`, emit1Err.message)
     console.error(`   Stack:`, emit1Err.stack)
   }
-  
+
   // User 2 receives User 1's info
   const partnerFoundEvent2 = {
     partnerId: userId1,
@@ -4191,14 +6074,18 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     userPicture: userData1?.userPicture || null,
     hasBlueTick: userData1?.hasBlueTick || false
   }
-  
-  console.log(`\n📤 [EMIT2] Sending partner_found to User2 socket ${socketId2.substring(0, 8)}...`)
-  console.log(`   Partner: ${userId1} (${userData1?.userName || 'Anonymous'})`)
-  console.log(`   Event payload:`, JSON.stringify(partnerFoundEvent2, null, 2))
-  
+
+  console.log(`\n📤 [EMIT2] BEFORE sending - partner_found event to User2:`)
+  console.log(`   ⚠️ CRITICAL - What we're sending:`)
+  console.log(`   userData1 object:`, JSON.stringify(userData1, null, 2))
+  console.log(`   → userName field: "${userData1?.userName}"`)
+  console.log(`   → Result in event: "${partnerFoundEvent2.userName}"`)
+  console.log(`   Full payload being sent:`, JSON.stringify(partnerFoundEvent2, null, 2))
+
   try {
     // Use the actual socket object to emit
     if (actualSocket2) {
+      actualSocket2.sessionId = sessionId // Store sessionId on socket for later
       actualSocket2.emit('partner_found', partnerFoundEvent2)
       console.log(`✅ [EMIT2] partner_found emitted via socket object`)
     } else {
@@ -4210,12 +6097,12 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
     console.error(`❌ [EMIT2] CRITICAL ERROR emitting to User2:`, emit2Err.message)
     console.error(`   Stack:`, emit2Err.stack)
   }
-  
+
   console.log(`\n✅ [EMIT COMPLETE] Both partner_found events processed`)
-  
+
   // Track call start time and partner info for both users
   console.log('\n✓ STEP 6: Storing call metadata')
-  
+
   try {
     const socket1 = io.sockets.sockets.get(socketId1)
     if (socket1) {
@@ -4232,7 +6119,7 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   } catch (e) {
     console.error('   ❌ Error storing socket1 metadata:', e.message)
   }
-  
+
   try {
     const socket2 = io.sockets.sockets.get(socketId2)
     if (socket2) {
@@ -4313,7 +6200,7 @@ app.post('/api/admin/send-warning', async (req, res) => {
     console.log(`   📊 Sockets in room: ${socketsInRoomCount}`)
     console.log(`   📊 Total connected clients: ${io.engine.clientsCount}`)
     console.log(`   📊 Online users map size: ${onlineUsers.size}`)
-    
+
     // List all online users
     if (onlineUsers.size > 0) {
       console.log(`   📋 Online users:`)
@@ -4327,7 +6214,7 @@ app.post('/api/admin/send-warning', async (req, res) => {
 
     // Emit warning event to user via Socket.IO
     console.log(`\n📢 [SEND WARNING] Emitting 'account_warning' event...`)
-    
+
     const warningPayload = {
       type: 'warning',
       message: 'Your account has been warned for violating community standards',
@@ -4336,10 +6223,10 @@ app.post('/api/admin/send-warning', async (req, res) => {
       lastWarningAt: warningData.last_warning_at,
       timestamp: new Date().toISOString()
     }
-    
+
     console.log(`   📦 Payload: ${JSON.stringify(warningPayload, null, 2)}`)
     console.log(`   🎯 Target room: ${userId}`)
-    
+
     io.to(userId).emit('account_warning', warningPayload)
 
     console.log(`✅ [SEND WARNING] Event emitted via io.to('${userId}').emit()`)
@@ -4504,9 +6391,163 @@ const PORT = process.env.PORT || 10000;
       console.log('📍 [STARTUP] Location fix query error:', fixErr.message);
     }
 
+    // ✅ CRITICAL: Cleanup orphaned sessions from previous server run
+    // When server restarts, all socket connections are lost but Redis still has stale sessions
+    console.log("[STARTUP] STEP 3.0 - Cleaning up orphaned sessions from previous run...");
+    try {
+      const staleSessionIds = await redis.sMembers('active_sessions')
+      if (staleSessionIds.length > 0) {
+        console.log(`🧹 [STARTUP] Found ${staleSessionIds.length} orphaned sessions in Redis — cleaning up`)
+        for (const sid of staleSessionIds) {
+          await redis.sRem('active_sessions', sid)
+          await redis.del(`session:${sid}`)
+          // Mark as ended in DB
+          try {
+            await prisma.sessions.update({
+              where: { id: sid },
+              data: { ended_at: new Date() }
+            })
+          } catch (e) { /* session may not exist or already ended */ }
+        }
+        // Also notify any connected admin panels
+        io.emit('session:removed', { sessionId: 'all', endedBy: 'server_restart', endedAt: new Date().toISOString() })
+        console.log(`✅ [STARTUP] Cleared ${staleSessionIds.length} orphaned sessions`)
+      } else {
+        console.log("✅ [STARTUP] No orphaned sessions found")
+      }
+    } catch (cleanupErr) {
+      console.error("⚠️ [STARTUP] Session cleanup error:", cleanupErr.message)
+    }
+
+    // ✅ STARTUP: Clear stale active user sets from previous server run
+    try {
+      await redis.del('online_males')
+      await redis.del('online_females')
+      await redis.del('active_users')
+      console.log('✅ [STARTUP] Cleared stale online_males, online_females, active_users sets')
+    } catch (cleanupErr) {
+      console.error('⚠️ [STARTUP] Active user cleanup error:', cleanupErr.message)
+    }
+
     console.log("[STARTUP] STEP 3.1 - Starting server...");
     httpServer.listen(PORT, '0.0.0.0', () => {
       console.log("[STARTUP] STEP 3.2 - Server running on PORT:", PORT);
+
+      // ═══════════════════════════════════════════════════════════
+      // ✅ HEARTBEAT CLEANUP: Remove stale users from Redis sets (every 15 seconds)
+      // If heartbeat key expired (30s TTL), user is gone — remove from active sets
+      // ═══════════════════════════════════════════════════════════
+      setInterval(async () => {
+        try {
+          // Check online_males
+          const males = await redis.sMembers('online_males')
+          for (const userId of males) {
+            const alive = await redis.get(`heartbeat:${userId}`)
+            if (!alive) {
+              await redis.sRem('online_males', userId)
+              await redis.sRem('active_users', userId)
+              console.log(`🧹 [HEARTBEAT_CLEANUP] Removed stale male: ${userId.substring(0, 8)}...`)
+            }
+          }
+
+          // Check online_females
+          const females = await redis.sMembers('online_females')
+          for (const userId of females) {
+            const alive = await redis.get(`heartbeat:${userId}`)
+            if (!alive) {
+              await redis.sRem('online_females', userId)
+              await redis.sRem('active_users', userId)
+              console.log(`🧹 [HEARTBEAT_CLEANUP] Removed stale female: ${userId.substring(0, 8)}...`)
+            }
+          }
+        } catch (err) {
+          // Silent - don't spam logs on cleanup errors
+        }
+      }, 15000) // Every 15 seconds
+
+      // ═══════════════════════════════════════════════════════════
+      // ✅ BULLETPROOF: Periodic session validator (every 15 seconds)
+      // Checks if session sockets are still connected. If not, clean up.
+      // This catches ALL edge cases that disconnect handlers miss.
+      // ═══════════════════════════════════════════════════════════
+      setInterval(async () => {
+        try {
+          if (activeSessions.size === 0) return
+
+          for (const [sessionId, session] of activeSessions.entries()) {
+            const sock1Connected = io.sockets.sockets.has(session.socketId1)
+            const sock2Connected = io.sockets.sockets.has(session.socketId2)
+
+            // If BOTH sockets are gone, session is dead — clean it up
+            if (!sock1Connected && !sock2Connected) {
+              console.log(`🧹 [SESSION VALIDATOR] Dead session detected: ${sessionId}`)
+              console.log(`   Socket1 ${session.socketId1}: disconnected`)
+              console.log(`   Socket2 ${session.socketId2}: disconnected`)
+
+              // Remove from in-memory
+              activeSessions.delete(sessionId)
+
+              // Remove from Redis
+              try {
+                await redis.sRem('active_sessions', sessionId)
+                await redis.del(`session:${sessionId}`)
+              } catch (e) { }
+
+              // Mark as ended in DB
+              try {
+                const duration = session.startedAt
+                  ? Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000) : 0
+                await prisma.sessions.update({
+                  where: { id: sessionId },
+                  data: { ended_at: new Date(), duration_seconds: duration }
+                })
+              } catch (e) { }
+
+              // Notify admin panel
+              io.emit('session:removed', {
+                sessionId: sessionId,
+                endedBy: 'validator_cleanup',
+                endedAt: new Date().toISOString()
+              })
+
+              console.log(`✅ [SESSION VALIDATOR] Cleaned dead session: ${sessionId}`)
+            }
+          }
+        } catch (err) {
+          // Silent fail for periodic validator
+        }
+      }, 15000) // Every 15 seconds
+
+      // ═══════════════════════════════════════════════════════════
+      // ✅ PREMIUM AUTO-EXPIRY (Runs every hour)
+      // Automatically removes Premium status from users whose duration expired
+      // ═══════════════════════════════════════════════════════════
+      setInterval(async () => {
+        try {
+          // Double check prisma exists since it might fail init
+          if (!prisma) return;
+
+          const result = await prisma.users.updateMany({
+            where: {
+              is_premium: true,
+              premium_expiry: {
+                lt: new Date()
+              }
+            },
+            data: {
+              is_premium: false,
+              premium_type: null,
+              premium_expiry: null
+            }
+          });
+
+          if (result.count > 0) {
+            console.log(`💎 [PREMIUM AUTO-EXPIRY] Cleaned up expired premium status for ${result.count} users.`);
+          }
+        } catch (err) {
+          console.error('❌ [PREMIUM AUTO-EXPIRY] Error:', err.message);
+        }
+      }, 3600000); // 1 Hour
     });
 
   } catch (err) {

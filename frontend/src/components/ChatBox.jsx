@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef } from 'react';
+﻿import { useState, useEffect, useContext, useRef } from 'react';
 // ✅ Import socketWrapper directly instead of lazy loading
 import socketWrapper from '../services/socketService';
 import { markMessagesAsRead } from '../services/api';
@@ -39,10 +39,14 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
   const [friendOnline, setFriendOnline] = useState(null); // null = loading, true/false
   const [friendLastSeen, setFriendLastSeen] = useState(null);
   const [, setTick] = useState(0); // force re-render for time ago updates
+  const [isPartnerTyping, setIsPartnerTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
+  const callPopupTimeoutRef = useRef(null);
   
   // Get current user UUID from AuthContext (source of truth)
   const myUserId = user?.uuid;
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
   // ========== DEBUG: Component initialization ==========
   console.log('\n' + '='.repeat(80));
@@ -169,26 +173,28 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
       return;
     }
 
-    console.log('📨 ChatBox: Loading messages for friend:', { myUserId, friendId: friend.id, friendName: friend.display_name });
+    console.log('📩 ChatBox: Loading messages for friend:', { myUserId, friendId: friend.id, friendName: friend.display_name });
 
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+    const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
     const messagesUrl = `${BACKEND_URL}/api/messages?user1=${myUserId}&user2=${friend.id}`;
     
-    console.log("📨 Fetching chat history from:", messagesUrl);
+    console.log("📩 Fetching chat history from:", messagesUrl);
     
     try {
       const res = await fetch(messagesUrl);
-      console.log("📨 Response status:", res.status);
+      console.log("📩 Response status:", res.status);
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
       const data = await res.json();
-      console.log("📨 Messages loaded:", data.length, 'messages');
+      console.log("📩 Messages loaded:", data.length, 'messages');
       if (Array.isArray(data)) {
         setMessages(
           data.map(m => ({
             me: m.sender_id === myUserId,
-            text: m.message
+            text: m.message,
+            message_type: m.message_type || 'text',
+            created_at: m.created_at
           }))
         );
       }
@@ -222,8 +228,11 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
       created_at: now
     });
 
-    // ✅ Clear input (message will be added by socket receive_message event)
+    // ✅ Clear input and stop typing indicator
     setText('');
+    isTypingRef.current = false;
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    socketRef.current?.emit('stop_typing', { senderId: myUserId, receiverId: friend.id });
 
     // ✅ Update chat list to move this friend to top
     if (onMessageSent) {
@@ -241,7 +250,7 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
     const handleReceiveMessage = (data) => {
       setMessages(prev => [
         ...prev,
-        { me: data.senderId === myUserId, text: data.message }
+        { me: data.senderId === myUserId, text: data.message, message_type: data.message_type || 'text', created_at: new Date().toISOString() }
       ]);
 
       // ✅ Update chat list to move this friend to top when receiving message
@@ -287,10 +296,77 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
       }
     };
 
-    socketRef.current?.on('incoming_call', handleIncomingCall);
+    const handleCallEnded = (data) => {
+      console.log('📞 [ChatBox] CALL_ENDED event received:', data);
+      // Dismiss the popup regardless of who ended the call
+      setShowCallPopup(false);
+      setIsCallLoading(false);
+    };
 
-    return () => socketRef.current?.off('incoming_call', handleIncomingCall);
+    socketRef.current?.on('incoming_call', handleIncomingCall);
+    socketRef.current?.on('call_ended', handleCallEnded);
+
+    return () => {
+      socketRef.current?.off('incoming_call', handleIncomingCall);
+      socketRef.current?.off('call_ended', handleCallEnded);
+    };
   }, [myUserId]);
+
+  // ✅ 18-SECOND TIMEOUT FOR INCOMING CALL POPUP - Auto dismiss if not answered
+  useEffect(() => {
+    if (showCallPopup) {
+      console.log('⏱️ [ChatBox] Starting 18-second popup auto-dismiss timeout');
+      callPopupTimeoutRef.current = setTimeout(() => {
+        console.log('⏱️ [ChatBox] 18 seconds passed - auto dismissing call popup');
+        setShowCallPopup(false);
+        setIsCallLoading(false);
+      }, 18000);
+    }
+    
+    return () => {
+      if (callPopupTimeoutRef.current) {
+        clearTimeout(callPopupTimeoutRef.current);
+        callPopupTimeoutRef.current = null;
+      }
+    };
+  }, [showCallPopup]);
+
+  // ✅ TYPING INDICATOR - Emit typing events
+  const handleTyping = () => {
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      socketRef.current?.emit('typing', { senderId: myUserId, receiverId: friend.id });
+    }
+    // Clear existing timeout
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    // Stop typing after 2 seconds of no input
+    typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      socketRef.current?.emit('stop_typing', { senderId: myUserId, receiverId: friend.id });
+    }, 2000);
+  };
+
+  // ✅ LISTEN FOR PARTNER TYPING EVENTS
+  useEffect(() => {
+    const handlePartnerTyping = (data) => {
+      if (data.senderId === friend.id) {
+        setIsPartnerTyping(true);
+      }
+    };
+    const handlePartnerStopTyping = (data) => {
+      if (data.senderId === friend.id) {
+        setIsPartnerTyping(false);
+      }
+    };
+
+    socketRef.current?.on('typing', handlePartnerTyping);
+    socketRef.current?.on('stop_typing', handlePartnerStopTyping);
+
+    return () => {
+      socketRef.current?.off('typing', handlePartnerTyping);
+      socketRef.current?.off('stop_typing', handlePartnerStopTyping);
+    };
+  }, [friend?.id]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -340,7 +416,8 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
       callerName: callPayload.callerName,
       receiverId: callPayload.receiverId,
       recipientName: callPayload.recipientName,
-      callAccepted: false  // ✅ Flag to show CallingWaitScreen until receiver accepts
+      callAccepted: false,  // ✅ Flag to show CallingWaitScreen until receiver accepts
+      isFriend: true  // ✅ They're already friends since friend object is from accepted friends list
     });
 
     console.log('📞 ✅ Call initiated, CallingWaitScreen should appear for caller...');
@@ -368,6 +445,19 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
   };
 
   return (
+    <>
+    <style>{`
+      @keyframes typingBounce {
+        0%, 60%, 100% { 
+          transform: translateY(0); 
+          opacity: 0.4; 
+        }
+        30% { 
+          transform: translateY(-6px); 
+          opacity: 1; 
+        }
+      }
+    `}</style>
     <div className="w-full max-w-[420px] h-full bg-white dark:bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-800">
       {/* HEADER - User Info */}
       <div className="px-6 py-4 flex items-center justify-between border-b border-gray-200/50 dark:border-white/10 bg-white/30 dark:bg-white/5">
@@ -379,17 +469,21 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-white font-semibold text-lg shadow-lg shadow-cyan-500/20">
-              {friend.display_name?.charAt(0).toUpperCase() || 'U'}
+            <div className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center text-white font-semibold text-lg shadow-lg shadow-cyan-500/20" style={{ overflow: 'hidden' }}>
+              {friend.photo_url ? (
+                <img src={friend.photo_url} alt={friend.display_name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                friend.display_name?.charAt(0).toUpperCase() || 'U'
+              )}
             </div>
             <div>
               <h2 className="font-semibold text-gray-900 dark:text-white text-[15px]">
                 {friend.display_name}
               </h2>
               <div className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${friendOnline ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
-                <span className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-widest font-medium">
-                  {friendOnline === null ? '...' : friendOnline ? 'Online' : getTimeAgo(friendLastSeen)}
+                <span className={`w-2 h-2 rounded-full ${friendOnline ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                <span className="text-[12px] text-gray-600 dark:text-gray-300 font-medium">
+                  {friendOnline === null ? '...' : friendOnline ? 'Active' : `Last seen ${getTimeAgo(friendLastSeen)}`}
                 </span>
               </div>
             </div>
@@ -397,10 +491,14 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
         </div>
         <button 
           onClick={handleCallClick}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-200/50 dark:hover:bg-white/10 transition-colors cursor-pointer"
-          title="Call"
+          className="w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200 cursor-pointer hover:scale-110"
+          title="Video Call"
+          style={{ 
+            background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+            boxShadow: '0 0 12px rgba(124, 58, 237, 0.6)',
+          }}
         >
-          <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400">call</span>
+          <span className="material-symbols-outlined" style={{ color: '#ffffff', fontSize: '22px' }}>videocam</span>
         </button>
       </div>
 
@@ -415,7 +513,129 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
         ) : (
           <div className="flex flex-col items-end space-y-2">
             {messages.map((m, i) => (
-              m.me ? (
+              m.message_type === 'missed_call' && !m.me ? (
+                /* ✅ MISSED CALL BUBBLE - Only shown to RECEIVER */
+                <div
+                  key={i}
+                  onClick={handleCallClick}
+                  style={{
+                    alignSelf: 'center',
+                    width: '85%',
+                    background: 'rgba(30, 30, 40, 0.85)',
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    borderRadius: '14px',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(40, 40, 55, 0.95)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(30, 30, 40, 0.85)'}
+                  title="Tap to call back"
+                >
+                  {/* Red phone icon */}
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <span className="material-symbols-outlined" style={{ 
+                      color: '#ef4444', 
+                      fontSize: '20px',
+                      transform: 'rotate(135deg)'
+                    }}>call</span>
+                  </div>
+                  {/* Text content */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      color: '#ef4444',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      lineHeight: '1.3',
+                    }}>Missed call</div>
+                    <div style={{
+                      color: 'rgba(156, 163, 175, 0.8)',
+                      fontSize: '12px',
+                      marginTop: '2px',
+                    }}>Tap to call back</div>
+                  </div>
+                  {/* Timestamp */}
+                  <div style={{
+                    color: 'rgba(156, 163, 175, 0.6)',
+                    fontSize: '11px',
+                    flexShrink: 0,
+                  }}>
+                    {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </div>
+                </div>
+              ) : (m.message_type === 'outgoing_call' && m.me) ? (
+                /* ✅ OUTGOING CALL BUBBLE - Only shown to CALLER - Flinxx themed */
+                <div
+                  key={i}
+                  style={{
+                    alignSelf: 'center',
+                    width: '85%',
+                    background: 'linear-gradient(135deg, rgba(25, 25, 50, 0.9), rgba(35, 30, 55, 0.9))',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    borderRadius: '14px',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    boxShadow: '0 2px 12px rgba(99, 102, 241, 0.15), 0 1px 4px rgba(0,0,0,0.2)',
+                  }}
+                >
+                  {/* Indigo phone icon */}
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(129, 140, 248, 0.15))',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <span className="material-symbols-outlined" style={{ 
+                      color: '#818cf8', 
+                      fontSize: '20px',
+                    }}>videocam</span>
+                  </div>
+                  {/* Text content */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      color: '#c4b5fd',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      lineHeight: '1.3',
+                    }}>Video call</div>
+                    <div style={{
+                      color: 'rgba(156, 163, 175, 0.7)',
+                      fontSize: '12px',
+                      marginTop: '2px',
+                    }}>Not answered</div>
+                  </div>
+                  {/* Timestamp */}
+                  <div style={{
+                    color: 'rgba(156, 163, 175, 0.5)',
+                    fontSize: '11px',
+                    flexShrink: 0,
+                  }}>
+                    {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </div>
+                </div>
+              ) : (m.message_type === 'missed_call' || m.message_type === 'outgoing_call') ? (
+                /* ✅ SKIP: Don't render missed_call for caller or outgoing_call for receiver */
+                null
+              ) : m.me ? (
                 <div
                   key={i}
                   className="message-bubble-right bg-indigo-600 dark:bg-indigo-600 text-white px-4 py-2 text-sm max-w-[80%] shadow-md shadow-indigo-600/20 leading-relaxed tracking-wide rounded-[18px]"
@@ -433,6 +653,71 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
                 </div>
               )
             ))}
+            {/* ✅ TYPING INDICATOR - Animated bouncing dots with avatar */}
+            {isPartnerTyping && (
+              <div
+                style={{
+                  alignSelf: 'flex-start',
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  gap: '8px',
+                }}
+              >
+                {/* Mini avatar */}
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  backgroundColor: '#06b6d4',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  flexShrink: 0,
+                  overflow: 'hidden',
+                }}>
+                  {friend.photo_url ? (
+                    <img src={friend.photo_url} alt={friend.display_name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    friend.display_name?.charAt(0).toUpperCase() || 'U'
+                  )}
+                </div>
+                {/* Dots bubble */}
+                <div
+                  style={{
+                    padding: '12px 18px',
+                    borderRadius: '18px 18px 18px 4px',
+                    backgroundColor: 'rgba(55, 65, 81, 0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    minWidth: '62px',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <span style={{
+                    width: '10px', height: '10px', borderRadius: '50%',
+                    backgroundColor: '#a0aec0', display: 'inline-block',
+                    animation: 'typingBounce 1.4s infinite ease-in-out both',
+                    animationDelay: '0s'
+                  }} />
+                  <span style={{
+                    width: '10px', height: '10px', borderRadius: '50%',
+                    backgroundColor: '#a0aec0', display: 'inline-block',
+                    animation: 'typingBounce 1.4s infinite ease-in-out both',
+                    animationDelay: '0.2s'
+                  }} />
+                  <span style={{
+                    width: '10px', height: '10px', borderRadius: '50%',
+                    backgroundColor: '#a0aec0', display: 'inline-block',
+                    animation: 'typingBounce 1.4s infinite ease-in-out both',
+                    animationDelay: '0.4s'
+                  }} />
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -444,7 +729,7 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
           <div className="relative flex-1">
             <input
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => { setText(e.target.value); handleTyping(); }}
               onKeyPress={handleKeyPress}
               className="w-full bg-gray-200/50 dark:bg-white/5 border-none focus:ring-2 focus:ring-indigo-600/50 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-2xl px-5 py-3.5 text-sm transition-all outline-none"
               placeholder="Type a message..."
@@ -473,6 +758,7 @@ const ChatBox = ({ friend, onBack, onMessageSent }) => {
         />
       )}
     </div>
+    </>
   );
 };
 

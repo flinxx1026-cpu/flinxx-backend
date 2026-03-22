@@ -1,4 +1,4 @@
-// DEPLOYMENT VERSION: webrtc-stable-streams - Remote stream fix - 2026-01-05
+﻿// DEPLOYMENT VERSION: webrtc-stable-streams - Remote stream fix - 2026-01-05
 // Last updated: 2026-01-05 - Chat bottom spacing fixes deployed
 // BUILD TIMESTAMP: 2026-01-05T10:20:00Z - CHAT LAYOUT FIXES
 console.log('🎯 CHAT BUILD: 2026-01-05T10:20:00Z - Chat layout and spacing fixes');
@@ -13,11 +13,15 @@ import { useUnreadSafe } from '../context/UnreadContext';
 import socketWrapper from '../services/socketService';
 import MobileWaitingScreen from './MobileWaitingScreen';
 import MobileHome from './MobileHome';
-import { getIceServers, getMediaConstraints, formatTime, logIceServers } from '../utils/webrtcUtils';
-import PremiumModal from '../components/PremiumModal';
+import { getIceServers, getStunServers, getTurnServers as getTurnServersFallback, getMediaConstraints, formatTime, logIceServers } from '../utils/webrtcUtils';
+
 import GenderFilterModal from '../components/GenderFilterModal';
 import ProfileModal from '../components/ProfileModal';
 import FriendRequestPopup from '../components/FriendRequestPopup';
+import PremiumPopup from '../components/PremiumPopup';
+import SkipLimitPopup from '../components/SkipLimitPopup';
+import WarningModal from '../components/WarningModal';
+import AnimatedWaitingText from '../components/AnimatedWaitingText';
 import MatchHistory from '../components/MatchHistory';
 import SearchFriendsModal from '../components/SearchFriendsModal';
 import SubscriptionsPage from '../components/SubscriptionsPage';
@@ -35,7 +39,7 @@ const CameraPanel = ({ videoRef }) => {
       videoRef.current = el;
     }
   }, []);
-  
+
   // Log mount/unmount to catch if component is being destroyed
   useEffect(() => {
     console.log('📹 CameraPanel mounted');
@@ -43,9 +47,9 @@ const CameraPanel = ({ videoRef }) => {
       console.error('❌ CameraPanel unmounting - THIS BREAKS THE STREAM');
     };
   }, []);
-  
+
   return (
-    <main className="w-full lg:flex-1 relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow flex flex-col items-center justify-center">
+    <main className="w-full relative bg-refined rounded-3xl overflow-hidden shadow-2xl border-2 border-primary group shadow-glow flex flex-col items-center justify-center" style={{ flex: 'none', width: '35%', height: '100%' }}>
       {/* Camera Frame with Video */}
       <div className="camera-frame w-full h-full relative flex items-center justify-center">
         {/* Camera Video - Stable element thanks to module-level component */}
@@ -59,21 +63,41 @@ const CameraPanel = ({ videoRef }) => {
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            backgroundColor: "#000"
+            backgroundColor: "#000",
+            transform: "scaleX(-1)"
           }}
         />
+        {/* YOU Badge */}
+        <div className="absolute bottom-4 left-4 z-10">
+          <div style={{
+            padding: '6px 14px',
+            borderRadius: '999px',
+            backgroundColor: '#000',
+            color: '#fff',
+            fontSize: '13px',
+            fontWeight: '700',
+            letterSpacing: '0.5px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
+          }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e', flexShrink: 0 }}></span>
+            YOU
+          </div>
+        </div>
       </div>
     </main>
   );
 };
 
 // ✅ INTRO SCREEN - Plain function (no React.memo) to avoid TDZ in production builds
-const IntroScreen = ({ 
-  user, 
-  isLoading, 
-  activeMode, 
-  setActiveMode, 
-  openDuoSquad, 
+const IntroScreen = ({
+  user,
+  isLoading,
+  activeMode,
+  setActiveMode,
+  openDuoSquad,
   startVideoChat,
   isProfileOpen,
   setIsProfileOpen,
@@ -89,7 +113,7 @@ const IntroScreen = ({
   children
 }) => {
   console.log("Dashboard render");
-  
+
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
 
   useEffect(() => {
@@ -104,21 +128,22 @@ const IntroScreen = ({
   // Desktop version
   if (!isMobile) {
     return (
-      <div className="w-full h-[90vh] flex flex-col lg:flex-row justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8">
+      <>
+      <div className="w-full h-[82vh] flex flex-col lg:flex-row items-end justify-center gap-6 lg:gap-8 relative z-10 p-4 sm:p-6 lg:p-8" style={{ paddingBottom: '0' }}>
         {/* LEFT PANEL - Flinxx Heading + Buttons */}
-        <aside className="w-full lg:flex-1 h-full flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300">
+        <aside className="w-full h-full flex flex-col bg-refined border-2 border-primary rounded-3xl shadow-glow relative transition-all duration-300" style={{ flex: 'none', width: '35%' }}>
           {/* Top Icons Header - Circular icon buttons */}
           <div className="icon-row p-6 sm:p-8">
             {/* Profile Icon - Show profile photo or fallback to user icon */}
-            <button 
+            <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className="icon-btn"
               title="Profile"
             >
               {user?.picture ? (
-                <img 
-                  src={user.picture} 
-                  alt="Profile" 
+                <img
+                  src={user.picture}
+                  alt="Profile"
                   style={{
                     width: '100%',
                     height: '100%',
@@ -127,30 +152,30 @@ const IntroScreen = ({
                   }}
                 />
               ) : (
-                <i className="material-icons-round">person</i>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
               )}
             </button>
 
             {/* Search Icon */}
-            <button 
+            <button
               onClick={() => setActiveTab(activeTab === 'search' ? null : 'search')}
               className="icon-btn"
               title="Search"
             >
-              <i className="material-icons-round">search</i>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
             </button>
 
             {/* Likes Icon with Friend Request Badge */}
             <div style={{ position: 'relative', overflow: 'visible' }}>
-              <button 
+              <button
                 onClick={() => {
                   setActiveTab(activeTab === 'likes' ? null : 'likes');
                   if (setIncomingRequests) setIncomingRequests([]);
                 }}
-                className="icon-btn" 
+                className="icon-btn"
                 title="Likes"
               >
-                <i className="material-icons-round">favorite</i>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
               </button>
               {incomingRequests && incomingRequests.length > 0 && (
                 <span
@@ -181,12 +206,12 @@ const IntroScreen = ({
 
             {/* Messages Icon */}
             <div style={{ position: 'relative', overflow: 'visible' }}>
-              <button 
+              <button
                 onClick={() => setActiveTab(activeTab === 'messages' ? null : 'messages')}
                 className="icon-btn"
                 title="Messages"
               >
-                <i className="material-icons-round">chat_bubble</i>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" /></svg>
               </button>
               {unreadCount > 0 && (
                 <span
@@ -216,21 +241,21 @@ const IntroScreen = ({
             </div>
 
             {/* Trophy/Achievements Icon */}
-            <button 
+            <button
               onClick={() => setActiveTab(activeTab === 'trophy' ? null : 'trophy')}
               className="icon-btn"
               title="Achievements"
             >
-              <i className="material-icons-round">emoji_events</i>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z" /></svg>
             </button>
 
             {/* History/Timer Icon */}
-            <button 
+            <button
               onClick={() => setIsMatchHistoryOpen(!isMatchHistoryOpen)}
               className="icon-btn"
               title="History"
             >
-              <i className="material-icons-round">timer</i>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42A8.962 8.962 0 0012 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z" /></svg>
             </button>
           </div>
 
@@ -248,16 +273,39 @@ const IntroScreen = ({
             <div className="flex-[0.8]"></div>
 
             {/* Start Video Chat Button */}
-            <button 
+            <button
               onClick={startVideoChat}
               disabled={isLoading}
-              className="group relative px-10 py-4 rounded-full bg-gradient-to-r from-primary via-[#E5C558] to-primary text-black font-bold text-lg shadow-lg hover:shadow-glow-hover transition-all transform hover:scale-105 overflow-hidden whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                padding: '16px 44px',
+                borderRadius: '999px',
+                backgroundColor: '#d4af37',
+                color: '#000',
+                fontWeight: 700,
+                fontSize: '18px',
+                letterSpacing: '0.3px',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 4px 20px rgba(212, 175, 55, 0.3)',
+                whiteSpace: 'nowrap',
+                opacity: isLoading ? 0.5 : 1,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.boxShadow = '0 6px 28px rgba(212, 175, 55, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(212, 175, 55, 0.3)';
+              }}
             >
-              <span className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out skew-x-12 -translate-x-full"></span>
-              <div className="flex items-center justify-center gap-3 relative z-10">
-                <span className="text-2xl">🎬</span>
-                <span>{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
-              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" /></svg>
+              <span>{isLoading ? 'Loading...' : 'Start Video Chat'}</span>
             </button>
 
             {/* Spacer below */}
@@ -268,12 +316,61 @@ const IntroScreen = ({
         {/* RIGHT PANEL - Camera Feed (always visible) */}
         {children}
       </div>
+
+      {/* WIDE BOTTOM BANNER */}
+      <div className="w-full flex justify-center mt-6 pb-6 px-4 z-20 relative max-w-[1400px] mx-auto">
+        {/* Flinxx Plus Promotional Banner */}
+        <div 
+          onClick={() => setActiveTab && setActiveTab('trophy')}
+          className="relative w-full max-w-5xl mx-auto rounded-xl bg-gradient-to-r from-[#0a0f12] via-[#1a1710] to-[#0a0f12] border border-[#2a2410] overflow-hidden p-3 sm:p-4 flex items-center justify-between shadow-2xl group cursor-pointer hover:border-yellow-500/40 transition-colors duration-300"
+        >
+          
+          {/* Subtle background glow effect */}
+          <div className="absolute top-1/2 left-1/4 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl -translate-y-1/2 pointer-events-none"></div>
+
+          {/* Left Section */}
+          <div className="flex flex-col min-w-[140px] z-10">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-yellow-500 text-sm shadow-black drop-shadow-md">👑</span>
+              <span className="text-yellow-500 text-[10px] font-bold tracking-[0.15em] uppercase shadow-black drop-shadow-md">Elite Access</span>
+            </div>
+            <div className="text-white font-bold text-xl sm:text-2xl leading-none">
+              Flinxx <span className="text-yellow-500">Plus</span>
+            </div>
+          </div>
+
+          {/* Middle Section */}
+          <div className="flex-1 hidden md:flex flex-col items-center justify-center text-center px-4 z-10">
+            <div className="text-white font-semibold text-sm sm:text-base mb-1">
+              Upgrade to Flinxx <span className="text-yellow-500 font-bold">Plus</span> 🚀
+            </div>
+            <div className="text-gray-400 text-[11px] sm:text-xs font-normal">
+              Unlimited skips, faster matches & verified badge
+            </div>
+          </div>
+
+          {/* Right Section */}
+          <div className="flex items-center gap-3 sm:gap-5 pr-2 z-10">
+            <div className="flex items-baseline gap-1">
+              <span className="text-white font-bold text-lg sm:text-xl">₹69</span>
+              <span className="text-gray-500 text-[9px] sm:text-[10px] font-medium tracking-wide">/ START</span>
+            </div>
+            <button 
+              onClick={() => setActiveTab && setActiveTab('trophy')}
+              className="bg-gradient-to-r from-[#e5c058] to-[#d4af37] hover:from-[#f3ce66] hover:to-[#e5c058] text-black font-extrabold py-2 px-4 sm:px-6 rounded-lg text-sm transition-all duration-300 shadow-[0_4px_15px_rgba(212,175,55,0.4)] hover:shadow-[0_6px_20px_rgba(212,175,55,0.6)] transform hover:-translate-y-0.5 whitespace-nowrap"
+            >
+              Upgrade Now
+            </button>
+          </div>
+        </div>
+      </div>
+      </>
     );
   }
 
   // Mobile view - return MobileHome
   return (
-    <MobileHome 
+    <MobileHome
       user={user}
       onStartChat={startVideoChat}
       localStreamRef={localStreamRef}
@@ -306,10 +403,10 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
   // ✅ Ref callback to attach stream with retry logic
   const handleWaitingVideoRef = useCallback((videoElement) => {
     if (!videoElement) return;
-    
+
     console.log('📺 [WAITING SCREEN] Video element ref callback fired');
     console.log('📺 [WAITING SCREEN] Stream available:', !!localStreamRef.current);
-    
+
     const attachStreamWithRetry = () => {
       // Check if stream exists
       if (!localStreamRef.current) {
@@ -317,13 +414,13 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
         setTimeout(attachStreamWithRetry, 100);
         return;
       }
-      
+
       // Only attach if not already attached
       if (videoElement.srcObject !== localStreamRef.current) {
         console.log('📺 [WAITING SCREEN] ✅ Attaching stream to video element');
         videoElement.srcObject = localStreamRef.current;
         videoElement.muted = true;
-        
+
         // Try to play
         videoElement.play().catch(err => {
           console.warn('📺 [WAITING SCREEN] Play warning:', err.message);
@@ -335,7 +432,7 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
         });
       }
     };
-    
+
     // Start the attachment process
     attachStreamWithRetry();
   }, []);  // ✅ EMPTY dependency array - localStreamRef is accessed via closure
@@ -386,15 +483,15 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
           animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
       `}</style>
-      
+
       <main className="flex-grow flex items-center justify-center p-4 md:p-8 relative w-full h-screen bg-black">
         {/* Grid pattern overlay */}
         <div className="absolute inset-0 z-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#333 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
 
         {/* Main container */}
-        <div className="container mx-auto max-w-7xl z-10 w-full h-[85vh] flex flex-col md:flex-row gap-8 items-center">
+        <div className="container mx-auto max-w-7xl z-10 w-full h-[85vh] flex flex-col md:flex-row gap-8 items-center justify-center">
           {/* Left panel - Camera preview */}
-          <div className="w-full md:w-1/2 h-full flex flex-col relative group">
+          <div className="w-full h-full flex flex-col relative group" style={{ flex: 'none', width: '35%' }}>
             <div className="relative w-full h-full border-2 border-primary/60 dark:border-primary/80 rounded-3xl overflow-hidden bg-black shadow-2xl gold-glow transition-all duration-500 hover:border-primary">
               {/* Video element for camera stream - use ref callback to prevent flickering */}
               <video
@@ -408,7 +505,8 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
                   objectFit: 'cover',
                   backgroundColor: '#000',
                   imageRendering: 'auto',
-                  WebkitTransform: 'translateZ(0)',
+                  WebkitTransform: 'scaleX(-1) translateZ(0)',
+                  transform: 'scaleX(-1)',
                   backfaceVisibility: 'hidden',
                   WebkitBackfaceVisibility: 'hidden',
                   filter: 'none',
@@ -424,9 +522,9 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
           </div>
 
           {/* Right panel - Waiting screen */}
-          <div className="w-full md:w-1/2 h-full flex flex-col relative group">
+          <div className="w-full h-full flex flex-col relative group" style={{ flex: 'none', width: '35%' }}>
             <div className="relative w-full h-full border-2 border-primary/60 dark:border-primary/80 rounded-3xl overflow-visible bg-black shadow-2xl gold-glow transition-all duration-500 hover:border-primary flex flex-col items-center justify-center text-center space-y-8">
-              
+
               {/* Animated search icon */}
               <div className="relative mb-4">
                 <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse-slow"></div>
@@ -439,9 +537,10 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
 
               {/* Waiting text */}
               <div className="space-y-3">
-                <h1 className="text-3xl md:text-4xl font-bold text-primary gold-text-glow tracking-tight">
-                  Looking for a partner...
-                </h1>
+                <AnimatedWaitingText
+                  as="h1"
+                  className="text-3xl md:text-4xl font-bold text-primary gold-text-glow tracking-tight"
+                />
                 <p className="text-primary/70 text-lg md:text-xl font-light">
                   Matching you with someone nearby
                 </p>
@@ -456,7 +555,7 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
 
               {/* Cancel button */}
               <div className="pt-8 w-full max-w-xs">
-                <button 
+                <button
                   onClick={() => {
                     console.log('🛑 [CANCEL] User clicked cancel - calling onCancel handler');
                     if (onCancel) {
@@ -482,7 +581,7 @@ const WaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
 const Chat = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isLoading: authLoading, refreshNotifications, incomingFriendRequest, setIncomingFriendRequest, refreshSentRequests, incomingRequests = [], setIncomingRequests } = useContext(AuthContext) || {};
+  const { user, isLoading: authLoading, refreshNotifications, incomingFriendRequest, setIncomingFriendRequest, refreshSentRequests, incomingRequests = [], setIncomingRequests, markPremiumPopupAsSeen, incrementSkipCount, refreshProfile } = useContext(AuthContext) || {};
   const { activeMode, setActiveMode, handleModeChange, openDuoSquad } = useDuoSquad();
 
   console.log("RENDER START");
@@ -498,7 +597,7 @@ const Chat = () => {
       return;
     }
 
-    const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://flinxx-backend.onrender.com';
+    const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL);
 
     fetch(`${API_BASE_URL}/api/user/profile`, {
       method: "GET",
@@ -533,10 +632,13 @@ const Chat = () => {
   const [hasPartner, setHasPartner] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [partnerInfo, setPartnerInfo] = useState(null);
+  const [isPartnerFriend, setIsPartnerFriend] = useState(false); // ✅ Track if current partner is already a friend
   const [connectionTime, setConnectionTime] = useState(0);
   const [isSearching, setIsSearching] = useState(false); // 👈 IMPORTANT: Default FALSE
   const [partnerFound, setPartnerFound] = useState(false);
   const [isPremiumOpen, setIsPremiumOpen] = useState(false);
+  const [showPremiumPopup, setShowPremiumPopup] = useState(false);
+  const [premiumPopupMessage, setPremiumPopupMessage] = useState(""); // Track message for skip limit
   const [isGenderFilterOpen, setIsGenderFilterOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null); // For 'Request Sent' and 'Now you are friends' toasts
@@ -548,9 +650,20 @@ const Chat = () => {
   const [isRequestingCamera, setIsRequestingCamera] = useState(false);
   const [isLocalCameraReady, setIsLocalCameraReady] = useState(false);
   const [streamsReadyTrigger, setStreamsReadyTrigger] = useState(0); // ✅ Triggers component re-render when streams ready
-  
+
   // ✅ Unified tab state for all side panels
   const [activeTab, setActiveTab] = useState(null); // 'profile' | 'search' | 'likes' | 'messages' | 'trophy' | 'timer' | null
+
+  // ✅ AUTO-OPEN subscriptions modal after payment redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment_success')) {
+      // Auto-open subscriptions modal so SubscriptionsPage can read the query param and show success
+      setActiveTab('trophy');
+    }
+  }, []);
+
+
 
   // ✅ Get unread count for message badge
   const { unreadCount } = useUnreadSafe();
@@ -558,10 +671,78 @@ const Chat = () => {
   // 🚀 QUICK INVITE POPUP STATE - Real-time popup for profile icon invites
   const [quickInvite, setQuickInvite] = useState(null); // { inviteId, senderId, senderName, senderProfileImage }
 
-  // ✅ BACKEND URL - Declare once to avoid repetition
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  // ⚠️ REPORT MODAL STATE
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedReason, setSelectedReason] = useState(null);
 
-  // Chat state
+  // ✅ BACKEND URL - Declare once to avoid repetition
+  const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
+
+  // REPORT HANDLER
+  const handleReport = async (reason) => {
+    console.log("REPORT CLICKED:", reason);
+    setSelectedReason(reason);
+
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+
+      console.log("PARTNER INFO:", partnerInfo);
+
+      // The socket event provides 'partnerId', not 'userId' for the partner
+      const reportedUserId = partnerInfo?.partnerId || partnerInfo?.userId || partnerInfo?.id || partnerInfo?.uuid || partnerInfo?.publicId;
+      const reportedBy = user?.uuid || user?.id;
+
+      console.log("REPORT PAYLOAD:", { reportedUserId, reason, reportedBy });
+
+      if (!reportedUserId) {
+        setToastMessage('Error: Cannot identify partner to report');
+        setTimeout(() => setToastMessage(null), 3000);
+        return;
+      }
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${BACKEND_URL}/api/report-user`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ reportedBy, reportedUserId, reason })
+      });
+
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await res.json();
+        setShowReportModal(false);
+        setSelectedReason(null);
+
+        if (data.success) {
+          setToastMessage('Report submitted successfully');
+        } else {
+          setToastMessage(data.message || 'Failed to submit report');
+        }
+      } else {
+        setShowReportModal(false);
+        setSelectedReason(null);
+        setToastMessage('Report submitted (Non-JSON response)');
+      }
+    } catch (err) {
+      console.error('Report API error:', err);
+      setShowReportModal(false);
+      setSelectedReason(null);
+      setToastMessage('Error submitting report');
+    } finally {
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  };
+
+  // ✅ BUY NOW HANDLER for Skip Limit Popup
+  const handleBuyNow = () => {
+    console.log('💎 [SKIP LIMIT] Buy Now clicked - opening subscriptions');
+    setShowPremiumPopup(false);
+    setPremiumPopupMessage("");
+    setActiveTab('trophy'); // Open subscriptions page
+  };
+
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -571,10 +752,10 @@ const Chat = () => {
 
   // Peer connection reference - keep as ref for internal use only
   const peerConnectionRef = useRef(null);
-  
+
   // ✅ Socket ref - loaded dynamically after component mounts
   const socketRef = useRef(null);
-  
+
   // CRITICAL: Store current user in a ref - initialize in useEffect only
   const currentUserRef = useRef(null);
   const userIdRef = useRef(null);
@@ -588,6 +769,9 @@ const Chat = () => {
   const localStreamRef = useRef(null);
   const streamRef = useRef(null);  // 🔥 Keep track of stream for cleanup
   const partnerSocketIdRef = useRef(null);  // CRITICAL: Store partner socket ID for sending offers/answers
+  const skipInFlightRef = useRef(false);
+  const searchCancelledRef = useRef(false);  // 🛑 Tracks if user explicitly cancelled search
+  const requeueTimerRef = useRef(null);      // 🛑 Tracks pending requeue setTimeout so it can be cleared
 
   // Monitor guest session timeout
   const guestSessionTimerRef = useRef(null);
@@ -605,11 +789,11 @@ const Chat = () => {
         const socketModule = await import('../services/socketService');
         socketRef.current = socketModule.default;
         console.log('✅ Socket module loaded');
-        
+
         // 🔥 CRITICAL: Explicitly call connect() to trigger socket.io initialization
         console.log('🔌 TRIGGERING SOCKET INITIALIZATION via connect()...');
         const actualSocket = socketRef.current.connect();
-        
+
         // Check if we got a real socket or a mock
         const isMock = !actualSocket?.io?.engine;
         console.log('🔌 Socket initialization result:', {
@@ -619,14 +803,14 @@ const Chat = () => {
           connected: actualSocket?.connected || false,
           transport: actualSocket?.io?.engine?.transport?.name || 'unknown'
         });
-        
+
         if (isMock) {
           console.error('❌ WARNING: Got mock socket instead of real socket!');
         }
-        
+
         // Give socket time to connect
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         const afterWait = socketRef.current.getSocket();
         console.log('✅ Socket state after 500ms wait:', {
           connected: afterWait?.connected || false,
@@ -637,15 +821,15 @@ const Chat = () => {
         console.error('❌ Stack:', error.stack);
         // Create a mock socket for safety
         socketRef.current = {
-          on: () => {},
-          off: () => {},
-          emit: () => {},
+          on: () => { },
+          off: () => { },
+          emit: () => { },
           id: null,
           connected: false
         };
       }
     };
-    
+
     loadSocket();
   }, []);
 
@@ -656,7 +840,7 @@ const Chat = () => {
       // ✅ STEP 1: Stream ko useRef me lock karo - sirf pehli baar
       if (!localStreamRef.current) {
         console.log('📹 [CAMERA INIT] Requesting camera permissions from browser...');
-        
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             width: { ideal: 1280 },
@@ -664,7 +848,7 @@ const Chat = () => {
           },
           audio: true
         });
-        
+
         localStreamRef.current = stream;
         streamRef.current = stream;
         console.log('📹 [CAMERA INIT] ✅ Camera stream obtained');
@@ -675,7 +859,7 @@ const Chat = () => {
 
       // ✅ Wait a tick to ensure ref is attached
       await new Promise(resolve => setTimeout(resolve, 0));
-      
+
       // ✅ STEP 4: Attach stream to video element
       // Skip on mobile - MobileHome handles its own camera attachment via callback
       if (window.innerWidth < 769) {
@@ -685,7 +869,7 @@ const Chat = () => {
         setStreamsReadyTrigger(prev => prev + 1);
         return;
       }
-      
+
       // Wait for sharedVideoRef to be available (CameraPanel must render first)
       let attempts = 0;
       const attachStream = () => {
@@ -693,9 +877,9 @@ const Chat = () => {
           console.log('📹 [CAMERA INIT] Attaching stream to video element...');
           sharedVideoRef.current.srcObject = localStreamRef.current;
           sharedVideoRef.current.muted = true;
-          
+
           console.log('📹 [CAMERA INIT] Calling play() on video element');
-          
+
           // Call play() directly without waiting for metadata
           sharedVideoRef.current.play()
             .then(() => {
@@ -723,11 +907,11 @@ const Chat = () => {
           setStreamsReadyTrigger(prev => prev + 1); // ✅ Trigger video render
         }
       };
-      
+
       attachStream();
     } catch (err) {
       console.error('📹 [CAMERA INIT] ❌ Error:', err.name, err.message);
-      
+
       if (err.name === 'NotAllowedError') {
         console.error('   → User denied camera permission');
       } else if (err.name === 'NotFoundError') {
@@ -735,7 +919,7 @@ const Chat = () => {
       } else if (err.name === 'NotReadableError') {
         console.error('   → Camera is in use by another app');
       }
-      
+
       setIsLocalCameraReady(true);
     }
   }, []);
@@ -744,14 +928,14 @@ const Chat = () => {
   // NOTE: Auth validation is handled by ProtectedChatRoute - NO NEED to duplicate here
   useEffect(() => {
     let isMounted = true;
-    
+
     startCamera();
 
     // ✅ LOCATION DETECTION via IP (silent, no browser permission popup needed)
     const detectAndSaveLocation = async () => {
       try {
         let detectedLocation = null;
-        
+
         // Try primary API (ip-api.com - NOTE: free tier only supports HTTP, not HTTPS)
         try {
           const response = await fetch('http://ip-api.com/json/?fields=status,city,regionName,country', { signal: AbortSignal.timeout(5000) });
@@ -763,7 +947,7 @@ const Chat = () => {
         } catch (e) {
           console.log('📍 [LOCATION] Primary API (ip-api.com) failed:', e.message);
         }
-        
+
         // Fallback 1: ipapi.co (HTTPS, but rate-limited)
         if (!detectedLocation) {
           try {
@@ -793,13 +977,13 @@ const Chat = () => {
             console.log('📍 [LOCATION] ipinfo.io also failed:', e3.message);
           }
         }
-        
+
         if (!isMounted || !detectedLocation) return;
         console.log('📍 [LOCATION] Detected via IP:', detectedLocation);
-        
+
         // ✅ Store in ref so it survives re-renders and user effect overwrites
         userLocationRef.current = detectedLocation;
-        
+
         // Save to currentUser state
         setCurrentUser(prev => prev ? { ...prev, location: detectedLocation } : prev);
 
@@ -817,7 +1001,7 @@ const Chat = () => {
         // Save to backend
         const token = localStorage.getItem('token') || localStorage.getItem('authToken');
         if (token) {
-          const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://flinxx-backend.onrender.com';
+          const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL);
           fetch(`${API_BASE_URL}/api/users/update-location`, {
             method: 'POST',
             headers: {
@@ -837,11 +1021,48 @@ const Chat = () => {
     };
 
     detectAndSaveLocation();
-    
+
     return () => {
       isMounted = false;
     };
   }, [startCamera]);
+
+  // ✅ CHECK IF PARTNER IS ALREADY A FRIEND when partnerInfo changes
+  useEffect(() => {
+    const checkIfPartnerIsFriend = async () => {
+      if (!partnerInfo || !user?.uuid) {
+        setIsPartnerFriend(false);
+        return;
+      }
+
+      const partnerPublicId = partnerInfo?.partnerId || partnerInfo?.id || partnerInfo?.uuid || partnerInfo?.publicId;
+      if (!partnerPublicId) {
+        setIsPartnerFriend(false);
+        return;
+      }
+
+      try {
+        const { getFriends } = await import('../services/api');
+        const friends = await getFriends(user.uuid);
+        
+        if (Array.isArray(friends)) {
+          const isFriend = friends.some(f => 
+            f.friendId === partnerPublicId || 
+            f.uuid === partnerPublicId || 
+            f.publicId === partnerPublicId ||
+            f.id === partnerPublicId
+          );
+          setIsPartnerFriend(isFriend);
+          console.log(`👥 [FRIEND CHECK] Partner ${partnerPublicId?.substring(0, 8)}... is ${isFriend ? 'ALREADY a friend ✅' : 'NOT a friend'}`);
+        }
+      } catch (err) {
+        console.warn('⚠️ [FRIEND CHECK] Error checking friend status:', err.message);
+        setIsPartnerFriend(false);
+      }
+    };
+
+    checkIfPartnerIsFriend();
+  }, [partnerInfo, user?.uuid]);
 
   // ✅ Attach local stream to localVideoRef when in video chat mode
   useEffect(() => {
@@ -859,17 +1080,17 @@ const Chat = () => {
 
     if (partnerFound && localVideoRef.current && localStreamRef.current) {
       console.log('📹 [VIDEO CHAT] Attaching local stream to localVideoRef');
-      
+
       if (localVideoRef.current.srcObject !== localStreamRef.current) {
         localVideoRef.current.srcObject = localStreamRef.current;
         localVideoRef.current.muted = true;
-        
+
         console.log('📹 [VIDEO CHAT] srcObject set, stream has', localStreamRef.current.getTracks().length, 'tracks');
-        
+
         localVideoRef.current.play().catch(err => {
           console.warn('📹 [VIDEO CHAT] Local video play warning:', err.message);
         });
-        
+
         console.log('📹 [VIDEO CHAT] ✅ Local stream attached to localVideoRef');
       } else {
         console.log('📹 [VIDEO CHAT] Stream already attached');
@@ -880,23 +1101,23 @@ const Chat = () => {
   // ✅ Monitor if stream gets lost (but only log, don't re-attach)
   useEffect(() => {
     if (!partnerFound || !localVideoRef.current) return;
-    
+
     const interval = setInterval(() => {
       if (localVideoRef.current?.srcObject === null) {
         console.warn('⚠️ [MONITOR] Local video srcObject is null - memoization may not be working');
       }
-      
+
       if (localStreamRef.current) {
         const tracks = localStreamRef.current.getTracks();
         const allEnabled = tracks.every(t => t.enabled && t.readyState === 'live');
         if (!allEnabled) {
-          console.warn('⚠️ [MONITOR] Some local tracks are disabled or ended:', 
+          console.warn('⚠️ [MONITOR] Some local tracks are disabled or ended:',
             tracks.map(t => ({ kind: t.kind, enabled: t.enabled, state: t.readyState }))
           );
         }
       }
     }, 3000); // Check every 3 seconds (less frequent)
-    
+
     return () => clearInterval(interval);
   }, [partnerFound]);
 
@@ -926,11 +1147,11 @@ const Chat = () => {
   // Check terms acceptance when component mounts - MUST BE FIRST useEffect
   useEffect(() => {
     console.log('🔐 [TERMS CHECK] Checking if terms are accepted...');
-    
+
     try {
       const termsAccepted = localStorage.getItem('termsAccepted') === 'true';
       console.log('📋 [TERMS CHECK] termsAccepted from localStorage:', termsAccepted);
-      
+
       if (!termsAccepted) {
         console.log('⚠️ [TERMS CHECK] User has not accepted terms - showing modal');
         setShowTermsModal(true);
@@ -981,13 +1202,13 @@ const Chat = () => {
       email: "guest@flinxx.local",
       picture: null
     };
-    
+
     // ✅ Preserve detected location when user context changes
     setCurrentUser(prev => {
       const preserved = prev?.location || userLocationRef.current || null;
       return { ...userToUse, location: userToUse.location || preserved };
     });
-    
+
     if (!userIdRef.current) {
       // ✅ Use UUID only - NEVER fallback to googleId or any other field
       userIdRef.current = userToUse.uuid;
@@ -1040,22 +1261,22 @@ const Chat = () => {
     console.log('  - localStreamRef.current exists:', !!localStreamRef.current);
     console.log('  - localVideoRef.current exists:', !!localVideoRef.current);
     console.log('  - cameraStarted:', cameraStarted);
-    
+
     try {
       // CRITICAL: Ensure video element is in document
       if (!localVideoRef.current) {
         console.error('🎥 [REINIT] ❌ CRITICAL: localVideoRef.current is null/undefined - video element not in DOM');
         return false;
       }
-      
+
       // Check if video element is actually mounted
       if (!localVideoRef.current.parentElement) {
         console.error('🎥 [REINIT] ❌ CRITICAL: Video element is not attached to DOM');
         return false;
       }
-      
+
       console.log('🎥 [REINIT] ✓ Video element exists in DOM');
-      
+
       // Check if we already have a stream
       if (localStreamRef.current) {
         console.log('🎥 [REINIT] Stream exists, checking if tracks are active...');
@@ -1064,7 +1285,7 @@ const Chat = () => {
         tracks.forEach((track, i) => {
           console.log(`  Track ${i}:`, { kind: track.kind, enabled: track.enabled, readyState: track.readyState });
         });
-        
+
         if (tracks.length === 0) {
           console.warn('🎥 [REINIT] ⚠️ Stream exists but has no active tracks - will request new stream');
           localStreamRef.current = null;
@@ -1072,9 +1293,9 @@ const Chat = () => {
           console.log('🎥 [REINIT] ✓ Stream has active tracks, reattaching to video element');
           localVideoRef.current.srcObject = localStreamRef.current;
           localVideoRef.current.muted = true;
-          
+
           console.log('🎥 [REINIT] srcObject set, waiting for play()...');
-          
+
           try {
             const playPromise = localVideoRef.current.play();
             if (playPromise !== undefined) {
@@ -1091,23 +1312,23 @@ const Chat = () => {
           }
         }
       }
-      
+
       // Request new stream if none exists
       console.log('🎥 [REINIT] No existing stream or tracks inactive, requesting new preview stream');
       const previewStream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 } },
         audio: true
       });
-      
+
       localStreamRef.current = previewStream;
       console.log('🎥 [REINIT] ✅ New camera stream obtained:', previewStream);
       console.log('🎥 [REINIT] New stream tracks:', previewStream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
-      
+
       localVideoRef.current.srcObject = previewStream;
       localVideoRef.current.muted = true;
-      
+
       console.log('🎥 [REINIT] srcObject set to new stream, calling play()...');
-      
+
       // Use requestAnimationFrame to ensure video element is ready
       requestAnimationFrame(() => {
         localVideoRef.current?.play().catch(err => {
@@ -1115,7 +1336,7 @@ const Chat = () => {
         });
         console.log('🎥 [REINIT] ✅ New camera preview play command dispatched');
       });
-      
+
       setCameraStarted(true);
       console.log('🎥 ===== CAMERA RE-INITIALIZATION SUCCESSFUL =====\n\n');
       return true;
@@ -1165,7 +1386,7 @@ const Chat = () => {
           readyState: sharedVideoRef.current.readyState,
           networkState: sharedVideoRef.current.networkState
         });
-        
+
         // If not playing, try to play
         if (sharedVideoRef.current.paused) {
           console.log('📹 [VERIFY] Video is paused, attempting play...');
@@ -1175,7 +1396,7 @@ const Chat = () => {
         }
       }
     }, 1000);
-    
+
     return () => clearTimeout(timer);
   }, []);
 
@@ -1183,8 +1404,6 @@ const Chat = () => {
   // CRITICAL: Buffer for ICE candidates that arrive before peer connection
   // ========================================
   const iceCandidateBufferRef = useRef([]);
-  const turnServersCacheRef = useRef(null);
-  const turnServersFetchingRef = useRef(false);
 
   // CRITICAL: Define createPeerConnection BEFORE socket listeners
   // This function is called inside socket event handlers
@@ -1192,17 +1411,17 @@ const Chat = () => {
   const createPeerConnection = async () => {
     console.log('🔧 createPeerConnection called');
     console.log('   Current localStreamRef:', localStreamRef.current);
-    
+
     // ✅ CRITICAL FIX: If local stream is missing, attempt to reacquire it
     if (!localStreamRef.current) {
       console.warn('⚠️ CRITICAL: localStreamRef.current is null - attempting to reacquire camera stream');
       try {
         const newStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: true
+          video: { width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 24, max: 30 } },
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         });
         localStreamRef.current = newStream;
-        
+
         // Attach to video element
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = newStream;
@@ -1213,7 +1432,7 @@ const Chat = () => {
             console.warn('⚠️ Play error during reacquisition:', playErr);
           }
         }
-        
+
         console.log('✅ LOCAL STREAM RE-ACQUIRED SUCCESSFULLY');
         console.log('   Tracks:', newStream.getTracks().map(t => ({ kind: t.kind, id: t.id })));
       } catch (reacqErr) {
@@ -1221,124 +1440,147 @@ const Chat = () => {
         throw new Error('Cannot proceed: local camera stream unavailable - ' + reacqErr.message);
       }
     }
-    
+
     // Log ICE server configuration for diagnostics
     logIceServers();
-    
-    const turnServers = await getTurnServers();
-    
-    // ✅ Enhanced TURN configuration to force TURN when STUN fails
-    // Include explicit STUN + TURN servers with username/credential
-    const iceServers = [
-      {
-        urls: [
-          "stun:global.xirsys.net",
-          "turn:global.xirsys.net:3478?transport=udp",
-          "turn:global.xirsys.net:3478?transport=tcp"
-        ],
-        username: "nkhlydv",
-        credential: "a8e244b8-cf5b-11f0-8771-0242ac140002"
-      },
-      ...turnServers // Add servers from API as backup
-    ];
-    
 
+    // ✅ PHASE 1: Start with STUN-only for fast P2P (TURN added on ICE failure)
+    const iceServers = getStunServers();
+    console.log('🧊 Phase 1: STUN-only P2P mode');
 
-    const peerConnection = new RTCPeerConnection({ 
+    const peerConnection = new RTCPeerConnection({
       iceServers,
-      iceTransportPolicy: "all"  // Use "relay" only if mobile still disconnects
+      iceTransportPolicy: 'all',
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+      iceCandidatePoolSize: 4
     });
-    peerConnectionRef.current = peerConnection;  // ✅ Store immediately for use in event handlers
-    console.log('✅ RTCPeerConnection created with iceTransportPolicy: all');
+    peerConnectionRef.current = peerConnection;
+    console.log('✅ RTCPeerConnection created — STUN-only P2P');
+
+    // Track ICE restart attempts (max 2)
+    peerConnection._iceRestartCount = 0;
+    const MAX_ICE_RESTARTS = 2;
 
     // ✅ Initialize remote stream immediately (will be populated by ontrack events)
     peerConnectionRef.current._remoteStream = new MediaStream();
     console.log('✅ Remote MediaStream initialized, ID:', peerConnectionRef.current._remoteStream.id);
 
     peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            const candidate = event.candidate;
-            console.log('🧊 ICE candidate generated:', {
-              candidate: candidate.candidate,
-              protocol: candidate.protocol,
-              port: candidate.port,
-              address: candidate.address,
-              type: candidate.type,
-              priority: candidate.priority,
-              sdpMLineIndex: candidate.sdpMLineIndex,
-              sdpMId: candidate.sdpMid
-            });
-            
-            // Detect TURN candidate success/failure
-            if (candidate.type === 'relay') {
-              console.log('🔄 RELAY (TURN) candidate generated - TURN server is reachable');
-              console.log('   Protocol:', candidate.protocol, 'Port:', candidate.port);
-            } else if (candidate.type === 'srflx') {
-              console.log('📍 SRFLX (server reflexive) candidate - STUN working');
-              console.log('   Found public address via STUN');
-            } else if (candidate.type === 'host') {
-              console.log('🏠 HOST candidate - direct LAN connection possible');
-            }
-            
-            console.log('🔌 Sending ICE candidate to partner socket:', partnerSocketIdRef.current);
-            socketRef.current?.emit("ice_candidate", {
-              candidate: candidate,
-              to: partnerSocketIdRef.current
-            });
-            console.log('📤 ICE candidate sent to peer');
-        } else {
-            console.log('🧊 ICE gathering complete (null candidate received)');
-            console.log('📊 ICE gathering summary:');
-            console.log('   Connection State:', peerConnection.connectionState);
-            console.log('   ICE Connection State:', peerConnection.iceConnectionState);
-            console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
+      if (event.candidate) {
+        const candidate = event.candidate;
+        console.log('🧊 ICE candidate generated:', {
+          candidate: candidate.candidate,
+          protocol: candidate.protocol,
+          port: candidate.port,
+          address: candidate.address,
+          type: candidate.type,
+          priority: candidate.priority,
+          sdpMLineIndex: candidate.sdpMLineIndex,
+          sdpMId: candidate.sdpMid
+        });
+
+        // Detect TURN candidate success/failure
+        if (candidate.type === 'relay') {
+          console.log('🔄 RELAY (TURN) candidate generated - TURN server is reachable');
+          console.log('   Protocol:', candidate.protocol, 'Port:', candidate.port);
+        } else if (candidate.type === 'srflx') {
+          console.log('📍 SRFLX (server reflexive) candidate - STUN working');
+          console.log('   Found public address via STUN');
+        } else if (candidate.type === 'host') {
+          console.log('🏠 HOST candidate - direct LAN connection possible');
         }
+
+        console.log('🔌 Sending ICE candidate to partner socket:', partnerSocketIdRef.current);
+        socketRef.current?.emit("ice_candidate", {
+          candidate: candidate,
+          to: partnerSocketIdRef.current
+        });
+        console.log('📤 ICE candidate sent to peer');
+      } else {
+        console.log('🧊 ICE gathering complete (null candidate received)');
+        console.log('📊 ICE gathering summary:');
+        console.log('   Connection State:', peerConnection.connectionState);
+        console.log('   ICE Connection State:', peerConnection.iceConnectionState);
+        console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
+      }
     };
 
     peerConnection.oniceconnectionstatechange = () => {
-        const state = peerConnection.iceConnectionState;
-        console.log('\n🧊 ===== ICE CONNECTION STATE CHANGED =====');
-        console.log('🧊 New ICE Connection State:', state);
-        
-        switch(state) {
-          case 'new':
-            console.log('🧊 State: NEW - Gathering ICE candidates');
-            break;
-          case 'checking':
-            console.log('🧊 State: CHECKING - Testing ICE candidate pairs');
-            console.log('🧊 Connection in progress - waiting for connectivity');
-            break;
-          case 'connected':
-            console.log('✅ State: CONNECTED - Found working ICE candidate pair');
-            console.log('🧊 Peer-to-peer communication established');
-            break;
-          case 'completed':
-            console.log('✅ State: COMPLETED - ICE checks completed, ready for media');
-            console.log('🧊 All connectivity checks passed');
-            break;
-          case 'failed':
-            console.error('❌ State: FAILED - All ICE candidate pairs failed');
-            console.error('❌ Could not establish peer-to-peer connection');
-            console.error('❌ TURN server may be unreachable or blocked by ISP');
-            console.error('🔍 Troubleshooting:');
-            console.error('   - Check console for TURN error details');
-            console.error('   - TURN error 701 = Network/ISP blocking ports 3478, 5349');
-            console.error('   - Solutions: Try VPN, different WiFi, or mobile hotspot');
-            console.error('   - User can retry with a retry button (do NOT auto-restart ICE)');
-            break;
-          case 'disconnected':
-            console.warn('⚠️ State: DISCONNECTED - Lost connection to peer');
-            console.warn('   Note: ICE restart is manual only to prevent stream loss');
-            break;
-          case 'closed':
-            console.log('🛑 State: CLOSED - Connection closed');
-            break;
+      const state = peerConnection.iceConnectionState;
+      console.log('🧊 ICE State:', state);
+
+      if (state === 'connected' || state === 'completed') {
+        console.log('✅ ICE connected — P2P established');
+        peerConnection._iceRestartCount = 0; // Reset on success
+      }
+      else if (state === 'failed') {
+        console.error('❌ ICE FAILED — candidate pairs exhausted');
+
+        // ✅ AUTO-FALLBACK: Retry with TURN servers added
+        if (peerConnection._iceRestartCount < MAX_ICE_RESTARTS) {
+          peerConnection._iceRestartCount++;
+          console.log(`🔄 ICE RESTART #${peerConnection._iceRestartCount}: Adding TURN for relay fallback`);
+
+          const fullIceServers = [
+            ...getStunServers(),
+            ...getTurnServersFallback()
+          ];
+
+          try {
+            peerConnection.setConfiguration({ iceServers: fullIceServers, iceTransportPolicy: 'all' });
+            console.log('✅ TURN servers added via setConfiguration');
+          } catch (configErr) {
+            console.warn('⚠️ setConfiguration not supported — TURN not injectable');
+          }
+
+          peerConnection.restartIce();
+          console.log('🔄 ICE restart triggered with TURN servers');
+
+          // If we're the offerer, create a new offer with iceRestart flag
+          if (peerConnection.signalingState === 'stable' || peerConnection.signalingState === 'have-local-offer') {
+            peerConnection.createOffer({ iceRestart: true })
+              .then(offer => peerConnection.setLocalDescription(offer))
+              .then(() => {
+                socketRef.current?.emit('webrtc_offer', {
+                  offer: peerConnection.localDescription,
+                  to: partnerSocketIdRef.current
+                });
+                console.log('📤 ICE restart offer sent');
+              })
+              .catch(err => console.error('❌ ICE restart offer failed:', err.message));
+          }
+        } else {
+          console.error('❌ Max ICE restarts exhausted — connection cannot be established');
         }
-        
-        console.log('📊 Full connection states:');
-        console.log('   Signaling State:', peerConnection.signalingState);
-        console.log('   Connection State:', peerConnection.connectionState);
-        console.log('   ICE Gathering State:', peerConnection.iceGatheringState);
+      }
+      else if (state === 'disconnected') {
+        console.warn('⚠️ ICE DISCONNECTED — attempting recovery');
+
+        // Quick ICE restart before full reset
+        if (peerConnection._iceRestartCount < MAX_ICE_RESTARTS && peerConnectionRef.current === peerConnection) {
+          setTimeout(() => {
+            if (peerConnectionRef.current === peerConnection && peerConnection.iceConnectionState === 'disconnected') {
+              peerConnection._iceRestartCount++;
+              console.log('🔄 Auto ICE restart on disconnect');
+              peerConnection.restartIce();
+
+              if (peerConnection.signalingState === 'stable') {
+                peerConnection.createOffer({ iceRestart: true })
+                  .then(offer => peerConnection.setLocalDescription(offer))
+                  .then(() => {
+                    socketRef.current?.emit('webrtc_offer', {
+                      offer: peerConnection.localDescription,
+                      to: partnerSocketIdRef.current
+                    });
+                    console.log('📤 ICE restart offer sent (disconnect recovery)');
+                  })
+                  .catch(err => console.error('❌ Disconnect recovery offer failed:', err.message));
+              }
+            }
+          }, 1500);
+        }
+      }
     };
 
     // ✅ FIX #1: Create persistent remote MediaStream ONCE per peer connection
@@ -1348,117 +1590,155 @@ const Chat = () => {
     }
 
     peerConnection.ontrack = (event) => {
-        // ✅ FIX #1: Use persistent remote MediaStream
-        let remoteStream = peerConnectionRef.current._remoteStream;
-        if (!remoteStream) {
-          remoteStream = new MediaStream();
-          peerConnectionRef.current._remoteStream = remoteStream;
-        }
-        
-        // Add track to persistent stream
-        remoteStream.addTrack(event.track);
-        
-        // ✅ CRITICAL: Enable the remote track explicitly
-        event.track.enabled = true;
-        
-        console.log('📥 ===== REMOTE TRACK RECEIVED =====');
-        console.log('📥 Track kind:', event.track.kind);
-        console.log('📥 Track enabled:', event.track.enabled);
-        console.log('📥 Stream tracks count:', remoteStream.getTracks().length);
-        
-        // ✅ OPTIMIZATION: Attach IMMEDIATELY if ref exists, no waiting for state updates
-        if (remoteVideoRef.current) {
-          // Attach srcObject ONLY ONCE, never overwrite
-          if (remoteVideoRef.current.srcObject !== remoteStream) {
-            console.log('📺 ATTACHING REMOTE STREAM IMMEDIATELY to video element');
-            remoteVideoRef.current.srcObject = remoteStream;
-            remoteVideoRef.current.muted = false;
-            
-            // 🔥 AGGRESSIVE PLAY: Try to play immediately with multiple fallbacks
-            const playVideo = async () => {
-              try {
-                // First attempt: direct play
-                const playPromise = remoteVideoRef.current.play();
-                if (playPromise && typeof playPromise.then === 'function') {
-                  await playPromise;
-                  console.log('✅ Remote video playing successfully (immediate)');
-                }
-              } catch (playError) {
-                console.warn('⚠️ Immediate play failed:', playError.name);
-                
-                // Retry after a tiny delay
-                setTimeout(() => {
-                  if (remoteVideoRef.current) {
-                    remoteVideoRef.current.play().catch(() => {
-                      console.log('ℹ️ Autoplay blocked - will play on user interaction');
-                    });
-                  }
-                }, 50);
+      // ✅ FIX #1: Use persistent remote MediaStream
+      let remoteStream = peerConnectionRef.current._remoteStream;
+      if (!remoteStream) {
+        remoteStream = new MediaStream();
+        peerConnectionRef.current._remoteStream = remoteStream;
+      }
+
+      // Add track to persistent stream
+      remoteStream.addTrack(event.track);
+
+      // ✅ CRITICAL: Enable the remote track explicitly
+      event.track.enabled = true;
+
+      console.log('📥 ===== REMOTE TRACK RECEIVED =====');
+      console.log('📥 Track kind:', event.track.kind);
+      console.log('📥 Track enabled:', event.track.enabled);
+      console.log('📥 Stream tracks count:', remoteStream.getTracks().length);
+
+      // ✅ OPTIMIZATION: Attach IMMEDIATELY if ref exists, no waiting for state updates
+      if (remoteVideoRef.current) {
+        // Attach srcObject ONLY ONCE, never overwrite
+        if (remoteVideoRef.current.srcObject !== remoteStream) {
+          console.log('📺 ATTACHING REMOTE STREAM IMMEDIATELY to video element');
+          remoteVideoRef.current.srcObject = remoteStream;
+          remoteVideoRef.current.muted = false;
+
+          // 🔥 AGGRESSIVE PLAY: Try to play immediately with multiple fallbacks
+          const playVideo = async () => {
+            try {
+              // First attempt: direct play
+              const playPromise = remoteVideoRef.current.play();
+              if (playPromise && typeof playPromise.then === 'function') {
+                await playPromise;
+                console.log('✅ Remote video playing successfully (immediate)');
               }
-            };
-            
-            playVideo();
-          } else {
-            console.log('📺 Stream already attached, adding new track:', event.track.kind);
-          }
+            } catch (playError) {
+              console.warn('⚠️ Immediate play failed:', playError.name);
+
+              // Retry after a tiny delay
+              setTimeout(() => {
+                if (remoteVideoRef.current) {
+                  remoteVideoRef.current.play().catch(() => {
+                    console.log('ℹ️ Autoplay blocked - will play on user interaction');
+                  });
+                }
+              }, 50);
+            }
+          };
+
+          playVideo();
         } else {
-          console.warn('⚠️ remoteVideoRef not ready yet - will attach when ref callback fires');
+          console.log('📺 Stream already attached, adding new track:', event.track.kind);
         }
-        
-        // ✅ Also trigger re-render to ensure UI is up-to-date (but don't wait for it)
-        setStreamsReadyTrigger(prev => prev + 1);
+      } else {
+        console.warn('⚠️ remoteVideoRef not ready yet - will attach when ref callback fires');
+      }
+
+      // ✅ Also trigger re-render to ensure UI is up-to-date (but don't wait for it)
+      setStreamsReadyTrigger(prev => prev + 1);
     };
 
     peerConnection.onconnectionstatechange = () => {
-        console.log("\n🔌 ===== CONNECTION STATE CHANGED =====");
-        console.log("🔌 New Connection State:", peerConnection.connectionState);
-        console.log("   ICE Connection State:", peerConnection.iceConnectionState);
-        console.log("   ICE Gathering State:", peerConnection.iceGatheringState);
-        console.log("   Signaling State:", peerConnection.signalingState);
-        
-        if (peerConnection.connectionState === 'connected') {
-          setIsConnected(true);
-          console.log('✅ WebRTC connection ESTABLISHED');
-          
-          // ✅ FIX #5: Debug check after connection - log receivers
+      console.log('🔌 Connection State:', peerConnection.connectionState);
+
+      if (peerConnection.connectionState === 'connected') {
+        setIsConnected(true);
+        console.log('✅ WebRTC CONNECTED');
+
+        // Debug check after connection
+        setTimeout(() => {
+          const receivers = peerConnection.getReceivers();
+          console.log('📊 Receivers:', receivers.length);
+          receivers.forEach((r, i) => {
+            console.log(`  [${i}] ${r.track?.kind} enabled=${r.track?.enabled} state=${r.track?.readyState}`);
+          });
+        }, 1000);
+      } else if (peerConnection.connectionState === 'disconnected') {
+        setIsConnected(false);
+        console.log('⚠️ WebRTC DISCONNECTED — waiting for ICE recovery (5s)');
+
+        // ✅ Wait 5s for ICE restart to recover, then reset
+        setTimeout(() => {
+          if (peerConnectionRef.current === peerConnection && peerConnection.connectionState === 'disconnected') {
+            console.log('🔴 WebRTC still disconnected after 5s — partner left');
+
+            peerConnectionRef.current.close();
+            peerConnectionRef.current = null;
+
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = null;
+            }
+
+            setHasPartner(false);
+            setPartnerFound(false);
+            setIsConnected(false);
+            setPartnerInfo(null);
+            setMessages([]);
+            setConnectionTime(0);
+            setIsSearching(true);
+
+            setTimeout(() => {
+              socketRef.current?.emit('find_partner', {
+                userId: userIdRef.current,
+                userName: 'Anonymous',
+                userAge: 18,
+                userLocation: userLocationRef.current || 'Unknown'
+              });
+            }, 1000);
+          } else {
+            console.log('⚠️ Ignoring stale disconnect — connection recovered or replaced');
+          }
+        }, 5000); // Wait 5s (gives ICE restart time to work)
+      } else if (peerConnection.connectionState === 'failed') {
+        setIsConnected(false);
+        console.log('❌ WebRTC FAILED');
+
+        // Only reset if ICE restarts are exhausted
+        if (peerConnectionRef.current === peerConnection && peerConnection._iceRestartCount >= MAX_ICE_RESTARTS) {
+          console.log('❌ All ICE restarts exhausted — resetting UI');
+          peerConnectionRef.current.close();
+          peerConnectionRef.current = null;
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = null;
+          }
+
+          setHasPartner(false);
+          setPartnerFound(false);
+          setPartnerInfo(null);
+          setMessages([]);
+          setConnectionTime(0);
+          setIsSearching(true);
+
           setTimeout(() => {
-            console.log('\n📊 ===== RECEIVER DEBUG CHECK (after connected) =====');
-            const receivers = peerConnection.getReceivers();
-            console.log('📊 Total receivers:', receivers.length);
-            receivers.forEach((receiver, i) => {
-              console.log(`📊 Receiver ${i}:`, {
-                kind: receiver.track?.kind,
-                enabled: receiver.track?.enabled,
-                readyState: receiver.track?.readyState,
-                id: receiver.track?.id,
-                muted: receiver.track?.muted
-              });
-            });
-            
-            console.log('📊 Audio and video tracks should be present above');
-            
-            // Also log senders for verification
-            const senders = peerConnection.getSenders();
-            console.log('\n📊 Total senders:', senders.length);
-            senders.forEach((sender, i) => {
-              console.log(`📊 Sender ${i}:`, {
-                kind: sender.track?.kind,
-                enabled: sender.track?.enabled,
-                readyState: sender.track?.readyState,
-                id: sender.track?.id
-              });
+            socketRef.current?.emit('find_partner', {
+              userId: userIdRef.current,
+              userName: 'Anonymous',
+              userAge: 18,
+              userLocation: userLocationRef.current || 'Unknown'
             });
           }, 1000);
-        } else if (peerConnection.connectionState === 'disconnected') {
-          setIsConnected(false);
-          console.log('⚠️ WebRTC connection DISCONNECTED');
-        } else if (peerConnection.connectionState === 'failed') {
-          setIsConnected(false);
-          console.log('❌ WebRTC connection FAILED');
-        } else if (peerConnection.connectionState === 'closed') {
-          setIsConnected(false);
-          console.log('❌ WebRTC connection CLOSED');
+        } else if (peerConnectionRef.current !== peerConnection) {
+          console.log('⚠️ Ignoring stale failed — peer was replaced');
+        } else {
+          console.log('🔄 ICE restart in progress — waiting for recovery');
         }
+      } else if (peerConnection.connectionState === 'closed') {
+        setIsConnected(false);
+        console.log('🛑 WebRTC CLOSED (no UI reset — caller handles transitions)');
+      }
     };
 
     // CRITICAL: Verify stream still exists before adding tracks
@@ -1475,11 +1755,11 @@ const Chat = () => {
   // Setup socket listeners - runs when socketRef finally becomes available
   useEffect(() => {
     console.log('🔌 [Listeners useEffect] Running - socketRef.current:', !!socketRef.current);
-    
+
     // Retry mechanism: socket might not be initialized yet
     let retries = 0;
     const maxRetries = 30; // 30 x 100ms = 3 seconds total
-    
+
     const trySetupListeners = () => {
       if (!socketRef.current) {
         if (retries < maxRetries) {
@@ -1491,18 +1771,18 @@ const Chat = () => {
         }
         return;
       }
-      
+
       const socket = socketRef.current;
-      
+
       console.log('\n\n🔌 ===== SOCKET LISTENERS SETUP =====');
       console.log('🔌 Socket ID:', socket.id);
       console.log('🔌 Socket connected:', socket.connected);
       console.log('🔌 Using userIdRef:', userIdRef.current);
-      
+
       // 🔥 CRITICAL: Register listeners IMMEDIATELY - don't wait for connection
       // Events might arrive before socket.connected becomes true
       registerListeners();
-      
+
       function registerListeners() {
         // Clean up any old listeners first
         socket.off('partner_found');
@@ -1514,485 +1794,678 @@ const Chat = () => {
         socket.off('user_skipped');
         socket.off('skip_limit_reached');
         socket.off('disconnect');
-      
-      // 🔍 UNIVERSAL DEBUG LISTENER
-      console.log('\n🔍 [DEBUG] Setting up universal event listener...');
-      socket.onAny((eventName, ...args) => {
-        console.log(`\n🎯 [UNIVERSAL LISTENER] Event received: "${eventName}"`);
-        console.log(`   Data:`, args);
-        if (eventName === 'partner_found') {
-          console.log(`✅ ✅ ✅ PARTNER_FOUND RECEIVED - THIS IS IT!`);
-        }
-      });
-      
-      // ✅ CRITICAL: partner_found listener
-      console.log('\n✅ [HANDLER] Registering partner_found listener...');
-      socket.on('partner_found', async (data) => {
-      console.log('\n\n📋 ===== PARTNER FOUND EVENT RECEIVED =====');
-      console.log('👥 RAW DATA from server:', JSON.stringify(data, null, 2));
-      console.log('👥 My socket ID:', socket.id);
-      console.log('👥 currentUser object:', JSON.stringify(currentUser, null, 2));
-      console.log('👥 userIdRef.current (SHOULD USE THIS):', userIdRef.current);
-      console.log('👥 currentUser.googleId:', currentUser?.googleId);
-      console.log('👥 currentUser.id:', currentUser?.id);
-      console.log('👥 data.socketId:', data.socketId);
-      console.log('👥 data.partnerId:', data.partnerId);
-      console.log('👥 data.userName:', data.userName);
-      
-      // ✅ UPDATE STATE: Partner found - hide waiting screen, show video chat
-      setIsSearching(false);
-      setPartnerFound(true);
-      setIsLoading(false);
-      
-      // CRITICAL: PREVENT SELF-MATCHING
-      console.log('\n👥 SELF-MATCH CHECK - START');
-      const myUserId = userIdRef.current;  // USE REF FOR CONSISTENT ID
-      const partnerUserId = data.partnerId;
-      
-      console.log('👥 COMPARISON VALUES:');
-      console.log('   myUserId type:', typeof myUserId, 'value:', myUserId);
-      console.log('   partnerUserId type:', typeof partnerUserId, 'value:', partnerUserId);
-      console.log('   Are they EQUAL?', myUserId === partnerUserId);
-      console.log('   String comparison:', String(myUserId) === String(partnerUserId));
-      
-      if (myUserId === partnerUserId) {
-        console.error('\n❌❌❌ CRITICAL ERROR: SELF-MATCH DETECTED! ❌❌❌');
-        console.error('   My user ID:', myUserId, 'type:', typeof myUserId);
-        console.error('   Partner user ID:', partnerUserId, 'type:', typeof partnerUserId);
-        console.error('   Match IDs:', myUserId === partnerUserId);
-        console.error('   These should be DIFFERENT!');
-        
-        // Reject this match and look for another partner
-        setIsLoading(true);
-        console.error('   Emitting skip_user...');
-        socketRef.current?.emit('skip_user', {
-          partnerSocketId: data.socketId
-        });
-        console.error('   Emitting find_partner...');
-        socketRef.current?.emit('find_partner', {
-          userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
-          userName: currentUser.name || 'Anonymous',
-          userAge: currentUser.age || 18,
-          userLocation: currentUser.location || userLocationRef.current || 'Unknown'
-        });
-        console.error('   Returning - match REJECTED');
-        return;
-      }
-      
-      console.log('✅ SELF-MATCH CHECK PASSED - partner is different user');
-      console.log('   Accepting match and proceeding with WebRTC setup');
-      console.log('👥 SELF-MATCH CHECK - END\n');
-      
-      // CRITICAL: Store partner socket ID for sending offers/answers
-      partnerSocketIdRef.current = data.socketId;
-      console.log('🔌 CRITICAL: Stored partner socket ID:', partnerSocketIdRef.current);
-      console.log('🔌 CRITICAL: Verification - partnerSocketIdRef.current is now:', partnerSocketIdRef.current);
-      
-      console.log('🎬 ABOUT TO CALL setHasPartner(true)');
-      setHasPartner(true);
-      console.log('🎬 ✅ setHasPartner(true) CALLED - force attach effect should trigger');
-      // CRITICAL: Ensure we have all partner fields including picture
-      const partnerData = {
-        ...data,
-        // Ensure picture field is included (may come as userPicture from server)
-        picture: data.userPicture || data.picture || null,
-        // Ensure all display fields exist
-        userName: data.userName || data.name || 'Anonymous',
-        userLocation: data.userLocation || data.location || 'Unknown',
-        userAge: data.userAge || data.age || 18,
-        hasBlueTick: data.hasBlueTick || false
-      };
-      setPartnerInfo(partnerData);
-      console.log('🎬 ✅ setPartnerInfo CALLED with data:', partnerData);
 
-      // CRITICAL: Determine who should send the offer
-      // The peer with the LOWER socket ID (lexicographically) is the OFFERER
-      const mySocketId = socket.id;
-      const partnerSocketId = data.socketId;
-      let amIOfferer = mySocketId < partnerSocketId;
-      
-      // ✅ SAFETY: If socket IDs are somehow equal or invalid, use user ID as tiebreaker
-      if (mySocketId === partnerSocketId || !mySocketId || !partnerSocketId) {
-        console.warn('⚠️ WARNING: Socket ID comparison invalid, using user ID as tiebreaker');
-        const myUserId = userIdRef.current || '';
-        const partnerUserId = data.partnerId || '';
-        amIOfferer = String(myUserId) < String(partnerUserId);
-        console.log('   Fallback: My user ID:', myUserId, 'Partner:', partnerUserId);
-      }
-      
-      console.log('✅ OFFERER DECISION MADE: I am the', amIOfferer ? 'OFFERER' : 'ANSWERER');
-      
-      // ✅ CRITICAL DEFENSIVE CHECK: Verify local stream exists before proceeding
-      console.log('\n🔐 ===== CRITICAL STREAM VERIFICATION =====');
-      console.log('🔐 Checking localStreamRef.current status:');
-      console.log('   exists:', !!localStreamRef.current);
-      console.log('   tracks:', localStreamRef.current?.getTracks().length || 0);
-      console.log('   video element srcObject:', !!localVideoRef.current?.srcObject);
-      
-      if (!localStreamRef.current) {
-        console.error('🔐 ❌ CRITICAL: localStreamRef.current is NULL - cannot proceed to WebRTC');
-        console.error('   This means the camera stream was never acquired or was lost');
-        console.error('   Attempting emergency camera reacquisition...');
-        
-        try {
-          const emergencyStream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 } },
-            audio: true
-          });
-          localStreamRef.current = emergencyStream;
-          
-          if (localVideoRef.current) {
-            localVideoRef.current.srcObject = emergencyStream;
-            localVideoRef.current.muted = true;
+        // 🔍 UNIVERSAL DEBUG LISTENER
+        console.log('\n🔍 [DEBUG] Setting up universal event listener...');
+        socket.onAny((eventName, ...args) => {
+          console.log(`\n🎯 [UNIVERSAL LISTENER] Event received: "${eventName}"`);
+          console.log(`   Data:`, args);
+          if (eventName === 'partner_found') {
+            console.log(`✅ ✅ ✅ PARTNER_FOUND RECEIVED - THIS IS IT!`);
+          }
+        });
+
+        // ✅ CRITICAL: partner_found listener
+        console.log('\n✅ [HANDLER] Registering partner_found listener...');
+        socket.on('partner_found', async (data) => {
+          console.log('📋 PARTNER FOUND | partner:', data.partnerId, '| socket:', data.socketId);
+
+          // 🛑 CRITICAL: If user cancelled search, reject this match entirely
+          if (searchCancelledRef.current) {
+            console.log('🛑 [PARTNER_FOUND] Ignoring match — user has cancelled search');
+            // Notify the server we're not accepting this match
+            socketRef.current?.emit('cancel_matching', { userId: userIdRef.current });
+            socketRef.current?.emit('match:cancel', { userId: userIdRef.current });
+            return;
+          }
+
+          // ✅ UPDATE STATE: Partner found - hide waiting screen, show video chat
+          setIsSearching(false);
+          setPartnerFound(true);
+          setIsLoading(false);
+
+          // CRITICAL: PREVENT SELF-MATCHING
+          const myUserId = userIdRef.current;
+          const partnerUserId = data.partnerId;
+
+          if (myUserId === partnerUserId) {
+            console.error('❌ SELF-MATCH DETECTED — rejecting');
+            setIsLoading(true);
+            socketRef.current?.emit('skip_user', { partnerSocketId: data.socketId });
+            socketRef.current?.emit('find_partner', {
+              userId: userIdRef.current,
+              userName: currentUser.name || 'Anonymous',
+              userAge: currentUser.age || 18,
+              userLocation: currentUser.location || userLocationRef.current || 'Unknown'
+            });
+            return;
+          }
+
+          // CRITICAL: Store partner socket ID for sending offers/answers
+          partnerSocketIdRef.current = data.socketId;
+          console.log('🔌 CRITICAL: Stored partner socket ID:', partnerSocketIdRef.current);
+          console.log('🔌 CRITICAL: Verification - partnerSocketIdRef.current is now:', partnerSocketIdRef.current);
+
+          console.log('🎬 ABOUT TO CALL setHasPartner(true)');
+          setHasPartner(true);
+          console.log('🎬 ✅ setHasPartner(true) CALLED - force attach effect should trigger');
+          // CRITICAL: Ensure we have all partner fields including picture
+          const partnerData = {
+            ...data,
+            // Ensure picture field is included (may come as userPicture from server)
+            picture: data.userPicture || data.picture || null,
+            // Ensure all display fields exist
+            userName: data.userName || data.name || 'Anonymous',
+            userLocation: data.userLocation || data.location || 'Unknown',
+            userAge: data.userAge || data.age || 18,
+            hasBlueTick: data.hasBlueTick || false
+          };
+          setPartnerInfo(partnerData);
+          console.log('🎬 ✅ setPartnerInfo CALLED with data:', partnerData);
+
+          // CRITICAL: Determine who should send the offer
+          // The peer with the LOWER socket ID (lexicographically) is the OFFERER
+          const mySocketId = socket.id;
+          const partnerSocketId = data.socketId;
+          let amIOfferer = mySocketId < partnerSocketId;
+
+          // ✅ SAFETY: If socket IDs are somehow equal or invalid, use user ID as tiebreaker
+          if (mySocketId === partnerSocketId || !mySocketId || !partnerSocketId) {
+            console.warn('⚠️ WARNING: Socket ID comparison invalid, using user ID as tiebreaker');
+            const myUserId = userIdRef.current || '';
+            const partnerUserId = data.partnerId || '';
+            amIOfferer = String(myUserId) < String(partnerUserId);
+            console.log('   Fallback: My user ID:', myUserId, 'Partner:', partnerUserId);
+          }
+
+          console.log('✅ OFFERER DECISION MADE: I am the', amIOfferer ? 'OFFERER' : 'ANSWERER');
+
+          // ✅ Verify local stream exists
+          if (!localStreamRef.current) {
+            console.warn('⚠️ Local stream lost — emergency reacquisition');
             try {
-              await localVideoRef.current.play();
-            } catch (e) {
-              console.warn('⚠️ Play error in emergency reacquisition');
+              const emergencyStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 24, max: 30 } },
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+              });
+              localStreamRef.current = emergencyStream;
+              if (localVideoRef.current) {
+                localVideoRef.current.srcObject = emergencyStream;
+                localVideoRef.current.muted = true;
+                localVideoRef.current.play().catch(() => { });
+              }
+            } catch (emergencyErr) {
+              console.error('❌ Camera reacquisition failed:', emergencyErr.message);
+              return;
             }
           }
-          
-          console.log('🔐 ✅ EMERGENCY: Camera stream re-acquired');
-        } catch (emergencyErr) {
-          console.error('🔐 ❌ EMERGENCY FAILED: Could not reacquire camera -', emergencyErr.message);
-          console.error('   User must allow camera permission to continue');
-          return;
-        }
-      }
-      
-      console.log('🔐 ✅ STREAM VERIFICATION PASSED - proceeding with WebRTC\n');
-      
-      if (!amIOfferer) {
-        console.log('📭 I am the ANSWERER - waiting for offer from offerer');
-        return;
-      }
-      
-      console.log('📬 I am the OFFERER - creating peer connection and sending offer');
 
-      // Create peer connection and send offer
-      try {
-        console.log('\n🏠 OFFERER: Creating peer connection');
-        
-        // ✅ CRITICAL: Only create ONE peer connection per call
-        if (peerConnectionRef.current) {
-          console.warn('⚠️ OFFERER: WARNING - Peer connection already exists! Not recreating.');
-          console.warn('   Existing PC state:', {
-            connectionState: peerConnectionRef.current.connectionState,
-            iceConnectionState: peerConnectionRef.current.iceConnectionState,
-            signalingState: peerConnectionRef.current.signalingState
-          });
-          return;
-        }
-        
-        let pc;
-        try {
-          pc = await createPeerConnection();
-        } catch (pcErr) {
-          console.error('❌ OFFERER: Error creating peer connection:', pcErr);
-          return;
-        }
-        peerConnectionRef.current = pc;
-        console.log('✅ OFFERER: Peer connection created');
-        
-        // ✅ FIX: Flush any buffered ICE candidates that arrived while PC was being created
-        while (iceCandidateBufferRef.current.length > 0) {
-          const bufferedCandidate = iceCandidateBufferRef.current.shift();
-          try {
-            await peerConnectionRef.current.addIceCandidate(
-              new RTCIceCandidate(bufferedCandidate)
-            );
-          } catch (err) {
-            // Candidate may have already been processed or is invalid
+          if (!amIOfferer) {
+            console.log('📭 I am the ANSWERER - waiting for offer from offerer');
+            return;
           }
-        }
 
-        console.log('📊 OFFERER Stream status after peer connection creation:', {
-          exists: !!localStreamRef.current,
-          trackCount: localStreamRef.current?.getTracks().length,
-          tracks: localStreamRef.current?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, state: t.readyState }))
+          console.log('📬 I am the OFFERER - creating peer connection and sending offer');
+
+          // Create peer connection and send offer
+          try {
+            console.log('\n🏠 OFFERER: Creating peer connection');
+
+            // ✅ CRITICAL: Only create ONE peer connection per call
+            if (peerConnectionRef.current) {
+              console.warn('⚠️ OFFERER: WARNING - Peer connection already exists! Not recreating.');
+              console.warn('   Existing PC state:', {
+                connectionState: peerConnectionRef.current.connectionState,
+                iceConnectionState: peerConnectionRef.current.iceConnectionState,
+                signalingState: peerConnectionRef.current.signalingState
+              });
+              return;
+            }
+
+            let pc;
+            try {
+              pc = await createPeerConnection();
+            } catch (pcErr) {
+              console.error('❌ OFFERER: Error creating peer connection:', pcErr);
+              return;
+            }
+            peerConnectionRef.current = pc;
+            console.log('✅ OFFERER: Peer connection created');
+
+            // ✅ FIX: Flush any buffered ICE candidates that arrived while PC was being created
+            while (iceCandidateBufferRef.current.length > 0) {
+              const bufferedCandidate = iceCandidateBufferRef.current.shift();
+              try {
+                await peerConnectionRef.current.addIceCandidate(
+                  new RTCIceCandidate(bufferedCandidate)
+                );
+              } catch (err) {
+                // Candidate may have already been processed or is invalid
+              }
+            }
+
+            // Add local tracks to peer connection BEFORE creating offer
+            if (localStreamRef.current) {
+              const existingSenders = pc.getSenders();
+              if (existingSenders.length === 0) {
+                localStreamRef.current.getTracks().forEach((track) => {
+                  try { pc.addTrack(track, localStreamRef.current); } catch (e) { }
+                });
+                console.log('✅ OFFERER: tracks added —', pc.getSenders().length, 'senders');
+              }
+            } else {
+              console.error('❌ OFFERER: No local stream!');
+            }
+
+            // Create offer + set local description IMMEDIATELY (no delay)
+            const offer = await pc.createOffer({
+              offerToReceiveVideo: true,
+              offerToReceiveAudio: true
+            });
+            await pc.setLocalDescription(offer);
+            console.log('✅ OFFERER: Offer created + local description set');
+
+            // Flush buffered ICE candidates
+            while (iceCandidateBufferRef.current.length > 0) {
+              const c = iceCandidateBufferRef.current.shift();
+              try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (e) { }
+            }
+
+            // ✅ Send offer IMMEDIATELY — no 500ms delay
+            socketRef.current?.emit('webrtc_offer', {
+              offer: peerConnectionRef.current.localDescription,
+              to: data.socketId
+            });
+            console.log('📤 OFFERER: Offer sent to', data.socketId);
+          } catch (err) {
+            console.error('❌ OFFERER: Error in partner_found handler:', err);
+            console.error('❌ OFFERER: Stack trace:', err.stack);
+          }
         });
 
-        // Add local stream tracks to peer connection BEFORE creating offer
-        if (localStreamRef.current) {
-          console.log('\n👤 OFFERER localStream:', localStreamRef.current);
-          const allTracks = localStreamRef.current.getTracks();
-          console.log('👤 OFFERER: All available tracks:', allTracks);
-          console.log('📹 OFFERER tracks detail:', allTracks.map(t => ({ kind: t.kind, id: t.id, enabled: t.enabled, state: t.readyState })));
-          
-          // ✅ CRITICAL: Check if tracks already added to avoid duplicate senders
-          const existingSenders = pc.getSenders();
-          console.log('📤 OFFERER: Existing senders count:', existingSenders.length);
-          if (existingSenders.length > 0) {
-            console.warn('⚠️ OFFERER WARNING: Tracks already added! Senders:', existingSenders.map(s => ({ kind: s.track?.kind, id: s.track?.id })));
-            console.warn('   Not adding tracks again to avoid duplicates');
-          } else {
-            console.log(`\n📹 OFFERER: Adding ${allTracks.length} local tracks to peer connection`);
-            
-            allTracks.forEach((track, index) => {
-              console.log(`  [${index}] Adding ${track.kind} track (id: ${track.id}, enabled: ${track.enabled})`);
+        // Receive offer - ANSWERER starts here
+        socket.on('webrtc_offer', async (data) => {
+          console.log('\n\n📋 ===== ANSWERER RECEIVED OFFER =====');
+          console.log('📩 ANSWERER: Received WebRTC offer from offerer');
+          console.log('📩 ANSWERER: Offer from:', data.from);
+
+          // Store offerer socket ID for later WebRTC communication
+          partnerSocketIdRef.current = data.from;
+          console.log('🔌 CRITICAL: Stored offerer socket ID:', partnerSocketIdRef.current);
+
+          // Directly setup WebRTC answer (no UI popup - direct connection)
+          await setupWebRTCAnswer(data);
+        });
+
+        // Receive answer - OFFERER receives answer back
+        socket.on('webrtc_answer', async (data) => {
+          console.log('\n\n📋 ===== OFFERER RECEIVED ANSWER =====');
+          console.log('📩 OFFERER: Received WebRTC answer from answerer');
+          console.log('📩 OFFERER: data.from (answerer socket ID):', data.from);
+          console.log('📩 OFFERER: Answer SDP:', data.answer);
+
+          // CRITICAL: Store answerer socket ID for sending ice candidates
+          partnerSocketIdRef.current = data.from;
+          console.log('🔌 CRITICAL: Stored answerer socket ID:', partnerSocketIdRef.current);
+
+          try {
+            if (!peerConnectionRef.current) {
+              console.error('❌ OFFERER: No peer connection available to handle answer');
+              return;
+            }
+
+            console.log('\n🔄 OFFERER: Setting remote description (answer from answerer)');
+            console.log('📊 OFFERER: Current connection state before answer:', {
+              connectionState: peerConnectionRef.current.connectionState,
+              iceConnectionState: peerConnectionRef.current.iceConnectionState,
+              signalingState: peerConnectionRef.current.signalingState
+            });
+
+            await peerConnectionRef.current.setRemoteDescription(
+              new RTCSessionDescription(data.answer)
+            );
+            console.log('✅ OFFERER: Remote description (answer) set successfully');
+
+            console.log('📊 OFFERER: Connection state after answer:', {
+              connectionState: peerConnectionRef.current.connectionState,
+              iceConnectionState: peerConnectionRef.current.iceConnectionState,
+              signalingState: peerConnectionRef.current.signalingState
+            });
+            console.log('📋 ===== OFFERER ANSWER RECEIVED AND SET =====\n\n');
+          } catch (err) {
+            console.error('❌ OFFERER: Error handling answer:', err);
+            console.error('❌ OFFERER: Stack trace:', err.stack);
+          }
+        });
+
+        // ICE candidate
+        socket.on('ice_candidate', async (data) => {
+          console.log('\n🧊 ICE candidate received from peer:', {
+            candidate: data.candidate?.candidate?.substring(0, 50) || 'null',
+            sdpMLineIndex: data.sdpMLineIndex,
+            sdpMid: data.sdpMid
+          });
+
+          // ✅ FILTER: Mobile Chrome sends incomplete ICE candidates with null sdpMid and sdpMLineIndex
+          // These must be ignored to avoid errors
+          if (!data.candidate || (data.candidate.sdpMid == null && data.candidate.sdpMLineIndex == null)) {
+            console.warn('⚠️ Ignoring invalid ICE candidate (empty sdpMid and sdpMLineIndex)');
+            return;
+          }
+
+          try {
+            if (peerConnectionRef.current) {
               try {
-                const sender = pc.addTrack(track, localStreamRef.current);
-                console.log(`  [${index}] ✅ addTrack succeeded, sender:`, sender);
-              } catch (addTrackErr) {
-                console.error(`  [${index}] ❌ addTrack failed:`, addTrackErr);
+                await peerConnectionRef.current.addIceCandidate(
+                  new RTCIceCandidate(data.candidate)
+                );
+              } catch (addErr) {
+                // addIceCandidate can fail if remote description not set yet
+                // In this case, buffer it for later - this is expected behavior
+                iceCandidateBufferRef.current.push(data.candidate);
+              }
+            } else {
+              // Buffer the candidate if PC isn't ready yet - this is normal
+              iceCandidateBufferRef.current.push(data.candidate);
+            }
+          } catch (err) {
+            console.error('❌ Unexpected error in ICE candidate handler:', err);
+          }
+        });
+
+        // ✅ CRITICAL: Partner disconnected handler
+        socket.on('partner_disconnected', (data) => {
+          console.log('\n\n🔴🔴🔴🔴🔴 ===== PARTNER DISCONNECTED EVENT RECEIVED ===== 🔴🔴🔴🔴🔴');
+          console.log('🔴 Event Data:', data);
+          console.log('🔴 Timestamp:', new Date().toISOString());
+          console.log('🔴 Partner has closed the browser/tab');
+          console.log('🔴 Cleaning up WebRTC connection...');
+
+          // Close peer connection
+          if (peerConnectionRef.current) {
+            console.log('🔴 Closing peer connection');
+            console.log('   Current state:', peerConnectionRef.current.connectionState);
+            peerConnectionRef.current.close();
+            peerConnectionRef.current = null;
+            console.log('🔴 Peer connection closed successfully');
+          } else {
+            console.log('🔴 WARNING: peerConnectionRef.current was null');
+          }
+
+          // Reset remote video ref (but NOT local - keep camera active!)
+          if (remoteVideoRef.current) {
+            console.log('🔴 Clearing remote video ref');
+            remoteVideoRef.current.srcObject = null;
+          }
+
+          // ✅ INLINE STATE RESETS - avoids stale closure issue with endChat()
+          console.log('🔴 Resetting UI state (inline - no stale closure)');
+          setHasPartner(false);
+          setPartnerFound(false);
+          setIsConnected(false);
+          setPartnerInfo(null);
+          setMessages([]);
+          setConnectionTime(0);
+          if (setIncomingFriendRequest) setIncomingFriendRequest(null);
+
+          // 🛑 CHECK: Only re-queue if user hasn't cancelled search
+          if (searchCancelledRef.current) {
+            console.log('🔴 Search was cancelled — NOT re-queueing, returning to dashboard');
+            setIsSearching(false);
+          } else {
+            setIsSearching(true);
+            // Re-queue instantly (Omegle-style seamless)
+            requeueTimerRef.current = setTimeout(() => {
+              if (searchCancelledRef.current) {
+                console.log('🛑 [REQUEUE] Aborted — user cancelled search before requeue fired');
+                return;
+              }
+              socketRef.current?.emit('find_partner', {
+                userId: userIdRef.current,
+                userName: 'Anonymous',
+                userAge: 18,
+                userLocation: userLocationRef.current || 'Unknown'
+              });
+            }, 500);
+            console.log('🔴 Cleanup complete — finding new partner');
+          }
+        });
+
+        // ✅ RECEIVE MESSAGE from partner
+        socket.on('receive_message', (data) => {
+          console.log('💬 Received message from partner:', data);
+          const newMessage = {
+            id: Date.now(),
+            sender: 'partner',
+            text: data.message,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, newMessage]);
+        });
+
+        // ✅ Handle partner skip — INLINE resets to avoid stale closure crash
+        socket.on('user_skipped', () => {
+          console.log('⏭️ Partner skipped - returning to waiting screen');
+
+          // ✅ INLINE STATE RESETS (React setters are stable across renders)
+          setHasPartner(false);
+          setPartnerFound(false);
+          setIsConnected(false);
+          setPartnerInfo(null);
+          setMessages([]);
+          setConnectionTime(0);
+          if (setIncomingFriendRequest) setIncomingFriendRequest(null);
+
+          // Close peer connection
+          if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+            peerConnectionRef.current = null;
+          }
+          // Clear remote video
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = null;
+          }
+
+          // 🛑 CHECK: Only re-queue if user hasn't cancelled search
+          if (searchCancelledRef.current) {
+            console.log('🛑 [SKIPPED] Search was cancelled — NOT re-queueing');
+            setIsSearching(false);
+            return;
+          }
+
+          setIsSearching(true);
+          // Re-queue for next partner instantly (Omegle-style seamless transition)
+          requeueTimerRef.current = setTimeout(() => {
+            if (searchCancelledRef.current) {
+              console.log('🛑 [REQUEUE] Aborted — user cancelled search before requeue fired');
+              return;
+            }
+            socketRef.current?.emit('find_partner', {
+              userId: userIdRef.current,
+              userName: 'Anonymous',
+              userAge: 18,
+              userLocation: userLocationRef.current || 'Unknown'
+            });
+          }, 500);
+        });
+
+        // ⛔ Handle skip limit reached
+        socket.on('skip_limit_reached', (data) => {
+          const isPremiumInEvent = !!data?.isPremium;
+          const skipCount = data?.skipCount ?? 0;
+          const limit = data?.limit ?? 1;
+
+          // 🔥 EXTRA SAFETY: Check local user state from AuthContext as well
+          const unlimitedSkipExpiresAt = user?.unlimitedSkipExpiresAt || user?.unlimited_skip_expires_at;
+          const hasLocalUnlimitedSkip = !!(
+            (user?.hasUnlimitedSkip || user?.has_unlimited_skip) &&
+            (!unlimitedSkipExpiresAt || new Date(unlimitedSkipExpiresAt).getTime() > Date.now())
+          );
+          const isLocalPremium = !!(user?.isPremium || user?.is_premium || hasLocalUnlimitedSkip);
+
+          console.log('⛔ Skip limit reached event:', {
+            ...data,
+            isPremiumInEvent,
+            isLocalPremium,
+            skipCount,
+            limit
+          });
+
+          // Only show popup when it's truly a free-user daily limit block (neither event nor local state says premium)
+          if (!isPremiumInEvent && !isLocalPremium && skipCount >= limit) {
+            setPremiumPopupMessage("skip_limit");
+            setShowPremiumPopup(true);
+          }
+        });
+
+        // ✅ Handle friend request accepted - show "Now you are friends" to both users
+        socket.on('friend_request_accepted', (data) => {
+          console.log('🎉 Friend request accepted:', data);
+          setIsPartnerFriend(true); // ✅ Update icon to show 🧑‍🤝‍🧑
+          setToastMessage('Now you are friends! 🎉');
+          setTimeout(() => setToastMessage(null), 3000);
+        });
+
+        // Disconnect
+        socket.on('disconnect', () => {
+          console.log('Socket disconnected');
+          cleanup();
+        });
+
+        console.log('\n\n🔌 ===== ALL SOCKET LISTENERS REGISTERED =====');
+        console.log('🔌 ✅ partner_found listener active');
+        console.log('🔌 ✅ webrtc_offer listener active');
+        console.log('🔌 ✅ webrtc_answer listener active');
+        console.log('🔌 ✅ ice_candidate listener active');
+        console.log('🔌 ✅ partner_disconnected listener active');
+        console.log('🔌 ✅ receive_message listener active');
+        console.log('🔌 ✅ user_skipped listener active');
+        console.log('🔌 ✅ skip_limit_reached listener active');
+        console.log('🔌 ✅ Ready to receive WebRTC messages\n\n');
+        console.log('🔔 Friend requests are handled separately in a dedicated useEffect\n\n');
+
+        // ═══════════════════════════════════════════════════════
+        // 👁️ ADMIN SPECTATOR MODE — SILENT (No UI indication)
+        // When admin clicks "View" on a live session, the server
+        // tells each user to create a send-only PeerConnection
+        // and send their stream to the admin. Completely hidden.
+        // ═══════════════════════════════════════════════════════
+        const spectatorPCMap = new Map(); // Map<spectatorSocketId, RTCPeerConnection>
+        const spectatorIceBufferMap = new Map(); // Map<spectatorSocketId, RTCIceCandidate[]>
+
+        socket.on('spectator:send_stream', async (data) => {
+          try {
+            const { spectatorSocketId, sessionId, participantLabel } = data;
+            console.log('[SPECTATOR] 📹 Received spectator:send_stream request');
+            console.log('[SPECTATOR]    spectatorSocketId:', spectatorSocketId);
+            console.log('[SPECTATOR]    participantLabel:', participantLabel);
+
+            // ✅ FIX: Get the best available stream - check multiple sources
+            let stream = localStreamRef.current;
+            let streamSource = 'localStreamRef';
+
+            // Check if stream exists and has LIVE tracks
+            if (stream) {
+              const liveTracks = stream.getTracks().filter(t => t.readyState === 'live');
+              const videoTracks = liveTracks.filter(t => t.kind === 'video');
+              console.log(`[SPECTATOR] localStreamRef tracks: ${stream.getTracks().length} total, ${liveTracks.length} live, ${videoTracks.length} video`);
+
+              if (videoTracks.length === 0) {
+                console.warn('[SPECTATOR] ⚠️ localStreamRef has NO live video tracks!');
+                stream = null; // Force fallback
+              }
+            }
+
+            // ✅ FALLBACK 1: Try getting stream from the shared video element
+            if (!stream && sharedVideoRef?.current?.srcObject) {
+              const fallbackStream = sharedVideoRef.current.srcObject;
+              const liveTracks = fallbackStream.getTracks().filter(t => t.readyState === 'live');
+              if (liveTracks.length > 0) {
+                stream = fallbackStream;
+                streamSource = 'sharedVideoRef';
+                console.log('[SPECTATOR] ✅ Using fallback stream from sharedVideoRef');
+              }
+            }
+
+            // ✅ FALLBACK 2: Try streamRef (another ref that might hold the stream)
+            if (!stream && streamRef?.current) {
+              const fallbackStream = streamRef.current;
+              const liveTracks = fallbackStream.getTracks().filter(t => t.readyState === 'live');
+              if (liveTracks.length > 0) {
+                stream = fallbackStream;
+                streamSource = 'streamRef';
+                console.log('[SPECTATOR] ✅ Using fallback stream from streamRef');
+              }
+            }
+
+            // ✅ FALLBACK 3: Re-acquire camera as last resort
+            if (!stream) {
+              console.log('[SPECTATOR] ⚠️ No existing stream found, re-acquiring camera...');
+              try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                  video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+                  audio: true
+                });
+                localStreamRef.current = stream;
+                streamSource = 're-acquired';
+                console.log('[SPECTATOR] ✅ Camera re-acquired for spectator');
+              } catch (camErr) {
+                console.error('[SPECTATOR] ❌ Cannot get camera stream:', camErr.message);
+                return;
+              }
+            }
+
+            console.log(`[SPECTATOR] Using stream from: ${streamSource}`);
+            console.log(`[SPECTATOR] Stream tracks:`, stream.getTracks().map(t =>
+              `${t.kind}(readyState=${t.readyState}, enabled=${t.enabled}, muted=${t.muted})`
+            ));
+
+            // Close any existing PC for this spectator (reconnection case)
+            if (spectatorPCMap.has(spectatorSocketId)) {
+              try { spectatorPCMap.get(spectatorSocketId).close(); } catch (e) { }
+              spectatorPCMap.delete(spectatorSocketId);
+            }
+
+            // Create a NEW send-only PeerConnection for the spectator
+            const pc = new RTCPeerConnection({
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
+              ]
+            });
+
+            spectatorPCMap.set(spectatorSocketId, pc);
+            spectatorIceBufferMap.set(spectatorSocketId, []);
+
+            // ✅ FIX: Ensure tracks are enabled before adding + add only live tracks
+            let addedTracks = 0;
+            stream.getTracks().forEach(track => {
+              if (track.readyState === 'live') {
+                // Ensure track is enabled (not muted by user toggle)
+                track.enabled = true;
+                pc.addTrack(track, stream);
+                addedTracks++;
+                console.log(`[SPECTATOR] ✅ Added ${track.kind} track: id=${track.id}, readyState=${track.readyState}`);
+              } else {
+                console.warn(`[SPECTATOR] ⚠️ Skipping ${track.kind} track (readyState=${track.readyState})`);
               }
             });
-          
-            console.log('\n✅ OFFERER: All tracks added to peer connection');
-            const senders = pc.getSenders();
-            console.log('📤 OFFERER senders count:', senders.length);
-            console.log('📤 OFFERER senders after addTrack:', senders.map((s, i) => ({ 
-              index: i,
-              kind: s.track?.kind, 
-              id: s.track?.id,
-              trackExists: !!s.track,
-              trackEnabled: s.track?.enabled
-            })));
-            console.log('🚀 OFFERER: Ready to send offer with', allTracks.length, 'tracks\n');
-          }
-        } else {
-          console.error('❌ OFFERER: No local stream available - TRACKS WILL NOT BE SENT!');
-          console.error('❌ OFFERER: localStreamRef.current is:', localStreamRef.current);
-        }
 
-        // Create and send offer
-        console.log('\n📋 ===== OFFERER CREATING AND SENDING OFFER =====');
-        console.log('🎬 OFFERER: Creating WebRTC offer with offerToReceiveVideo/Audio');
-        
-        // ✅ CRITICAL: Add offerToReceiveVideo and offerToReceiveAudio to force SDP direction
-        // This tells the remote peer that we can receive video/audio
-        // Without this, some browsers send recvonly instead of sendrecv
-        const offer = await pc.createOffer({
-          offerToReceiveVideo: true,
-          offerToReceiveAudio: true
-        });
-        console.log('✅ OFFERER: Offer created with receive constraints:', offer);
-        console.log('📋 OFFERER SDP CHECK - Looking for a=sendrecv:');
-        const offerSdpLines = offer.sdp.split('\n').filter(line => line.includes('sendrecv') || line.includes('recvonly') || line.includes('sendonly'));
-        console.log('   Media direction lines:');
-        offerSdpLines.forEach(line => console.log('   ', line));
-        
-        console.log('🔄 OFFERER: Setting local description (offer)');
-        await pc.setLocalDescription(offer);
-        console.log('✅ OFFERER: Local description set');
-        
-        // ✅ CRITICAL: Flush buffered ICE candidates after local description is set
-        while (iceCandidateBufferRef.current.length > 0) {
-          const bufferedCandidate = iceCandidateBufferRef.current.shift();
-          try {
-            await pc.addIceCandidate(
-              new RTCIceCandidate(bufferedCandidate)
-            );
+            if (addedTracks === 0) {
+              console.error('[SPECTATOR] ❌ No live tracks to send! Aborting.');
+              pc.close();
+              spectatorPCMap.delete(spectatorSocketId);
+              return;
+            }
+            console.log(`[SPECTATOR] Total senders on spectator PC: ${pc.getSenders().length}`);
+
+            // Buffer ICE candidates until answer is received
+            const iceCandidateBuffer = [];
+
+            // Monitor connection state
+            pc.onconnectionstatechange = () => {
+              console.log(`[SPECTATOR] PC connection state → ${pc.connectionState}`);
+            };
+            pc.oniceconnectionstatechange = () => {
+              console.log(`[SPECTATOR] PC ICE state → ${pc.iceConnectionState}`);
+            };
+            pc.onicegatheringstatechange = () => {
+              console.log(`[SPECTATOR] PC ICE gathering → ${pc.iceGatheringState}`);
+            };
+
+            // ICE candidate exchange — relay to admin via server
+            pc.onicecandidate = (event) => {
+              if (event.candidate) {
+                socket.emit('spectator:ice_candidate', {
+                  candidate: event.candidate,
+                  to: spectatorSocketId,
+                  sessionId
+                });
+              }
+            };
+
+            // Create offer and send to admin
+            const offer = await pc.createOffer({
+              offerToReceiveVideo: false,
+              offerToReceiveAudio: false
+            });
+            await pc.setLocalDescription(offer);
+
+            socket.emit('spectator:offer', {
+              offer: pc.localDescription,
+              to: spectatorSocketId,
+              sessionId,
+              participantLabel
+            });
+
+            console.log('[SPECTATOR] ✅ Offer sent to admin spectator');
           } catch (err) {
-            // Candidate may have already been processed or is invalid
+            console.error('[SPECTATOR] ❌ Error sending stream:', err.message, err.stack);
           }
-        }
-        
-        console.log('\n📤 OFFERER: Sending offer with tracks:', pc.getSenders().map(s => ({
-          kind: s.track?.kind,
-          id: s.track?.id,
-          enabled: s.track?.enabled
-        })));
-        console.log('📤 OFFERER: Partner socket ID from data:', data.socketId);
-        console.log('📤 OFFERER: partnerSocketIdRef.current value:', partnerSocketIdRef.current);
-        console.log('🔌🔌🔌 CRITICAL: About to emit webrtc_offer with to:', data.socketId);
-        console.log('🔌🔌🔌 CRITICAL: Is to value empty/null/undefined?', !data.socketId);
-        
-        // ✅ CRITICAL FIX: Wait a moment for answerer to mount Chat component and register listeners
-        // This prevents race condition where webrtc_offer is sent before answerer is ready
-        console.log('⏳ OFFERER: Waiting 500ms for answerer to be ready...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        socketRef.current?.emit('webrtc_offer', {
-          offer: peerConnectionRef.current.localDescription,
-          to: data.socketId
         });
-        console.log('✅ OFFERER: webrtc_offer emitted successfully');
-        console.log('✅ OFFERER: webrtc_offer sent to socket ID:', data.socketId);
-        console.log('✅ OFFERER: webrtc_offer contains', peerConnectionRef.current.getSenders().length, 'senders');
-        console.log('✅ OFFERER: Sent to socket:', data.socketId);
-      } catch (err) {
-        console.error('❌ OFFERER: Error in partner_found handler:', err);
-        console.error('❌ OFFERER: Stack trace:', err.stack);
-      }
-    });
 
-    // Receive offer - ANSWERER starts here
-    socket.on('webrtc_offer', async (data) => {
-      console.log('\n\n📋 ===== ANSWERER RECEIVED OFFER =====');
-      console.log('📨 ANSWERER: Received WebRTC offer from offerer');
-      console.log('📨 ANSWERER: Offer from:', data.from);
-      
-      // Store offerer socket ID for later WebRTC communication
-      partnerSocketIdRef.current = data.from;
-      console.log('🔌 CRITICAL: Stored offerer socket ID:', partnerSocketIdRef.current);
-      
-      // Directly setup WebRTC answer (no UI popup - direct connection)
-      await setupWebRTCAnswer(data);
-    });
-
-    // Receive answer - OFFERER receives answer back
-    socket.on('webrtc_answer', async (data) => {
-      console.log('\n\n📋 ===== OFFERER RECEIVED ANSWER =====');
-      console.log('📨 OFFERER: Received WebRTC answer from answerer');
-      console.log('📨 OFFERER: data.from (answerer socket ID):', data.from);
-      console.log('📨 OFFERER: Answer SDP:', data.answer);
-      
-      // CRITICAL: Store answerer socket ID for sending ice candidates
-      partnerSocketIdRef.current = data.from;
-      console.log('🔌 CRITICAL: Stored answerer socket ID:', partnerSocketIdRef.current);
-      
-      try {
-        if (!peerConnectionRef.current) {
-          console.error('❌ OFFERER: No peer connection available to handle answer');
-          return;
-        }
-        
-        console.log('\n🔄 OFFERER: Setting remote description (answer from answerer)');
-        console.log('📊 OFFERER: Current connection state before answer:', {
-          connectionState: peerConnectionRef.current.connectionState,
-          iceConnectionState: peerConnectionRef.current.iceConnectionState,
-          signalingState: peerConnectionRef.current.signalingState
-        });
-        
-        await peerConnectionRef.current.setRemoteDescription(
-          new RTCSessionDescription(data.answer)
-        );
-        console.log('✅ OFFERER: Remote description (answer) set successfully');
-        
-        console.log('📊 OFFERER: Connection state after answer:', {
-          connectionState: peerConnectionRef.current.connectionState,
-          iceConnectionState: peerConnectionRef.current.iceConnectionState,
-          signalingState: peerConnectionRef.current.signalingState
-        });
-        console.log('📋 ===== OFFERER ANSWER RECEIVED AND SET =====\n\n');
-      } catch (err) {
-        console.error('❌ OFFERER: Error handling answer:', err);
-        console.error('❌ OFFERER: Stack trace:', err.stack);
-      }
-    });
-
-    // ICE candidate
-    socket.on('ice_candidate', async (data) => {
-      console.log('\n🧊 ICE candidate received from peer:', {
-        candidate: data.candidate?.candidate?.substring(0, 50) || 'null',
-        sdpMLineIndex: data.sdpMLineIndex,
-        sdpMid: data.sdpMid
-      });
-      
-      // ✅ FILTER: Mobile Chrome sends incomplete ICE candidates with null sdpMid and sdpMLineIndex
-      // These must be ignored to avoid errors
-      if (!data.candidate || (data.candidate.sdpMid == null && data.candidate.sdpMLineIndex == null)) {
-        console.warn('⚠️ Ignoring invalid ICE candidate (empty sdpMid and sdpMLineIndex)');
-        return;
-      }
-      
-      try {
-        if (peerConnectionRef.current) {
+        // Admin's answer comes back — set remote description
+        socket.on('spectator:answer', async (data) => {
           try {
-            await peerConnectionRef.current.addIceCandidate(
-              new RTCIceCandidate(data.candidate)
-            );
-          } catch (addErr) {
-            // addIceCandidate can fail if remote description not set yet
-            // In this case, buffer it for later - this is expected behavior
-            iceCandidateBufferRef.current.push(data.candidate);
+            const { answer, from } = data;
+            console.log('[SPECTATOR] 📩 Received answer from admin:', from);
+            // Look up the PC by the admin's socket ID
+            const pc = spectatorPCMap.get(from);
+            if (pc && pc.signalingState !== 'closed') {
+              await pc.setRemoteDescription(new RTCSessionDescription(answer));
+              console.log('[SPECTATOR] ✅ Remote description set from admin:', from);
+
+              // Flush buffered ICE candidates
+              const bufferedICE = spectatorIceBufferMap.get(from) || [];
+              if (bufferedICE.length > 0) {
+                console.log(`[SPECTATOR] 🧊 Flushing ${bufferedICE.length} buffered ICE candidates for admin`);
+                for (const c of bufferedICE) {
+                  try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (e) { console.error('ICE add err:', e); }
+                }
+                spectatorIceBufferMap.set(from, []);
+              }
+
+              console.log('[SPECTATOR]    PC signaling state:', pc.signalingState);
+              console.log('[SPECTATOR]    PC connection state:', pc.connectionState);
+            } else {
+              console.warn('[SPECTATOR] ⚠️ No PC found for admin socket:', from,
+                'Map keys:', [...spectatorPCMap.keys()]);
+            }
+          } catch (err) {
+            console.error('[SPECTATOR] ❌ Error handling answer:', err.message);
           }
-        } else {
-          // Buffer the candidate if PC isn't ready yet - this is normal
-          iceCandidateBufferRef.current.push(data.candidate);
-        }
-      } catch (err) {
-        console.error('❌ Unexpected error in ICE candidate handler:', err);
-      }
-    });
+        });
 
-    // ✅ CRITICAL: Partner disconnected handler
-    socket.on('partner_disconnected', (data) => {
-      console.log('\n\n🔴🔴🔴🔴🔴 ===== PARTNER DISCONNECTED EVENT RECEIVED ===== 🔴🔴🔴🔴🔴');
-      console.log('🔴 Event Data:', data);
-      console.log('🔴 Timestamp:', new Date().toISOString());
-      console.log('🔴 Partner has closed the browser/tab');
-      console.log('🔴 Cleaning up WebRTC connection...');
-      
-      // Close peer connection
-      if (peerConnectionRef.current) {
-        console.log('🔴 Closing peer connection');
-        console.log('   Current state:', peerConnectionRef.current.connectionState);
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-        console.log('🔴 Peer connection closed successfully');
-      } else {
-        console.log('🔴 WARNING: peerConnectionRef.current was null');
-      }
-      
-      // Reset remote video ref (but NOT local - keep camera active!)
-      if (remoteVideoRef.current) {
-        console.log('🔴 Clearing remote video ref');
-        remoteVideoRef.current.srcObject = null;
-      }
-      // DO NOT clear localVideoRef.current.srcObject here
-      // The local camera should stay active when partner disconnects
-      // User can go back to WaitingScreen or IntroScreen and camera will still be there
-      
-      console.log('🔴 Calling endChat() to reset UI');
-      endChat();
-      console.log('🔴🔴🔴 Cleanup complete - ready for new partner');
-    });
-
-    // ✅ RECEIVE MESSAGE from partner
-    socket.on('receive_message', (data) => {
-      console.log('💬 Received message from partner:', data);
-      const newMessage = {
-        id: Date.now(),
-        sender: 'partner',
-        text: data.message,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, newMessage]);
-    });
-
-    // ✅ Handle partner skip
-    socket.on('user_skipped', () => {
-      console.log('⏭️ Partner skipped - returning to waiting screen');
-      endChat();
-    });
-
-    // ⛔ Handle skip limit reached
-    socket.on('skip_limit_reached', (data) => {
-      console.log('⛔ Skip limit reached:', data);
-      alert(data.message || 'You have reached your daily skip limit (130). Upgrade to Unlimited Skip!');
-    });
-
-    // ✅ Handle friend request accepted - show "Now you are friends" to both users
-    socket.on('friend_request_accepted', (data) => {
-      console.log('🎉 Friend request accepted:', data);
-      setToastMessage('Now you are friends! 🎉');
-      setTimeout(() => setToastMessage(null), 3000);
-    });
-
-    // Disconnect
-    socket.on('disconnect', () => {
-      console.log('Socket disconnected');
-      cleanup();
-    });
-    
-    console.log('\n\n🔌 ===== ALL SOCKET LISTENERS REGISTERED =====');
-    console.log('🔌 ✅ partner_found listener active');
-    console.log('🔌 ✅ webrtc_offer listener active');
-    console.log('🔌 ✅ webrtc_answer listener active');
-    console.log('🔌 ✅ ice_candidate listener active');
-    console.log('🔌 ✅ partner_disconnected listener active');
-    console.log('🔌 ✅ receive_message listener active');
-    console.log('🔌 ✅ user_skipped listener active');
-    console.log('🔌 ✅ skip_limit_reached listener active');
-    console.log('🔌 ✅ Ready to receive WebRTC messages\n\n');
-    console.log('🔔 Friend requests are handled separately in a dedicated useEffect\n\n');
+        // ICE candidates from admin spectator
+        socket.on('spectator:ice_candidate', async (data) => {
+          try {
+            const { candidate, from } = data;
+            const pc = spectatorPCMap.get(from);
+            if (pc && candidate && pc.signalingState !== 'closed') {
+              if (pc.remoteDescription) {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+              } else {
+                // Buffer ICE candidates until remote description is set
+                console.log('[SPECTATOR] 🧊 Buffering ICE candidate (no remote description yet)');
+                const buffer = spectatorIceBufferMap.get(from) || [];
+                buffer.push(candidate);
+                spectatorIceBufferMap.set(from, buffer);
+              }
+            }
+          } catch (err) {
+            // ICE candidate errors are common and usually harmless
+            console.debug('[SPECTATOR] ICE candidate error:', err.message);
+          }
+        });
       }
     };
-    
+
     // 🔥 START the retry loop
     trySetupListeners();
-    
+
     // Cleanup function
     return () => {
       console.log('🧹 Removing socket listeners on cleanup');
@@ -2007,6 +2480,9 @@ const Chat = () => {
         socket.off('user_skipped');
         socket.off('skip_limit_reached');
         socket.off('disconnect');
+        socket.off('spectator:send_stream');
+        socket.off('spectator:answer');
+        socket.off('spectator:ice_candidate');
       }
     };
   }, []); // ✅ Empty dependency - listeners registered once at mount
@@ -2018,10 +2494,10 @@ const Chat = () => {
     // Capture refs at effect time
     const isMatchingRef = isMatchingStarted;
     const hasPartnerRef = hasPartner;
-    
+
     return () => {
       console.log('\n\n🧹 🧹 🧹 CHAT COMPONENT UNMOUNTING - CRITICAL CLEANUP 🧹 🧹 🧹');
-      
+
       // Only cancel matching if user was still searching (not in active chat)
       if (isMatchingRef && !hasPartnerRef) {
         console.log('🧹 User was still looking for partner - emitting cancel_matching');
@@ -2030,20 +2506,20 @@ const Chat = () => {
           timestamp: new Date().toISOString()
         });
       }
-      
+
       // CRITICAL: Do NOT stop tracks here!
       // Tracks should ONLY stop when:
       // 1. User clicks Cancel Search button
       // 2. User ends chat (skipUser/endChat functions)
       // 3. App is truly closing/navigating away permanently
-      
+
       // Only close peer connection (it will be recreated if needed)
       if (peerConnectionRef.current) {
         console.log('🧹 Closing peer connection');
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
       }
-      
+
       console.log('✅ Chat component cleanup complete (tracks NOT stopped - will be reused)');
     };
   }, []); // CRITICAL: Empty dependency array - cleanup only on unmount!
@@ -2052,7 +2528,7 @@ const Chat = () => {
   useEffect(() => {
     return () => {
       console.log('🧹 Chat component unmounting - cleaning up peer connection only');
-      
+
       // Close peer connection
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
@@ -2061,120 +2537,204 @@ const Chat = () => {
     };
   }, []);
 
-  const getTurnServers = async () => {
-    // ✅ Return cached servers immediately if available
-    if (turnServersCacheRef.current) {
-      return turnServersCacheRef.current;
+  // ═══════════════════════════════════════════════════════════════
+  // 🎯 OMEGLE-STYLE DISCONNECT & INACTIVITY HANDLING
+  // ═══════════════════════════════════════════════════════════════
+  const inactivityTimerRef = useRef(null);
+  const wasInCallRef = useRef(false);
+
+  useEffect(() => {
+    // ─── 1. TAB CLOSE / BROWSER CLOSE → Immediate disconnect ───
+    const handleBeforeUnload = () => {
+      console.log('🚪 [DISCONNECT] Tab/browser closing');
+      if (partnerSocketIdRef.current && socketRef.current) {
+        socketRef.current.emit('user_inactive_disconnect', {
+          userId: userIdRef.current,
+          partnerId: partnerSocketIdRef.current,
+          reason: 'tab_closed'
+        });
+      }
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+    };
+
+    // pagehide fires more reliably on mobile
+    const handlePageHide = (e) => {
+      if (!e.persisted) {
+        console.log('🚪 [DISCONNECT] Page hiding (permanent)');
+        if (partnerSocketIdRef.current && socketRef.current) {
+          socketRef.current.emit('user_inactive_disconnect', {
+            userId: userIdRef.current,
+            partnerId: partnerSocketIdRef.current,
+            reason: 'page_closed'
+          });
+        }
+        if (peerConnectionRef.current) {
+          peerConnectionRef.current.close();
+          peerConnectionRef.current = null;
+        }
+      }
+    };
+
+    // ─── 2 & 3. BACKGROUND / APP SWITCH → Timed disconnect ───
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        console.log('👁️ [VISIBILITY] Tab went to background');
+        wasInCallRef.current = !!partnerSocketIdRef.current;
+
+        if (wasInCallRef.current) {
+          // Mobile (phone call interruption) → 10s grace
+          // Desktop (tab switch) → 6s timeout
+          const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+          const timeout = isMobile ? 10000 : 6000;
+          console.log(`⏱️ [VISIBILITY] ${timeout / 1000}s timer started (${isMobile ? 'mobile' : 'desktop'})`);
+
+          inactivityTimerRef.current = setTimeout(() => {
+            console.log('⏱️ [VISIBILITY] Timer expired — auto-disconnecting');
+
+            // Notify backend → partner gets moved to waiting
+            if (socketRef.current && partnerSocketIdRef.current) {
+              socketRef.current.emit('user_inactive_disconnect', {
+                userId: userIdRef.current,
+                partnerId: partnerSocketIdRef.current,
+                reason: 'inactive_timeout'
+              });
+            }
+
+            // Close peer connection
+            if (peerConnectionRef.current) {
+              peerConnectionRef.current.close();
+              peerConnectionRef.current = null;
+            }
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = null;
+            }
+
+            // Reset UI → waiting screen
+            setHasPartner(false);
+            setPartnerFound(false);
+            setIsConnected(false);
+            setPartnerInfo(null);
+            setMessages([]);
+            setConnectionTime(0);
+            setIsSearching(true);
+            wasInCallRef.current = false;
+
+            // Auto find new partner after 1s
+            setTimeout(() => {
+              socketRef.current?.emit('find_partner', {
+                userId: userIdRef.current,
+                userName: 'Anonymous',
+                userAge: 18,
+                userLocation: userLocationRef.current || 'Unknown'
+              });
+            }, 1000);
+          }, timeout);
+        }
+      } else if (document.visibilityState === 'visible') {
+        // User came back — cancel timer if still running
+        console.log('👁️ [VISIBILITY] Tab returned to foreground');
+        if (inactivityTimerRef.current) {
+          clearTimeout(inactivityTimerRef.current);
+          inactivityTimerRef.current = null;
+          console.log('✅ [VISIBILITY] Timer cleared — call continues');
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    };
+  }, []);
+
+  const startVideoChat = useCallback(async (isForced = false) => {
+    // 🛑 DEBUG USER DATA (Requested by user)
+    console.log("USER DATA:", user);
+
+    // 🔄 FRESH PROFILE CHECK: Always get latest premium status from backend
+    // This prevents stale localStorage cache from blocking premium users
+    let freshUser = user;
+    let profileFetchOk = false;
+    if (refreshProfile) {
+      try {
+        console.log('🔄 [FRESH CHECK] Fetching latest profile before skip limit check...');
+        const result = await refreshProfile();
+        if (result?.success && result?.user) {
+          freshUser = result.user;
+          profileFetchOk = true;
+          console.log('🔄 [FRESH CHECK] Got fresh data:', {
+            isPremium: freshUser.isPremium,
+            hasUnlimitedSkip: freshUser.hasUnlimitedSkip,
+            dailySkipCount: freshUser.dailySkipCount
+          });
+        }
+        if (result?.status === 400) {
+          console.warn('🔄 [FRESH CHECK] /api/profile returned 400. Disabling client-side skip limit popup.', result);
+        }
+      } catch (err) {
+        console.warn('🔄 [FRESH CHECK] Failed (using cached data):', err.message);
+      }
     }
 
-    // ✅ If already fetching, wait for it to complete instead of fetching again
-    if (turnServersFetchingRef.current) {
-      // Wait up to 5 seconds for the fetch to complete
-      const startTime = Date.now();
-      while (turnServersFetchingRef.current && Date.now() - startTime < 5000) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        if (turnServersCacheRef.current) {
-          return turnServersCacheRef.current;
-        }
-      }
-      // If fetch took too long, return fallback
-      return getIceServers();
-    }
+    // 🛑 SKIP LIMIT ENFORCEMENT - Uses fresh data from backend
+    const skipLimit = 1;
+    // Safety: If /api/profile fails, do NOT treat the user as free/premium on the client.
+    // Backend will always enforce limits and will NEVER emit `skip_limit_reached` for premium users.
 
-    // ✅ Mark that we're fetching to prevent parallel requests
-    turnServersFetchingRef.current = true;
+    // ✅ CRITICAL FIX: Properly check for "Unlimited Skip" plan in fresh user data
+    const freshUnlimitedSkipExpiresAt = freshUser?.unlimitedSkipExpiresAt || freshUser?.unlimited_skip_expires_at;
+    const isPremiumUser = !!(
+      freshUser?.isPremium ||
+      freshUser?.is_premium ||
+      (freshUser?.hasUnlimitedSkip || freshUser?.has_unlimited_skip) &&
+      (!freshUnlimitedSkipExpiresAt || new Date(freshUnlimitedSkipExpiresAt).getTime() > Date.now())
+    );
 
-    try {
-      // Fetch with a 3-second timeout to avoid hanging
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-      const res = await fetch("https://flinxx-admin-backend.onrender.com/api/turn", {
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      
-      const data = await res.json();
-
-      // Try multiple possible response formats
-      let iceServers = null;
-      
-      // Format 1: data.v.iceServers as array (expected format)
-      if (Array.isArray(data?.v?.iceServers)) {
-        iceServers = data.v.iceServers;
-      }
-      // Format 2: data.iceServers as array (direct)
-      else if (Array.isArray(data?.iceServers)) {
-        iceServers = data.iceServers;
-      }
-      // Format 3: data.v is the array itself
-      else if (Array.isArray(data?.v)) {
-        iceServers = data.v;
-      }
-      // Format 4: data.v.iceServers is an OBJECT with urls array (ACTUAL FORMAT FROM XIRSYS)
-      else if (data?.v?.iceServers && typeof data.v.iceServers === 'object' && !Array.isArray(data.v.iceServers)) {
-        // The actual structure from Xirsys: { username: "...", urls: [...], credential: "..." }
-        // We need to convert this to RTCPeerConnection format
-        if (Array.isArray(data.v.iceServers.urls)) {
-          // Convert { username, urls, credential } to RTCIceServer format
-          iceServers = [{
-            urls: data.v.iceServers.urls,
-            username: data.v.iceServers.username,
-            credential: data.v.iceServers.credential
-          }];
-        }
-        // Check if it has nested iceServers array
-        else if (Array.isArray(data.v.iceServers.iceServers)) {
-          iceServers = data.v.iceServers.iceServers;
-        }
-        // Check if it has a v property with an array
-        else if (Array.isArray(data.v.iceServers.v)) {
-          iceServers = data.v.iceServers.v;
-        }
-        // Check if it has a servers property
-        else if (Array.isArray(data.v.iceServers.servers)) {
-          iceServers = data.v.iceServers.servers;
-        }
-      }
-      // Format 5: Check if response is wrapped differently
-      else if (Array.isArray(data?.servers)) {
-        iceServers = data.servers;
-      }
-      // Format 6: Check if v is an object with servers
-      else if (Array.isArray(data?.v?.servers)) {
-        iceServers = data.v.servers;
-      }
-
-      if (iceServers && iceServers.length > 0) {
-        // ✅ Cache the servers for future peer connections
-        turnServersCacheRef.current = iceServers;
-        turnServersFetchingRef.current = false;
-        return iceServers;
+    if (!profileFetchOk) {
+      console.warn('🔄 [FRESH CHECK] profileFetchOk=false. Skipping client-side skip limit popup check.');
+    } else {
+      // ✅ Premium/Unlimited Skip users bypass skip limit check entirely (do NOT return early!)
+      if (isPremiumUser) {
+        console.log('💎 [PREMIUM] Bypassing skip limit check for premium/unlimited user');
+        // Continue to camera/search logic below
       } else {
-        throw new Error("Invalid Xirsys TURN response format - iceServers array not found");
+        // ❌ Only free users check skip limit
+        const skipCount = freshUser?.dailySkipCount || freshUser?.daily_skip_count || 0;
+        if (freshUser && skipCount >= skipLimit) {
+          console.log('🚫 [LIMIT] Free user reached skip limit (Block on Start Matching).', { skipCount, skipLimit });
+          setPremiumPopupMessage("skip_limit");
+          setShowPremiumPopup(true);
+          return;
+        }
       }
-    } catch (error) {
-      // Silently fail - the static TURN servers will be used as fallback
-      // This is expected and normal behavior
-      
-      // Fallback to static configuration - returns array directly
-      const fallbackServers = getIceServers();
-      // ✅ Cache the fallback servers too
-      turnServersCacheRef.current = fallbackServers;
-      turnServersFetchingRef.current = false;
-      return fallbackServers;
     }
-  };
 
-  const startVideoChat = useCallback(async () => {
-    console.log('🎬 [BUTTON CLICK] "Start Video Chat" button clicked');
-    console.log('🎬 [BUTTON CLICK] Current state - cameraStarted:', cameraStarted, 'isSearching:', isSearching);
-    
+    // ✅ Premium Popup Logic - Show only once per user account (database-backed)
+    // DO NOT show this promotional popup if the user is already premium!
+    if (!isForced && !isPremiumUser && user && user.hasSeenPremiumPopup !== true) {
+      console.log('🛡️ [PREMIUM POPUP] Showing modal (condition: user && user.hasSeenPremiumPopup !== true)');
+      setShowPremiumPopup(true);
+      return;
+    }
+
+    console.log('🎬 [BUTTON CLICK] "Start Video Chat" button clicked (PROCEEDING TO CHAT)');
+
     // First click: Initialize camera only (no matching yet)
     if (!cameraStarted) {
       console.log('🎬 [BUTTON CLICK] First click - initializing camera');
       console.log('🎬 [BUTTON CLICK] Checking if camera request already in progress...');
-      
+
       // Prevent multiple simultaneous requests
       if (isRequestingCamera) {
         console.warn('⚠️ Camera request already in progress');
@@ -2201,7 +2761,7 @@ const Chat = () => {
         console.error('❌ Error initializing camera:', error);
         setIsRequestingCamera(false);
         setIsLoading(false);
-        
+
         // Handle specific error types
         if (error.name === 'NotAllowedError') {
           console.warn('⚠️ Camera permission denied by user');
@@ -2211,15 +2771,18 @@ const Chat = () => {
           console.warn('⚠️ Camera device is already in use by another application');
         }
       }
-    } 
+    }
     // Second click: Start searching ONLY (do NOT touch camera)
     else if (cameraStarted && !isSearching) {
       console.log('🎬 [SEARCHING] User clicked "Start Video Chat" again - starting search');
       console.log('🎬 [SEARCHING] ⚠️ NOT reinitializing camera - stream already active');
       console.log('CLICKED Start Video Chat'); // 🧪 DEBUG: Confirm handler runs
-      
+
+      // 🛑 CRITICAL: Reset cancelled flag for fresh search session
+      searchCancelledRef.current = false;
+
       console.log('🎬 [STATE BEFORE] isSearching:', isSearching, 'partnerFound:', partnerFound);
-      
+
       // EMIT SOCKET EVENT FIRST (synchronous, immediate)
       socketRef.current?.emit('find_partner', {
         userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
@@ -2228,33 +2791,66 @@ const Chat = () => {
         userLocation: currentUser.location || userLocationRef.current || 'Unknown',
         userPicture: currentUser.picture || null  // Include picture so partner can display it
       });
-      
+
       console.log('🎬 [SEARCHING] ✅ find_partner event emitted immediately');
-      
+
       // THEN UPDATE STATE (allow batching)
       setIsSearching(true);
       setPartnerFound(false);
       setIsLoading(true);
-      
+
       console.log('🎬 [STATE AFTER] Calling setIsSearching(true)');
       console.log('STATE AFTER START SEARCH:', { isStarting: true, isSearching: true, partnerFound: false });
     }
-  }, [cameraStarted, isSearching, isRequestingCamera, startCamera]);
+  }, [cameraStarted, isSearching, isRequestingCamera, startCamera, setShowPremiumPopup, user?.hasSeenPremiumPopup, user?.isPremium, user?.hasUnlimitedSkip, user?.daily_skip_count, user?.dailySkipCount, user]);
 
   // ✅ Stable cancel search handler - memoized to prevent unnecessary re-renders
   const handleCancelSearch = useCallback(() => {
     console.log('🛑 [CANCEL] User cancelled search');
-    console.log('STATE BEFORE CANCEL:', { isSearching, partnerFound });
-    
-    // Emit socket event
+
+    // 🛑 CRITICAL: Set cancelled flag FIRST to prevent any pending requeue from firing
+    searchCancelledRef.current = true;
+
+    // 🛑 Clear any pending requeue timer
+    if (requeueTimerRef.current) {
+      clearTimeout(requeueTimerRef.current);
+      requeueTimerRef.current = null;
+      console.log('🛑 [CANCEL] Cleared pending requeue timer');
+    }
+
+    // 1. Emit socket event to remove from backend queue (BOTH queue systems)
     socketRef.current?.emit("cancel_matching", { userId: userIdRef.current });
-    
-    // Reset state
+    // Also emit match:cancel for the matchingHandlers.js queue system
+    socketRef.current?.emit("match:cancel", { userId: userIdRef.current });
+
+    // 2. CRITICAL: Reset searching/matching state → return to dashboard
+    //    But do NOT stop camera — keep it running for the dashboard preview
     setIsSearching(false);
-    setPartnerFound(false);
     setIsLoading(false);
-    
-    console.log('STATE AFTER CANCEL:', { isSearching: false, partnerFound: false, isLoading: false });
+    setPartnerFound(false);
+    setHasPartner(false);
+    setIsConnected(false);
+    setPartnerInfo(null);
+    setMessages([]);
+    setConnectionTime(0);
+
+    // 3. Close any active peer connection (but keep camera stream alive)
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    // 4. Clear remote video only (NOT local camera)
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+
+    // 5. Reset skip in-flight guard
+    skipInFlightRef.current = false;
+
+    // NOTE: Camera stays running (cameraStarted stays true, localStreamRef untouched)
+    // User can click "Start Video Chat" again to re-enter search immediately
+    console.log('✅ [CANCEL] Search cancelled — returned to dashboard (camera still active)');
   }, []);
 
 
@@ -2276,12 +2872,114 @@ const Chat = () => {
     setMessageInput('');
   }, [messageInput, hasPartner]);
 
+  const endChat = useCallback((shouldRequeue = true) => {
+    setHasPartner(false);
+    setPartnerFound(false);  // ✅ Hide video chat screen
+    setIsConnected(false);
+    setPartnerInfo(null);
+    setMessages([]);
+    setConnectionTime(0);
+
+    if (setIncomingFriendRequest) setIncomingFriendRequest(null);  // ✅ Null-safe
+
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    if (shouldRequeue) {
+      setIsSearching(true);  // ✅ Return to waiting screen
+      // Look for new partner (do NOT stop camera - reuse same stream)
+      socketRef.current?.emit('find_partner', {
+        userId: userIdRef.current,
+        userName: currentUser?.name || 'Anonymous',
+        userAge: currentUser?.age || 18,
+        userLocation: currentUser?.location || userLocationRef.current || 'Unknown'
+      });
+    } else {
+      setIsSearching(false);
+      setIsLoading(false);
+      // Effectively "Redirect to Dashboard"
+      console.log('🏠 [DASHBOARD] Redirecting to home state (IntroScreen)');
+    }
+  }, [currentUser, setIncomingFriendRequest]);
+
   const skipUser = useCallback(() => {
-    socketRef.current?.emit('skip_user', {
-      partnerSocketId: partnerSocketIdRef.current
-    });
-    endChat();
-  }, []);
+    // 🛑 Client-side skip limit check
+    const skipLimit = 1;
+
+    const unlimitedSkipExpiresAtMs = (() => {
+      const expiresAt =
+        user?.unlimitedSkipExpiresAt ||
+        user?.unlimited_skip_expires_at;
+      if (!expiresAt) return null; // NULL means potentially perpetual or manually set
+      const ms = new Date(expiresAt).getTime();
+      return Number.isNaN(ms) ? null : ms;
+    })();
+
+    // ✅ CRITICAL FIX: Allow null expiry date for unlimited skip (matches backend logic)
+    const isUnlimitedSkipActive = !!(
+      (user?.hasUnlimitedSkip || user?.has_unlimited_skip) &&
+      (unlimitedSkipExpiresAtMs === null || unlimitedSkipExpiresAtMs > Date.now())
+    );
+
+    const isPremiumUser = !!(user?.isPremium || user?.is_premium || isUnlimitedSkipActive);
+    const skipCount = user?.dailySkipCount || user?.daily_skip_count || 0;
+    const reachedLimit = !!(user && !isPremiumUser && skipCount >= skipLimit);
+
+    if (reachedLimit) {
+      console.log('🚫 [SKIP] Client-side limit reached for free user.', { skipCount, skipLimit });
+      setPremiumPopupMessage("skip_limit");
+      setShowPremiumPopup(true);
+
+      // 🛑 CRITICAL: Still notify partner they were skipped, even if limit reached!
+      // Without this, the partner stays stuck in video chat forever
+      if (partnerSocketIdRef.current) {
+        socketRef.current?.emit('skip_user', {
+          partnerSocketId: partnerSocketIdRef.current,
+          userId: userIdRef.current
+        });
+        console.log('📢 [SKIP] Notified partner before ending (limit reached)');
+      }
+
+      endChat(false); // stop re-queueing
+      return;
+    }
+
+    if (skipInFlightRef.current) {
+      console.log('⏳ [SKIP] Skip request already in-flight, ignoring extra click');
+      return;
+    }
+    skipInFlightRef.current = true;
+
+    // Emit skip event (use server ack to avoid race/UI mismatch)
+    socketRef.current?.emit(
+      'skip_user',
+      { partnerSocketId: partnerSocketIdRef.current, userId: userIdRef.current },
+      (resp) => {
+        skipInFlightRef.current = false;
+        const canSkip = !!resp?.canSkip;
+        const isPremium = !!resp?.isPremium;
+        const backendSkipCount = resp?.skipCount ?? skipCount;
+        const backendLimit = resp?.limit ?? skipLimit;
+
+        if (!canSkip) {
+          // Only show popup when it's truly a free-user limit block
+          const shouldShow = !isPremium && backendSkipCount >= backendLimit;
+          if (shouldShow) {
+            setPremiumPopupMessage("skip_limit");
+            setShowPremiumPopup(true);
+            endChat(false); // stop re-queueing
+          }
+          return;
+        }
+
+        // Successful skip: consume local counter (best-effort) and re-queue
+        if (incrementSkipCount) incrementSkipCount();
+        endChat(true);
+      }
+    );
+  }, [user, incrementSkipCount, endChat]);
 
   // ✅ SEND FRIEND REQUEST in video mode - Uses AuthContext directly (NOT currentUser state)
   // ⚠️ THIS IS THE OLD HTTP-BASED FLOW - DO NOT USE FROM PROFILE ICON
@@ -2292,14 +2990,14 @@ const Chat = () => {
     console.log('='.repeat(80));
     console.log('📍 [OLD HTTP FR] This is the SEARCH MODAL flow (HTTP-based)');
     console.log('📍 [OLD HTTP FR] Profile icon should NEVER trigger this function!');
-    
+
     // ✅ Get sender from AuthContext user (NOT currentUser state which can be null)
     const senderPublicId = user?.publicId || user?.uuid;
-    
+
     // ✅ Get receiver from partnerInfo - check all possible field names
     console.log('📊 [OLD HTTP FR] Partner Info full object:', JSON.stringify(partnerInfo, null, 2));
     const receiverPublicId = partnerInfo?.partnerId || partnerInfo?.id || partnerInfo?.uuid || partnerInfo?.publicId;
-    
+
     console.log('📊 [OLD HTTP FR] ========== IDs EXTRACTED ==========');
     console.log('   Friend request sender:', senderPublicId);
     console.log('   Friend request receiver:', receiverPublicId);
@@ -2311,7 +3009,7 @@ const Chat = () => {
       name: user?.name
     });
     console.log('📊 [DEBUG] Partner Info object keys:', partnerInfo ? Object.keys(partnerInfo) : 'null');
-    
+
     // ✅ VALIDATION - Don't check currentUser anymore
     if (!senderPublicId) {
       console.error('❌ [VIDEO FR] Sender ID missing - user.uuid/publicId not in AuthContext');
@@ -2319,7 +3017,7 @@ const Chat = () => {
       alert('Error: Could not get your user ID from auth');
       return;
     }
-    
+
     if (!receiverPublicId) {
       console.error('❌ [VIDEO FR] Receiver ID missing - partnerInfo does not have ID fields');
       console.error('   Available partnerInfo fields:', partnerInfo ? Object.keys(partnerInfo) : 'partnerInfo is null');
@@ -2327,18 +3025,18 @@ const Chat = () => {
       alert('Error: Could not get partner ID');
       return;
     }
-    
+
     const payload = {
       senderPublicId: String(senderPublicId),
       receiverPublicId: String(receiverPublicId)
     };
-    
+
     console.log('\n📤 [VIDEO FR] ========== API REQUEST ==========');
     console.log('   Endpoint:', `${BACKEND_URL}/api/friends/send`);
     console.log('   Method: POST');
     console.log('   Payload:', payload);
     console.log('   Token exists:', !!localStorage.getItem('token'));
-    
+
     try {
       const response = await fetch(`${BACKEND_URL}/api/friends/send`, {
         method: 'POST',
@@ -2348,12 +3046,12 @@ const Chat = () => {
         },
         body: JSON.stringify(payload)
       });
-      
+
       console.log('\n📥 [VIDEO FR] ========== API RESPONSE ==========');
       console.log('   Status Code:', response.status);
       console.log('   Status Text:', response.statusText);
       console.log('   OK:', response.ok);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('✅ [VIDEO FR] SUCCESS (200)');
@@ -2370,7 +3068,7 @@ const Chat = () => {
       console.error('   Error Message:', error.message);
       console.error('   Full Error:', error);
     }
-    
+
     console.log('='.repeat(80) + '\n');
   }, [user, partnerInfo]);
 
@@ -2381,24 +3079,32 @@ const Chat = () => {
     console.log('\n' + '='.repeat(80));
     console.log('🚀 [QUICK INVITE] ========== PROFILE ICON FRIEND REQUEST ==========');
     console.log('='.repeat(80));
-    
+
+    // ✅ Cooldown check for 15 seconds
+    if (connectionTime < 15) {
+      const remainingSeconds = 15 - connectionTime;
+      setToastMessage(`⏳ Wait ${remainingSeconds}s to add friend`);
+      setTimeout(() => setToastMessage(null), 2000);
+      return;
+    }
+
     // ✅ Get sender from AuthContext user
     const senderPublicId = user?.publicId || user?.uuid;
-    
+
     // ✅ Get receiver from partnerInfo
     const receiverPublicId = partnerInfo?.partnerId || partnerInfo?.id || partnerInfo?.uuid || partnerInfo?.publicId;
-    
+
     console.log('📊 [QUICK INVITE] IDs:');
     console.log('   Sender:', senderPublicId?.substring(0, 8) + '...');
     console.log('   Receiver:', receiverPublicId?.substring(0, 8) + '...');
-    
+
     // ✅ VALIDATION
     if (!senderPublicId) {
       console.error('❌ Sender ID missing');
       alert('Error: Could not get your user ID');
       return;
     }
-    
+
     if (!receiverPublicId) {
       console.error('❌ Receiver ID missing');
       alert('Error: Could not get partner ID');
@@ -2409,14 +3115,14 @@ const Chat = () => {
       // ✅ CALL API TO CREATE REAL FRIEND REQUEST (database entry)
       console.log('\n📤 [QUICK INVITE] Calling /api/friends/send...');
       console.log('   Type: PERSISTENT request (WITH database entry)');
-      
+
       const response = await fetch(`${BACKEND_URL}/api/friends/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           senderPublicId: String(senderPublicId),
           receiverPublicId: String(receiverPublicId)
         })
@@ -2428,6 +3134,7 @@ const Chat = () => {
         // Show error as toast instead of alert
         const msg = errorData.error || 'Could not send request';
         if (msg.includes('already accepted') || msg.includes('already friends')) {
+          setIsPartnerFriend(true); // ✅ They are already friends
           setToastMessage('Already friends! 💛');
         } else if (msg.includes('already') || msg.includes('pending')) {
           setToastMessage('Request already sent');
@@ -2443,11 +3150,11 @@ const Chat = () => {
       console.log('   Request ID:', data.requestId);
       console.log('   Status: SAVED TO DATABASE');
       console.log('   Will appear in Friends & Requests panel');
-      
+
       // ✅ Show "Request Sent" toast for 3 seconds
       setToastMessage('Request Sent');
       setTimeout(() => setToastMessage(null), 3000);
-      
+
       // ✅ CRITICAL FIX: Refresh sent requests immediately after sending
       // This ensures the request appears in Friends & Requests modal right away
       // Instead of waiting for the 5-second polling interval
@@ -2458,13 +3165,13 @@ const Chat = () => {
       } else {
         console.warn('⚠️ [QUICK INVITE] refreshSentRequests not available in AuthContext');
       }
-      
+
     } catch (error) {
       console.error('❌ [QUICK INVITE] Error:', error.message);
     }
-    
+
     console.log('='.repeat(80) + '\n');
-  }, [user, partnerInfo, BACKEND_URL, refreshSentRequests]);
+  }, [user, partnerInfo, BACKEND_URL, refreshSentRequests, connectionTime]);
 
   // ✅ FRIEND REQUEST POPUP HANDLERS - Shown ONLY on video chat screen
   const handleAcceptFriendRequest = async (requestId) => {
@@ -2474,7 +3181,7 @@ const Chat = () => {
       await acceptFriendRequest(requestId);
       console.log('✅ [Chat] Request accepted');
       setIncomingFriendRequest(null);
-      
+
       // ✅ Show "Now you are friends" toast for both users
       setToastMessage('Now you are friends! 🎉');
       setTimeout(() => setToastMessage(null), 3000);
@@ -2509,7 +3216,7 @@ const Chat = () => {
   // ✅ Setup WebRTC Answer for Answerer
   const setupWebRTCAnswer = async (data) => {
     console.log('📞 [setupWebRTCAnswer] Starting WebRTC answer setup');
-    
+
     try {
       // CRITICAL: Create peer connection if it doesn't exist
       if (!peerConnectionRef.current) {
@@ -2532,40 +3239,34 @@ const Chat = () => {
       // ========================================
       console.log('\n🔍 ANSWERER: ALWAYS executing track addition logic');
       console.log('👤 ANSWERER: Checking localStreamRef.current...');
-      
+
       // ✅ CRITICAL DEFENSIVE CHECK: Verify and reacquire stream if missing
       if (!localStreamRef.current) {
         console.warn('⚠️ ANSWERER: localStreamRef.current is NULL - attempting emergency reacquisition');
         try {
           const emergencyStream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 } },
-            audio: true
+            video: { width: { ideal: 640, max: 640 }, height: { ideal: 480, max: 480 }, frameRate: { ideal: 24, max: 30 } },
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
           });
           localStreamRef.current = emergencyStream;
-          
           if (localVideoRef.current) {
             localVideoRef.current.srcObject = emergencyStream;
             localVideoRef.current.muted = true;
-            try {
-              await localVideoRef.current.play();
-            } catch (e) {
-              console.warn('⚠️ Play error in answerer emergency reacquisition');
-            }
+            localVideoRef.current.play().catch(() => { });
           }
-          
-          console.log('✅ ANSWERER: Emergency stream acquisition successful');
+          console.log('✅ ANSWERER: Emergency stream acquired');
         } catch (emergencyErr) {
-          console.error('❌ ANSWERER: Emergency stream acquisition failed:', emergencyErr.message);
-          throw new Error('ANSWERER: Cannot reacquire camera stream - ' + emergencyErr.message);
+          console.error('❌ ANSWERER: Emergency stream failed:', emergencyErr.message);
+          throw new Error('ANSWERER: Cannot reacquire camera - ' + emergencyErr.message);
         }
       }
-      
+
       if (localStreamRef.current) {
         console.log('\n✅ ANSWERER: localStream EXISTS - will add tracks');
         const allTracks = localStreamRef.current.getTracks();
         console.log('👤 ANSWERER: getAllTracks() returned:', allTracks);
         console.log('👤 ANSWERER: Track array length:', allTracks.length);
-        
+
         // ✅ CRITICAL: Check if tracks already added to avoid duplicate senders
         const existingSenders = peerConnectionRef.current.getSenders();
         console.log('📤 ANSWERER: Existing senders count:', existingSenders.length);
@@ -2575,7 +3276,7 @@ const Chat = () => {
           console.log(`\n📹 ANSWERER: Attempting to add ${allTracks.length} local tracks to peer connection`);
           let successCount = 0;
           let failureCount = 0;
-          
+
           allTracks.forEach((track, idx) => {
             console.log(`  [${idx}] About to add ${track.kind} track (id: ${track.id}, enabled: ${track.enabled})`);
             try {
@@ -2588,7 +3289,7 @@ const Chat = () => {
               failureCount++;
             }
           });
-          
+
           console.log(`\n✅ ANSWERER: Track addition complete (${successCount} succeeded, ${failureCount} failed)`);
         }
       } else {
@@ -2601,7 +3302,7 @@ const Chat = () => {
         new RTCSessionDescription(data.offer)
       );
       console.log('✅ ANSWERER: Remote description set successfully');
-      
+
       // ✅ NOW it's safe to flush buffered ICE candidates
       while (iceCandidateBufferRef.current.length > 0) {
         const bufferedCandidate = iceCandidateBufferRef.current.shift();
@@ -2620,7 +3321,7 @@ const Chat = () => {
         offerToReceiveAudio: true
       });
       console.log('✅ ANSWERER: Answer created with receive constraints');
-      
+
       console.log('🔄 ANSWERER: Setting local description (answer)');
       await peerConnectionRef.current.setLocalDescription(answer);
       console.log('✅ ANSWERER: Local description set successfully');
@@ -2645,7 +3346,7 @@ const Chat = () => {
         id: s.track?.id,
         enabled: s.track?.enabled
       })));
-      
+
       socketRef.current?.emit('webrtc_answer', {
         answer: peerConnectionRef.current.localDescription,
         to: data.from
@@ -2660,31 +3361,6 @@ const Chat = () => {
     }
   };
 
-  // ✅ END: Incoming Call Screen Handlers and WebRTC Setup
-
-  const endChat = () => {
-    setHasPartner(false);
-    setPartnerFound(false);  // ✅ Hide video chat screen
-    setIsConnected(false);
-    setPartnerInfo(null);
-    setMessages([]);
-    setConnectionTime(0);
-    setIsSearching(true);  // ✅ Return to waiting screen
-    setIncomingFriendRequest(null);  // ✅ Clear any pending friend request notification
-
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-
-    // Look for new partner (do NOT stop camera - reuse same stream)
-    socketRef.current?.emit('find_partner', {
-      userId: userIdRef.current,  // USE REF FOR CONSISTENT ID
-      userName: currentUser.name || 'Anonymous',
-      userAge: currentUser.age || 18,
-      userLocation: currentUser.location || userLocationRef.current || 'Unknown'
-    });
-  };
 
   // Stop camera tracks - ONLY called when user explicitly ends session or logs out
   const stopCameraStream = () => {
@@ -2705,7 +3381,7 @@ const Chat = () => {
 
   const cleanup = () => {
     console.log('🧹 Cleaning up chat session');
-    
+
     // Close peer connection
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
@@ -2733,7 +3409,7 @@ const Chat = () => {
         console.log('🎥 LOCAL VIDEO: Attaching local stream to ref');
         el.srcObject = localStreamRef.current;
         el.muted = true;
-        el.play().catch(() => {});
+        el.play().catch(() => { });
       }
     }
     localVideoRef.current = el;
@@ -2745,10 +3421,10 @@ const Chat = () => {
       remoteVideoRef.current = null;
       return;
     }
-    
+
     // Store the ref
     remoteVideoRef.current = el;
-    
+
     // ✅ CRITICAL FIX: If stream already exists on peerConnection, attach it IMMEDIATELY
     const remoteStream = peerConnectionRef.current?._remoteStream;
     if (remoteStream && remoteStream.getTracks().length > 0) {
@@ -2756,7 +3432,7 @@ const Chat = () => {
         console.log('📺 REF CALLBACK: Attaching remote stream immediately');
         el.srcObject = remoteStream;
         el.muted = false;
-        
+
         // 🔥 AGGRESSIVE PLAY: Try multiple times to play
         const attemptPlay = async () => {
           try {
@@ -2770,12 +3446,12 @@ const Chat = () => {
             // Retry once more
             setTimeout(() => {
               if (remoteVideoRef.current) {
-                remoteVideoRef.current.play().catch(() => {});
+                remoteVideoRef.current.play().catch(() => { });
               }
             }, 100);
           }
         };
-        
+
         attemptPlay();
       } else {
         console.log('📺 REF CALLBACK: Stream already attached');
@@ -2814,7 +3490,7 @@ const Chat = () => {
       location: currentUser?.location,
       picture: !!currentUser?.picture
     });
-    
+
     // ✅ AUTH CHECK (after all hooks) - Don't render chat until auth is ready
     if (!user?.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
       console.log('⏳ Chat: Waiting for valid user UUID from AuthContext...');
@@ -2827,7 +3503,7 @@ const Chat = () => {
         </div>
       );
     }
-    
+
     return (
       <>
         <style>{`
@@ -2942,10 +3618,10 @@ const Chat = () => {
             }
           }
         `}</style>
-        
-        <div className="main-layout flex h-full w-full p-8 gap-8 overflow-visible" style={{ backgroundColor: '#000000' }}>
+
+        <div className="main-layout flex h-full w-full p-8 gap-8 overflow-visible" style={{ backgroundColor: '#000000', justifyContent: 'center' }}>
           {/* TOP PANEL - Video Feed */}
-          <div className="panel-top flex-1 flex flex-col premium-panel-container">
+          <div className="panel-top flex flex-col premium-panel-container" style={{ flex: 'none', width: '40%' }}>
             <div className="flex-1 flex flex-col bg-background-dark rounded-2xl premium-gold-panel relative overflow-hidden" style={{ backgroundColor: '#000000' }}>
               <div className="flex-1 flex flex-col inner-content-radius overflow-hidden relative">
                 {/* Header with Partner Info */}
@@ -2973,17 +3649,27 @@ const Chat = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 md:gap-3">
-                    <button 
-                      onClick={sendQuickInvite}
-                      title="Send Quick Invite"
-                      style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} 
-                      onMouseEnter={(e) => { e.target.style.backgroundColor = '#d4af37'; e.target.style.color = '#000'; }} 
-                      onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#d4af37'; }}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (!isPartnerFriend) sendQuickInvite(); }}
+                      title={isPartnerFriend ? 'Already Friends' : 'Add Friend'}
+                      style={{ width: '36px', height: '36px', borderRadius: '50%', border: `1px solid ${isPartnerFriend ? 'rgba(76, 175, 80, 0.5)' : 'rgba(212, 175, 55, 0.3)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: isPartnerFriend ? '#4CAF50' : '#d4af37', backgroundColor: isPartnerFriend ? 'rgba(76, 175, 80, 0.1)' : 'transparent', cursor: isPartnerFriend ? 'default' : 'pointer', transition: 'all 0.2s' }}
+                      onMouseEnter={(e) => { if (!isPartnerFriend) { e.currentTarget.style.backgroundColor = '#d4af37'; e.currentTarget.style.color = '#000'; } }}
+                      onMouseLeave={(e) => { if (!isPartnerFriend) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#d4af37'; } else { e.currentTarget.style.backgroundColor = 'rgba(76, 175, 80, 0.1)'; e.currentTarget.style.color = '#4CAF50'; } }}
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person</span>
+                      {isPartnerFriend ? (
+                        <span style={{ fontSize: '18px', lineHeight: 1 }}>🧑‍🤝‍🧑</span>
+                      ) : (
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>person_add</span>
+                      )}
                     </button>
-                    <button style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.target.style.backgroundColor = '#d4af37'; e.target.style.color = '#000'; }} onMouseLeave={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#d4af37'; }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>warning</span>
+                    <button
+                      onClick={() => setShowReportModal(true)}
+                      title="Report User"
+                      style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(212, 175, 55, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#d4af37'; e.currentTarget.style.color = '#000'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#d4af37'; }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style={{ pointerEvents: 'none' }}><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
                     </button>
                   </div>
                 </header>
@@ -3023,7 +3709,7 @@ const Chat = () => {
                 {/* Skip Button - Bottom Right */}
                 <div style={{ position: 'absolute', bottom: '24px', right: '24px', zIndex: 20 }}>
                   <button
-                    onClick={skipUser}
+                    onClick={(e) => { e.stopPropagation(); setShowReportModal(false); skipUser(); }}
                     title="Skip"
                     style={{
                       width: '48px',
@@ -3048,7 +3734,7 @@ const Chat = () => {
                       e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.3)';
                     }}
                   >
-                    <span className="material-symbols-outlined" style={{ fontSize: '28px' }}>skip_next</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg>
                   </button>
                 </div>
 
@@ -3086,7 +3772,7 @@ const Chat = () => {
                         }}
                       />
                     </div>
-                    
+
                     {/* Text Branding */}
                     <span style={{
                       fontSize: '13px',
@@ -3105,7 +3791,7 @@ const Chat = () => {
           </div>
 
           {/* BOTTOM PANEL - Chat/Local Video */}
-          <div className="panel-bottom flex-1 flex flex-col premium-panel-container">
+          <div className="panel-bottom flex flex-col premium-panel-container" style={{ flex: 'none', width: '40%' }}>
             <div className="flex-1 flex flex-col bg-background-dark rounded-2xl premium-gold-panel relative overflow-hidden" style={{ backgroundColor: '#000000' }}>
               <div className="flex-1 w-full h-full relative inner-content-radius overflow-hidden flex flex-col">
                 {/* Header for Mobile */}
@@ -3151,7 +3837,8 @@ const Chat = () => {
                       backgroundColor: '#000',
                       position: 'absolute',
                       top: 0,
-                      left: 0
+                      left: 0,
+                      transform: 'scaleX(-1)'
                     }}
                   />
                   {!isLocalCameraReady && (
@@ -3202,12 +3889,25 @@ const Chat = () => {
                   </div>
                 )}
 
-                {/* Message Input */}
-                <div style={{ marginTop: 'auto', width: '100%', padding: '8px 16px 16px 16px', zIndex: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: 'rgba(17, 17, 17, 0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', height: '56px', paddingLeft: '12px', paddingRight: '12px' }}>
+                {/* Message Input - Clean Transparent Floating Pill */}
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0,
+                  zIndex: 20, padding: '0 12px 12px 12px',
+                  pointerEvents: 'none'
+                }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center',
+                    background: 'rgba(0, 0, 0, 0.25)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '28px',
+                    height: '44px',
+                    paddingLeft: '18px',
+                    paddingRight: '5px',
+                    pointerEvents: 'auto'
+                  }}>
                     <input
                       type="text"
-                      placeholder="Send Message"
+                      placeholder="Type a message..."
                       value={messageInput}
                       onChange={(e) => setMessageInput(e.target.value)}
                       onKeyPress={(e) => {
@@ -3221,35 +3921,29 @@ const Chat = () => {
                         border: 'none',
                         color: '#f5f5f5',
                         fontSize: '14px',
-                        fontWeight: 300,
+                        fontWeight: 400,
                         outline: 'none'
                       }}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <button
-                        onClick={sendMessage}
-                        style={{
-                          backgroundColor: '#d4af37',
-                          color: '#000',
-                          paddingLeft: '24px',
-                          paddingRight: '24px',
-                          paddingTop: '8px',
-                          paddingBottom: '8px',
-                          borderRadius: '4px',
-                          fontWeight: 'bold',
-                          fontSize: '10px',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.08em',
-                          border: 'none',
-                          cursor: 'pointer',
-                          transition: 'opacity 0.2s'
-                        }}
-                        onMouseEnter={(e) => { e.target.style.opacity = '0.9'; }}
-                        onMouseLeave={(e) => { e.target.style.opacity = '1'; }}
-                      >
-                        Send
-                      </button>
-                    </div>
+                    <button
+                      onClick={sendMessage}
+                      style={{
+                        width: '36px', height: '36px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        backgroundColor: messageInput.trim() ? 'rgba(212, 175, 55, 0.9)' : 'rgba(255, 255, 255, 0.1)',
+                        color: messageInput.trim() ? '#000' : 'rgba(255, 255, 255, 0.4)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: messageInput.trim() ? 'pointer' : 'default',
+                        transition: 'all 0.25s ease',
+                        flexShrink: 0
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13" />
+                        <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -3285,7 +3979,7 @@ const Chat = () => {
               gap: '8px',
               whiteSpace: 'nowrap'
             }}>
-              {toastMessage.includes('friends') ? '💛' : '✓'} {toastMessage}
+              {toastMessage.includes('friends') ? '💛' : toastMessage.includes('Wait') ? '' : '✓'} {toastMessage}
             </div>
           </div>
         )}
@@ -3295,8 +3989,37 @@ const Chat = () => {
 
   return (
     <div style={{ width: '100%', height: '100dvh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', zIndex: 9999 }}>
-      {/* 🧪 DEBUG: Log UI state and which screen should render */}
-      {console.log('🎨 [RENDER] UI STATE →', { isSearching, partnerFound }, 'Should show:', isSearching && !partnerFound ? 'WAITING SCREEN' : partnerFound ? 'VIDEO CHAT' : 'DASHBOARD')}
+      {/* 🛡️ Premium Popup Logic */}
+      {showPremiumPopup && (
+        premiumPopupMessage === "skip_limit" ? (
+          <SkipLimitPopup
+            isOpen={true}
+            onClose={() => {
+              setShowPremiumPopup(false);
+              setPremiumPopupMessage("");
+            }}
+            onConfirm={handleBuyNow}
+          />
+        ) : (
+          <PremiumPopup
+            isOpen={true}
+            message={premiumPopupMessage}
+            onClose={async () => {
+              console.log('🛡️ [PREMIUM POPUP] Popup closed');
+              setShowPremiumPopup(false);
+              if (user) await markPremiumPopupAsSeen();
+              startVideoChat(true);
+            }}
+            onConfirm={async () => {
+              console.log('🛡️ [PREMIUM POPUP] Popup confirmed');
+              setShowPremiumPopup(false);
+              if (user) await markPremiumPopupAsSeen();
+              startVideoChat(true);
+            }}
+          />
+        )
+      )}
+      {/* RENDER UI STATE */}
 
       {/* ✅ CRITICAL FIX: ALWAYS keep IntroScreen mounted (with Camera) */}
       {/* The camera panel is inside IntroScreen, never unmounted */}
@@ -3305,7 +4028,7 @@ const Chat = () => {
       {/* Dashboard with Camera - ALWAYS MOUNTED in background */}
       <div className="w-full" style={{ height: '100dvh', overflow: 'hidden', position: 'relative' }}>
         {console.log('🎨 [RENDER] Showing DASHBOARD')}
-        <IntroScreen 
+        <IntroScreen
           user={user}
           isLoading={isLoading}
           activeMode={activeMode}
@@ -3332,7 +4055,7 @@ const Chat = () => {
         {isSearching && (
           <div className="absolute inset-0 z-50">
             {console.log('🎨 [RENDER] Showing WAITING SCREEN')}
-            <WaitingScreen 
+            <WaitingScreen
               onCancel={handleCancelSearch}
               localStreamRef={localStreamRef}
               cameraStarted={cameraStarted}
@@ -3345,7 +4068,7 @@ const Chat = () => {
       {partnerFound && (
         <div className="absolute inset-0 z-50 w-full h-full">
           {renderVideoChatScreen()}
-          
+
           {/* ✅ FRIEND REQUEST POPUP - Show ONLY on video chat screen */}
           {incomingFriendRequest && (
             <FriendRequestPopup
@@ -3355,10 +4078,146 @@ const Chat = () => {
               onClose={() => setIncomingFriendRequest(null)}
             />
           )}
+
+          {/* ⚠️ REPORT MODAL - Rendered via Portal to document.body */}
+          {showReportModal && ReactDOM.createPortal(
+            <div
+              style={{
+                position: 'fixed', inset: 0, zIndex: 99999,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
+                animation: 'reportFadeIn 0.3s ease-out forwards'
+              }}
+              onClick={() => setShowReportModal(false)}
+            >
+              <style>{`
+                @keyframes reportFadeIn {
+                  from { opacity: 0; }
+                  to { opacity: 1; }
+                }
+                @keyframes reportSlideUp {
+                  from { transform: translateY(20px); opacity: 0; }
+                  to { transform: translateY(0); opacity: 1; }
+                }
+              `}</style>
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  maxWidth: '420px',
+                  margin: '0 16px',
+                  padding: '32px 28px',
+                  borderRadius: '24px',
+                  background: 'rgba(18, 18, 18, 0.85)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(212, 175, 55, 0.2)',
+                  boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+                  animation: 'reportSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                  overflow: 'hidden'
+                }}
+              >
+                {/* Close Button */}
+                <button
+                  onClick={() => {
+                    setShowReportModal(false);
+                    setSelectedReason(null);
+                  }}
+                  style={{
+                    position: 'absolute', top: '20px', right: '20px',
+                    background: 'none', border: 'none',
+                    color: '#9ca3af', fontSize: '22px',
+                    cursor: 'pointer', padding: '8px',
+                    transition: 'color 0.2s', lineHeight: 1
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
+                >
+                  ✕
+                </button>
+
+                {/* Header */}
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '8px' }}>⚠️</div>
+                  <h2 style={{ color: '#fff', fontSize: '20px', fontWeight: '600', margin: 0 }}>
+                    Choose a reason to report
+                  </h2>
+                </div>
+
+                {/* Report Options */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {[
+                    { icon: '🔞', label: 'Inappropriate Content' },
+                    { icon: '🔫', label: 'Violent / Graphic Content' },
+                    { icon: '👶', label: 'Underage User' },
+                    { icon: '🧑‍🤝‍🧑', label: 'Fake Profile / Gender' },
+                    { icon: '😡', label: 'Hate Speech / Abuse' },
+                    { icon: '🚫', label: 'Spam / Scam' }
+                  ].map((option, idx) => {
+                    const isSelected = selectedReason === option.label;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => handleReport(option.label)}
+                        style={{
+                          display: 'flex', alignItems: 'center',
+                          width: '100%', padding: '14px 20px',
+                          backgroundColor: isSelected ? 'rgba(212, 175, 55, 0.15)' : '#1A1A1A',
+                          border: `1px solid ${isSelected ? '#d4af37' : '#2a2a2a'}`,
+                          borderRadius: '12px',
+                          color: isSelected ? '#d4af37' : '#fff',
+                          fontSize: '15px', fontWeight: isSelected ? '600' : '500',
+                          cursor: 'pointer', transition: 'all 0.2s',
+                          textAlign: 'left', gap: '12px',
+                          boxShadow: isSelected ? '0 0 12px rgba(212, 175, 55, 0.3)' : 'none'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = '#222222';
+                            e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.5)';
+                            e.currentTarget.style.boxShadow = '0 0 8px rgba(212, 175, 55, 0.4)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = '#1A1A1A';
+                            e.currentTarget.style.borderColor = '#2a2a2a';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }
+                        }}
+                      >
+                        <span style={{ fontSize: '18px', opacity: isSelected ? 1 : 0.8 }}>{option.icon}</span>
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Footer Note */}
+                <p style={{
+                  color: '#9ca3af', fontSize: '12px',
+                  textAlign: 'center', marginTop: '20px', marginBottom: 0,
+                  padding: '0 16px', lineHeight: '1.5'
+                }}>
+                  Your report is anonymous. We will review the profile against our community guidelines.
+                </p>
+
+                {/* Gold Accent Glow at bottom */}
+                <div style={{
+                  position: 'absolute', bottom: 0, left: '25%',
+                  width: '50%', height: '2px',
+                  background: 'linear-gradient(to right, transparent, rgba(212, 175, 55, 0.4), transparent)'
+                }} />
+              </div>
+            </div>,
+            document.body
+          )}
         </div>
       )}
 
-      {/* ⛔ Modals and extras - Only show when NOT in video chat mode */}
       {!partnerFound && (
         <>
           {/* ✅ Terms modal – SAFE (no hook violation) */}
@@ -3369,25 +4228,20 @@ const Chat = () => {
             />
           )}
 
-          {/* Premium Modal */}
-          <PremiumModal 
-            isOpen={isPremiumOpen} 
-            onClose={() => setIsPremiumOpen(false)} 
-          />
 
           {/* Gender Filter Modal */}
-          <GenderFilterModal 
-            isOpen={isGenderFilterOpen} 
+          <GenderFilterModal
+            isOpen={isGenderFilterOpen}
             onClose={() => setIsGenderFilterOpen(false)}
             currentGender={selectedGender}
             onOpenPremium={() => setIsPremiumOpen(true)}
           />
 
           {/* Profile Modal */}
-          <ProfileModal 
+          <ProfileModal
             isOpen={isProfileOpen}
             onClose={() => setIsProfileOpen(false)}
-            onOpenPremium={() => setIsPremiumOpen(true)}
+            onOpenPremium={() => setActiveTab('trophy')}
             onReinitializeCamera={async () => {
               if (cameraFunctionsRef.current?.reinitializeCamera) {
                 return await cameraFunctionsRef.current.reinitializeCamera();
@@ -3397,22 +4251,22 @@ const Chat = () => {
           />
 
           {/* Match History Modal */}
-          <MatchHistory 
+          <MatchHistory
             isOpen={isMatchHistoryOpen}
             onClose={() => setIsMatchHistoryOpen(false)}
           />
 
           {/* ✅ Unified Side Panel for all tabs */}
-          <SearchFriendsModal 
-            isOpen={activeTab !== null && activeTab !== 'trophy'} 
+          <SearchFriendsModal
+            isOpen={activeTab !== null && activeTab !== 'trophy'}
             onClose={() => setActiveTab(null)}
             mode={
               activeTab === 'profile' ? 'profile' :
-              activeTab === 'search' ? 'search' :
-              activeTab === 'likes' ? 'likes' :
-              activeTab === 'messages' ? 'message' :
-              activeTab === 'timer' ? 'timer' :
-              'notifications'
+                activeTab === 'search' ? 'search' :
+                  activeTab === 'likes' ? 'likes' :
+                    activeTab === 'messages' ? 'message' :
+                      activeTab === 'timer' ? 'timer' :
+                        'notifications'
             }
             onUserSelect={(user) => {
               console.log('Selected user from search:', user);
@@ -3422,7 +4276,7 @@ const Chat = () => {
 
           {/* ✅ Full-Page Subscriptions Modal */}
           {activeTab === 'trophy' && (
-            <SubscriptionsPage 
+            <SubscriptionsPage
               onClose={() => setActiveTab(null)}
             />
           )}
@@ -3444,6 +4298,7 @@ const Chat = () => {
 
           {/* ✅ FRIEND REQUESTS - Shown as popup ONLY on video chat screen */}
           {/* Popup appears on top of video chat when incoming request arrives */}
+
         </>
       )}
     </div>
@@ -3451,4 +4306,3 @@ const Chat = () => {
 };
 
 export default Chat;
-
