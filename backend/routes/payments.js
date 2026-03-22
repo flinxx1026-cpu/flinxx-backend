@@ -58,7 +58,7 @@ router.all('/test-cashfree', async (req, res) => {
       customer_details: {
         customer_id: 'test_customer',
         customer_email: 'test@flinxx.app',
-        customer_phone: '0000000000',
+        // customer_phone omitted
       },
       order_note: 'Test Order',
     };
@@ -162,7 +162,7 @@ router.post('/create-order', async (req, res) => {
         customer_id: userId,
         customer_name: user.display_name || `User ${userId.substring(0, 8)}`,
         customer_email: user.email || `user${userId.substring(0, 8)}@flinxx.app`,
-        customer_phone: (user.phone_number || '0000000000').toString().replace(/[^0-9]/g, ''),
+        ...(user.phone_number ? { customer_phone: user.phone_number.toString().replace(/[^0-9]/g, '') } : {})
       },
       order_note: `${plan.name} subscription for Flinxx`,
       return_url: `${BASE_URL}/payment-success?orderId={order_id}`,
@@ -334,7 +334,7 @@ router.post('/get-payment-link', async (req, res) => {
         customer_id: userId,
         customer_name: user.display_name || `User ${userId.substring(0, 8)}`,
         customer_email: user.email || `user${userId.substring(0, 8)}@flinxx.app`,
-        customer_phone: (user.phone_number || '0000000000').toString().replace(/[^0-9]/g, '').substring(0, 10),
+        ...(user.phone_number ? { customer_phone: user.phone_number.toString().replace(/[^0-9]/g, '').substring(0, 10) } : {})
       },
       order_note: `${plan.name} subscription for Flinxx`,
       return_url: `${BASE_URL}/payment-success?orderId={order_id}`,
