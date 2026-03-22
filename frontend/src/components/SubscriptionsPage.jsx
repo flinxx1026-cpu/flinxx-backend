@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import './SubscriptionsPage.css';
@@ -204,15 +204,19 @@ const SubscriptionsPage = ({ onClose }) => {
           
           console.log('✅ Cashfree instance created successfully');
           
-          // Cashfree SDK v3 - redirect will be handled by backend based on return_url
-          // The return_url is set in the backend payment configuration
-          
-          // Open checkout with correct v3 API (no 'new' keyword, redirectTarget not returnUrl)
-          // Note: For Cashfree v3, the redirect URL should be whitelisted in Merchant Dashboard
+          // Use modal so the user never leaves the website
           cashfree.checkout({
             paymentSessionId: sessionId,
-            redirectTarget: '_self'
-            // Return URL is controlled by Cashfree backend and should match whitelisted domain
+            redirectTarget: '_modal'
+          }).then((result) => {
+            if (result.error) {
+              console.log("❌ Payment error or popup closed", result.error);
+              // Do nothing, let the user try again
+            } else if (result.paymentDetails) {
+              console.log("✅ Payment completed!", result.paymentDetails);
+              // Redirect to our success handler to verify the payment on the backend
+              window.location.href = `/payment-success?orderId=${orderId}`;
+            }
           });
           
           setLoading(null);
