@@ -14,8 +14,8 @@ export const setPaymentsPrisma = (prismaClient) => { prisma = prismaClient; };
 // Set CASHFREE_MOCK=true in .env to use mock payments (no real API calls)
 // For production, use real Cashfree credentials
 const CASHFREE_MOCK = process.env.CASHFREE_MOCK === 'true';
-const CASHFREE_CLIENT_ID = process.env.CASHFREE_CLIENT_ID || 'test_6cfe9e7a5ac3edde2b5b7aef5';
-const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY || 'test_50b1f891e2c2c68a0c07c4a9a98f4cea2e0b49e';
+const CASHFREE_CLIENT_ID = process.env.CASHFREE_CLIENT_ID || 'YOUR_TEST_CLIENT_ID';
+const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY || 'YOUR_TEST_SECRET_KEY';
 const CASHFREE_BASE_URL = process.env.CASHFREE_ENV === 'production' 
   ? 'https://api.cashfree.com/pg' 
   : 'https://sandbox.cashfree.com/pg';

@@ -1,0 +1,5 @@
+Frontend Socket Fix - Redeploy Trigger
+Date: January 30, 2026
+Status: Socket URL updated to HTTPS CloudFront domain
+Socket: https://d1pphanrf0qsx7.cloudfront.net
+Transport: WSS (WebSocket Secure)
