@@ -62,9 +62,16 @@ export async function validateSkipLimit({
   now = new Date(),
   source = 'unknown'
 }) {
-  const limit = 100;
+  // Contract: 1 skip limit per day for free users
+  const limit = 1;
   const nowMs = now.getTime();
-  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  
+  // Convert 'now' to IST (+5:30) to compute logical midnight properly for Indian time users
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const istNow = new Date(nowMs + istOffsetMs);
+  
+  // Create a UTC midnight representing the current IST day
+  const todayUtc = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()));
   const todayKey = toDateKey(todayUtc);
 
   const lockKey = userId ? `skip:lock:${userId}` : null;

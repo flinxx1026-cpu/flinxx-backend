@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom';
 
 const SkipLimitPopup = ({ isOpen, onClose, onConfirm }) => {
@@ -52,7 +52,7 @@ const SkipLimitPopup = ({ isOpen, onClose, onConfirm }) => {
             </div>
             <h1 className="font-headline text-2xl font-extrabold text-white tracking-tight mb-2">Skip Limit Reached</h1>
             <p className="text-white text-sm opacity-80 leading-relaxed max-w-[280px] mx-auto">
-              Your account has reached the daily skip limit. Upgrade to continue exploring.
+              Your account has reached the daily skip limit. You can skip again after 24 hours or upgrade to continue exploring without limits.
             </p>
           </div>
 
