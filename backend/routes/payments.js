@@ -156,7 +156,7 @@ router.post('/create-order', async (req, res) => {
     // Create Cashfree session - REQUIRED FIELDS ONLY (matching test endpoint which works)
     const sessionPayload = {
       order_id: orderId,
-      order_amount: plan.amount * 100, // Cashfree expects amount in paise
+      order_amount: plan.amount, // Cashfree expects amount in rupees
       order_currency: 'INR',
       customer_details: {
         customer_id: userId,
@@ -328,7 +328,7 @@ router.post('/get-payment-link', async (req, res) => {
     
     const sessionPayload = {
       order_id: orderId,
-      order_amount: plan.amount * 100, // Cashfree expects amount in paise
+      order_amount: plan.amount, // Cashfree expects amount in rupees
       order_currency: 'INR',
       customer_details: {
         customer_id: userId,
