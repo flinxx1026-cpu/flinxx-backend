@@ -5164,7 +5164,7 @@ io.on('connection', (socket) => {
   })
 
   // ✅ SKIP USER - Notify partner when user skips (server.js handler with partnerSockets access)
-  socket.on('skip_user', async (data) => {
+  socket.on('skip_user', async (data, callback) => {
     try {
       const partnerSocketId = data?.partnerSocketId
 
@@ -5182,6 +5182,9 @@ io.on('connection', (socket) => {
 
       if (!targetSocketId) {
         console.error('❌ [SKIP_USER - server.js] No partner found for socket:', socket.id)
+        if (typeof callback === 'function') {
+          callback({ success: true, canSkip: true })
+        }
         return
       }
 
@@ -5239,8 +5242,15 @@ io.on('connection', (socket) => {
         }
       }
 
+      if (typeof callback === 'function') {
+        callback({ success: true, canSkip: true })
+      }
+
     } catch (error) {
       console.error('🚨 [SKIP_USER - server.js] Error:', error.message)
+      if (typeof callback === 'function') {
+        callback({ success: false, error: 'Internal server error' })
+      }
     }
   })
 
