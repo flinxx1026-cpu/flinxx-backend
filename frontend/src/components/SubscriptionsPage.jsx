@@ -114,6 +114,18 @@ const SubscriptionsPage = ({ onClose }) => {
       return;
     }
 
+    // Cashfree strictly requires a 10-digit phone number for every order
+    const phoneInput = window.prompt("Please enter your 10-digit phone number for billing/receipt:");
+    if (!phoneInput) {
+      return; // User cancelled
+    }
+    
+    const phone = phoneInput.replace(/[^0-9]/g, '');
+    if (phone.length < 10) {
+      alert("A valid 10-digit phone number is required by the payment gateway.");
+      return;
+    }
+
     setLoading(plan.planId);
 
     try {
@@ -127,7 +139,7 @@ const SubscriptionsPage = ({ onClose }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({ planId: plan.planId, userId: user.uuid }),
+        body: JSON.stringify({ planId: plan.planId, userId: user.uuid, phone: phone }),
       });
 
       console.log('📋 Response status:', linkRes.status);
