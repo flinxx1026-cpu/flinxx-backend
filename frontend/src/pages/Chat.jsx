@@ -1,4 +1,4 @@
-﻿// DEPLOYMENT VERSION: webrtc-stable-streams - Remote stream fix - 2026-01-05
+// DEPLOYMENT VERSION: webrtc-stable-streams - Remote stream fix - 2026-01-05
 // Last updated: 2026-01-05 - Chat bottom spacing fixes deployed
 // BUILD TIMESTAMP: 2026-01-05T10:20:00Z - CHAT LAYOUT FIXES
 console.log('🎯 CHAT BUILD: 2026-01-05T10:20:00Z - Chat layout and spacing fixes');
@@ -40,11 +40,11 @@ const CameraPanel = ({ videoRef }) => {
     }
   }, []);
 
-  // Log mount/unmount to catch if component is being destroyed
+  // Log mount
   useEffect(() => {
     console.log('📹 CameraPanel mounted');
     return () => {
-      console.error('❌ CameraPanel unmounting - THIS BREAKS THE STREAM');
+      console.log('🔄 CameraPanel unmounted (expected on mobile view)');
     };
   }, []);
 

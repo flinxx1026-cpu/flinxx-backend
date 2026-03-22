@@ -1,4 +1,4 @@
-﻿import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import React from 'react'
 import { FaUser, FaSearch, FaHeart, FaComment, FaTrophy, FaClock } from 'react-icons/fa'
@@ -82,10 +82,10 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
       videoElement.srcObject = localStreamRef.current;
       videoElement.muted = true;
       
-      videoElement.play().then(() => {
-        console.log('📱 [MOBILE HOME] ✅ Video playing');
-      }).catch(err => {
-        console.warn('📱 [MOBILE HOME] Play warning:', err.name, err.message);
+      videoElement.play().catch(err => {
+        if (err.name !== 'AbortError') {
+          console.debug('📱 [MOBILE HOME] expected play interruption');
+        }
       });
     }
   }, [localStreamRef]);
@@ -105,13 +105,12 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
       videoElement.srcObject = localStreamRef.current;
       videoElement.muted = true;
       
-      // Ensure play is called
       const playPromise = videoElement.play();
       if (playPromise !== undefined) {
-        playPromise.then(() => {
-          console.log('📱 [MOBILE HOME] useEffect: ✅ Video playing');
-        }).catch(err => {
-          console.warn('📱 [MOBILE HOME] useEffect: Play warning:', err.name, err.message);
+        playPromise.catch(err => {
+          if (err.name !== 'AbortError') {
+             console.debug('📱 [MOBILE HOME] useEffect: expected play interruption');
+          }
         });
       }
     }
