@@ -1688,16 +1688,22 @@ const Chat = () => {
             setPartnerInfo(null);
             setMessages([]);
             setConnectionTime(0);
-            setIsSearching(true);
 
-            setTimeout(() => {
-              socketRef.current?.emit('find_partner', {
-                userId: userIdRef.current,
-                userName: 'Anonymous',
-                userAge: 18,
-                userLocation: userLocationRef.current || 'Unknown'
-              });
-            }, 1000);
+            // 🛑 CHECK: Do not auto-reconnect if app is in background
+            if (document.visibilityState === 'hidden') {
+              console.log('🛑 [DISCONNECTED] App in background — returning to home screen');
+              setIsSearching(false);
+            } else {
+              setIsSearching(true);
+              setTimeout(() => {
+                socketRef.current?.emit('find_partner', {
+                  userId: userIdRef.current,
+                  userName: 'Anonymous',
+                  userAge: 18,
+                  userLocation: userLocationRef.current || 'Unknown'
+                });
+              }, 1000);
+            }
           } else {
             console.log('⚠️ Ignoring stale disconnect — connection recovered or replaced');
           }
@@ -1720,16 +1726,22 @@ const Chat = () => {
           setPartnerInfo(null);
           setMessages([]);
           setConnectionTime(0);
-          setIsSearching(true);
 
-          setTimeout(() => {
-            socketRef.current?.emit('find_partner', {
-              userId: userIdRef.current,
-              userName: 'Anonymous',
-              userAge: 18,
-              userLocation: userLocationRef.current || 'Unknown'
-            });
-          }, 1000);
+          // 🛑 CHECK: Do not auto-reconnect if app is in background
+          if (document.visibilityState === 'hidden') {
+            console.log('🛑 [FAILED] App in background — returning to home screen');
+            setIsSearching(false);
+          } else {
+            setIsSearching(true);
+            setTimeout(() => {
+              socketRef.current?.emit('find_partner', {
+                userId: userIdRef.current,
+                userName: 'Anonymous',
+                userAge: 18,
+                userLocation: userLocationRef.current || 'Unknown'
+              });
+            }, 1000);
+          }
         } else if (peerConnectionRef.current !== peerConnection) {
           console.log('⚠️ Ignoring stale failed — peer was replaced');
         } else {
@@ -2166,9 +2178,9 @@ const Chat = () => {
             remoteVideoRef.current.srcObject = null;
           }
 
-          // 🛑 CHECK: Only re-queue if user hasn't cancelled search
-          if (searchCancelledRef.current) {
-            console.log('🛑 [SKIPPED] Search was cancelled — NOT re-queueing');
+          // 🛑 CHECK: Only re-queue if user hasn't cancelled search AND app is in foreground
+          if (searchCancelledRef.current || document.visibilityState === 'hidden') {
+            console.log('🛑 [SKIPPED] Search cancelled or app in background — NOT re-queueing');
             setIsSearching(false);
             return;
           }
@@ -2176,8 +2188,9 @@ const Chat = () => {
           setIsSearching(true);
           // Re-queue for next partner instantly (Omegle-style seamless transition)
           requeueTimerRef.current = setTimeout(() => {
-            if (searchCancelledRef.current) {
-              console.log('🛑 [REQUEUE] Aborted — user cancelled search before requeue fired');
+            if (searchCancelledRef.current || document.visibilityState === 'hidden') {
+              console.log('🛑 [REQUEUE] Aborted — search cancelled or app in background');
+              setIsSearching(false);
               return;
             }
             socketRef.current?.emit('find_partner', {
@@ -2612,25 +2625,15 @@ const Chat = () => {
               remoteVideoRef.current.srcObject = null;
             }
 
-            // Reset UI → waiting screen
+            // Reset UI → Home screen instead of reconnecting while in background
             setHasPartner(false);
             setPartnerFound(false);
             setIsConnected(false);
             setPartnerInfo(null);
             setMessages([]);
             setConnectionTime(0);
-            setIsSearching(true);
+            setIsSearching(false); // 🛑 DO NOT auto-search while in background
             wasInCallRef.current = false;
-
-            // Auto find new partner after 1s
-            setTimeout(() => {
-              socketRef.current?.emit('find_partner', {
-                userId: userIdRef.current,
-                userName: 'Anonymous',
-                userAge: 18,
-                userLocation: userLocationRef.current || 'Unknown'
-              });
-            }, 1000);
           }, timeout);
         }
       } else if (document.visibilityState === 'visible') {
