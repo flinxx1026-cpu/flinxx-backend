@@ -575,7 +575,8 @@ const allowedOrigins = [
   "http://127.0.0.1:3010",
   "https://flinxx.in",
   "https://www.flinxx.in",
-  "https://d1pphanrf0qsx7.cloudfront.net"
+  "https://d1pphanrf0qsx7.cloudfront.net",
+  "https://flinxx-admin-panel.vercel.app"
 ]
 
 // CORS Configuration
