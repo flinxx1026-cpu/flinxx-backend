@@ -58,7 +58,7 @@ router.all('/test-cashfree', async (req, res) => {
       customer_details: {
         customer_id: 'test_customer',
         customer_email: 'test@flinxx.app',
-        customer_phone: '9999999999',
+        customer_phone: '9876543210',
       },
       order_note: 'Test Order',
     };
@@ -162,7 +162,7 @@ router.post('/create-order', async (req, res) => {
         customer_id: userId,
         customer_name: user.display_name || `User ${userId.substring(0, 8)}`,
         customer_email: user.email || `user${userId.substring(0, 8)}@flinxx.app`,
-        customer_phone: (user.phone_number || '9999999999').toString().replace(/[^0-9]/g, ''),
+        customer_phone: (user.phone_number || '9876543210').toString().replace(/[^0-9]/g, ''),
       },
       order_note: `${plan.name} subscription for Flinxx`,
       return_url: `${BASE_URL}/payment-success?orderId={order_id}`,
@@ -282,7 +282,7 @@ router.post('/get-payment-link', async (req, res) => {
     console.log('  Pool available:', !!pool);
     console.log('  Prisma available:', !!prisma);
     
-    const { planId, userId, phone } = req.body;
+    const { planId, userId } = req.body;
 
     if (!planId || !userId) {
       console.error('💳 [GET-PAYMENT-LINK] ❌ Missing planId or userId');
@@ -334,7 +334,7 @@ router.post('/get-payment-link', async (req, res) => {
         customer_id: userId,
         customer_name: user.display_name || `User ${userId.substring(0, 8)}`,
         customer_email: user.email || `user${userId.substring(0, 8)}@flinxx.app`,
-        customer_phone: (phone || '9999999999').toString().replace(/[^0-9]/g, '').substring(0, 10),
+        customer_phone: (user.phone_number || '9876543210').toString().replace(/[^0-9]/g, '').substring(0, 10),
       },
       order_note: `${plan.name} subscription for Flinxx`,
       return_url: `${BASE_URL}/payment-success?orderId={order_id}`,
