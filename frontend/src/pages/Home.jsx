@@ -124,7 +124,6 @@ const Home = () => {
           </div>
           
           <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <a href="/about" style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, fontSize: '15px' }}>About Flinxx</a>
             <button 
               onClick={handleStartChat}
               className="btn-start-now"
@@ -162,9 +161,7 @@ const Home = () => {
                 </span>
               </button>
               <p className="hero-tagline">Fast, simple video chats • Real users, real time</p>
-              <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                <a href="/about" style={{ color: '#D4AF37', textDecoration: 'underline', fontWeight: 500 }}>Learn more About Flinxx</a>
-              </div>
+
             </div>
           </div>
         </div>
@@ -220,7 +217,7 @@ const Home = () => {
         <div className="footer-content">
           <p>Â© 2023 FLINXX Inc. All rights reserved.</p>
           <div className="footer-links">
-            <a href="/about">About</a>
+            <a href="/about">About Flinxx</a>
             <a href="/privacy-policy">Privacy</a>
             <a href="/terms">Terms</a>
             <a href="/contact">Contact</a>

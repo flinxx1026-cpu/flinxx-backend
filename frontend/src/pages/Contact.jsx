@@ -52,7 +52,7 @@ const Contact = () => {
       <footer className="py-12 border-t border-zinc-900 bg-black text-center">
         <div className="flex flex-col items-center justify-center gap-4">
           <div className="flex items-center gap-6 text-zinc-400 text-sm">
-            <a href="/about" className="hover:text-white transition-colors">About</a>
+            <a href="/about" className="hover:text-white transition-colors">About Flinxx</a>
             <a href="/privacy-policy" className="hover:text-white transition-colors">Privacy</a>
             <a href="/terms" className="hover:text-white transition-colors">Terms</a>
             <a href="/contact" className="hover:text-white transition-colors">Contact</a>

@@ -1,4 +1,4 @@
-﻿import React, { createContext, useState, useEffect, useContext } from 'react'
+import React, { createContext, useState, useEffect, useContext } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../config/firebase'
 import { getSentRequests, getNotifications, markPremiumPopupAsSeen as markPremiumPopupSeenApi } from '../services/api'
@@ -220,6 +220,16 @@ export const AuthProvider = ({ children }) => {
     // ✅ Attach specific listener
     socketWrapper.on('call_ended', handleCallEnded);
     
+    // ✅ GLOBAL FRIEND REQUEST ACCEPTED LISTENER
+    const handleGlobalFriendAccepted = (data) => {
+      console.log('\n' + '='.repeat(80));
+      console.log('🎉🎉🎉 [AuthContext] GLOBAL FRIEND ACCEPTED RECEIVED! 🎉🎉🎉');
+      console.log('='.repeat(80));
+      // Dispatch custom window event so Chat.jsx can forcefully show the toast!
+      window.dispatchEvent(new CustomEvent('global_friend_accepted', { detail: data }));
+    };
+    socketWrapper.on('friend_request_accepted', handleGlobalFriendAccepted);
+    
     // ✅ ACCOUNT BANNED LISTENER
     const handleAccountBanned = () => {
       console.log('\n' + '='.repeat(80))
@@ -329,6 +339,7 @@ export const AuthProvider = ({ children }) => {
       console.log('🔔 [AuthContext] Removing all socket listeners');
       socketWrapper.off('friend_request_received', handleFriendRequest);
       socketWrapper.off('friend:quick-invite-received', handleQuickInvite);
+      socketWrapper.off('friend_request_accepted', handleGlobalFriendAccepted);
       socketWrapper.off('incoming_call', handleIncomingCall);
       socketWrapper.off('call_accepted', handleCallAccepted);
       socketWrapper.off('call_ended', handleCallEnded);

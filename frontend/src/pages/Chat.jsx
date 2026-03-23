@@ -584,6 +584,9 @@ const Chat = () => {
   const { user, isLoading: authLoading, refreshNotifications, incomingFriendRequest, setIncomingFriendRequest, refreshSentRequests, incomingRequests = [], setIncomingRequests, markPremiumPopupAsSeen, incrementSkipCount, refreshProfile } = useContext(AuthContext) || {};
   const { activeMode, setActiveMode, handleModeChange, openDuoSquad } = useDuoSquad();
 
+  // ✅ CRITICAL: Define BACKEND_URL at component level so sendQuickInvite & sendFriendRequest can use it
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL);
+
   console.log("RENDER START");
 
   // ✅ UPDATE LAST SEEN - MUST BE FIRST - Call immediately on mount
@@ -675,8 +678,6 @@ const Chat = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState(null);
 
-  // ✅ BACKEND URL - Declare once to avoid repetition
-  const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
   // REPORT HANDLER
   const handleReport = async (reason) => {
@@ -746,6 +747,20 @@ const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // ✅ Timer Ref to prevent toast race conditions
+  const toastTimeoutRef = useRef(null);
+  
+  const showToast = useCallback((msg) => {
+    setToastMessage(msg);
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimeoutRef.current = null;
+    }, 4000);
+  }, []);
 
   // Create a ref to expose camera functions to child components
   const cameraFunctionsRef = useRef(null);
@@ -1064,6 +1079,23 @@ const Chat = () => {
 
     checkIfPartnerIsFriend();
   }, [partnerInfo, user?.uuid]);
+
+  // ✅ GLOBAL FRIEND ACCEPTED LISTENER - Shows "Now you are friends" toast for BOTH users
+  // AuthContext listens for 'friend_request_accepted' socket event and dispatches
+  // a 'global_friend_accepted' window event. This useEffect catches that event
+  // so the SENDER also sees the toast (not just the receiver who clicked Accept).
+  useEffect(() => {
+    const handleGlobalFriendAccepted = (event) => {
+      console.log('🎉🎉🎉 [Chat.jsx] global_friend_accepted window event received!', event.detail);
+      setIsPartnerFriend(true);
+      showToast('Now you are friends! 🎉');
+    };
+
+    window.addEventListener('global_friend_accepted', handleGlobalFriendAccepted);
+    return () => {
+      window.removeEventListener('global_friend_accepted', handleGlobalFriendAccepted);
+    };
+  }, []);
 
   // ✅ Attach local stream to localVideoRef when in video chat mode
   useEffect(() => {
@@ -2397,8 +2429,7 @@ const Chat = () => {
         socket.on('friend_request_accepted', (data) => {
           console.log('🎉 Friend request accepted:', data);
           setIsPartnerFriend(true); // ✅ Update icon to show 🧑‍🤝‍🧑
-          setToastMessage('Now you are friends! 🎉');
-          setTimeout(() => setToastMessage(null), 3000);
+          showToast('Now you are friends! 🎉');
         });
 
         // Disconnect
@@ -3349,8 +3380,7 @@ const Chat = () => {
       setIncomingFriendRequest(null);
 
       // ✅ Show "Now you are friends" toast for both users
-      setToastMessage('Now you are friends! 🎉');
-      setTimeout(() => setToastMessage(null), 3000);
+      showToast('Now you are friends! 🎉');
       // ✅ DO NOT call refreshNotifications() here
       // AuthContext polling will update her notifications in 5 seconds
       // Popup is local to video chat screen only
@@ -4129,35 +4159,6 @@ const Chat = () => {
         {/* ✅ FRIEND REQUEST POPUP - Now handled globally by GlobalFriendRequestPopup as a toast */}
         {/* No longer rendering inline modal here - toast shows on top */}
 
-        {/* ✅ Toast for "Request Sent" / "Now you are friends" */}
-        {toastMessage && (
-          <div style={{
-            position: 'fixed',
-            top: '80px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 99999,
-            animation: 'fadeInDown 0.3s ease-out'
-          }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #1a1d2b 0%, #2d1f4e 100%)',
-              color: '#fff',
-              padding: '10px 24px',
-              borderRadius: '30px',
-              fontSize: '13px',
-              fontWeight: 600,
-              letterSpacing: '0.3px',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.3)',
-              border: '1px solid rgba(212,175,55,0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              whiteSpace: 'nowrap'
-            }}>
-              {toastMessage.includes('friends') ? '💛' : toastMessage.includes('Wait') ? '' : '✓'} {toastMessage}
-            </div>
-          </div>
-        )}
       </>
     );
   };
@@ -4475,6 +4476,40 @@ const Chat = () => {
           {/* Popup appears on top of video chat when incoming request arrives */}
 
         </>
+      )}
+
+      {/* ✅ Toast for "Request Sent" / "Now you are friends" - MOVED OUTSIDE OF VIDEO CHAT */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999999,
+          animation: 'fadeInDown 0.3s ease-out'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1a1d2b 0%, #2d1f4e 100%)',
+            color: '#fff',
+            padding: '10px 24px',
+            borderRadius: '30px',
+            fontSize: '13px',
+            fontWeight: 600,
+            letterSpacing: '0.3px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.3)',
+            border: '1px solid rgba(212,175,55,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            whiteSpace: 'nowrap',
+            cursor: 'pointer'
+          }} onClick={() => {
+            setToastMessage(null);
+            if(toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+          }}>
+            {toastMessage.includes('friends') ? '💛' : toastMessage.includes('Wait') ? '' : '✓'} {toastMessage}
+          </div>
+        </div>
       )}
     </div>
   );

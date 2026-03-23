@@ -2143,17 +2143,27 @@ app.post('/api/friends/accept', async (req, res) => {
     try {
       const senderId = request.sender_id;
       const receiverId = request.receiver_id;
+      // Force emit to BOTH room and direct socket if found in onlineUsers or userSockets
+      const sSockId = onlineUsers.get(senderId) || userSockets?.get?.(senderId);
+      const rSockId = onlineUsers.get(receiverId) || userSockets?.get?.(receiverId);
       
-      // Find socket IDs for both users
-      for (const [socketId, userId] of userSockets.entries()) {
-        if (userId === senderId || userId === receiverId) {
-          const sock = io.sockets.sockets.get(socketId);
-          if (sock) {
-            sock.emit('friend_request_accepted', { senderId, receiverId, requestId });
-            console.log(`📨 Sent friend_request_accepted to ${userId.substring(0, 8)}... (socket ${socketId.substring(0, 8)}...)`);
-          }
-        }
+      console.log(`[FRIEND_ACCEPT] senderId: ${senderId}, room socket: ${sSockId ? 'found' : 'not found in map'}`);
+      
+      // Emit to UUID room natively
+      io.to(senderId).emit('friend_request_accepted', { senderId, receiverId, requestId });
+      io.to(receiverId).emit('friend_request_accepted', { senderId, receiverId, requestId });
+      
+      // Fallback: emit directly to socket.id if mapped
+      if (sSockId) {
+        console.log(`[FRIEND_ACCEPT] Direct emit to sender socket ${sSockId.substring(0,8)}...`);
+        io.to(sSockId).emit('friend_request_accepted', { senderId, receiverId, requestId });
       }
+      if (rSockId) {
+        io.to(rSockId).emit('friend_request_accepted', { senderId, receiverId, requestId });
+      }
+      
+      console.log(`📨 Emitted friend_request_accepted to sender ${senderId.substring(0, 8)}... and receiver ${receiverId.substring(0, 8)}...`);
+
     } catch (socketErr) {
       console.warn('⚠️ Could not emit friend_request_accepted socket event:', socketErr.message);
     }
