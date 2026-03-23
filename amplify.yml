@@ -18,5 +18,6 @@ applications:
           - frontend/node_modules/**/*
     customRules:
       - source: '/<*>'
-        target: /index.html
+        target: '/index.html'
         status: '200'
+

@@ -6,26 +6,39 @@ const About = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = "About Flinxx - Video Chat Platform";
+    document.title = "About Flinxx";
 
     // Add or update meta description
-    let metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute("content", "Learn more about Flinxx, a video chat platform designed to help you meet new people instantly in a simple and friendly way.");
-    } else {
-      metaDescription = document.createElement("meta");
-      metaDescription.name = "description";
-      metaDescription.content = "Learn more about Flinxx, a video chat platform designed to help you meet new people instantly in a simple and friendly way.";
-      document.head.appendChild(metaDescription);
-    }
+    const updateMeta = (name, content, isProperty = false) => {
+      const selector = isProperty ? `meta[property="${name}"]` : `meta[name="${name}"]`;
+      let meta = document.querySelector(selector);
+      if (meta) {
+        meta.setAttribute("content", content);
+      } else {
+        meta = document.createElement("meta");
+        if (isProperty) meta.setAttribute("property", name);
+        else meta.name = name;
+        meta.content = content;
+        document.head.appendChild(meta);
+      }
+      return meta;
+    };
+
+    const desc = "Learn more about Flinxx, a video chat platform designed to help you meet new people instantly in a simple and friendly way.";
+    updateMeta("description", desc);
+    updateMeta("og:title", "About Flinxx", true);
+    updateMeta("og:description", desc, true);
 
     return () => {
       // Optional cleanup if needed (usually persist on route change is fine, but we can restore default)
-      if (metaDescription) {
-        metaDescription.setAttribute("content", "Flinxx is a video chat platform to meet new people instantly.");
-      }
+      const defaultDesc = "Flinxx is a video chat platform to meet new people instantly.";
+      updateMeta("description", defaultDesc);
+      updateMeta("og:title", "Flinxx - Meet New People Instantly", true);
+      updateMeta("og:description", defaultDesc, true);
     };
   }, []);
+
+
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-[#080808] text-white">
