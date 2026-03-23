@@ -21,6 +21,27 @@ export function initializeFirebaseAdmin() {
   }
 
   try {
+    // 1. Try initializing from Environment Variables
+    if (
+      process.env.FIREBASE_PROJECT_ID &&
+      process.env.FIREBASE_CLIENT_EMAIL &&
+      process.env.FIREBASE_PRIVATE_KEY
+    ) {
+      console.log("📍 [Firebase Admin] Initializing from environment variables...");
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          // Handle escaped \n in the private key from .env file
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        }),
+      });
+      console.log("✅ Firebase Admin SDK initialized successfully from ENV");
+      initialized = true;
+      return admin;
+    }
+
+    // 2. Fallback to firebase-service-account.json
     const serviceAccountPath = path.join(
       __dirname,
       "firebase-service-account.json"
@@ -35,12 +56,11 @@ export function initializeFirebaseAdmin() {
         serviceAccountPath
       );
       console.error(
-        "❌ Firebase Admin SDK will NOT be available. New user authentication will FAIL."
+        "❌ Firebase Admin SDK will NOT be available (Env vars missing too)."
       );
       console.error(
-        "📍 To fix: Download service account from Firebase Console → Project Settings → Service Accounts"
+        "📍 To fix: Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in .env, or provide service account file."
       );
-      console.error(`📍 Expected file path: ${serviceAccountPath}`);
       return null;
     }
 
@@ -62,7 +82,7 @@ export function initializeFirebaseAdmin() {
       projectId: serviceAccount.project_id,
     });
 
-    console.log("✅ Firebase Admin SDK initialized successfully");
+    console.log("✅ Firebase Admin SDK initialized successfully from file");
     console.log(`📍 Project ID: ${serviceAccount.project_id}`);
     console.log("✅ Firebase token verification is NOW AVAILABLE for new users");
     initialized = true;

@@ -988,6 +988,7 @@ async function addToMatchingQueue(userId, socketId, userData) {
       userAge: userData?.userAge || 18,
       userLocation: userData?.userLocation || 'Unknown',
       userPicture: userData?.userPicture || null,
+      connectionScore: userData?.connectionScore || 100,
       hasMatchBoost,
       timestamp: Date.now()
     })
@@ -1310,7 +1311,7 @@ async function shouldAllowEmergencyReMatch(userId1, userId2, queueLength) {
  * - Filters out user's own ID to prevent self-match
  * - Returns safely if no valid match found
  */
-async function getNextFromQueueOptimized(currentUserId) {
+async function getNextFromQueueOptimized(currentUserId, currentUserScore = 100) {
   try {
     const maxAttempts = 50 // Limit iterations to prevent infinite loops
     let attempts = 0
@@ -1389,6 +1390,20 @@ async function getNextFromQueueOptimized(currentUserId) {
           console.log(`🚨 [EMERGENCY OVERRIDE] Ignoring cooldown due to low queue (${queueLen} users)`);
           // Fall through to match this user despite cooldown
         }
+      }
+
+      // ✅ FILTER 3: Connection Score priority matchmaking
+      const partnerScore = parsed.connectionScore || 100;
+      let scoreCompatible = true;
+      if (currentUserScore >= 80 && partnerScore < 50) scoreCompatible = false;
+      if (currentUserScore < 50 && partnerScore >= 50) scoreCompatible = false;
+      
+      if (!scoreCompatible) {
+          console.log(`🔄 [QUEUE-GET] Incompatible connection scores (${currentUserScore} vs ${partnerScore}) - returning to back of queue`);
+          await redis.zRem('matching_queue', data);
+          const newScore = Date.now() + 1000;
+          await redis.zAdd('matching_queue', { score: newScore, value: data });
+          continue;
       }
 
       // ✅ ALL CHECKS PASSED - Remove from queue and return
@@ -1471,6 +1486,23 @@ async function triggerInstantMatch() {
           }
 
           return // Don't proceed with match
+        }
+
+        // Apply Connection Score Rule for instant match check
+        const score1 = user1.connectionScore || 100;
+        const score2 = user2.connectionScore || 100;
+        let scoreCompatible = true;
+        if (score1 >= 80 && score2 < 50) scoreCompatible = false;
+        if (score1 < 50 && score2 >= 50) scoreCompatible = false;
+
+        if (!scoreCompatible) {
+          console.log(`🔄 [INSTANT-MATCH] Incompatible connection scores (${score1} vs ${score2}) - skipping instant match for these two`);
+          // Push one to the back slightly so we don't infinitely retry these exact two
+          await redis.zRem('matching_queue', firstTwoUsers[0]);
+          await redis.zAdd('matching_queue', { score: Date.now() + 500, value: firstTwoUsers[0] });
+          // Recursively trigger next match
+          setTimeout(() => triggerInstantMatch(), 100);
+          return;
         }
 
         console.log(`✅ [INSTANT-MATCH] Found 2 users to match:`)
@@ -4852,6 +4884,14 @@ io.on('connection', (socket) => {
         console.warn(`📍 [find_partner] Could not fetch DB location:`, e.message);
       }
       console.log(`📍 [find_partner] Final userLocation: ${userData?.userLocation || 'Unknown'}`)
+      
+      const userConnectionScore = userData?.connectionScore !== undefined ? userData.connectionScore : 100;
+      
+      // ✅ HARD BLOCK RULE: Very poor connections wait intentionally before queue entry
+      if (userConnectionScore < 20) {
+        console.log(`⚠️ [find_partner] Very poor connection score (${userConnectionScore}). Enforcing Hard Block Rule (4s delay).`);
+        await new Promise(resolve => setTimeout(resolve, 4000));
+      }
 
       // Log queue state BEFORE processing
       console.log('\n📊 [find_partner] QUEUE STATE AT START...');
@@ -4932,7 +4972,7 @@ io.on('connection', (socket) => {
       console.log(`\n🎯 [find_partner] ATTEMPTING TO GET NEXT FROM QUEUE...`);
       let waitingUser;
       try {
-        waitingUser = await getNextFromQueueOptimized(userId)
+        waitingUser = await getNextFromQueueOptimized(userId, userConnectionScore)
         console.log(`   ✅ Got next from queue:`, waitingUser ? 'MATCH FOUND' : 'No match');
       } catch (queueErr) {
         console.error(`   ❌ Error getting next from queue:`, queueErr.message);

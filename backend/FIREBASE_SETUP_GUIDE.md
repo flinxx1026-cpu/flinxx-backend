@@ -22,7 +22,10 @@
 - Updated `/api/auth/firebase` endpoint to use `verifyFirebaseToken()`
 - Enhanced error logging
 
-#### 3. **Updated `package.json`**
+#### 3. **Updated `firebaseAdmin.js` to support Environment Variables**
+- Added support for `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` as priority over `firebase-service-account.json`.
+
+#### 4. **Updated `package.json`**
 - Added `firebase-admin` dependency
 - Added `jsonwebtoken` for JWT generation
 
@@ -32,29 +35,27 @@
 
 You **MUST** do this on EC2 to make it work:
 
-### Step 1: Get Service Account JSON from Firebase Console
+### Step 1: Configure Environment Variables (Recommended) OR Use Service Account JSON
 
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select project: **flinx-8a05e**
-3. Go to **⚙️ Project Settings**
-4. Click **"Service Accounts"** tab
-5. Click **"Generate New Private Key"**
-6. Download the JSON file
+**Option A: Using `.env` Environment Variables (Recommended for EC2)**
+In your EC2 backend's `.env` file, add the following (ensure `\n` is properly preserved in the private key):
 
-### Step 2: Upload to EC2
+```env
+FIREBASE_PROJECT_ID="your-project-id"
+FIREBASE_CLIENT_EMAIL="your-client-email@..."
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_KEY_HERE...\n-----END PRIVATE KEY-----\n"
+```
+*(The backend will automatically convert escaped `\n` to actual newlines)*
 
+**Option B: Using `firebase-service-account.json` File**
+1. Select project: **flinx-8a05e** in Firebase Console -> Project Settings -> Service Accounts -> Generate New Private Key
+2. Upload to EC2:
 ```bash
-# On your local machine
-# For ec2-user
-scp -i your-key.pem firebase-service-account.json ec2-user@13.203.157.116:/home/ec2-user/flinxx-backend/backend/
-
-# OR if using ubuntu user
 scp -i your-key.pem firebase-service-account.json ubuntu@13.203.157.116:/home/ubuntu/flinxx-backend/backend/
 ```
+**File MUST be at:** `/home/ubuntu/flinxx-backend/backend/firebase-service-account.json`
 
-**The file MUST be at:** `/home/ec2-user/flinxx-backend/backend/firebase-service-account.json` (or `/home/ubuntu/...`)
-
-### Step 3: Install Dependencies
+### Step 2: Install Dependencies
 
 ```bash
 cd /path/to/flinxx-backend

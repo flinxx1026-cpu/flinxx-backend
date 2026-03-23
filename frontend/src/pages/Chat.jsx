@@ -772,6 +772,7 @@ const Chat = () => {
   const skipInFlightRef = useRef(false);
   const searchCancelledRef = useRef(false);  // 🛑 Tracks if user explicitly cancelled search
   const requeueTimerRef = useRef(null);      // 🛑 Tracks pending requeue setTimeout so it can be cleared
+  const connectionScoreRef = useRef(100);    // 📡 Global Connection Score
 
   // Monitor guest session timeout
   const guestSessionTimerRef = useRef(null);
@@ -1466,6 +1467,159 @@ const Chat = () => {
     peerConnectionRef.current._remoteStream = new MediaStream();
     console.log('✅ Remote MediaStream initialized, ID:', peerConnectionRef.current._remoteStream.id);
 
+    // ─── SILENT HEALTH MONITOR (15 SECONDS AUTO SKIP) ───
+    let issueTimer = null;
+    let lastVideoPackets = 0;
+    let lastAudioPackets = 0;
+    let connectionStartTime = Date.now();
+    let isSkipping = false;
+    let healthInterval = null;
+    
+    // Silent auto skip mimicking Omegle's backend-enforced clean skip
+    const silentAutoSkip = () => {
+      console.log('🔇 [HEALTH MONITOR] Connection failed to recover within 15s, silently auto-skipping');
+      
+      // Prevent other skips or user interactions
+      if (partnerSocketIdRef.current && socketRef.current) {
+        socketRef.current.emit('skip_user', {
+          partnerSocketId: partnerSocketIdRef.current,
+          userId: userIdRef.current
+        });
+      }
+      
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+
+      setHasPartner(false);
+      setPartnerFound(false);
+      setIsConnected(false);
+      setPartnerInfo(null);
+      setMessages([]);
+      setConnectionTime(0);
+      if (setIncomingFriendRequest) setIncomingFriendRequest(null);
+      
+      if (document.visibilityState === 'hidden' || searchCancelledRef.current) {
+         setIsSearching(false);
+         return;
+      }
+      
+      setIsSearching(true);
+      setTimeout(() => {
+        if (searchCancelledRef.current) return;
+        socketRef.current?.emit('find_partner', {
+          userId: userIdRef.current,
+          userName: 'Anonymous',
+          userAge: 18,
+          userLocation: userLocationRef.current || 'Unknown',
+          connectionScore: connectionScoreRef.current
+        });
+      }, 500);
+    };
+
+    const skipUserSafe = () => {
+      if (isSkipping) return;
+      isSkipping = true;
+      
+      if (healthInterval) {
+        clearInterval(healthInterval);
+        healthInterval = null;
+      }
+
+      setTimeout(() => {
+        silentAutoSkip();
+      }, 100); // slight delay = natural feel
+    };
+
+    const getDynamicTimeout = (score) => {
+      if (score >= 80) return 12000;
+      if (score >= 50) return 15000;
+      return 9000;
+    };
+
+    const startIssueTimer = () => {
+      if (issueTimer !== null) return;
+      const timeout = getDynamicTimeout(connectionScoreRef.current);
+      console.log(`⚠️ [HEALTH MONITOR] Network issue or frozen stream detected, starting ${timeout}ms timer`);
+      issueTimer = setTimeout(skipUserSafe, timeout);
+    };
+
+    const clearIssueTimer = () => {
+      if (issueTimer) {
+        console.log('✅ [HEALTH MONITOR] Connection recovered, clearing skip timer');
+        clearTimeout(issueTimer);
+        issueTimer = null;
+      }
+    };
+
+    // Override close to cleanup intervals
+    const origClose = peerConnection.close;
+    peerConnection.close = function() {
+      if (healthInterval) {
+        clearInterval(healthInterval);
+        healthInterval = null;
+      }
+      if (issueTimer) {
+        clearTimeout(issueTimer);
+        issueTimer = null;
+      }
+      origClose.call(peerConnection);
+    };
+
+    // Freeze Detection loop (runs every 2 seconds)
+    healthInterval = setInterval(async () => {
+      if (peerConnection.signalingState === 'closed') {
+        if (healthInterval) {
+          clearInterval(healthInterval);
+          healthInterval = null;
+        }
+        return;
+      }
+      
+      // Ignore first few seconds after connection warmup
+      if (Date.now() - connectionStartTime < 5000) return;
+      
+      try {
+        const stats = await peerConnection.getStats();
+        let videoPackets = 0;
+        let audioPackets = 0;
+        
+        stats.forEach(report => {
+          if (report.type === "inbound-rtp") {
+            if (report.kind === "video") videoPackets += report.packetsReceived;
+            if (report.kind === "audio") audioPackets += report.packetsReceived;
+          }
+        });
+        
+        // Prevent false triggers on the very first few seconds setup phase
+        if (peerConnection.connectionState !== 'connected') return;
+
+        if (
+          videoPackets <= lastVideoPackets + 2 &&
+          audioPackets <= lastAudioPackets + 2
+        ) {
+          console.warn('⚠️ [HEALTH MONITOR] No new packets received (frozen stream)');
+          connectionScoreRef.current = Math.max(0, connectionScoreRef.current - 10);
+          if (peerConnection.connectionState === 'connected') {
+            startIssueTimer();
+          }
+        } else {
+          connectionScoreRef.current = Math.min(100, connectionScoreRef.current + 2);
+          clearIssueTimer();
+        }
+        
+        lastVideoPackets = videoPackets;
+        lastAudioPackets = audioPackets;
+      } catch (err) {
+        // gracefully ignore when getStats fails due to connection state
+      }
+    }, 2000);
+    // ──────────────────────────────────────────────────
+
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
         const candidate = event.candidate;
@@ -1511,10 +1665,13 @@ const Chat = () => {
       console.log('🧊 ICE State:', state);
 
       if (state === 'connected' || state === 'completed') {
+        clearIssueTimer();
         console.log('✅ ICE connected — P2P established');
         peerConnection._iceRestartCount = 0; // Reset on success
       }
       else if (state === 'failed') {
+        connectionScoreRef.current = Math.max(0, connectionScoreRef.current - 10);
+        startIssueTimer();
         console.error('❌ ICE FAILED — candidate pairs exhausted');
 
         // ✅ AUTO-FALLBACK: Retry with TURN servers added
@@ -1555,6 +1712,7 @@ const Chat = () => {
         }
       }
       else if (state === 'disconnected') {
+        startIssueTimer();
         console.warn('⚠️ ICE DISCONNECTED — attempting recovery');
 
         // Quick ICE restart before full reset
@@ -1655,6 +1813,7 @@ const Chat = () => {
       console.log('🔌 Connection State:', peerConnection.connectionState);
 
       if (peerConnection.connectionState === 'connected') {
+        clearIssueTimer();
         setIsConnected(true);
         console.log('✅ WebRTC CONNECTED');
 
@@ -1667,6 +1826,7 @@ const Chat = () => {
           });
         }, 1000);
       } else if (peerConnection.connectionState === 'disconnected') {
+        startIssueTimer();
         setIsConnected(false);
         console.log('⚠️ WebRTC DISCONNECTED — waiting for ICE recovery (5s)');
 
@@ -1709,6 +1869,7 @@ const Chat = () => {
           }
         }, 5000); // Wait 5s (gives ICE restart time to work)
       } else if (peerConnection.connectionState === 'failed') {
+        startIssueTimer();
         setIsConnected(false);
         console.log('❌ WebRTC FAILED');
 
@@ -2197,7 +2358,8 @@ const Chat = () => {
               userId: userIdRef.current,
               userName: 'Anonymous',
               userAge: 18,
-              userLocation: userLocationRef.current || 'Unknown'
+              userLocation: userLocationRef.current || 'Unknown',
+              connectionScore: connectionScoreRef.current
             });
           }, 500);
         });
@@ -2792,7 +2954,8 @@ const Chat = () => {
         userName: currentUser.name || 'Anonymous',
         userAge: currentUser.age || 18,
         userLocation: currentUser.location || userLocationRef.current || 'Unknown',
-        userPicture: currentUser.picture || null  // Include picture so partner can display it
+        userPicture: currentUser.picture || null,  // Include picture so partner can display it
+        connectionScore: connectionScoreRef.current
       });
 
       console.log('🎬 [SEARCHING] ✅ find_partner event emitted immediately');
@@ -3682,9 +3845,18 @@ const Chat = () => {
                   <div className="chat-messages md:flex flex-col items-center justify-center opacity-10 pointer-events-none hidden">
                     <span className="material-symbols-outlined" style={{ fontSize: '100px', color: '#c8ba93' }}>chat_bubble_outline</span>
                   </div>
+                  {/* 🛡️ EXPLICIT CSS ENFORCEMENT for Remote Video */}
+                  <style>{`
+                    .remote-video-feed {
+                      transform: scaleX(1) !important;
+                      -webkit-transform: scaleX(1) !important;
+                      -moz-transform: scaleX(1) !important;
+                    }
+                  `}</style>
                   {/* Remote Video - Desktop */}
                   <video
                     ref={remoteVideoRefCallback}
+                    className="remote-video-feed"
                     autoPlay
                     playsInline
                     style={{

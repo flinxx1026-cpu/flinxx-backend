@@ -155,10 +155,19 @@ class MatchingServiceOptimized {
         return { user: null, partner: null, isMatch: false, queueSize }
       }
       
-      const userEntry = JSON.stringify({ userId, socketId: userData.socketId, timestamp: Date.now() })
+      // Receive score from frontend
+      const score = userData?.connectionScore !== undefined ? userData.connectionScore : 100;
+      
+      // Delay extremely poor connections to prioritize good connections (Hard Block Rule)
+      if (score < 20) {
+        console.log(`[QUEUE] 🐢 User ${userId} has very poor connection score (${score}). Delaying matching by 4s...`);
+        await new Promise(resolve => setTimeout(resolve, 4000));
+      }
+
+      const userEntry = JSON.stringify({ userId, socketId: userData.socketId, timestamp: Date.now(), score })
       const timestamp = Date.now()
       
-      console.log(`[QUEUE] 🔥 Checking for existing match...`);
+      console.log(`[QUEUE] 🔥 Checking for existing match... Score=${score}`);
       
       // ⚡ ATOMIC MATCH CHECK: Use Lua to atomically check queue and match
       // This prevents race conditions where multiple users check simultaneously
@@ -169,13 +178,14 @@ class MatchingServiceOptimized {
         local newUserId = ARGV[1]
         local newEntry = ARGV[2]
         local timeout = tonumber(ARGV[3])
+        local newScore = tonumber(ARGV[4]) or 100
         
         -- Get queue length
         local queueLen = redis.call('llen', queueKey)
         local skipSetKey = 'recentSkips:' .. newUserId
         
         if queueLen > 0 then
-          -- ✅ SCAN queue for a VALID partner (not self, not recently skipped)
+          -- ✅ SCAN queue for a VALID partner (not self, not recently skipped, match quality)
           local matchedEntry = nil
           local fallbackEntry = nil
           
@@ -189,14 +199,37 @@ class MatchingServiceOptimized {
                   -- Check if this user was recently skipped
                   local wasSkipped = redis.call('sismember', skipSetKey, parseData.userId)
                   if wasSkipped == 0 then
-                    -- Perfect match! Not self, not recently skipped
-                    matchedEntry = entry
-                    break
+                    -- Check Matchmaking Priority based on quality scores
+                    local partnerScore = tonumber(parseData.score) or 100
+                    local isMatchValid = false
+                    
+                    if newScore >= 80 then
+                      -- High quality -> match with High/Medium (>=50)
+                      if partnerScore >= 50 then isMatchValid = true end
+                    elseif newScore >= 50 then
+                      -- Medium quality -> match with ANYONE
+                      isMatchValid = true
+                    else
+                      -- Low quality (<50) -> isolate, match ONLY with Low quality
+                      if partnerScore < 50 then isMatchValid = true end
+                    end
+                    
+                    -- Fallback: save first available in case strict priority fails and we've waited too long (not implemented in this strict version)
+                    if fallbackEntry == nil then
+                      fallbackEntry = entry
+                    end
+                    
+                    if isMatchValid then
+                      matchedEntry = entry
+                      break
+                    end
                   end
                 end
               end
             end
           end
+          
+          -- Allow fallback if queue is large enough, but we enforce strict isolation for low quality
           
           if matchedEntry then
             -- Remove the matched entry from queue
@@ -250,7 +283,7 @@ class MatchingServiceOptimized {
       
       let result;
       try {
-        result = await this.redis.eval(luaScript, 3, this.QUEUE_KEY, this.WAITING_PREFIX, this.MATCHED_PREFIX, userId, userEntry, 3600)
+        result = await this.redis.eval(luaScript, 3, this.QUEUE_KEY, this.WAITING_PREFIX, this.MATCHED_PREFIX, userId, userEntry, 3600, score)
         console.log(`[QUEUE] 📋 Lua result:`, result);
       } catch (evalErr) {
         console.error(`[QUEUE] ❌ Lua eval failed:`, evalErr.message);
@@ -268,6 +301,24 @@ class MatchingServiceOptimized {
               const partner = JSON.parse(firstEntry);
               console.log(`[QUEUE] ✅ FALLBACK: Found partner ${partner.userId}`);
               
+              const partnerScore = partner.score || 100;
+              let isMatchValid = false;
+              if (score >= 80) {
+                 if (partnerScore >= 50) isMatchValid = true;
+              } else if (score >= 50) {
+                 isMatchValid = true;
+              } else {
+                 if (partnerScore < 50) isMatchValid = true;
+              }
+
+              if (!isMatchValid) {
+                  console.log(`[QUEUE] 🚫 FALLBACK: Quality mismatch! new:${score} partner:${partnerScore}`);
+                  await this.redis.rPush(this.QUEUE_KEY, firstEntry);
+                  await this.redis.rPush(this.QUEUE_KEY, userEntry);
+                  await this.redis.setEx(`${this.WAITING_PREFIX}${userId}`, 3600, '1');
+                  return { isMatch: false, user: { userId }, queueSize: await this.redis.lLen(this.QUEUE_KEY) };
+              }
+
               // ✅ Check if partner was recently skipped (anti-rematch)
               try {
                 const wasSkipped = await this.redis.sIsMember(`recentSkips:${userId}`, partner.userId);
@@ -405,8 +456,10 @@ class MatchingServiceOptimized {
       
       // ✅ Requeue BOTH users with new entries
       const currentTime = Date.now()
-      const userEntry1 = JSON.stringify({ userId, socketId: userData?.socketId || 'unknown', timestamp: currentTime })
-      const userEntry2 = JSON.stringify({ userId: partnerId, socketId: 'pending', timestamp: currentTime })
+      const score = userData?.connectionScore !== undefined ? userData.connectionScore : 100;
+      const userEntry1 = JSON.stringify({ userId, socketId: userData?.socketId || 'unknown', timestamp: currentTime, score })
+      const userEntry2 = JSON.stringify({ userId: partnerId, socketId: 'pending', timestamp: currentTime, score: 100 }) // Default partner score
+      
       
       console.log(`[SKIP] 📥 Requeueing ${userId} to global queue`)
       await this.redis.rPush(this.QUEUE_KEY, userEntry1)
