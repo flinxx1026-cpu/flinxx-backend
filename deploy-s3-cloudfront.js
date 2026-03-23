@@ -12,7 +12,7 @@ const { spawn } = require('child_process');
 const AWS_REGION = 'us-east-1';
 const S3_BUCKET = process.env.S3_BUCKET || 'flinxx-frontend'; // Update if needed
 const CLOUDFRONT_ID = 'd2v5adgyikd2u0';
-const DIST_DIR = path.join(__dirname, 'frontend', 'dist2');
+const DIST_DIR = path.join(__dirname, 'frontend', 'dist');
 
 console.log('\n🚀 Flinxx Frontend Deployment Script\n');
 console.log('📋 Configuration:');
