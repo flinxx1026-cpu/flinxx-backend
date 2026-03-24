@@ -24,7 +24,7 @@ const About = () => {
       return meta;
     };
 
-    const desc = "Learn more about Flinxx, a video chat platform designed to help you meet new people instantly in a simple and friendly way.";
+    const desc = "Learn about Flinxx, a platform to meet new people instantly through random video chat.";
     updateMeta("description", desc);
     updateMeta("og:title", "About Flinxx", true);
     updateMeta("og:description", desc, true);
@@ -70,15 +70,7 @@ const About = () => {
 
         {/* Page Title */}
         <h1 className="text-5xl md:text-7xl font-bold mb-12 text-center text-white">
-          <span>About</span>{' '}
-          <span style={{
-            background: 'linear-gradient(180deg, #FFFFFF 0%, #D4AF37 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            display: 'inline-block'
-          }}>
-            Flinxx
-          </span>
+          About Flinxx
         </h1>
 
         {/* Content Container */}
