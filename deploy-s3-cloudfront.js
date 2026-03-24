@@ -5,9 +5,14 @@
  * Deploys dist2/ to S3 and invalidates CloudFront cache
  */
 
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
+import fs from 'fs';
+import path from 'path';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 const AWS_REGION = 'us-east-1';
 const S3_BUCKET = process.env.S3_BUCKET || 'flinxx-frontend'; // Update if needed
