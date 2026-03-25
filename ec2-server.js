@@ -3706,40 +3706,48 @@ io.on('connection', (socket) => {
     const partnerSocketId = data?.partnerSocketId
     
     if (userId && partnerSocketId) {
-      // ===== SKIP LIMIT CHECK (130/day for normal users, unlimited for plan holders) =====
+      // ===== SKIP LIMIT CHECK (120/day for free users, unlimited for premium) =====
       try {
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const now = new Date();
         const { rows: skipRows } = await pool.query(
-          `SELECT daily_skip_count, last_skip_reset_date, has_unlimited_skip, unlimited_skip_expires_at FROM users WHERE id = $1`,
+          `SELECT daily_skip_count, last_skip_reset_date, has_unlimited_skip, unlimited_skip_expires_at, is_premium, premium_expiry FROM users WHERE id = $1`,
           [userId]
         );
         if (skipRows.length > 0) {
           const u = skipRows[0];
-          const hasUnlimitedSkip = !!(u.has_unlimited_skip && u.unlimited_skip_expires_at && new Date(u.unlimited_skip_expires_at) > new Date());
+          const hasUnlimitedSkip = !!(u.has_unlimited_skip && (!u.unlimited_skip_expires_at || new Date(u.unlimited_skip_expires_at) > now));
+          const isPremiumActive = !!(u.is_premium && (!u.premium_expiry || new Date(u.premium_expiry) > now));
+          const isAnyPremium = hasUnlimitedSkip || isPremiumActive;
           let currentCount = u.daily_skip_count || 0;
-          const lastReset = u.last_skip_reset_date ? new Date(u.last_skip_reset_date).toISOString().split('T')[0] : null;
 
-          // Reset count if new day
-          if (lastReset !== today) {
+          // Reset count if IST calendar date changed (midnight 12 AM IST reset)
+          const lastReset = u.last_skip_reset_date ? new Date(u.last_skip_reset_date) : null;
+          const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+          const lastIST = lastReset ? new Date(lastReset.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })) : null;
+          const shouldReset = !lastIST || nowIST.toDateString() !== lastIST.toDateString();
+          if (shouldReset) {
             currentCount = 0;
             await pool.query(
               `UPDATE users SET daily_skip_count = 0, last_skip_reset_date = $1 WHERE id = $2`,
-              [today, userId]
+              [now, userId]
             );
           }
 
-          if (!hasUnlimitedSkip && currentCount >= 130) {
-            console.log(`[skip_user] ⛔ User ${userId} hit daily skip limit (${currentCount}/130)`);
-            socket.emit('skip_limit_reached', { message: 'You have reached your daily skip limit (130). Upgrade to Unlimited Skip for no limits!', dailyCount: currentCount, limit: 130 });
+          // Premium users bypass limit entirely
+          if (!isAnyPremium && currentCount >= 120) {
+            console.log(`[skip_user] ⛔ User ${userId} hit daily skip limit (${currentCount}/120)`);
+            socket.emit('skip_limit_reached', { message: 'You have reached your daily skip limit (120). Upgrade to Unlimited Skip for no limits!', dailyCount: currentCount, limit: 120 });
             return;
           }
 
-          // Increment skip count
-          await pool.query(
-            `UPDATE users SET daily_skip_count = daily_skip_count + 1, last_skip_reset_date = $1 WHERE id = $2`,
-            [today, userId]
-          );
-          console.log(`[skip_user] 📊 User ${userId} skip count: ${currentCount + 1}${hasUnlimitedSkip ? ' (unlimited plan)' : '/130'}`)
+          // Increment skip count for free users only
+          if (!isAnyPremium) {
+            await pool.query(
+              `UPDATE users SET daily_skip_count = daily_skip_count + 1, last_skip_reset_date = $1 WHERE id = $2`,
+              [now, userId]
+            );
+          }
+          console.log(`[skip_user] 📊 User ${userId} skip count: ${currentCount + 1}${isAnyPremium ? ' (premium/unlimited)' : '/120'}`)
         }
       } catch (skipErr) {
         console.error(`[skip_user] ⚠️ Error checking skip limit:`, skipErr.message);

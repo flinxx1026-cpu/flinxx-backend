@@ -666,9 +666,15 @@ const Chat = () => {
     }
   }, []);
 
-
-
-  // ✅ Get unread count for message badge
+  // 🛡️ REACTIVE RESET FIX: Automatically close the limit popup if daily skip count drops below 120 (e.g. after midnight reset via /api/profile)
+  useEffect(() => {
+    const count = user?.daily_skip_count ?? 0;
+    if (count < 120 && showPremiumPopup && premiumPopupMessage === "skip_limit") {
+      console.log('🛡️ [RESET] User skip count is below limit after reset, dismissing Skip Limit Popup dynamically');
+      setShowPremiumPopup(false);
+      setPremiumPopupMessage("");
+    }
+  }, [user?.daily_skip_count, showPremiumPopup, premiumPopupMessage]);
   const { unreadCount } = useUnreadSafe();
 
   // 🚀 QUICK INVITE POPUP STATE - Real-time popup for profile icon invites
@@ -677,6 +683,34 @@ const Chat = () => {
   // ⚠️ REPORT MODAL STATE
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState(null);
+
+  // 🛡️ PASSIVE RESET SYNC: Handle cases where the user leaves the page open across midnight IST
+  const userRefForReset = useRef(user);
+  const lastCheckedDateRef = useRef(
+    new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).toDateString()
+  );
+
+  useEffect(() => {
+    userRefForReset.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const currentDateStr = nowIST.toDateString();
+
+      // If the IST calendar date has changed since last check, trigger a backend sync
+      if (currentDateStr !== lastCheckedDateRef.current) {
+        lastCheckedDateRef.current = currentDateStr;
+        console.log("🕛 [PASSIVE RESET] Midnight IST date change detected. Auto-syncing with backend...");
+        if (typeof refreshProfile === 'function') {
+          refreshProfile(); // Calls /api/profile which triggers ensureDailySkipReset
+        }
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, []); // Empty array ensures this single interval is immortal unless unmounted
 
 
   // REPORT HANDLER
@@ -855,13 +889,16 @@ const Chat = () => {
     try {
       // ✅ STEP 1: Stream ko useRef me lock karo - sirf pehli baar
       if (!localStreamRef.current) {
-        console.log('📹 [CAMERA INIT] Requesting camera permissions from browser...');
+        const isMobileDevice = window.innerWidth < 769;
+        console.log('📹 [CAMERA INIT] Requesting camera permissions from browser...', isMobileDevice ? '(MOBILE - fast path)' : '(DESKTOP)');
+
+        // 🚀 MOBILE OPTIMIZATION: Use lower constraints for faster hardware init
+        const videoConstraints = isMobileDevice
+          ? { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
+          : { width: { ideal: 1280 }, height: { ideal: 720 } };
 
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          },
+          video: videoConstraints,
           audio: true
         });
 
@@ -869,23 +906,31 @@ const Chat = () => {
         streamRef.current = stream;
         console.log('📹 [CAMERA INIT] ✅ Camera stream obtained');
         console.log('📹 [CAMERA INIT] Active tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+
+        // 🚀 MOBILE: Set cameraStarted IMMEDIATELY after stream is obtained
+        // Don't wait for video element attachment - MobileHome will handle that
+        if (isMobileDevice) {
+          console.log('📱 [CAMERA INIT] Mobile - setting cameraStarted=true IMMEDIATELY after stream obtained');
+          setCameraStarted(true);
+          setIsLocalCameraReady(true);
+          setStreamsReadyTrigger(prev => prev + 1);
+          return;
+        }
       } else {
         console.log('📹 [CAMERA INIT] Stream already exists - reusing existing stream');
+        // 🚀 If stream already exists on mobile, just mark ready immediately
+        if (window.innerWidth < 769) {
+          setCameraStarted(true);
+          setIsLocalCameraReady(true);
+          setStreamsReadyTrigger(prev => prev + 1);
+          return;
+        }
       }
 
       // ✅ Wait a tick to ensure ref is attached
       await new Promise(resolve => setTimeout(resolve, 0));
 
-      // ✅ STEP 4: Attach stream to video element
-      // Skip on mobile - MobileHome handles its own camera attachment via callback
-      if (window.innerWidth < 769) {
-        console.log('📱 [CAMERA INIT] Mobile detected - skipping desktop video attachment (MobileHome handles camera)');
-        setCameraStarted(true);
-        setIsLocalCameraReady(true);
-        setStreamsReadyTrigger(prev => prev + 1);
-        return;
-      }
-
+      // ✅ Desktop: Attach stream to video element
       // Wait for sharedVideoRef to be available (CameraPanel must render first)
       let attempts = 0;
       const attachStream = () => {
@@ -2319,6 +2364,14 @@ const Chat = () => {
             setIsSearching(false);
           } else {
             setIsSearching(true);
+            
+            // 👉 SILENT 30-MINUTE AUTO SKIP: Show network drop feeling to user
+            if (data?.reason === 'connection_lost') {
+              if (typeof showToast === 'function') {
+                showToast("Connection lost. Finding new match...", "warning");
+              }
+            }
+            
             // Re-queue instantly (Omegle-style seamless)
             requeueTimerRef.current = setTimeout(() => {
               if (searchCancelledRef.current) {
@@ -2400,7 +2453,7 @@ const Chat = () => {
         socket.on('skip_limit_reached', (data) => {
           const isPremiumInEvent = !!data?.isPremium;
           const skipCount = data?.skipCount ?? 0;
-          const limit = data?.limit ?? 1;
+          const limit = data?.limit ?? 120;
 
           // 🔥 EXTRA SAFETY: Check local user state from AuthContext as well
           const unlimitedSkipExpiresAt = user?.unlimitedSkipExpiresAt || user?.unlimited_skip_expires_at;
@@ -2422,6 +2475,22 @@ const Chat = () => {
           if (!isPremiumInEvent && !isLocalPremium && skipCount >= limit) {
             setPremiumPopupMessage("skip_limit");
             setShowPremiumPopup(true);
+            
+            // 🛑 STRICT BYPASS FIX: Force user back to dashboard and completely kill any active connection/search.
+            searchCancelledRef.current = true;
+            setIsSearching(false);
+            setIsLoading(false);
+            setPartnerFound(false);
+            setHasPartner(false);
+            setIsConnected(false);
+            
+            if (peerConnectionRef.current) {
+              peerConnectionRef.current.close();
+              peerConnectionRef.current = null;
+            }
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = null;
+            }
           }
         });
 
@@ -2872,7 +2941,7 @@ const Chat = () => {
           console.log('🔄 [FRESH CHECK] Got fresh data:', {
             isPremium: freshUser.isPremium,
             hasUnlimitedSkip: freshUser.hasUnlimitedSkip,
-            dailySkipCount: freshUser.dailySkipCount
+            daily_skip_count: freshUser.daily_skip_count
           });
         }
         if (result?.status === 400) {
@@ -2884,7 +2953,7 @@ const Chat = () => {
     }
 
     // 🛑 SKIP LIMIT ENFORCEMENT - Uses fresh data from backend
-    const skipLimit = 1;
+    const skipLimit = 120;
     // Safety: If /api/profile fails, do NOT treat the user as free/premium on the client.
     // Backend will always enforce limits and will NEVER emit `skip_limit_reached` for premium users.
 
@@ -2897,22 +2966,17 @@ const Chat = () => {
       (!freshUnlimitedSkipExpiresAt || new Date(freshUnlimitedSkipExpiresAt).getTime() > Date.now())
     );
 
-    if (!profileFetchOk) {
-      console.warn('🔄 [FRESH CHECK] profileFetchOk=false. Skipping client-side skip limit popup check.');
+    // ✅ Premium/Unlimited Skip users bypass skip limit check entirely
+    if (isPremiumUser) {
+      console.log('💎 [PREMIUM] Bypassing skip limit check for premium/unlimited user');
     } else {
-      // ✅ Premium/Unlimited Skip users bypass skip limit check entirely (do NOT return early!)
-      if (isPremiumUser) {
-        console.log('💎 [PREMIUM] Bypassing skip limit check for premium/unlimited user');
-        // Continue to camera/search logic below
-      } else {
-        // ❌ Only free users check skip limit
-        const skipCount = freshUser?.dailySkipCount || freshUser?.daily_skip_count || 0;
-        if (freshUser && skipCount >= skipLimit) {
-          console.log('🚫 [LIMIT] Free user reached skip limit (Block on Start Matching).', { skipCount, skipLimit });
-          setPremiumPopupMessage("skip_limit");
-          setShowPremiumPopup(true);
-          return;
-        }
+      // ❌ Only free users check skip limit
+      const skipCount = freshUser?.daily_skip_count || 0;
+      if (freshUser && skipCount >= skipLimit) {
+        console.log('🚫 [LIMIT] Free user reached skip limit (Block on Start Matching).', { skipCount, skipLimit });
+        setPremiumPopupMessage("skip_limit");
+        setShowPremiumPopup(true);
+        return; // STOP STARTCHAT FROM EXECUTING
       }
     }
 
@@ -2974,6 +3038,16 @@ const Chat = () => {
       console.log('🎬 [SEARCHING] ⚠️ NOT reinitializing camera - stream already active');
       console.log('CLICKED Start Video Chat'); // 🧪 DEBUG: Confirm handler runs
 
+      // 🛑 DOUBLE-CHECK: Re-verify skip limit using latest user state
+      // This catches cases where the user's skip count was incremented AFTER the initial check
+      const currentSkipCount = freshUser?.daily_skip_count || 0;
+      if (!isPremiumUser && freshUser && currentSkipCount >= skipLimit) {
+        console.log('🚫 [LIMIT] Free user reached skip limit (Block on 2nd click Start Matching).', { currentSkipCount, skipLimit });
+        setPremiumPopupMessage("skip_limit");
+        setShowPremiumPopup(true);
+        return; // BLOCK EXECUTION
+      }
+
       // 🛑 CRITICAL: Reset cancelled flag for fresh search session
       searchCancelledRef.current = false;
 
@@ -2999,7 +3073,7 @@ const Chat = () => {
       console.log('🎬 [STATE AFTER] Calling setIsSearching(true)');
       console.log('STATE AFTER START SEARCH:', { isStarting: true, isSearching: true, partnerFound: false });
     }
-  }, [cameraStarted, isSearching, isRequestingCamera, startCamera, setShowPremiumPopup, user?.hasSeenPremiumPopup, user?.isPremium, user?.hasUnlimitedSkip, user?.daily_skip_count, user?.dailySkipCount, user]);
+  }, [cameraStarted, isSearching, isRequestingCamera, startCamera, setShowPremiumPopup, user?.hasSeenPremiumPopup, user?.isPremium, user?.hasUnlimitedSkip, user?.daily_skip_count, user]);
 
   // ✅ Stable cancel search handler - memoized to prevent unnecessary re-renders
   const handleCancelSearch = useCallback(() => {
@@ -3103,7 +3177,7 @@ const Chat = () => {
 
   const skipUser = useCallback(() => {
     // 🛑 Client-side skip limit check
-    const skipLimit = 1;
+    const skipLimit = 120;
 
     const unlimitedSkipExpiresAtMs = (() => {
       const expiresAt =
@@ -3121,7 +3195,7 @@ const Chat = () => {
     );
 
     const isPremiumUser = !!(user?.isPremium || user?.is_premium || isUnlimitedSkipActive);
-    const skipCount = user?.dailySkipCount || user?.daily_skip_count || 0;
+    const skipCount = user?.daily_skip_count || 0;
     const reachedLimit = !!(user && !isPremiumUser && skipCount >= skipLimit);
 
     if (reachedLimit) {
@@ -3171,9 +3245,21 @@ const Chat = () => {
           return;
         }
 
-        // Successful skip: consume local counter (best-effort) and re-queue
+        // Successful skip: consume local counter (best-effort)
         if (incrementSkipCount) incrementSkipCount();
-        endChat(true);
+        
+        // 🛑 CHECK: After incrementing, has the user now reached the limit?
+        // If so, show popup and DON'T re-queue
+        const newSkipCount = (user?.daily_skip_count || 0) + 1; // predicted count after increment
+        const isStillPremium = !!(user?.isPremium || user?.is_premium || isUnlimitedSkipActive);
+        if (!isStillPremium && newSkipCount >= skipLimit) {
+          console.log('🚫 [SKIP] Free user has now used their last skip. Showing popup.', { newSkipCount, skipLimit });
+          setPremiumPopupMessage("skip_limit");
+          setShowPremiumPopup(true);
+          endChat(false); // go to dashboard, DON'T re-queue
+        } else {
+          endChat(true); // re-queue for next match
+        }
       }
     );
   }, [user, incrementSkipCount, endChat]);

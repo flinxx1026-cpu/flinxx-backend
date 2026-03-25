@@ -7,8 +7,7 @@ export const socketWrapper = (() => {
     // Determine socket URL from environment or use localhost:5000
     const socketUrl = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : (import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_BACKEND_URL);
     
-    console.log("🔌 [socketWrapper] Connecting to:", socketUrl);
-    
+
     socket = io(socketUrl, {
       transports: ["websocket", "polling"],
       reconnection: true,
@@ -18,7 +17,7 @@ export const socketWrapper = (() => {
     });
     
     socket.on("connect", () => {
-      console.log("✅ [socketWrapper] Connected! Socket ID:", socket.id);
+
     });
     
     socket.on("connect_error", (error) => {

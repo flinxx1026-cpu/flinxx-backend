@@ -71,49 +71,59 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
     setIsMatchHistoryOpen(true)
   }
 
+  // 🚀 Ref to store video element for polling
+  const videoElRef = React.useRef(null);
+
   const handleVideoRef = React.useCallback((videoElement) => {
-    if (!videoElement) {
-      console.log('📱 [MOBILE HOME] Video element not available');
-      return;
-    }
+    if (!videoElement) return;
+    videoElRef.current = videoElement;
     
-    if (localStreamRef?.current) {
-      console.log('📱 [MOBILE HOME] Attaching stream to video element');
+    // Immediately try to attach if stream is ready
+    if (localStreamRef?.current && videoElement.srcObject !== localStreamRef.current) {
+      console.log('📱 [MOBILE HOME] handleVideoRef: Attaching stream immediately');
       videoElement.srcObject = localStreamRef.current;
       videoElement.muted = true;
-      
-      videoElement.play().catch(err => {
-        if (err.name !== 'AbortError') {
-          console.debug('📱 [MOBILE HOME] expected play interruption');
-        }
-      });
+      videoElement.play().catch(() => {});
     }
   }, [localStreamRef]);
 
-  // Attach stream when it becomes available or when camera starts
+  // 🚀 AGGRESSIVE STREAM ATTACHMENT: Poll for stream availability every 100ms
+  // This eliminates the gap between getUserMedia resolving and video displaying
   React.useEffect(() => {
-    const videoElement = document.getElementById('preview-video');
-    if (!videoElement) {
-      console.log('📱 [MOBILE HOME] useEffect: Video element not found');
-      return;
-    }
-    
-    console.log('📱 [MOBILE HOME] useEffect triggered - cameraStarted:', cameraStarted, 'hasStream:', !!localStreamRef?.current);
-    
-    if (localStreamRef?.current) {
-      console.log('📱 [MOBILE HOME] useEffect: Attaching stream to video element');
-      videoElement.srcObject = localStreamRef.current;
-      videoElement.muted = true;
+    let pollInterval = null;
+    let attached = false;
+
+    const tryAttach = () => {
+      const videoElement = videoElRef.current || document.getElementById('preview-video');
+      if (!videoElement || !localStreamRef?.current) return false;
       
-      const playPromise = videoElement.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          if (err.name !== 'AbortError') {
-             console.debug('📱 [MOBILE HOME] useEffect: expected play interruption');
-          }
-        });
+      if (videoElement.srcObject !== localStreamRef.current) {
+        console.log('📱 [MOBILE HOME] Stream attached via polling');
+        videoElement.srcObject = localStreamRef.current;
+        videoElement.muted = true;
+        videoElement.play().catch(() => {});
       }
+      return true;
+    };
+
+    // Try immediately first
+    if (tryAttach()) {
+      attached = true;
+    } else {
+      // Poll every 100ms until stream is available (max 5 seconds)
+      let attempts = 0;
+      pollInterval = setInterval(() => {
+        attempts++;
+        if (tryAttach() || attempts > 50) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      }, 100);
     }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [cameraStarted, localStreamRef]);
 
   return (
@@ -457,32 +467,6 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
 
       {/* Video Container */}
       <div className="video-container">
-        {/* Loading Spinner - Show ONLY while camera initializing */}
-        {!cameraStarted && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#000',
-            zIndex: 20,
-          }}>
-            <div style={{
-              width: '50px',
-              height: '50px',
-              border: '3px solid rgba(212, 175, 55, 0.2)',
-              borderTop: '3px solid #d4af37',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-            }} />
-            <style>{`
-              @keyframes spin {
-                to { transform: rotate(360deg); }
-              }
-            `}</style>
-          </div>
-        )}
 
         {/* Video Element */}
         <video

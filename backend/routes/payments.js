@@ -43,6 +43,34 @@ const getCashfreeHeaders = () => {
   };
 };
 
+// ===== HELPER: Generate Unique Customer Phone =====
+function hashCode(str) {
+  let hash = 0;
+  for (let i = 0, len = str.length; i < len; i++) {
+    let chr = str.charCodeAt(i);
+    hash = (hash << 5) - hash + chr;
+    hash |= 0;
+  }
+  return hash;
+}
+
+function generateCustomerPhone(userId, userPhone) {
+  // Agar valid real phone hai to use karo
+  if (userPhone && /^[6-9]\d{9}$/.test(userPhone)) {
+    return userPhone;
+  }
+
+  // Hash based unique
+  const idStr = (userId || 'test').toString();
+  const hash = Math.abs(hashCode(idStr));
+  let num = hash.toString().slice(-9);
+
+  // Ensure length 9 ho
+  num = num.padStart(9, '0');
+
+  return "9" + num;
+}
+
 // ===== DEBUG: Test Cashfree API Connection =====
 router.all('/test-cashfree', async (req, res) => {
   try {
@@ -58,7 +86,7 @@ router.all('/test-cashfree', async (req, res) => {
       customer_details: {
         customer_id: 'test_customer',
         customer_email: 'test@flinxx.app',
-        customer_phone: '9999999999',
+        customer_phone: generateCustomerPhone('test_customer'),
       },
       order_note: 'Test Order',
     };
@@ -162,7 +190,7 @@ router.post('/create-order', async (req, res) => {
         customer_id: userId,
         customer_name: user.display_name || `User ${userId.substring(0, 8)}`,
         customer_email: user.email || `user${userId.substring(0, 8)}@flinxx.app`,
-        customer_phone: (user.phone_number || '9999999999').toString().replace(/[^0-9]/g, ''),
+        customer_phone: generateCustomerPhone(userId, user.phone_number),
       },
       order_note: `${plan.name} subscription for Flinxx`,
       return_url: `${BASE_URL}/payment-success?orderId={order_id}`,
@@ -334,7 +362,7 @@ router.post('/get-payment-link', async (req, res) => {
         customer_id: userId,
         customer_name: user.display_name || `User ${userId.substring(0, 8)}`,
         customer_email: user.email || `user${userId.substring(0, 8)}@flinxx.app`,
-        customer_phone: (user.phone_number || '9999999999').toString().replace(/[^0-9]/g, '').substring(0, 10),
+        customer_phone: generateCustomerPhone(userId, user.phone_number),
       },
       order_note: `${plan.name} subscription for Flinxx`,
       return_url: `${BASE_URL}/payment-success?orderId={order_id}`,

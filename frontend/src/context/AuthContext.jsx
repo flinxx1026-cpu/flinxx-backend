@@ -64,16 +64,14 @@ export const AuthProvider = ({ children }) => {
   // ✅ SETUP GLOBAL SOCKET LISTENER FOR FRIEND REQUESTS
   // This runs ONCE on mount and keeps listening throughout the app lifecycle
   useEffect(() => {
-    console.log('🔔 [AuthContext - useEffect 1] ATTACHING friend_request_received listener...');
-    
+
     const handleFriendRequest = (data) => {
-      console.log('🔥🔥🔥 [AuthContext - Listener] FRIEND REQUEST RECEIVED EVENT 🔥🔥🔥');
-      console.log('📦 [AuthContext] Payload received:', data);
-      console.log('📦 [AuthContext] Sender:', data?.senderName);
-      console.log('📦 [AuthContext] Request ID:', data?.requestId);
-      
+
+
+
+
       if (data?.requestId) {
-        console.log('✅ [AuthContext] Setting incomingFriendRequest state with data:', data.senderName);
+
         setIncomingFriendRequest({
           requestId: data.requestId,
           senderId: data.senderId,
@@ -83,32 +81,31 @@ export const AuthProvider = ({ children }) => {
           createdAt: data.createdAt,
           status: data.status
         });
-        console.log('✅ [AuthContext] State updated - Component should re-render NOW!');
+
       } else {
-        console.warn('⚠️ [AuthContext] Invalid event - missing requestId:', data);
+
       }
     };
 
     // ✅ HANDLE QUICK INVITE (Profile icon flow - direct popup, NOT panel)
     const handleQuickInvite = (data) => {
       console.log('\n' + '='.repeat(80))
-      console.log('🚀🚀🚀 [QUICK INVITE - RECEIVER] Socket event received 🚀🚀🚀')
+
       console.log('='.repeat(80))
-      console.log('📦 [QUICK INVITE - RECEIVER] Payload:', data);
+
       console.log('📊 [QUICK INVITE - RECEIVER] Details:', {
         senderName: data?.senderName,
         senderPublicId: data?.senderPublicId?.substring(0, 8) + '...',
         timestamp: data?.timestamp,
         isQuickInvite: data?.isQuickInvite
       })
-      console.log('⚠️  [QUICK INVITE - RECEIVER] IMPORTANT: This is popup-only, NOT a panel entry!')
-      
+
       if (data?.senderPublicId) {
-        console.log('✅ [QUICK INVITE - RECEIVER] Valid data - creating popup...')
+
         // Generate a temporary request ID for the popup (not a real database request)
         const tempRequestId = `quick-invite-${Date.now()}-${Math.random().toString(36).substring(7)}`;
         
-        console.log('📱 [QUICK INVITE - RECEIVER] Showing popup with ID:', tempRequestId)
+
         setIncomingFriendRequest({
           requestId: tempRequestId,
           senderId: data.senderId,
@@ -119,10 +116,10 @@ export const AuthProvider = ({ children }) => {
           status: 'quick-invite', // Mark as quick invite (different from pending)
           isQuickInvite: true // Flag to differentiate from regular requests
         });
-        console.log('🎯 [QUICK INVITE - RECEIVER] Popup should appear NOW!')
+
         console.log('='.repeat(80) + '\n')
       } else {
-        console.warn('⚠️ [QUICK INVITE - RECEIVER] Invalid quick invite - missing senderPublicId:', data);
+
       }
     };
 
@@ -133,9 +130,9 @@ export const AuthProvider = ({ children }) => {
     // ✅ GLOBAL INCOMING CALL LISTENER
     const handleIncomingCall = (data) => {
       console.log('\n' + '='.repeat(80))
-      console.log('📞📞📞 [AuthContext LISTENER] INCOMING CALL EVENT RECEIVED 📞📞📞')
+
       console.log('='.repeat(80))
-      console.log('📦 Call event received from backend')
+
       console.log('📦 Event data:', {
         callerId: data?.callerId?.substring(0, 8) + '...',
         callerName: data?.callerName,
@@ -144,7 +141,7 @@ export const AuthProvider = ({ children }) => {
       })
       
       if (data?.callerId && data?.receiverId) {
-        console.log('✅ Valid call data - setting incomingCall state')
+
         setIncomingCall({
           callerId: data.callerId,
           callerName: data.callerName || 'Unknown User',
@@ -153,19 +150,19 @@ export const AuthProvider = ({ children }) => {
           recipientName: data.recipientName || 'Unknown',
           timestamp: data.timestamp || new Date().toISOString()
         })
-        console.log('🔔 Incoming call popup should appear NOW!')
+
         console.log('='.repeat(80) + '\n')
       } else {
-        console.warn('⚠️ Invalid call data:', data)
+
       }
     };
     
     // ✅ CALL ACCEPTED LISTENER - When receiver accepts call
     const handleCallAccepted = (data) => {
       console.log('\n' + '='.repeat(80))
-      console.log('✅✅✅ [AuthContext LISTENER] CALL ACCEPTED EVENT RECEIVED ✅✅✅')
+
       console.log('='.repeat(80))
-      console.log('📦 Call accepted event from backend')
+
       console.log('📦 Event data:', {
         callerId: data?.callerId?.substring(0, 8) + '...',
         receiverId: data?.receiverId?.substring(0, 8) + '...',
@@ -175,18 +172,18 @@ export const AuthProvider = ({ children }) => {
       // Update directCallData to trigger IncomingCallScreen for caller
       // ⚠️ IMPORTANT: Preserve existing data (recipientName, etc) while adding callAccepted flag
       if (data?.callerId && data?.receiverId) {
-        console.log('✅ Valid acceptance data - UPDATING directCallData for caller')
-        console.log('   Setting callAccepted = true to show IncomingCallScreen')
+
+
         console.log('   Preserving existing directCallData fields (recipientName, etc)')
         setCallType('direct');
         setDirectCallData(prevData => ({
           ...prevData,  // ✅ Keep existing data (callerId, receiverId, recipientName, etc)
           callAccepted: true  // ✅ Just add the acceptance flag
         }))
-        console.log('🎥 DirectCallData updated - IncomingCallScreen should appear for caller NOW!')
+
         console.log('='.repeat(80) + '\n')
       } else {
-        console.warn('⚠️ Invalid acceptance data:', data)
+
       }
     };
     
@@ -196,16 +193,16 @@ export const AuthProvider = ({ children }) => {
     // ✅ CALL ENDED LISTENER - When either user hangs up
     const handleCallEnded = (data) => {
       console.log('\n' + '='.repeat(80))
-      console.log('❌❌❌ [AuthContext LISTENER] CALL ENDED EVENT RECEIVED ❌❌❌')
+
       console.log('='.repeat(80))
-      console.log('📦 Call ended event from backend')
+
       console.log('📦 Event data:', {
         callerId: data?.callerId?.substring(0, 8) + '...',
         receiverId: data?.receiverId?.substring(0, 8) + '...'
       })
       
       // ✅ AGGRESSIVELY clear all call-related states
-      console.log('✅ Starting aggressive state clearing...')
+
       console.log('   State BEFORE: callType=' + callType + ', directCallData=' + (directCallData ? 'SET' : 'NULL') + ', incomingCall=' + (incomingCall ? 'SET' : 'NULL'))
       
       // Use setTimeout to ensure state update actually happens
@@ -213,7 +210,7 @@ export const AuthProvider = ({ children }) => {
       setDirectCallData(null);
       setIncomingCall(null);
       
-      console.log('   ✅ All state setters called')
+
       console.log('='.repeat(80) + '\n')
     };
 
@@ -223,7 +220,7 @@ export const AuthProvider = ({ children }) => {
     // ✅ GLOBAL FRIEND REQUEST ACCEPTED LISTENER
     const handleGlobalFriendAccepted = (data) => {
       console.log('\n' + '='.repeat(80));
-      console.log('🎉🎉🎉 [AuthContext] GLOBAL FRIEND ACCEPTED RECEIVED! 🎉🎉🎉');
+
       console.log('='.repeat(80));
       // Dispatch custom window event so Chat.jsx can forcefully show the toast!
       window.dispatchEvent(new CustomEvent('global_friend_accepted', { detail: data }));
@@ -233,7 +230,7 @@ export const AuthProvider = ({ children }) => {
     // ✅ ACCOUNT BANNED LISTENER
     const handleAccountBanned = () => {
       console.log('\n' + '='.repeat(80))
-      console.log('❌ ❌ ❌ [AuthContext LISTENER] ACCOUNT BANNED RECEIVED ❌ ❌ ❌')
+
       console.log('\n' + '='.repeat(80))
       
       const banState = {
@@ -254,17 +251,12 @@ export const AuthProvider = ({ children }) => {
     // ✅ ACCOUNT WARNING LISTENER - When admin sends warning to user
     const handleAccountWarning = (warningData) => {
       console.log('\n' + '='.repeat(80))
-      console.log('⚠️ ⚠️ ⚠️  [AuthContext LISTENER] ACCOUNT WARNING RECEIVED ⚠️ ⚠️ ⚠️ ')
+
       console.log('='.repeat(80))
-      console.log('📦 Warning event from backend')
-      console.log('📦 Event data:', {
-        type: warningData?.type,
-        warningCount: warningData?.warningCount,
-        reason: warningData?.reason
-      })
-      
+
+
       if (warningData) {
-        console.log('✅ Valid warning data - setting accountWarning state')
+
         const warningState = {
           type: warningData.type || 'warning',
           message: warningData.message || 'Your account has been warned',
@@ -278,12 +270,11 @@ export const AuthProvider = ({ children }) => {
         
         // ✅ BACKUP: Save to localStorage so it persists even if page refreshes
         localStorage.setItem('flinx_pending_warning', JSON.stringify(warningState))
-        console.log('💾 Saved warning to localStorage as backup')
-        
-        console.log('🚨 Warning modal should appear NOW!')
+
+
         console.log('='.repeat(80) + '\n')
       } else {
-        console.warn('⚠️ Invalid warning data:', warningData)
+
       }
     };
 
@@ -291,8 +282,8 @@ export const AuthProvider = ({ children }) => {
     
     // ✅ BACKUP: Also listen via window event for warning (in case socket event doesn't work)
     const handleWindowWarning = (event) => {
-      console.log('🎯 [AuthContext] Window event caught account_warning');
-      console.log('📦 Event detail:', event.detail);
+
+
       handleAccountWarning(event.detail);
     };
     
@@ -302,21 +293,20 @@ export const AuthProvider = ({ children }) => {
     const handleAnyEvent = (eventName, ...args) => {
       if (eventName === 'call_ended') {
         console.log('🎯 [AuthContext] UNIVERSAL listener caught call_ended event (backup)');
-        console.log('📦 Event data:', args[0]);
+
         handleCallEnded(args[0]);
       } else if (eventName === 'account_warning') {
         console.log('🎯 [AuthContext] UNIVERSAL listener caught account_warning event (backup)');
-        console.log('📦 Event data:', args[0]);
+
         handleAccountWarning(args[0]);
       }
     };
     socketWrapper.onAny(handleAnyEvent);
     
-    console.log('✅ [AuthContext] ✓ incoming_call listener attached - ready to receive calls');
-    console.log('✅ [AuthContext] ✓ call_accepted listener attached - READY TO RELAY ACCEPTANCE TO CALLER');
-    console.log('✅ [AuthContext] ✓ call_ended listener attached - READY TO DISCONNECT CALLS');
-    console.log('✅ [AuthContext] ✓ account_warning listener attached - READY TO HANDLE WARNINGS');
-    console.log('✅ [AuthContext] ✓ universal event listener attached - backup for call_ended and account_warning');
+
+
+
+
 
     // ✅ GLOBAL FETCH INTERCEPTOR FOR 403 BANS
     const originalFetch = window.fetch;
@@ -336,7 +326,7 @@ export const AuthProvider = ({ children }) => {
 
     // Cleanup on unmount
     return () => {
-      console.log('🔔 [AuthContext] Removing all socket listeners');
+
       socketWrapper.off('friend_request_received', handleFriendRequest);
       socketWrapper.off('friend:quick-invite-received', handleQuickInvite);
       socketWrapper.off('friend_request_accepted', handleGlobalFriendAccepted);
@@ -358,10 +348,9 @@ export const AuthProvider = ({ children }) => {
 
     if (user?.uuid && isAuthenticated && !isLoading) {
       console.log(`\n📢 [AuthContext] Ready to register user ${user.uuid.substring(0, 8)}...`)
-      console.log(`   Socket connected: ${socketWrapper.connected}`)
-      
+
       const registerAndStartHeartbeat = () => {
-        console.log('✅ [AuthContext] Registering user + starting heartbeat')
+
         socketWrapper.emit('register_user', user.uuid)
         console.log(`📢 [AuthContext] register_user emitted for ${user.uuid.substring(0, 8)}...`)
         
@@ -397,20 +386,20 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (isAuthenticated && user?.uuid) {
       console.log('\n' + '='.repeat(80))
-      console.log('🔍 [AuthContext STARTUP] Checking localStorage for pending warning...')
+
       console.log('='.repeat(80))
       
       try {
         const pendingWarning = localStorage.getItem('flinx_pending_warning');
         if (pendingWarning) {
           const warningData = JSON.parse(pendingWarning);
-          console.log('✅ Found pending warning in localStorage!')
-          console.log('📦 Warning data:', warningData);
-          console.log('🚨 Showing warning modal...')
+
+
+
           setAccountWarning(warningData);
           // Don't remove it yet - user might close modal and reload
         } else {
-          console.log('❌ No pending warning found')
+
         }
       } catch (error) {
         console.error('⚠️ Error reading localStorage warning:', error.message)
@@ -442,8 +431,8 @@ export const AuthProvider = ({ children }) => {
           const data = await response.json();
           
           if (data.hasWarning && !accountWarning) {
-            console.log('🚨 [POLLING] User has a warning! Showing modal...');
-            console.log('📦 Warning data:', data.warning);
+
+
             setAccountWarning(data.warning);
             // Save to localStorage as backup
             localStorage.setItem('flinx_pending_warning', JSON.stringify(data.warning));
@@ -467,20 +456,14 @@ export const AuthProvider = ({ children }) => {
   // ✅ REFRESH SENT REQUESTS (requests sent BY user)
   const refreshSentRequests = async () => {
     if (!user?.uuid || user.uuid.length !== 36) {
-      console.warn('⏸ refreshSentRequests skipped: user UUID not ready');
+
       return;
     }
     const data = await getSentRequests(user.uuid);
     const filtered = Array.isArray(data) ? data : [];
-    console.log(`📤 [AuthContext] refreshSentRequests - fetched ${filtered.length} requests`);
+
     if (filtered.length > 0) {
-      console.log('📤 [AuthContext] Sample sent request:', {
-        id: filtered[0].id,
-        receiver: filtered[0].display_name,
-        status: filtered[0].status,
-        sender_id: filtered[0].sender_id,
-        receiver_id: filtered[0].receiver_id
-      });
+
     }
     setSentRequests(filtered);
   };
@@ -488,18 +471,14 @@ export const AuthProvider = ({ children }) => {
   // ✅ REFRESH INCOMING REQUESTS (requests received BY user) 
   const refreshIncomingRequests = async () => {
     if (!user?.uuid || user.uuid.length !== 36) {
-      console.warn('⏸ refreshIncomingRequests skipped: user UUID not ready');
+
       return;
     }
     const data = await getNotifications(user.uuid);
     const filtered = Array.isArray(data) ? data : [];
-    console.log(`💚 [AuthContext] refreshIncomingRequests - fetched ${filtered.length} requests`);
+
     if (filtered.length > 0) {
-      console.log('💚 [AuthContext] Sample incoming request:', {
-        id: filtered[0].id,
-        sender: filtered[0].display_name,
-        status: filtered[0].status
-      });
+
     }
     setIncomingRequests(filtered);
     // 💾 Cache to localStorage for instant loading next session
@@ -511,12 +490,12 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // MUST wait for authLoading to be FALSE first
     if (isLoading === true) {
-      console.log('⏸ Skipping sent requests fetch – authLoading is true');
+
       return;
     }
 
     if (!user?.uuid || user.uuid.length !== 36) {
-      console.log('⏸ Skipping sent requests fetch – user UUID not ready');
+
       return;
     }
 
@@ -538,12 +517,12 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // MUST wait for authLoading to be FALSE first
     if (isLoading === true) {
-      console.log('⏸ Skipping incoming requests fetch – authLoading is true');
+
       return;
     }
 
     if (!user?.uuid || user.uuid.length !== 36) {
-      console.log('⏸ Skipping incoming requests fetch – user UUID not ready');
+
       return;
     }
 
@@ -563,10 +542,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        console.log('\n\n🔵 [AuthContext] ═══════════════════════════════════════════');
-        console.log('🔵 [AuthContext] INITIALIZATION STARTED');
-        console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
-        
+
+
+
         // ✅ CLEANUP STEP: Remove invalid users from old builds (numeric IDs)
         const storedUserRaw = localStorage.getItem('user');
         if (storedUserRaw) {
@@ -575,16 +553,12 @@ export const AuthProvider = ({ children }) => {
             
             // ❌ Remove if UUID is invalid or numeric
             if (!parsed.uuid || (typeof parsed.uuid === 'string' && parsed.uuid.length !== 36)) {
-              console.warn('🧹 [AuthContext] Removing invalid user from localStorage:', {
-                uuid: parsed.uuid,
-                id: parsed.id,
-                email: parsed.email
-              });
+
               localStorage.removeItem('user');
               localStorage.removeItem('token');
             }
           } catch (e) {
-            console.warn('🧹 [AuthContext] Invalid JSON in localStorage user, removing');
+
             localStorage.removeItem('user');
           }
         }
@@ -593,46 +567,46 @@ export const AuthProvider = ({ children }) => {
         const storedToken = localStorage.getItem('token')
         const storedUser = localStorage.getItem('user')
         
-        console.log('🔵 [AuthContext] STEP 1: Check localStorage');
-        console.log('🔵 [AuthContext]   - token:', storedToken ? '✓ Found' : '✗ Not found')
-        console.log('🔵 [AuthContext]   - user:', storedUser ? '✓ Found' : '✗ Not found')
-        
+
+
+
         // 🚨 CRITICAL: JWT AUTH TAKES PRIORITY - NO FIREBASE IF JWT EXISTS
         if (storedToken && storedUser) {
           try {
-            console.log('\n🔵 [AuthContext] ✅ JWT found in localStorage');
+
             const user = JSON.parse(storedUser);
             
             // ✅ STRICT VALIDATION: UUID must be exactly 36 chars
             if (!user.uuid || typeof user.uuid !== 'string' || user.uuid.length !== 36) {
-              console.warn('🧹 [AuthContext] Invalid UUID in localStorage, clearing auth');
+
               localStorage.removeItem('user');
               localStorage.removeItem('token');
               setIsLoading(false);
               return;
             }
             
-            console.log('🔵 [AuthContext] ✅ User restored from JWT:', user.email);
-            console.log('🔵 [AuthContext] ✅ profileCompleted:', user.profileCompleted);
-            console.log('🔵 [AuthContext] ✅ Firebase auth SKIPPED — using JWT only');
-            
+
+
+
             setUser(user);
             setIsAuthenticated(true);
             setIsLoading(false);
-            console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
+
             console.log('🔵 [AuthContext] INITIALIZATION COMPLETE (JWT) - isLoading=false');
-            console.log('🔵 [AuthContext] ═══════════════════════════════════════════\n');
-            
+
             // 🔄 BACKGROUND REFRESH: Fetch fresh profile from backend to update premium status
             // This ensures hasUnlimitedSkip/isPremium are current, not stale from cache
             (async () => {
               try {
                 const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
-                const profileResponse = await fetch(`${BACKEND_URL}/api/profile`, {
+                const profileResponse = await fetch(`${BACKEND_URL}/api/profile?t=${new Date().getTime()}`, {
                   method: 'GET',
                   headers: {
                     'Authorization': `Bearer ${storedToken}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
                   }
                 });
                 
@@ -649,14 +623,10 @@ export const AuthProvider = ({ children }) => {
                       has_unlimited_skip: profileData.user.has_unlimited_skip,
                       unlimited_skip_expires_at: profileData.user.unlimited_skip_expires_at,
                       unlimitedSkipExpiresAt: profileData.user.unlimited_skip_expires_at,
-                      dailySkipCount: profileData.user.dailySkipCount || profileData.user.daily_skip_count || 0,
+                      daily_skip_count: profileData.user.daily_skip_count || profileData.user.dailySkipCount || 0,
                       lastSkipResetDate: profileData.user.lastSkipResetDate || profileData.user.last_skip_reset_date || null
                     };
-                    console.log('🔄 [AuthContext] Background profile refresh complete:', {
-                      isPremium: freshUser.isPremium,
-                      hasUnlimitedSkip: freshUser.hasUnlimitedSkip,
-                      dailySkipCount: freshUser.dailySkipCount
-                    });
+
                     setUser(freshUser);
                     localStorage.setItem('user', JSON.stringify(freshUser));
                   }
@@ -677,58 +647,50 @@ export const AuthProvider = ({ children }) => {
           }
         }
         
-        console.log('\n🔵 [AuthContext] STEP 2: No JWT found, will check Firebase...');
-        
+
         // Check Firebase authentication state
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-          console.log('\n🔵 [AuthContext] Firebase onAuthStateChanged fired');
-          console.log('🔵 [AuthContext]   - firebaseUser:', firebaseUser ? firebaseUser.email : 'null');
-          
+
+
           if (firebaseUser) {
             // User is logged in via Firebase (Google or Facebook)
             const authProvider = firebaseUser.providerData[0]?.providerId || 'unknown'
-            console.log('🔵 [AuthContext] User authenticated via Firebase');
-            console.log('🔵 [AuthContext]   - Email:', firebaseUser.email);
-            console.log('🔵 [AuthContext]   - Provider:', authProvider);
-            
+
+
+
             // CRITICAL: Get the full user profile from our database
             try {
-              console.log('🔵 [AuthContext] Getting Firebase ID token...');
+
               const idToken = await firebaseUser.getIdToken()
-              console.log('🔵 [AuthContext] ✓ ID token obtained');
+
               localStorage.setItem('idToken', idToken)
-              console.log('🔐 Firebase ID token stored for Socket.IO')
-              
+
               // ✅ Also store as authToken for rest of app
               localStorage.setItem('authToken', idToken)
-              console.log('🔐 ✅ ID token also stored as authToken in localStorage')
-              
+
               // Fetch full profile from backend
               const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
-              console.log('🔵 [AuthContext] Calling /api/profile with ID token...');
-              const profileResponse = await fetch(`${BACKEND_URL}/api/profile`, {
+
+              const profileResponse = await fetch(`${BACKEND_URL}/api/profile?t=${new Date().getTime()}`, {
                 method: 'GET',
                 headers: {
                   'Authorization': `Bearer ${idToken}`,
-                  'Content-Type': 'application/json'
+                  'Content-Type': 'application/json',
+                  'Cache-Control': 'no-cache, no-store, must-revalidate',
+                  'Pragma': 'no-cache',
+                  'Expires': '0'
                 }
               })
               
-              console.log('🔵 [AuthContext] /api/profile response status:', profileResponse.status);
-              
+
               if (profileResponse.ok) {
                 const profileData = await profileResponse.json()
-                console.log('🔵 [AuthContext] /api/profile response OK');
-                console.log('🔵 [AuthContext]   - success:', profileData.success);
-                console.log('🔵 [AuthContext]   - user.profileCompleted:', profileData.user?.profileCompleted);
-                
+
+
+
                 if (profileData.success && profileData.user) {
-                  console.log('🔵 [AuthContext] ✅ Fetched full user profile from database:', {
-                    email: profileData.user.email,
-                    profileCompleted: profileData.user.profileCompleted
-                  })
-                  console.log('🔵 [AuthContext] Setting user state with profileCompleted:', profileData.user.profileCompleted);
-                  
+
+
                   // Ensure publicId and uuid are included in user object
                   const userWithIds = {
                     ...profileData.user,
@@ -740,7 +702,7 @@ export const AuthProvider = ({ children }) => {
                     has_unlimited_skip: profileData.user.has_unlimited_skip,
                     unlimited_skip_expires_at: profileData.user.unlimited_skip_expires_at,
                     unlimitedSkipExpiresAt: profileData.user.unlimited_skip_expires_at,
-                    dailySkipCount: profileData.user.dailySkipCount || profileData.user.daily_skip_count || 0,
+                    daily_skip_count: profileData.user.daily_skip_count || profileData.user.dailySkipCount || 0,
                     lastSkipResetDate: profileData.user.lastSkipResetDate || profileData.user.last_skip_reset_date || null
                   }
                   
@@ -756,10 +718,10 @@ export const AuthProvider = ({ children }) => {
                   return
                 }
               } else {
-                console.log('🔵 [AuthContext] ⚠️ /api/profile response not OK:', profileResponse.status);
+
               }
             } catch (error) {
-              console.warn('[AuthContext] ⚠️ Failed to fetch profile from database:', error)
+
               // Fall back to minimal user info
             }
             
@@ -781,25 +743,23 @@ export const AuthProvider = ({ children }) => {
               has_unlimited_skip: false,
               unlimited_skip_expires_at: null,
               unlimitedSkipExpiresAt: null,
-              dailySkipCount: 0
+              daily_skip_count: 0
             }
             
             console.log('[AuthContext] Using fallback userInfo (database fetch failed):', userInfo.email)
-            console.log('[AuthContext] ⚠️ WARNING: profileCompleted not available from API, will check on next profile fetch');
+
             setUser(userInfo)
             setIsAuthenticated(true)
             localStorage.setItem('userInfo', JSON.stringify(userInfo))
             localStorage.setItem('authProvider', authProvider)
           } else {
-            console.log('🔵 [AuthContext] Firebase user is null/logged out');
-            
+
             // Check for local auth token (legacy support for guest login)
             const authToken = localStorage.getItem('authToken')
             const authProvider = localStorage.getItem('authProvider')
             
-            console.log('🔵 [AuthContext]   - authToken:', authToken ? 'Found' : 'Not found');
-            console.log('🔵 [AuthContext]   - authProvider:', authProvider);
-            
+
+
             if (authToken && authProvider === 'guest') {
               const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
               
@@ -808,19 +768,19 @@ export const AuthProvider = ({ children }) => {
                 userInfo.publicId = userInfo.public_id
               }
               
-              console.log('🔵 [AuthContext] Restoring guest login');
+
               setUser(userInfo)
               setIsAuthenticated(true)
             } else {
               // No auth found, redirect to login
-              console.log('🔵 [AuthContext] ❌ No authentication found, user will be redirected to login')
+
               setUser(null)
               setIsAuthenticated(false)
             }
           }
-          console.log('🔵 [AuthContext] ═══════════════════════════════════════════');
-          console.log('🔵 [AuthContext] INITIALIZATION COMPLETE - Setting isLoading=false');
-          console.log('🔵 [AuthContext] ═══════════════════════════════════════════\n');
+
+
+
           setIsLoading(false)
         })
 
@@ -840,11 +800,14 @@ export const AuthProvider = ({ children }) => {
       if (!token) return { success: false, error: 'No token found' };
 
       const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
-      const profileResponse = await fetch(`${BACKEND_URL}/api/profile`, {
+      const profileResponse = await fetch(`${BACKEND_URL}/api/profile?t=${new Date().getTime()}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
 
@@ -872,7 +835,7 @@ export const AuthProvider = ({ children }) => {
             has_unlimited_skip: profileData.user.has_unlimited_skip,
             unlimited_skip_expires_at: profileData.user.unlimited_skip_expires_at,
             unlimitedSkipExpiresAt: profileData.user.unlimited_skip_expires_at,
-            dailySkipCount: profileData.user.dailySkipCount || profileData.user.daily_skip_count || 0,
+            daily_skip_count: profileData.user.daily_skip_count || profileData.user.dailySkipCount || 0,
             lastSkipResetDate: profileData.user.lastSkipResetDate || profileData.user.last_skip_reset_date || null
           }
           setUser(userWithIds);
@@ -919,7 +882,7 @@ export const AuthProvider = ({ children }) => {
 
       const updatedUser = {
         ...prevUser,
-        dailySkipCount: (prevUser.dailySkipCount || 0) + 1
+        daily_skip_count: (prevUser.daily_skip_count || 0) + 1
       };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       return updatedUser;
@@ -930,7 +893,7 @@ export const AuthProvider = ({ children }) => {
   const hasReachedSkipLimit = () => {
     if (!user) return false;
     
-    const skipLimit = 1;
+    const skipLimit = 120;
 
     const unlimitedSkipExpiresAt =
       user.unlimitedSkipExpiresAt || user.unlimited_skip_expires_at;
@@ -941,12 +904,12 @@ export const AuthProvider = ({ children }) => {
 
     // ✅ Premium/unlimited (active) users can always skip
     if (user.isPremium || user.is_premium || hasActiveUnlimitedSkip) {
-      console.log('[AuthContext] ✅ User has unlimited skip - no skip limit');
+
       return false;
     }
     
     // ✅ Check if daily skip count >= 1
-    const currentSkipCount = user.dailySkipCount || 0;
+    const currentSkipCount = user.daily_skip_count || 0;
     const hasLimit = currentSkipCount >= skipLimit;
     
     if (hasLimit) {
@@ -960,7 +923,7 @@ export const AuthProvider = ({ children }) => {
 
   // ✅ Get remaining skips for display
   const getRemainingSkips = () => {
-    const skipLimit = 1;
+    const skipLimit = 120;
     if (!user) return skipLimit;
     
     const unlimitedSkipExpiresAt =
@@ -975,18 +938,11 @@ export const AuthProvider = ({ children }) => {
       return Infinity;
     }
 
-    const currentSkipCount = user.dailySkipCount || 0;
+    const currentSkipCount = user.daily_skip_count || 0;
     return Math.max(0, skipLimit - currentSkipCount);
   }
 
   const setAuthToken = (token, userData) => {
-    console.log('[AuthContext] ⚠️ setAuthToken called with userData:', {
-      email: userData?.email,
-      has_uuid: !!userData?.uuid,
-      uuid: userData?.uuid,
-      uuid_length: userData?.uuid?.length,
-      all_keys: Object.keys(userData || {})
-    })
     
     // ✅ CRITICAL: Create CLEAN user object with ONLY needed fields
     // ❌ DO NOT spread userData (it contains numeric id)
@@ -1004,7 +960,7 @@ export const AuthProvider = ({ children }) => {
       has_unlimited_skip: userData?.has_unlimited_skip || false,
       unlimited_skip_expires_at: userData?.unlimited_skip_expires_at || null,
       unlimitedSkipExpiresAt: userData?.unlimited_skip_expires_at || null,
-      dailySkipCount: userData?.dailySkipCount || 0,
+      daily_skip_count: userData?.daily_skip_count || userData?.dailySkipCount || 0,
       lastSkipResetDate: userData?.lastSkipResetDate || null
     }
     

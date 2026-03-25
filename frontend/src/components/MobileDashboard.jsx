@@ -1,10 +1,11 @@
-﻿import React from 'react'
+import React from 'react'
 import { useUnreadSafe } from '../context/UnreadContext'
 import './MobileDashboard.css'
 
 function MobileDashboard({ onStartVideoChat, onTabClick, localStreamRef, cameraStarted }) {
   const [activeTab, setActiveTab] = React.useState('soloX');
   const { unreadCount } = useUnreadSafe();
+  const videoElRef = React.useRef(null);
 
   const handleTabClick = (tab) => {
     setActiveTab(tab);
@@ -15,15 +16,45 @@ function MobileDashboard({ onStartVideoChat, onTabClick, localStreamRef, cameraS
 
   const handleVideoRef = React.useCallback((videoElement) => {
     if (!videoElement) return;
+    videoElRef.current = videoElement;
     
     if (localStreamRef?.current && videoElement.srcObject !== localStreamRef.current) {
       videoElement.srcObject = localStreamRef.current;
       videoElement.muted = true;
-      videoElement.play().catch(err => {
-        console.warn('📱 [MOBILE DASHBOARD] Play warning:', err.message);
-      });
+      videoElement.play().catch(() => {});
     }
   }, [localStreamRef]);
+
+  // 🚀 Aggressive stream polling for instant camera display
+  React.useEffect(() => {
+    let pollInterval = null;
+
+    const tryAttach = () => {
+      const videoElement = videoElRef.current;
+      if (!videoElement || !localStreamRef?.current) return false;
+      if (videoElement.srcObject !== localStreamRef.current) {
+        videoElement.srcObject = localStreamRef.current;
+        videoElement.muted = true;
+        videoElement.play().catch(() => {});
+      }
+      return true;
+    };
+
+    if (!tryAttach()) {
+      let attempts = 0;
+      pollInterval = setInterval(() => {
+        attempts++;
+        if (tryAttach() || attempts > 50) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      }, 100);
+    }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [cameraStarted, localStreamRef]);
 
   return (
     <div className="relative w-full max-w-sm h-screen bg-background-light dark:bg-background-dark rounded-[2.5rem] shadow-2xl overflow-hidden border-4 border-white dark:border-[#332a00] ring-1 ring-gray-900/5 flex flex-col transition-colors duration-300 font-body">
@@ -142,13 +173,6 @@ function MobileDashboard({ onStartVideoChat, onTabClick, localStreamRef, cameraS
               WebkitFilter: 'none'
             }}
           />
-          {!cameraStarted && (
-            <img 
-              alt="Selfie camera preview" 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCL4aKLR9wxfBpOGbKDML1uPyd01j-nlKQUaqncv8UO0XQPazYIC3UxkLOsQ4PDgqjrzEOT2AXaVO8JyUTprnRNeO1s8ky1zRy097myCLuEQj6BzJU2uGebRocr0ujkDGF_qnErXShu-bOwzbtNyoS-EVw7Zf9SHFx8rC9VEXDImgNPGP33R7AA7N8hdWRucQ4Ml5tRNRrTmvf0GFlkLXU4IzZB9rMakuwP1Qh4f5LtWrFeCFObJe-vYlID5UbKBIxWK75ldAkZvw"
-            />
-          )}
           <div className="absolute inset-0 bg-transparent"></div>
           <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white/90 text-xs font-bold py-1.5 px-3 rounded-full flex items-center gap-2 border border-white/10 shadow-lg ring-1 ring-white/5">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></span>

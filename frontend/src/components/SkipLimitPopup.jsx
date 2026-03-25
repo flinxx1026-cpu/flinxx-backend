@@ -51,8 +51,8 @@ const SkipLimitPopup = ({ isOpen, onClose, onConfirm }) => {
               <span className="material-symbols-outlined text-[#D4AF37] text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
             </div>
             <h1 className="font-headline text-2xl font-extrabold text-white tracking-tight mb-2">Skip Limit Reached</h1>
-            <p className="text-white text-sm opacity-80 leading-relaxed max-w-[280px] mx-auto">
-              Your account has reached the daily skip limit. You can skip again after 24 hours or upgrade to continue exploring without limits.
+            <p className="text-white text-sm opacity-80 leading-relaxed max-w-[280px] mx-auto mb-4">
+              You've used all 120 daily skips. Your skips will reset at midnight. Upgrade for unlimited skips!
             </p>
           </div>
 

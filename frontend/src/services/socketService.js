@@ -26,9 +26,8 @@ const getOrCreateSocket = () => {
   isInitializing = true;
   
   try {
-    console.log('🔌 Socket.IO attempting connection...');
-    console.log('🔌 Target URL:', SOCKET_URL);
-    
+
+
     socket = io(SOCKET_URL, {
       reconnection: true,
       reconnectionDelay: 1000,
@@ -50,15 +49,15 @@ const getOrCreateSocket = () => {
     })
 
     socket.on('connect', () => {
-      console.log('✅ Socket connected successfully! ID:', socket.id)
-      console.log('📊 Transport:', socket.io.engine.transport.name)
+
+
     })
 
     socket.on('connect_error', (error) => {
       console.error('❌ Socket connection error:', error.message || error)
       console.error('📍 Error details:', error)
       if (socket?.io?.engine?.transport?.name === 'polling') {
-        console.log('🔄 Retrying with websocket...')
+
       }
     })
 
@@ -67,8 +66,8 @@ const getOrCreateSocket = () => {
     })
 
     socket.on('disconnect', (reason) => {
-      console.log('⚠️ Socket disconnected. Reason:', reason)
-      console.log('🔄 Attempting to reconnect...')
+
+
     })
 
     socket.on('connect_timeout', () => {
@@ -79,24 +78,24 @@ const getOrCreateSocket = () => {
     socket.onAny((eventName, ...args) => {
       if (!['connect', 'disconnect', 'ping', 'pong'].includes(eventName)) {
         if (eventName === 'call_ended') {
-          console.log(`🎯🎯🎯 [socketService] RECEIVED call_ended EVENT! 🎯🎯🎯`, args);
+
         } else {
-          console.log(`🎯 [socketService DEBUG] Event: "${eventName}"`, args);
+
         }
       }
     });
 
     // ✅ SPECIFIC LISTENER: call_ended - to catch and log
     socket.on('call_ended', (data) => {
-      console.log('🔔 [socketService] call_ended listener triggered directly');
-      console.log('📦 Data:', data);
+
+
     });
 
     // ✅ HANDLE FRIEND REQUEST RECEIVED - Debug handler
     socket.on('friend_request_received', (data) => {
-      console.log('🔥🔥🔥 [socketService] FRIEND REQUEST EVENT RECEIVED 🔥🔥🔥');
-      console.log('📦 Data:', data);
-      console.log('🔥🔥🔥 Event will now bubble to all AuthContext listeners 🔥🔥🔥');
+
+
+
     });
 
     // ✅ HANDLE FORCE LOGOUT (when user is banned)
@@ -108,16 +107,15 @@ const getOrCreateSocket = () => {
 
     // ✅ HANDLE ACCOUNT WARNING
     socket.on('account_warning', (warningData) => {
-      console.log('🚨 [socketService] ACCOUNT WARNING EVENT RECEIVED 🚨');
-      console.log('📦 Warning data:', warningData);
-      
+
+
       // Dispatch custom event so AuthContext can listen
       if (typeof window !== 'undefined') {
         const warningEvent = new CustomEvent('account_warning', {
           detail: warningData
         });
         window.dispatchEvent(warningEvent);
-        console.log('✅ [socketService] Window event dispatched for account_warning');
+
       }
     })
   } catch (err) {
@@ -146,7 +144,7 @@ const getOrCreateSocket = () => {
 export const joinUserRoom = (userId) => {
   const s = getOrCreateSocket();
   if (s) {
-    console.log(`📍 Joining room for user: ${userId}`)
+
     s.emit('join', userId)
   }
 }
@@ -156,34 +154,34 @@ const socketWrapper = {
   on: (event, handler) => {
     const s = getOrCreateSocket();
     if (s && typeof s.on === 'function') {
-      console.log(`🔌 [socketWrapper] Attaching listener for event: "${event}"`);
+
       s.on(event, handler);
-      console.log(`✅ [socketWrapper] Listener attached for: "${event}"`);
+
     } else {
-      console.warn(`⚠️ [socketWrapper] Cannot attach listener for "${event}" - socket not available`);
+
     }
   },
   off: (event, handler) => {
     const s = getOrCreateSocket();
     if (s && typeof s.off === 'function') {
-      console.log(`🔌 [socketWrapper] Detaching listener for event: "${event}"`);
+
       s.off(event, handler);
     }
   },
   emit: (event, ...args) => {
     const s = getOrCreateSocket();
     if (s && typeof s.emit === 'function') {
-      console.log(`📤 [socketWrapper] Emitting event: "${event}"`);
+
       s.emit(event, ...args);
-      console.log(`✅ [socketWrapper] Event emitted: "${event}"`);
+
     }
   },
   onAny: (handler) => {
     const s = getOrCreateSocket();
     if (s && typeof s.onAny === 'function') {
-      console.log(`🔌 [socketWrapper] Attaching universal event listener`);
+
       s.onAny(handler);
-      console.log(`✅ [socketWrapper] Universal listener attached`);
+
     } else if (s) {
       console.warn('⚠️ Socket.IO onAny() not available - universal event listener may not work');
     }

@@ -325,6 +325,48 @@ export function setupMatchingHandlers(io, redis, prisma) {
           io._partnerSockets.set(socket.id, actualPartnerSocketId);
           io._partnerSockets.set(actualPartnerSocketId, socket.id);
           console.log(`[MATCHING] ✅ Partner relationship tracked for disconnects: ${socket.id} ↔ ${actualPartnerSocketId}`);
+          
+          // 🎯 SILENT 30-MINUTE AUTO SKIP SYSTEM (28-32 min)
+          const SESSION_TIMEOUT = Math.floor((28 + Math.random() * 4) * 60 * 1000);
+          console.log(`[MATCHING] ⏱️ [AUTO-SKIP] Timeout set for ${Math.floor(SESSION_TIMEOUT / 60000)}m ${Math.floor((SESSION_TIMEOUT % 60000) / 1000)}s`);
+
+          const mySock = io.sockets.sockets.get(socket.id);
+          const partnerSock = io.sockets.sockets.get(actualPartnerSocketId);
+          
+          if (mySock && mySock.autoSkipTimer) clearTimeout(mySock.autoSkipTimer);
+          if (partnerSock && partnerSock.autoSkipTimer) clearTimeout(partnerSock.autoSkipTimer);
+
+          const timerId = setTimeout(() => {
+            try {
+              console.log(`\n[MATCHING] ⏳ [AUTO-SKIP] Timer executed!`);
+              
+              const s1 = io.sockets.sockets.get(socket.id);
+              const s2 = io.sockets.sockets.get(actualPartnerSocketId);
+              
+              // Ensure they are still paired mathematically
+              if (io._partnerSockets.get(socket.id) !== actualPartnerSocketId) {
+                  console.log(`[MATCHING] ⏳ [AUTO-SKIP] Aborted: Users have new partners now.`);
+                  return;
+              }
+
+              if (s1) s1.emit('partner_disconnected', { reason: 'connection_lost' });
+              else io.to(socket.id).emit('partner_disconnected', { reason: 'connection_lost' });
+              
+              if (s2) s2.emit('partner_disconnected', { reason: 'connection_lost' });
+              else io.to(actualPartnerSocketId).emit('partner_disconnected', { reason: 'connection_lost' });
+
+              // Backend Cleanup
+              io._partnerSockets.delete(socket.id);
+              io._partnerSockets.delete(actualPartnerSocketId);
+
+              console.log(`[MATCHING] ✅ [AUTO-SKIP] Both users silently disconnected as 'network issue'`);
+            } catch (err) {
+              console.error(`[MATCHING] ❌ [AUTO-SKIP] Error:`, err);
+            }
+          }, SESSION_TIMEOUT);
+
+          if (mySock) mySock.autoSkipTimer = timerId;
+          if (partnerSock) partnerSock.autoSkipTimer = timerId;
         }
 
         // 🔮 PREFETCH next candidates for instant skip (fire and forget)
@@ -601,6 +643,10 @@ export function setupMatchingHandlers(io, redis, prisma) {
               io._partnerSockets.delete(socket.id);
               io._partnerSockets.delete(partnerSocket);
               console.log(`[MATCH_SKIP] 🧹 Cleaned partnerSockets mapping`);
+              
+              if (socket.autoSkipTimer) clearTimeout(socket.autoSkipTimer);
+              const partnerSockObj = io.sockets.sockets.get(partnerSocket);
+              if (partnerSockObj && partnerSockObj.autoSkipTimer) clearTimeout(partnerSockObj.autoSkipTimer);
             }
           }
 
@@ -896,6 +942,10 @@ export function setupMatchingHandlers(io, redis, prisma) {
           io._partnerSockets.delete(socket.id);
           io._partnerSockets.delete(partnerSocketId);
           console.log(`[SKIP_USER] 🧹 Cleaned partnerSockets mapping`);
+          
+          if (socket.autoSkipTimer) clearTimeout(socket.autoSkipTimer);
+          const partnerSockObj = io.sockets.sockets.get(partnerSocketId);
+          if (partnerSockObj && partnerSockObj.autoSkipTimer) clearTimeout(partnerSockObj.autoSkipTimer);
         }
 
         // ✅ ANTI-REMATCH: Track recent skip to prevent immediate re-matching

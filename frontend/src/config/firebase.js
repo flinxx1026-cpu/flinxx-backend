@@ -34,7 +34,7 @@ export const auth = getAuth(app)
 // This ensures user stays logged in after page reload
 setPersistence(auth, browserLocalPersistence)
   .then(() => {
-    console.log("✅ Firebase persistence set to LOCAL - user will stay logged in after reload");
+
   })
   .catch((err) => {
     console.error("❌ Firebase persistence error:", err);
@@ -57,9 +57,8 @@ export const facebookProvider = new FacebookAuthProvider()
 const facebookAppId = import.meta.env.VITE_FACEBOOK_APP_ID || '863917229498555'
 const facebookAppSecret = import.meta.env.VITE_FACEBOOK_APP_SECRET || '9fd35a96cf11e8f070cc856e3625494e'
 
-console.log('🔧 Configuring Facebook Auth Provider:')
-console.log('   - App ID:', facebookAppId)
-console.log('   - Redirect URL:', import.meta.env.VITE_FIREBASE_REDIRECT_URL)
+
+
 
 // Set Facebook custom parameters for OAuth
 facebookProvider.setCustomParameters({
@@ -73,19 +72,17 @@ facebookProvider.setCustomParameters({
 facebookProvider.addScope('public_profile')
 facebookProvider.addScope('email')
 
-console.log('✅ Facebook Auth Provider initialized with:')
-console.log('   - Public Profile scope: ✓')
-console.log('   - Email scope: ✓')
-console.log('   - Web OAuth redirect enabled: ✓')
+
+
+
 
 // Google Sign-In function - try popup first, fallback to redirect
 export const signInWithGoogle = async () => {
   try {
-    console.log('📱 Starting Google login via popup...')
+
     // Try popup first - better UX if it works
     const result = await signInWithPopup(auth, googleProvider)
-    console.log('✅ Google popup login successful:', result.user.email)
-    
+
     const provider = result.user.providerData[0]?.providerId
     let providerName = 'google'
     if (provider === 'google.com') {
@@ -93,17 +90,16 @@ export const signInWithGoogle = async () => {
     }
     
     const userResult = await handleLoginSuccess(result.user, providerName)
-    console.log('✅ [signInWithGoogle] handleLoginSuccess returned:', userResult?.email)
+
     return userResult
   } catch (popupError) {
-    console.warn('⚠️ Google popup login failed, trying redirect method:', popupError.code)
-    
+
     try {
-      console.log('📱 Starting Google login via redirect...')
+
       // Fallback to redirect if popup fails
       // 🔥 CRITICAL: Set a flag to trigger redirect after page reloads
       sessionStorage.setItem('pendingRedirectAfterAuth', 'true')
-      console.log('🔥 [signInWithGoogle] Set redirect flag - will redirect after auth')
+
       await signInWithRedirect(auth, googleProvider)
       // Note: This will redirect/reload, so code after this won't execute immediately
       return null
@@ -117,20 +113,19 @@ export const signInWithGoogle = async () => {
 
 // Handle successful login from both Google and Facebook
 const handleLoginSuccess = async (user, provider) => {
-  console.log(`📝 Processing ${provider} login for user:`, user.email)
-  
+
   // 🔥 STEP 1: Get Firebase ID token
   let firebaseIdToken = null
   try {
     firebaseIdToken = await user.getIdToken()
-    console.log('✅ Firebase ID token obtained')
+
   } catch (tokenError) {
     console.error('❌ Failed to get Firebase ID token:', tokenError)
     throw new Error('Could not get Firebase ID token')
   }
   
   // 🔥 STEP 2: Send Firebase ID token to backend to get JWT
-  console.log('📡 Sending Firebase ID token to backend...')
+
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
   
   let backendJWT = null
@@ -151,8 +146,7 @@ const handleLoginSuccess = async (user, provider) => {
     }
     
     const authResponse = await response.json()
-    console.log('✅ Backend authentication successful')
-    
+
     backendJWT = authResponse.token
     userInfo = authResponse.user
     
@@ -160,19 +154,18 @@ const handleLoginSuccess = async (user, provider) => {
       throw new Error('No JWT token returned from backend')
     }
     
-    console.log('🔐 Backend JWT obtained, user:', userInfo?.email)
+
   } catch (authError) {
     console.error('❌ Failed to authenticate with backend:', authError)
     throw authError
   }
   
   // 🔥 STEP 3: Save backend JWT to localStorage
-  console.log('💾 Saving backend JWT to localStorage...')
+
   localStorage.setItem('token', backendJWT)
   localStorage.setItem('authToken', backendJWT)
   localStorage.setItem('idToken', firebaseIdToken)
-  console.log('✅ JWT and Firebase ID token saved')
-  
+
   // 🔥 STEP 4: Save user info to localStorage
   const userToStore = {
     uid: user.uid,
@@ -190,8 +183,7 @@ const handleLoginSuccess = async (user, provider) => {
   localStorage.setItem('user', JSON.stringify(userToStore))
   localStorage.setItem('authProvider', provider)
   localStorage.setItem('userInfo', JSON.stringify(userToStore))
-  console.log('✅ User info saved to localStorage')
-  
+
   // 🔥 STEP 5: Save to Firestore (optional)
   try {
     await setDoc(doc(db, 'users', user.uid), {
@@ -201,7 +193,7 @@ const handleLoginSuccess = async (user, provider) => {
       authProvider: provider,
       lastLogin: new Date().toISOString()
     }, { merge: true })
-    console.log('✅ User saved to Firestore')
+
   } catch (firestoreError) {
     console.warn('⚠️ Firestore save failed (non-critical):', firestoreError)
   }
@@ -212,11 +204,10 @@ const handleLoginSuccess = async (user, provider) => {
 // Facebook Sign-In function - try popup first, fallback to redirect
 export const signInWithFacebook = async () => {
   try {
-    console.log('📱 Starting Facebook login via popup...')
+
     // Try popup first - better UX if it works
     const result = await signInWithPopup(auth, facebookProvider)
-    console.log('✅ Facebook popup login successful:', result.user.email)
-    
+
     const provider = result.user.providerData[0]?.providerId
     let providerName = 'facebook'
     if (provider === 'facebook.com') {
@@ -224,17 +215,16 @@ export const signInWithFacebook = async () => {
     }
     
     const userResult = await handleLoginSuccess(result.user, providerName)
-    console.log('✅ [signInWithFacebook] handleLoginSuccess returned:', userResult?.email)
+
     return userResult
   } catch (popupError) {
-    console.warn('⚠️ Facebook popup login failed, trying redirect method:', popupError.code)
-    
+
     try {
-      console.log('📱 Starting Facebook login via redirect...')
+
       // Fallback to redirect if popup fails
       // 🔥 CRITICAL: Set a flag to trigger redirect after page reloads
       sessionStorage.setItem('pendingRedirectAfterAuth', 'true')
-      console.log('🔥 [signInWithFacebook] Set redirect flag - will redirect after auth')
+
       await signInWithRedirect(auth, facebookProvider)
       // Note: This will redirect/reload, so code after this won't execute immediately
       return null
@@ -251,10 +241,9 @@ export const checkRedirectResult = async () => {
   try {
     const result = await getRedirectResult(auth)
     if (result?.user) {
-      console.log('✅ Redirect login successful:', result.user.email)
+
       const provider = result.user.providerData[0]?.providerId
-      console.log('Provider:', provider)
-      
+
       // Extract provider name (google.com, facebook.com, etc.)
       let providerName = 'unknown'
       if (provider === 'google.com') {

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import './SearchFriendsModal.css';
 import { getFriends, markMessagesAsRead, getNotifications } from '../services/api';
 import { MessageContext } from '../context/MessageContext';

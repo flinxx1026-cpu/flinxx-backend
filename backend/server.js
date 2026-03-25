@@ -18,6 +18,7 @@ import paymentsRoutes, { setPaymentsPool, setPaymentsPrisma } from './routes/pay
 import { initializeFirebaseAdmin, verifyFirebaseToken } from './firebaseAdmin.js'
 import MatchingServiceOptimized from './services/matchingServiceOptimized.js'
 import setupMatchingHandlers from './sockets/matchingHandlers.js'
+import { validateSkipLimit } from './services/skipLimitValidator.js'
 
 // Load environment variables in correct order:
 // 1. First load .env.local (development overrides) with override: true to ensure it takes precedence
@@ -103,16 +104,70 @@ function ensurePrismaAvailable() {
   return prisma
 }
 
+// ✅ GLOBAL RESET HANDLER — Midnight date-change reset (IST)
+// Triggered on every user fetch. Resets daily_skip_count to 0 when IST calendar date changes (12:00 AM IST).
+// Free users get 120 skips/day. Premium users are unlimited.
+const DAILY_SKIP_LIMIT = 120;
+
+// Convert any Date to IST (Asia/Kolkata) Date object
+function toIST(date) {
+  return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+}
+
+function shouldResetSkips(lastReset) {
+  const nowIST = toIST(new Date());
+  if (!lastReset) return true;
+  const last = new Date(lastReset);
+  if (Number.isNaN(last.getTime())) return true;
+  const lastIST = toIST(last);
+  // Reset if the IST calendar date has changed
+  return nowIST.toDateString() !== lastIST.toDateString();
+}
+
+async function ensureDailySkipReset(user) {
+  if (!user || !user.id) return user;
+
+  if (shouldResetSkips(user.last_skip_reset_date)) {
+    console.log('🔄 [RESET] BEFORE RESET:', {
+      skip: user.daily_skip_count,
+      lastReset: user.last_skip_reset_date
+    });
+
+    if (prisma) {
+      const updatedUser = await prisma.users.update({
+        where: { id: user.id },
+        data: {
+          daily_skip_count: 0,
+          last_skip_reset_date: new Date()
+        }
+      });
+      console.log('🔄 [RESET] AFTER RESET (DB updated):', {
+        skip: updatedUser.daily_skip_count,
+        lastReset: updatedUser.last_skip_reset_date
+      });
+      return updatedUser;
+    } else {
+      user.daily_skip_count = 0;
+      user.last_skip_reset_date = new Date();
+      return user;
+    }
+  }
+
+  return user;
+}
+
 // ===== DATABASE CONFIGURATION =====
 
-// PostgreSQL (Neon) Connection
+// PostgreSQL (AWS RDS) Connection
 const { Pool } = pg
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
-  ssl: true
+  ssl: {
+    rejectUnauthorized: false
+  }
 })
 
 // Test PostgreSQL connection
@@ -981,6 +1036,18 @@ async function addToMatchingQueue(userId, socketId, userData) {
       console.warn(`⚠️ Could not check Match Boost status:`, e.message);
     }
 
+    // Dynamic matching score initialization
+    // 70% chance to get boost advantage if they have boost
+    let boostAdvantage = 0;
+    if (hasMatchBoost) {
+      if (Math.random() < 0.70) {
+        // 4000 to 6000 dynamic advantage
+        boostAdvantage = Math.floor(Math.random() * 2000) + 4000;
+      }
+    }
+
+    const joinTime = Date.now();
+
     const queueData = JSON.stringify({
       userId,
       socketId,
@@ -990,15 +1057,17 @@ async function addToMatchingQueue(userId, socketId, userData) {
       userPicture: userData?.userPicture || null,
       connectionScore: userData?.connectionScore || 100,
       hasMatchBoost,
-      timestamp: Date.now()
+      joinTime,
+      boostAdvantage,
+      timestamp: joinTime // Keep for backwards compatibility
     })
 
     console.log(`📋 [QUEUE] Final entry to store: { userId: "${userData?.userId}", userName: "${userData?.userName}", location: "${userData?.userLocation}", age: ${userData?.userAge} })`)
 
-    // Boost users get score 0 (highest priority), normal users get timestamp score
-    const score = hasMatchBoost ? 0 : Date.now();
+    // Lower score = higher priority in Redis
+    const score = joinTime - boostAdvantage;
     await redis.zAdd('matching_queue', { score, value: queueData })
-    console.log(`✅ [QUEUE] User ${userId} added with socket ${socketId} ${hasMatchBoost ? '🚀 (MATCH BOOST - PRIORITY)' : '(normal)'}`)
+    console.log(`✅ [QUEUE] User ${userId} added with socket ${socketId} ${hasMatchBoost ? '🚀 (MATCH BOOST - DYNAMIC PRIORITY)' : '(normal)'}`)
 
     // Verify it was added and log full queue state
     const queueLen = await redis.zCard('matching_queue')
@@ -2673,6 +2742,15 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
     console.log("✅ [/api/user/profile] RESPONSE SUCCESS");
     console.log("✅ [/api/user/profile] Sending response to frontend...\n");
 
+    // ✅ UNIFIED RESET: Use the global ensureDailySkipReset that writes to DB
+    const resetUser = await ensureDailySkipReset(user);
+    // Merge reset fields back
+    if (resetUser) {
+      user.daily_skip_count = resetUser.daily_skip_count;
+      user.last_skip_reset_date = resetUser.last_skip_reset_date;
+    }
+    const computedSkipCount = user.daily_skip_count || 0;
+
     res.json({
       success: true,
       user: {
@@ -2690,7 +2768,7 @@ app.get('/api/user/profile', verifyUserToken, async (req, res) => {
         lastSeen: user.last_seen,
         isPremium: !!(user.is_premium && (!user.premium_expiry || new Date(user.premium_expiry) > new Date())),
         hasUnlimitedSkip: !!(user.has_unlimited_skip && (!user.unlimited_skip_expires_at || new Date(user.unlimited_skip_expires_at) > new Date())),
-        dailySkipCount: user.daily_skip_count || 0,
+        daily_skip_count: computedSkipCount,
         lastSkipResetDate: user.last_skip_reset_date
       }
     });
@@ -3563,7 +3641,7 @@ app.get('/auth-success', async (req, res) => {
 
     // Fetch full user data from database using userId string
     console.log(`🔍 [AUTH-SUCCESS] Fetching user from database...`)
-    const user = await prisma.users.findUnique({
+    let user = await prisma.users.findUnique({
       where: { id: decoded.id },
       select: {
         id: true,
@@ -3574,9 +3652,15 @@ app.get('/auth-success', async (req, res) => {
         birthday: true,
         gender: true,
         profileCompleted: true,
-        termsAccepted: true
+        termsAccepted: true,
+        daily_skip_count: true,
+        last_skip_reset_date: true
       }
     })
+
+    if (user) {
+      user = await ensureDailySkipReset(user);
+    }
 
     if (!user) {
       console.error(`❌ [AUTH-SUCCESS] CRITICAL: User ${decoded.id} not found in database!`)
@@ -3989,8 +4073,13 @@ app.get('/api/profile', async (req, res) => {
       new Date(user.unlimited_skip_expires_at).getTime() > Date.now()
     );
 
+    // ==========================================
+    // ✅ LOGICAL DAY RESET CHECK FOR PROFILE API
+    // ==========================================
+    user = await ensureDailySkipReset(user);
     const skipCount = user.daily_skip_count || 0;
-    console.log(`[PROFILE FINAL] userId: ${user.id}, isPremium: ${isPremium}, skipCount: ${skipCount}`)
+
+    console.log(`[PROFILE FINAL] userId: ${user.id}, isPremium: ${isPremium}, skipCount: ${skipCount} (DB: ${user.daily_skip_count || 0})`)
 
     return res.json({
       success: true,
@@ -4832,6 +4921,43 @@ io.on('connection', (socket) => {
       userSockets.set(socket.id, userId)
       console.log(`✅ [find_partner] Stored mapping - socket ${socket.id.substring(0, 8)}... → user ${userId}`)
 
+      // ✅ Run explicit global global reset check on "Start video chat click"
+      try {
+        let dbUser = await prisma.users.findUnique({ where: { id: userId } });
+        if (dbUser) {
+          await ensureDailySkipReset(dbUser);
+        }
+      } catch (err) {
+        console.error('⚠️ [find_partner] Error during ensureDailySkipReset:', err.message);
+      }
+
+      // 🛑 STRICT BACKEND VALIDATION FOR START VIDEO CHAT (limit check)
+      try {
+        const limitCheck = await validateSkipLimit({
+          userId,
+          prisma,
+          redis,
+          increment: false,
+          source: 'find_partner_backend'
+        });
+
+        if (!limitCheck.canSkip) {
+          console.warn(`[find_partner] 🚫 Hard block! User ${userId} hit skip limit. Emitting skip_limit_reached to socket.`);
+          
+          if (socket.connected) {
+            socket.emit('skip_limit_reached', {
+              limit: limitCheck.limit,
+              skipCount: limitCheck.skipCount,
+              reason: limitCheck.reason
+            });
+            // Don't just emit error, this is a business logic block
+          }
+          return; // STOP EXECUTION HERE! NO QUEUE ENTRY!
+        }
+      } catch (limitErr) {
+        console.error(`[find_partner] ⚠️ limit check failed, proceeding anyway for stability:`, limitErr.message);
+      }
+
       // ✅ CLEANUP: Remove stale activeChats entry if user is reconnecting
       // This handles cases where a previous connection left a stale entry
       if (activeChats.has(userId)) {
@@ -5226,9 +5352,11 @@ io.on('connection', (socket) => {
   socket.on('skip_user', async (data, callback) => {
     try {
       const partnerSocketId = data?.partnerSocketId
+      const userId = data?.userId || userSockets.get(socket.id)
 
       console.log('\n⏭️ [SKIP_USER - server.js] Skip request received')
       console.log('   From socket:', socket.id)
+      console.log('   UserId:', userId)
       console.log('   Target partner socket:', partnerSocketId)
       console.log('   partnerSockets map size:', partnerSockets.size)
 
@@ -5247,11 +5375,36 @@ io.on('connection', (socket) => {
         return
       }
 
-      // 📤 CRITICAL: Notify partner that they were skipped
+      // ✅ SKIP LIMIT VALIDATION: Check & increment daily skip count in DB
+      let skipResult = { canSkip: true, isPremium: false, skipCount: 0, limit: 1 };
+      if (userId) {
+        try {
+          // ✅ Run explicit global reset check on skip click
+          let dbUser = await prisma.users.findUnique({ where: { id: userId } });
+          if (dbUser) {
+            await ensureDailySkipReset(dbUser);
+          }
+
+          skipResult = await validateSkipLimit({
+            userId,
+            prisma,
+            redis,
+            increment: true,
+            source: 'skip_user_socket'
+          });
+          console.log('📊 [SKIP_USER] validateSkipLimit result:', skipResult);
+        } catch (validateErr) {
+          console.error('⚠️ [SKIP_USER] validateSkipLimit error (allowing skip):', validateErr.message);
+          // On validation error, still allow the skip to prevent stuck state
+        }
+      }
+
+      // 📤 CRITICAL: Always notify partner that they were skipped
+      // (Even if skip limit was reached, partner must be notified to avoid stuck state)
       console.log('📢 [SKIP_USER - server.js] Emitting user_skipped to:', targetSocketId)
       io.to(targetSocketId).emit('user_skipped', {
         message: 'Your partner skipped you.',
-        skippedBy: userSockets.get(socket.id) || socket.id
+        skippedBy: userId || socket.id
       })
       console.log('✅ [SKIP_USER - server.js] user_skipped event SENT to partner')
 
@@ -5261,7 +5414,6 @@ io.on('connection', (socket) => {
       console.log('🧹 [SKIP_USER - server.js] Cleaned partnerSockets mapping')
 
       // 🧹 Clean up activeChats
-      const userId = userSockets.get(socket.id)
       const partnerUserId = userSockets.get(targetSocketId)
       if (userId && activeChats.has(userId)) {
         activeChats.delete(userId)
@@ -5271,6 +5423,11 @@ io.on('connection', (socket) => {
         activeChats.delete(partnerUserId)
         console.log('🧹 [SKIP_USER - server.js] Removed', partnerUserId, 'from activeChats')
       }
+
+      // 🧹 Clean up timers if any
+      if (socket.autoSkipTimer) clearTimeout(socket.autoSkipTimer);
+      const targetSockObj = io.sockets.sockets.get(targetSocketId);
+      if (targetSockObj && targetSockObj.autoSkipTimer) clearTimeout(targetSockObj.autoSkipTimer);
 
       // 🧹 Clean up Redis active_sessions + DB on skip
       const sessionId = socket.sessionId
@@ -5301,14 +5458,21 @@ io.on('connection', (socket) => {
         }
       }
 
+      // ✅ Return skip validation result to frontend
       if (typeof callback === 'function') {
-        callback({ success: true, canSkip: true })
+        callback({
+          success: true,
+          canSkip: skipResult.canSkip,
+          isPremium: skipResult.isPremium,
+          skipCount: skipResult.skipCount,
+          limit: skipResult.limit
+        })
       }
 
     } catch (error) {
       console.error('🚨 [SKIP_USER - server.js] Error:', error.message)
       if (typeof callback === 'function') {
-        callback({ success: false, error: 'Internal server error' })
+        callback({ success: false, canSkip: false, error: 'Internal server error' })
       }
     }
   })
@@ -5552,6 +5716,9 @@ io.on('connection', (socket) => {
     console.log(`   partnerSockets size: ${partnerSockets.size}`)
     console.log(`   All tracked partners:`, Array.from(partnerSockets.entries()))
 
+    // 🧹 Clean up timer
+    if (socket.autoSkipTimer) clearTimeout(socket.autoSkipTimer);
+    
     // ✅ UPDATE SESSION IN DATABASE - Mark as ended
     if (socket.sessionId) {
       try {
@@ -6212,6 +6379,56 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   console.log(`✅ Matched: ${userId1} (${userData1?.userName}) <-> ${userId2} (${userData2?.userName})`)
   console.log(`✅ Session ID: ${sessionId}`)
   console.log(`✅ Room ID: ${roomId}`)
+
+  // 🎯 SILENT 30-MINUTE AUTO SKIP SYSTEM (28-32 min)
+  console.log('\n⏱️ [AUTO-SKIP] Setting up silent session timeout for:', sessionId)
+  const SESSION_TIMEOUT = Math.floor((28 + Math.random() * 4) * 60 * 1000);
+  console.log(`⏱️ [AUTO-SKIP] Timeout set for ${Math.floor(SESSION_TIMEOUT / 60000)}m ${Math.floor((SESSION_TIMEOUT % 60000) / 1000)}s`);
+
+  const sock1 = io.sockets.sockets.get(socketId1);
+  const sock2 = io.sockets.sockets.get(socketId2);
+
+  if (sock1 && sock1.autoSkipTimer) clearTimeout(sock1.autoSkipTimer);
+  if (sock2 && sock2.autoSkipTimer) clearTimeout(sock2.autoSkipTimer);
+
+  const timerId = setTimeout(() => {
+    try {
+      console.log(`\n⏳ [AUTO-SKIP] Timer executed for session: ${sessionId}!`);
+      
+      const s1 = io.sockets.sockets.get(socketId1);
+      const s2 = io.sockets.sockets.get(socketId2);
+      
+      // Ensure users are still mathematically in the same active session
+      if ((s1 && s1.sessionId !== sessionId) || (s2 && s2.sessionId !== sessionId)) {
+          console.log(`⏳ [AUTO-SKIP] Aborted: Users are no longer in this session.`);
+          return;
+      }
+
+      console.log(`⏳ [AUTO-SKIP] Disconnecting socket ${socketId1} and ${socketId2}...`);
+      
+      // Emit connection lost (network issue feel)
+      if (s1) s1.emit('partner_disconnected', { reason: 'connection_lost' });
+      else io.to(socketId1).emit('partner_disconnected', { reason: 'connection_lost' });
+      
+      if (s2) s2.emit('partner_disconnected', { reason: 'connection_lost' });
+      else io.to(socketId2).emit('partner_disconnected', { reason: 'connection_lost' });
+
+      // Backend Cleanup
+      partnerSockets.delete(socketId1);
+      partnerSockets.delete(socketId2);
+      
+      if (userId1) activeChats.delete(userId1);
+      if (userId2) activeChats.delete(userId2);
+      
+      console.log(`✅ [AUTO-SKIP] Both users silently disconnected as 'network issue'`);
+    } catch (err) {
+      console.error(`❌ [AUTO-SKIP] Error during auto-skip execution:`, err);
+    }
+  }, SESSION_TIMEOUT);
+
+  if (sock1) sock1.autoSkipTimer = timerId;
+  if (sock2) sock2.autoSkipTimer = timerId;
+
   console.log('\n')
 }
 
@@ -6533,6 +6750,50 @@ const PORT = process.env.PORT || 10000;
           // Silent - don't spam logs on cleanup errors
         }
       }, 15000) // Every 15 seconds
+
+      // ═══════════════════════════════════════════════════════════
+      // ✅ DYNAMIC PRIORITY MATCHER UPDATE (every 1 second)
+      // Updates scores in queue: Normal protection & Force matches
+      // ═══════════════════════════════════════════════════════════
+      setInterval(async () => {
+        try {
+          const queueLen = await redis.zCard('matching_queue')
+          if (queueLen === 0) return
+
+          const members = await redis.zRange('matching_queue', 0, -1)
+          let changed = false;
+          
+          for (const entry of members) {
+            try {
+              const parsed = JSON.parse(entry)
+              if (!parsed.joinTime) continue; // Skip legacy entries
+              
+              const waitTime = Date.now() - parsed.joinTime;
+              
+              // Recalculate dynamic score: Lower score is better in Redis sorted sets
+              let currentScore = parsed.joinTime - (parsed.boostAdvantage || 0);
+              
+              // Normal protection: After 7 sec -> +3000 priority (subtract 3000 from score)
+              if (waitTime >= 7000 && !parsed.hasMatchBoost) {
+                currentScore -= 3000;
+              }
+              
+              // After 10 sec -> force match priority (subtract 100000 from score)
+              if (waitTime >= 10000) {
+                currentScore -= 100000;
+              }
+
+              // Update the member score in Redis
+              await redis.zAdd('matching_queue', { score: currentScore, value: entry });
+              changed = true;
+            } catch (err) { }
+          }
+          
+          if (changed && queueLen >= 2) {
+             await triggerInstantMatch();
+          }
+        } catch (err) {}
+      }, 1000)
 
       // ═══════════════════════════════════════════════════════════
       // ✅ BULLETPROOF: Periodic session validator (every 15 seconds)
