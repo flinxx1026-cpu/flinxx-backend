@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './MobileWaitingScreen.css'
 import AnimatedWaitingText from '../components/AnimatedWaitingText'
@@ -11,10 +11,43 @@ import AnimatedWaitingText from '../components/AnimatedWaitingText'
 const MobileWaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
   const navigate = useNavigate()
   const [isSearching, setIsSearching] = useState(true)
+  const videoElementRef = useRef(null) // 📱 Track the video element for stream refresh
+
+  // 📱 MOBILE CAMERA FREEZE FIX: Periodically check if stream tracks are still alive
+  // After refreshLocalStream(), the old tracks are stopped but the video element
+  // still holds the old srcObject. This effect detects that and re-attaches.
+  useEffect(() => {
+    if (!cameraStarted) return;
+
+    const checkInterval = setInterval(() => {
+      const videoEl = videoElementRef.current;
+      if (!videoEl || !localStreamRef?.current) return;
+
+      // Check if current srcObject has ended tracks or is different from localStreamRef
+      const currentSrc = videoEl.srcObject;
+      const needsReattach = !currentSrc ||
+        currentSrc !== localStreamRef.current ||
+        currentSrc.getTracks().some(t => t.readyState === 'ended');
+
+      if (needsReattach) {
+        console.log('📱 [MOBILE WAITING SCREEN] 🔄 Stream changed or ended — re-attaching fresh stream');
+        videoEl.srcObject = localStreamRef.current;
+        videoEl.muted = true;
+        videoEl.play().catch(err => {
+          console.warn('📱 [MOBILE WAITING SCREEN] Re-attach play warning:', err.message);
+        });
+      }
+    }, 300); // Check every 300ms for faster stream change detection on mobile
+
+    return () => clearInterval(checkInterval);
+  }, [cameraStarted, localStreamRef]);
 
   const handleCameraRef = (videoElement) => {
     if (!videoElement) return;
     
+    // 📱 Store ref for the periodic stream check
+    videoElementRef.current = videoElement;
+
     console.log('📱 [MOBILE WAITING SCREEN] Video element ref callback fired');
     console.log('📱 [MOBILE WAITING SCREEN] Stream available:', !!(localStreamRef?.current));
     
@@ -26,8 +59,13 @@ const MobileWaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
         return;
       }
       
-      // Only attach if not already attached
-      if (videoElement.srcObject !== localStreamRef.current) {
+      // Only attach if not already attached or tracks ended
+      const currentSrc = videoElement.srcObject;
+      const needsAttach = !currentSrc ||
+        currentSrc !== localStreamRef.current ||
+        currentSrc.getTracks().some(t => t.readyState === 'ended');
+
+      if (needsAttach) {
         console.log('📱 [MOBILE WAITING SCREEN] ✅ Attaching stream to video element');
         videoElement.srcObject = localStreamRef.current;
         videoElement.muted = true;

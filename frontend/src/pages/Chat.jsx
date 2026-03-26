@@ -819,6 +819,7 @@ const Chat = () => {
   const streamRef = useRef(null);  // 🔥 Keep track of stream for cleanup
   const partnerSocketIdRef = useRef(null);  // CRITICAL: Store partner socket ID for sending offers/answers
   const skipInFlightRef = useRef(false);
+  const lastSkipTimeRef = useRef(0);  // 📱 MOBILE FIX: Debounce skip button (1200ms) to prevent camera freeze
   const searchCancelledRef = useRef(false);  // 🛑 Tracks if user explicitly cancelled search
   const requeueTimerRef = useRef(null);      // 🛑 Tracks pending requeue setTimeout so it can be cleared
   const connectionScoreRef = useRef(100);    // 📡 Global Connection Score
@@ -982,6 +983,95 @@ const Chat = () => {
       }
 
       setIsLocalCameraReady(true);
+    }
+  }, []);
+
+  // 📱 MOBILE CAMERA FREEZE FIX: Properly stop old stream + get fresh camera
+  // This is called on every skip/disconnect on mobile to prevent the local camera from freezing
+  const refreshLocalStream = useCallback(async () => {
+    const isMobileDevice = window.innerWidth < 769;
+    if (!isMobileDevice) return; // Desktop reuses streams fine
+
+    console.log('📱 [REFRESH STREAM] Starting fresh camera acquisition for mobile...');
+
+    try {
+      // STEP 1: Detach video element srcObject FIRST to release the rendering pipeline
+      if (localVideoRef.current) {
+        localVideoRef.current.pause();
+        localVideoRef.current.srcObject = null;
+        console.log('📱 [REFRESH STREAM] Video element detached and paused');
+      }
+
+      // STEP 2: Stop ALL tracks on the old stream to fully release the camera hardware
+      if (localStreamRef.current) {
+        const oldTracks = localStreamRef.current.getTracks();
+        console.log(`📱 [REFRESH STREAM] Stopping ${oldTracks.length} old tracks`);
+        oldTracks.forEach(track => {
+          track.stop();
+          console.log(`📱 [REFRESH STREAM] Stopped track: ${track.kind} (${track.id.substring(0, 8)})`);
+        });
+        localStreamRef.current = null;
+      }
+      if (streamRef.current && streamRef.current !== localStreamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+
+      // STEP 3: Longer delay to let mobile browser fully release camera hardware
+      // Mobile browsers (especially Chrome on Android) need extra time to release the camera
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // STEP 4: Get a completely fresh camera stream
+      console.log('📱 [REFRESH STREAM] Requesting fresh getUserMedia...');
+      const freshStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
+
+      // STEP 5: Verify all tracks are actually live (not stale)
+      const liveTracks = freshStream.getTracks().filter(t => t.readyState === 'live');
+      if (liveTracks.length === 0) {
+        console.error('📱 [REFRESH STREAM] ❌ All tracks are dead after getUserMedia! Retrying...');
+        freshStream.getTracks().forEach(t => t.stop());
+        await new Promise(resolve => setTimeout(resolve, 500));
+        // One more attempt
+        const retryStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+        localStreamRef.current = retryStream;
+        streamRef.current = retryStream;
+        console.log('📱 [REFRESH STREAM] ✅ Retry stream obtained:', retryStream.getTracks().map(t => ({ kind: t.kind, state: t.readyState })));
+      } else {
+        // STEP 6: Update all refs
+        localStreamRef.current = freshStream;
+        streamRef.current = freshStream;
+        console.log('📱 [REFRESH STREAM] ✅ Fresh stream obtained:', freshStream.getTracks().map(t => ({ kind: t.kind, state: t.readyState })));
+      }
+
+      // STEP 7: Re-attach to local video element if it exists
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = localStreamRef.current;
+        localVideoRef.current.muted = true;
+        try {
+          await localVideoRef.current.play();
+          console.log('📱 [REFRESH STREAM] ✅ Video playing after re-attach');
+        } catch (playErr) {
+          console.warn('📱 [REFRESH STREAM] Play warning:', playErr.message);
+          // Retry play after a short delay (mobile autoplay policy)
+          setTimeout(() => {
+            localVideoRef.current?.play().catch(() => {});
+          }, 200);
+        }
+      }
+
+      // STEP 8: Trigger re-render so waiting screen picks up new stream
+      setStreamsReadyTrigger(prev => prev + 1);
+      console.log('📱 [REFRESH STREAM] ✅ Complete - stream refreshed successfully');
+
+    } catch (err) {
+      console.error('📱 [REFRESH STREAM] ❌ Failed to refresh camera:', err.message);
+      // Don't crash — the next createPeerConnection call will try to reacquire anyway
     }
   }, []);
 
@@ -1546,7 +1636,7 @@ const Chat = () => {
     let healthInterval = null;
     
     // Silent auto skip mimicking Omegle's backend-enforced clean skip
-    const silentAutoSkip = () => {
+    const silentAutoSkip = async () => {
       console.log('🔇 [HEALTH MONITOR] Connection failed to recover within 15s, silently auto-skipping');
       
       // Prevent other skips or user interactions
@@ -1576,6 +1666,15 @@ const Chat = () => {
       if (document.visibilityState === 'hidden' || searchCancelledRef.current) {
          setIsSearching(false);
          return;
+      }
+
+      // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream before re-queuing
+      if (window.innerWidth < 769) {
+        try {
+          await refreshLocalStream();
+        } catch (e) {
+          console.warn('📱 [SILENT AUTO SKIP] Stream refresh failed, continuing anyway:', e.message);
+        }
       }
       
       setIsSearching(true);
@@ -1901,7 +2000,7 @@ const Chat = () => {
         console.log('⚠️ WebRTC DISCONNECTED — waiting for ICE recovery (5s)');
 
         // ✅ Wait 5s for ICE restart to recover, then reset
-        setTimeout(() => {
+        setTimeout(async () => {
           if (peerConnectionRef.current === peerConnection && peerConnection.connectionState === 'disconnected') {
             console.log('🔴 WebRTC still disconnected after 5s — partner left');
 
@@ -1924,6 +2023,14 @@ const Chat = () => {
               console.log('🛑 [DISCONNECTED] App in background — returning to home screen');
               setIsSearching(false);
             } else {
+              // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream before re-queuing
+              if (window.innerWidth < 769) {
+                try {
+                  await refreshLocalStream();
+                } catch (e) {
+                  console.warn('📱 [DISCONNECTED] Stream refresh failed, continuing anyway:', e.message);
+                }
+              }
               setIsSearching(true);
               setTimeout(() => {
                 socketRef.current?.emit('find_partner', {
@@ -1963,15 +2070,26 @@ const Chat = () => {
             console.log('🛑 [FAILED] App in background — returning to home screen');
             setIsSearching(false);
           } else {
-            setIsSearching(true);
-            setTimeout(() => {
-              socketRef.current?.emit('find_partner', {
-                userId: userIdRef.current,
-                userName: 'Anonymous',
-                userAge: 18,
-                userLocation: userLocationRef.current || 'Unknown'
-              });
-            }, 1000);
+            // Wrap in async IIFE for mobile stream refresh
+            (async () => {
+              // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream before re-queuing
+              if (window.innerWidth < 769) {
+                try {
+                  await refreshLocalStream();
+                } catch (e) {
+                  console.warn('📱 [FAILED] Stream refresh failed, continuing anyway:', e.message);
+                }
+              }
+              setIsSearching(true);
+              setTimeout(() => {
+                socketRef.current?.emit('find_partner', {
+                  userId: userIdRef.current,
+                  userName: 'Anonymous',
+                  userAge: 18,
+                  userLocation: userLocationRef.current || 'Unknown'
+                });
+              }, 1000);
+            })();
           }
         } else if (peerConnectionRef.current !== peerConnection) {
           console.log('⚠️ Ignoring stale failed — peer was replaced');
@@ -1984,10 +2102,26 @@ const Chat = () => {
       }
     };
 
-    // CRITICAL: Verify stream still exists before adding tracks
+    // CRITICAL: Verify stream still exists AND tracks are alive before adding tracks
     if (!localStreamRef.current) {
       console.error('❌ CRITICAL ERROR: localStreamRef.current is null/undefined in createPeerConnection!');
       throw new Error('Local stream lost before createPeerConnection');
+    }
+
+    // 📱 MOBILE CAMERA FREEZE FIX: Check if tracks are actually alive
+    // After rapid skips on mobile, tracks can be in 'ended' state
+    const currentTracks = localStreamRef.current.getTracks();
+    const deadTracks = currentTracks.filter(t => t.readyState === 'ended');
+    if (deadTracks.length > 0) {
+      console.warn(`📱 [createPeerConnection] ${deadTracks.length}/${currentTracks.length} tracks are ENDED — refreshing stream...`);
+      // Force refresh the stream
+      await refreshLocalStream();
+      if (!localStreamRef.current) {
+        console.error('❌ CRITICAL: Stream still null after refresh in createPeerConnection!');
+        throw new Error('Local stream lost after refresh in createPeerConnection');
+      }
+      console.log('📱 [createPeerConnection] ✅ Stream refreshed, tracks:', 
+        localStreamRef.current.getTracks().map(t => ({ kind: t.kind, state: t.readyState })));
     }
 
     return peerConnection;
@@ -2322,7 +2456,7 @@ const Chat = () => {
         });
 
         // ✅ CRITICAL: Partner disconnected handler
-        socket.on('partner_disconnected', (data) => {
+        socket.on('partner_disconnected', async (data) => {
           console.log('\n\n🔴🔴🔴🔴🔴 ===== PARTNER DISCONNECTED EVENT RECEIVED ===== 🔴🔴🔴🔴🔴');
           console.log('🔴 Event Data:', data);
           console.log('🔴 Timestamp:', new Date().toISOString());
@@ -2361,6 +2495,15 @@ const Chat = () => {
             console.log('🔴 Search was cancelled — NOT re-queueing, returning to dashboard');
             setIsSearching(false);
           } else {
+            // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream before re-queuing
+            if (window.innerWidth < 769) {
+              try {
+                await refreshLocalStream();
+              } catch (e) {
+                console.warn('📱 [DISCONNECTED] Stream refresh failed, continuing anyway:', e.message);
+              }
+            }
+
             setIsSearching(true);
             
             // 👉 SILENT 30-MINUTE AUTO SKIP: Show network drop feeling to user
@@ -2409,7 +2552,7 @@ const Chat = () => {
         });
 
         // ✅ Handle partner skip — INLINE resets to avoid stale closure crash
-        socket.on('user_skipped', () => {
+        socket.on('user_skipped', async () => {
           console.log('⏭️ Partner skipped - returning to waiting screen');
 
           // ✅ INLINE STATE RESETS (React setters are stable across renders)
@@ -2436,6 +2579,15 @@ const Chat = () => {
             console.log('🛑 [SKIPPED] Search cancelled or app in background — NOT re-queueing');
             setIsSearching(false);
             return;
+          }
+
+          // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream before re-queuing
+          if (window.innerWidth < 769) {
+            try {
+              await refreshLocalStream();
+            } catch (e) {
+              console.warn('📱 [SKIPPED] Stream refresh failed, continuing anyway:', e.message);
+            }
           }
 
           setIsSearching(true);
@@ -3153,7 +3305,7 @@ const Chat = () => {
     setMessageInput('');
   }, [messageInput, hasPartner]);
 
-  const endChat = useCallback((shouldRequeue = true) => {
+  const endChat = useCallback(async (shouldRequeue = true) => {
     setHasPartner(false);
     setPartnerFound(false);  // ✅ Hide video chat screen
     setIsConnected(false);
@@ -3166,6 +3318,17 @@ const Chat = () => {
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
+    }
+
+    // Clear remote video
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+
+    // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream on mobile before re-queue
+    // This prevents the local camera from freezing after 3-4 skips
+    if (shouldRequeue && window.innerWidth < 769) {
+      await refreshLocalStream();
     }
 
     if (shouldRequeue) {
@@ -3183,9 +3346,20 @@ const Chat = () => {
       // Effectively "Redirect to Dashboard"
       console.log('🏠 [DASHBOARD] Redirecting to home state (IntroScreen)');
     }
-  }, [currentUser, setIncomingFriendRequest]);
+  }, [currentUser, setIncomingFriendRequest, refreshLocalStream]);
 
   const skipUser = useCallback(() => {
+    // 📱 MOBILE FIX: Debounce skip button (1200ms on mobile, 500ms on desktop)
+    // Mobile browsers need more time to release and reacquire camera hardware
+    const now = Date.now();
+    const isMobileDevice = window.innerWidth < 769;
+    const debounceMs = isMobileDevice ? 1200 : 500;
+    if (now - lastSkipTimeRef.current < debounceMs) {
+      console.log(`⏳ [SKIP] Debounced — too fast (${debounceMs}ms), ignoring (mobile stability)`);
+      return;
+    }
+    lastSkipTimeRef.current = now;
+
     // 🛑 Client-side skip limit check
     const skipLimit = 120;
 
@@ -3697,8 +3871,15 @@ const Chat = () => {
   // ✅ Create stable ref callbacks to prevent blinking
   const localVideoRefCallback = useCallback((el) => {
     if (el && localStreamRef.current) {
-      if (el.srcObject !== localStreamRef.current) {
-        console.log('🎥 LOCAL VIDEO: Attaching local stream to ref');
+      // 📱 MOBILE FIX: Always check if stream tracks are still live
+      // After refreshLocalStream(), the old srcObject's tracks are stopped
+      const currentSrc = el.srcObject;
+      const needsReattach = !currentSrc ||
+        currentSrc !== localStreamRef.current ||
+        currentSrc.getTracks().some(t => t.readyState === 'ended');
+
+      if (needsReattach) {
+        console.log('🎥 LOCAL VIDEO: Attaching fresh local stream to ref');
         el.srcObject = localStreamRef.current;
         el.muted = true;
         el.play().catch(() => { });
