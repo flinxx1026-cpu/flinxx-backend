@@ -3314,8 +3314,15 @@ const Chat = () => {
   }, [messageInput, hasPartner]);
 
   const endChat = useCallback(async (shouldRequeue = true) => {
+    // 📱 CRITICAL: Set isSearching FIRST so waiting screen overlay is visible
+    // BEFORE we remove the video chat overlay (partnerFound=false).
+    // This prevents the 1-2 second dashboard flash on mobile.
+    if (shouldRequeue) {
+      setIsSearching(true);
+    }
+
     setHasPartner(false);
-    setPartnerFound(false);  // ✅ Hide video chat screen
+    setPartnerFound(false);  // ✅ Hide video chat screen (waiting screen already visible above)
     setIsConnected(false);
     setPartnerInfo(null);
     setMessages([]);
@@ -3331,10 +3338,6 @@ const Chat = () => {
     // Clear remote video
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = null;
-    }
-
-    if (shouldRequeue) {
-      setIsSearching(true);  // ✅ Show waiting screen IMMEDIATELY to prevent dashboard flash
     }
 
     // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream on mobile before re-queue
