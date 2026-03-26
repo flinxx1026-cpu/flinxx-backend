@@ -995,83 +995,86 @@ const Chat = () => {
     console.log('📱 [REFRESH STREAM] Starting fresh camera acquisition for mobile...');
 
     try {
-      // STEP 1: Detach video element srcObject FIRST to release the rendering pipeline
-      if (localVideoRef.current) {
-        localVideoRef.current.pause();
-        localVideoRef.current.srcObject = null;
-        console.log('📱 [REFRESH STREAM] Video element detached and paused');
-      }
+      // STEP 1: Save old stream reference, do NOT touch video elements yet!
+      // Keeping the old srcObject on video elements prevents the black flash.
+      // The browser will show the last frozen frame instead of black.
+      const oldStream = localStreamRef.current;
+      const oldStreamRef = streamRef.current;
 
-      // STEP 2: Stop ALL tracks on the old stream to fully release the camera hardware
-      if (localStreamRef.current) {
-        const oldTracks = localStreamRef.current.getTracks();
+      // STEP 2: Stop ALL tracks on the old stream to release the camera hardware
+      // Video element still holds the old srcObject (shows last frozen frame, NOT black)
+      if (oldStream) {
+        const oldTracks = oldStream.getTracks();
         console.log(`📱 [REFRESH STREAM] Stopping ${oldTracks.length} old tracks`);
         oldTracks.forEach(track => {
           track.stop();
           console.log(`📱 [REFRESH STREAM] Stopped track: ${track.kind} (${track.id.substring(0, 8)})`);
         });
-        localStreamRef.current = null;
       }
-      if (streamRef.current && streamRef.current !== localStreamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
+      if (oldStreamRef && oldStreamRef !== oldStream) {
+        oldStreamRef.getTracks().forEach(track => track.stop());
       }
 
-      // STEP 3: Longer delay to let mobile browser fully release camera hardware
-      // Mobile browsers (especially Chrome on Android) need extra time to release the camera
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // STEP 3: Brief delay to let mobile browser release camera hardware
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       // STEP 4: Get a completely fresh camera stream
       console.log('📱 [REFRESH STREAM] Requesting fresh getUserMedia...');
-      const freshStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-      });
-
-      // STEP 5: Verify all tracks are actually live (not stale)
-      const liveTracks = freshStream.getTracks().filter(t => t.readyState === 'live');
-      if (liveTracks.length === 0) {
-        console.error('📱 [REFRESH STREAM] ❌ All tracks are dead after getUserMedia! Retrying...');
-        freshStream.getTracks().forEach(t => t.stop());
-        await new Promise(resolve => setTimeout(resolve, 500));
-        // One more attempt
-        const retryStream = await navigator.mediaDevices.getUserMedia({
+      let freshStream;
+      try {
+        freshStream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
         });
-        localStreamRef.current = retryStream;
-        streamRef.current = retryStream;
-        console.log('📱 [REFRESH STREAM] ✅ Retry stream obtained:', retryStream.getTracks().map(t => ({ kind: t.kind, state: t.readyState })));
-      } else {
-        // STEP 6: Update all refs
-        localStreamRef.current = freshStream;
-        streamRef.current = freshStream;
-        console.log('📱 [REFRESH STREAM] ✅ Fresh stream obtained:', freshStream.getTracks().map(t => ({ kind: t.kind, state: t.readyState })));
+      } catch (firstErr) {
+        console.warn('📱 [REFRESH STREAM] First attempt failed, retrying after 500ms:', firstErr.message);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        freshStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
       }
 
-      // STEP 7: Re-attach to local video element if it exists
+      // STEP 5: Verify tracks are live
+      const liveTracks = freshStream.getTracks().filter(t => t.readyState === 'live');
+      if (liveTracks.length === 0) {
+        console.error('📱 [REFRESH STREAM] ❌ All tracks dead! Retrying...');
+        freshStream.getTracks().forEach(t => t.stop());
+        await new Promise(resolve => setTimeout(resolve, 500));
+        freshStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+      }
+
+      // STEP 6: ATOMIC SWAP — Update refs first, then video elements
+      // This ensures minimum time between old stream dying and new stream showing
+      localStreamRef.current = freshStream;
+      streamRef.current = freshStream;
+      console.log('📱 [REFRESH STREAM] ✅ Fresh stream obtained:', freshStream.getTracks().map(t => ({ kind: t.kind, state: t.readyState })));
+
+      // STEP 7: Swap srcObject on video element (old frozen frame → new live stream)
+      // No black flash because we go directly from frozen → live
       if (localVideoRef.current) {
-        localVideoRef.current.srcObject = localStreamRef.current;
+        localVideoRef.current.srcObject = freshStream;
         localVideoRef.current.muted = true;
         try {
           await localVideoRef.current.play();
-          console.log('📱 [REFRESH STREAM] ✅ Video playing after re-attach');
+          console.log('📱 [REFRESH STREAM] ✅ Video playing after swap');
         } catch (playErr) {
           console.warn('📱 [REFRESH STREAM] Play warning:', playErr.message);
-          // Retry play after a short delay (mobile autoplay policy)
           setTimeout(() => {
             localVideoRef.current?.play().catch(() => {});
           }, 200);
         }
       }
 
-      // STEP 8: Trigger re-render so waiting screen picks up new stream
+      // STEP 8: Trigger re-render so MobileWaitingScreen picks up new stream
       setStreamsReadyTrigger(prev => prev + 1);
-      console.log('📱 [REFRESH STREAM] ✅ Complete - stream refreshed successfully');
+      console.log('📱 [REFRESH STREAM] ✅ Complete - zero black flash swap');
 
     } catch (err) {
       console.error('📱 [REFRESH STREAM] ❌ Failed to refresh camera:', err.message);
-      // Don't crash — the next createPeerConnection call will try to reacquire anyway
     }
   }, []);
 
