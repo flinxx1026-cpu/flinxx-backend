@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useContext, useState } from 'react';
+import React, { useEffect, useRef, useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import useDirectCallWebRTC from '../hooks/useDirectCallWebRTC';
 
@@ -87,7 +87,7 @@ const IncomingCallScreen = ({
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="w-full h-screen flex items-center justify-center px-6 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-7xl h-[85vh]">
+        <div className="grid grid-cols-1 grid-rows-2 md:grid-cols-2 md:grid-rows-1 gap-4 md:gap-6 w-full max-w-7xl h-[85vh]">
         
         {/* LEFT SIDE - Local Camera (You) */}
         <div className="relative bg-gray-600 border-2 border-yellow-600 rounded-2xl flex flex-col overflow-hidden">
