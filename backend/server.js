@@ -5117,20 +5117,37 @@ io.on('connection', (socket) => {
           userData.userPicture = dbUser.profile_picture_url;
         }
 
-        if (dbUser?.location) {
-          console.log(`📍 [find_partner] DB location: ${dbUser.location} (frontend sent: ${userData.userLocation})`);
+        // ✅ LOCATION PRIORITY:
+        // 1. Frontend-detected location (from user's actual device IP via ipapi.co) — MOST ACCURATE
+        // 2. DB saved location (may be stale)
+        // 3. Server-side IP detection (uses x-forwarded-for header)
+        
+        const frontendLocation = userData.userLocation;
+        const hasValidFrontendLocation = frontendLocation && 
+          frontendLocation !== 'Unknown' && 
+          frontendLocation.includes(','); // Valid format: "City, Region"
+        
+        if (hasValidFrontendLocation) {
+          // Frontend already detected a valid city,region — use it and update DB
+          console.log(`📍 [find_partner] Using frontend-detected location: ${frontendLocation}`);
+          userData.userLocation = frontendLocation;
+          // Update DB with this fresh location
+          try {
+            await prisma.users.update({ where: { id: userId }, data: { location: frontendLocation } });
+            console.log(`📍 [find_partner] ✅ DB updated with frontend location: ${frontendLocation}`);
+          } catch (dbUpdateErr) {
+            console.warn(`📍 [find_partner] DB update failed:`, dbUpdateErr.message);
+          }
+        } else if (dbUser?.location && dbUser.location !== 'Unknown' && dbUser.location.includes(',')) {
+          // Frontend didn't detect — use DB saved location
+          console.log(`📍 [find_partner] Using DB location: ${dbUser.location} (frontend sent: ${frontendLocation})`);
           userData.userLocation = dbUser.location;
-        }
-
-        // ✅ SERVER-SIDE FALLBACK: If DB location has country name or is missing, detect from IP
-        const needsServerDetection = !userData.userLocation ||
-          userData.userLocation === 'Unknown' ||
-          /\b(India|Pakistan|Bangladesh|Nepal|Sri Lanka|United States|United Kingdom|Canada|Australia)\b/i.test(userData.userLocation);
-
-        if (needsServerDetection) {
-          console.log(`📍 [find_partner] Location needs server-side detection (current: ${userData.userLocation})`);
+        } else {
+          // Last resort: Server-side IP detection using user's real IP from x-forwarded-for
+          console.log(`📍 [find_partner] No valid location available, trying server-side IP detection...`);
           try {
             const clientIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0]?.trim() || socket.handshake.address;
+            console.log(`📍 [find_partner] Client IP from headers: ${clientIP}`);
             const ipUrl = clientIP && clientIP !== '::1' && clientIP !== '127.0.0.1'
               ? `http://ip-api.com/json/${clientIP}?fields=status,city,regionName`
               : `http://ip-api.com/json/?fields=status,city,regionName`;
@@ -5145,7 +5162,6 @@ io.on('connection', (socket) => {
             if (ipData.status === 'success' && ipData.city && ipData.regionName) {
               const newLocation = `${ipData.city}, ${ipData.regionName}`;
               userData.userLocation = newLocation;
-              // Also update DB with fresh location
               await prisma.users.update({ where: { id: userId }, data: { location: newLocation } });
               console.log(`📍 [find_partner] ✅ Server-side location detected & saved: ${newLocation}`);
             }
