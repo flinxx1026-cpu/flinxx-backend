@@ -13,7 +13,7 @@ import { useUnreadSafe } from '../context/UnreadContext';
 import socketWrapper from '../services/socketService';
 import MobileWaitingScreen from './MobileWaitingScreen';
 import MobileHome from './MobileHome';
-import { getIceServers, getStunServers, getTurnServers as getTurnServersFallback, getMediaConstraints, formatTime, logIceServers } from '../utils/webrtcUtils';
+import { getIceServers, getStunServers, fetchTurnServers, getMediaConstraints, formatTime } from '../utils/webrtcUtils';
 
 import GenderFilterModal from '../components/GenderFilterModal';
 import ProfileModal from '../components/ProfileModal';
@@ -997,35 +997,21 @@ const Chat = () => {
       try {
         let detectedLocation = null;
 
-        // Try primary API (ip-api.com - NOTE: free tier only supports HTTP, not HTTPS)
+        // Try primary API (ipapi.co — HTTPS, avoids Mixed Content errors)
         try {
-          const response = await fetch('http://ip-api.com/json/?fields=status,city,regionName,country', { signal: AbortSignal.timeout(5000) });
+          const response = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
           const data = await response.json();
-          console.log('📍 [LOCATION] ip-api.com response:', JSON.stringify(data));
-          if (data.status === 'success' && data.city && data.regionName) {
-            detectedLocation = `${data.city}, ${data.regionName}`;
+          console.log('📍 [LOCATION] ipapi.co response:', JSON.stringify(data));
+          if (data.city && data.region) {
+            detectedLocation = `${data.city}, ${data.region}`;
+          } else if (data.city && data.country_name) {
+            detectedLocation = `${data.city}, ${data.country_name}`;
           }
         } catch (e) {
-          console.log('📍 [LOCATION] Primary API (ip-api.com) failed:', e.message);
+          console.log('📍 [LOCATION] Primary API (ipapi.co) failed:', e.message);
         }
 
-        // Fallback 1: ipapi.co (HTTPS, but rate-limited)
-        if (!detectedLocation) {
-          try {
-            const response2 = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
-            const data2 = await response2.json();
-            console.log('📍 [LOCATION] ipapi.co response:', JSON.stringify(data2));
-            if (data2.city && data2.region) {
-              detectedLocation = `${data2.city}, ${data2.region}`;
-            } else if (data2.city && data2.country_name) {
-              detectedLocation = `${data2.city}, ${data2.country_name}`;
-            }
-          } catch (e2) {
-            console.log('📍 [LOCATION] ipapi.co failed:', e2.message);
-          }
-        }
-
-        // Fallback 2: ipinfo.io (HTTPS, free tier)
+        // Fallback: ipinfo.io (HTTPS, free tier)
         if (!detectedLocation) {
           try {
             const response3 = await fetch('https://ipinfo.io/json', { signal: AbortSignal.timeout(5000) });
@@ -1519,8 +1505,6 @@ const Chat = () => {
       }
     }
 
-    // Log ICE server configuration for diagnostics
-    logIceServers();
 
     // ✅ PHASE 1: Start with STUN-only for fast P2P (TURN added on ICE failure)
     const iceServers = getStunServers();
@@ -1756,17 +1740,14 @@ const Chat = () => {
           peerConnection._iceRestartCount++;
           console.log(`🔄 ICE RESTART #${peerConnection._iceRestartCount}: Adding TURN for relay fallback`);
 
-          const fullIceServers = [
-            ...getStunServers(),
-            ...getTurnServersFallback()
-          ];
-
-          try {
-            peerConnection.setConfiguration({ iceServers: fullIceServers, iceTransportPolicy: 'all' });
-            console.log('✅ TURN servers added via setConfiguration');
-          } catch (configErr) {
-            console.warn('⚠️ setConfiguration not supported — TURN not injectable');
-          }
+          // Fetch fresh ephemeral TURN credentials from backend
+          fetchTurnServers().then(fullIceServers => {
+            try {
+              peerConnection.setConfiguration({ iceServers: fullIceServers, iceTransportPolicy: 'all' });
+              console.log('✅ TURN servers added via setConfiguration');
+            } catch (configErr) {
+              console.warn('⚠️ setConfiguration not supported — TURN not injectable');
+            }
 
           peerConnection.restartIce();
           console.log('🔄 ICE restart triggered with TURN servers');
@@ -1784,6 +1765,9 @@ const Chat = () => {
               })
               .catch(err => console.error('❌ ICE restart offer failed:', err.message));
           }
+          }).catch(() => {
+            console.warn('⚠️ Could not fetch TURN credentials for ICE restart');
+          });
         } else {
           console.error('❌ Max ICE restarts exhausted — connection cannot be established');
         }

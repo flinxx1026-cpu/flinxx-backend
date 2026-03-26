@@ -1,4 +1,4 @@
-﻿import { initializeApp } from 'firebase/app'
+import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore'
 import { getAnalytics } from 'firebase/analytics'
@@ -55,7 +55,7 @@ export const facebookProvider = new FacebookAuthProvider()
 
 // Configure Facebook Provider with App ID from environment
 const facebookAppId = import.meta.env.VITE_FACEBOOK_APP_ID || '863917229498555'
-const facebookAppSecret = import.meta.env.VITE_FACEBOOK_APP_SECRET || '9fd35a96cf11e8f070cc856e3625494e'
+// NOTE: Facebook App Secret must NEVER be in frontend code — it belongs on the backend only
 
 
 

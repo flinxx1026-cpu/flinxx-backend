@@ -1,4 +1,4 @@
-﻿import io from 'socket.io-client'
+import io from 'socket.io-client'
 
 // Determine correct socket URL based on environment
 const getSocketUrl = () => {
@@ -26,8 +26,6 @@ const getOrCreateSocket = () => {
   isInitializing = true;
   
   try {
-
-
     socket = io(SOCKET_URL, {
       reconnection: true,
       reconnectionDelay: 1000,
@@ -35,7 +33,6 @@ const getOrCreateSocket = () => {
       reconnectionAttempts: 20,
       // Enable both websocket and polling for maximum compatibility
       transports: ['websocket', 'polling'],
-      secure: false,  // Use http:// protocol, not https://
       rejectUnauthorized: false,
       forceNew: false,
       withCredentials: true,
@@ -43,59 +40,38 @@ const getOrCreateSocket = () => {
       rememberUpgrade: false,
       multiplex: true,
       timeout: 20000,
-      // Additional socket.io options
       'sync disconnect on unload': true,
       autoConnect: true
     })
 
     socket.on('connect', () => {
-
-
+      // Connected silently
     })
 
     socket.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error.message || error)
-      console.error('📍 Error details:', error)
-      if (socket?.io?.engine?.transport?.name === 'polling') {
-
-      }
+      // Connection errors are expected during reconnection — no logging needed
     })
 
     socket.on('error', (error) => {
-      console.error('❌ Socket error:', error)
+      // Socket errors handled silently
     })
 
     socket.on('disconnect', (reason) => {
-
-
+      // Disconnection handled silently
     })
 
     socket.on('connect_timeout', () => {
-      console.error('⏱️ Socket connection timeout')
+      // Timeout handled silently
     })
-    
-    // 🔍 DEBUG: Log all unhandled events
-    socket.onAny((eventName, ...args) => {
-      if (!['connect', 'disconnect', 'ping', 'pong'].includes(eventName)) {
-        if (eventName === 'call_ended') {
 
-        } else {
-
-        }
-      }
-    });
-
-    // ✅ SPECIFIC LISTENER: call_ended - to catch and log
+    // ✅ SPECIFIC LISTENER: call_ended
     socket.on('call_ended', (data) => {
-
-
+      // Handled by component listeners
     });
 
-    // ✅ HANDLE FRIEND REQUEST RECEIVED - Debug handler
+    // ✅ HANDLE FRIEND REQUEST RECEIVED
     socket.on('friend_request_received', (data) => {
-
-
-
+      // Handled by component listeners
     });
 
     // ✅ HANDLE FORCE LOGOUT (when user is banned)
@@ -107,22 +83,15 @@ const getOrCreateSocket = () => {
 
     // ✅ HANDLE ACCOUNT WARNING
     socket.on('account_warning', (warningData) => {
-
-
       // Dispatch custom event so AuthContext can listen
       if (typeof window !== 'undefined') {
         const warningEvent = new CustomEvent('account_warning', {
           detail: warningData
         });
         window.dispatchEvent(warningEvent);
-
       }
     })
   } catch (err) {
-    console.error('❌ Socket.IO initialization error:', err)
-    console.error('❌ Error message:', err.message)
-    console.error('❌ Error stack:', err.stack)
-    console.error('❌ Falling back to mock socket')
     // Create a mock socket to prevent errors
     socket = {
       on: () => {},
@@ -144,7 +113,6 @@ const getOrCreateSocket = () => {
 export const joinUserRoom = (userId) => {
   const s = getOrCreateSocket();
   if (s) {
-
     s.emit('join', userId)
   }
 }
@@ -154,36 +122,25 @@ const socketWrapper = {
   on: (event, handler) => {
     const s = getOrCreateSocket();
     if (s && typeof s.on === 'function') {
-
       s.on(event, handler);
-
-    } else {
-
     }
   },
   off: (event, handler) => {
     const s = getOrCreateSocket();
     if (s && typeof s.off === 'function') {
-
       s.off(event, handler);
     }
   },
   emit: (event, ...args) => {
     const s = getOrCreateSocket();
     if (s && typeof s.emit === 'function') {
-
       s.emit(event, ...args);
-
     }
   },
   onAny: (handler) => {
     const s = getOrCreateSocket();
     if (s && typeof s.onAny === 'function') {
-
       s.onAny(handler);
-
-    } else if (s) {
-      console.warn('⚠️ Socket.IO onAny() not available - universal event listener may not work');
     }
   },
   offAny: (handler) => {
@@ -209,12 +166,6 @@ const socketWrapper = {
   // Force initialization
   connect: () => {
     const s = getOrCreateSocket();
-    console.log('🔌 [socketService] connect() called, socket state:', {
-      exists: !!s,
-      isConnected: s?.connected || false,
-      id: s?.id || null,
-      isMock: !s?.io?.engine
-    });
     return s;
   }
 };

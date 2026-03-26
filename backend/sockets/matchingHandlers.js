@@ -328,6 +328,7 @@ export function setupMatchingHandlers(io, redis, prisma) {
           
           // 🎯 SILENT 30-MINUTE AUTO SKIP SYSTEM (28-32 min)
           const SESSION_TIMEOUT = Math.floor((28 + Math.random() * 4) * 60 * 1000);
+          console.log("SESSION TIMEOUT:", SESSION_TIMEOUT);
           console.log(`[MATCHING] ⏱️ [AUTO-SKIP] Timeout set for ${Math.floor(SESSION_TIMEOUT / 60000)}m ${Math.floor((SESSION_TIMEOUT % 60000) / 1000)}s`);
 
           const mySock = io.sockets.sockets.get(socket.id);

@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import crypto from 'crypto'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import { v4 as uuidv4 } from 'uuid'
@@ -656,9 +657,11 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Max-Age', '86400')
   }
 
-  // Security Headers (COOP/COEP for SharedArrayBuffer support)
+  // Security Headers
+  // COOP: allow-popups needed for OAuth popup flow (Google/Facebook login)
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
-  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp')
+  // NOTE: Cross-Origin-Embedder-Policy: require-corp REMOVED
+  // It was blocking third-party resources (Cashfree SDK, Google Fonts, Google Sign-In)
 
   // Additional security headers
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -707,6 +710,60 @@ app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))
 
 app.use(express.json())
+
+// ===== FRONTEND ERROR LOGGING ENDPOINT =====
+// Receives silent error reports from production frontend (replaces console.error)
+// Rate-limited to prevent abuse: max 20 requests/min per IP, payload capped at 2KB
+const _errorLogRateMap = new Map(); // IP -> { count, resetTime }
+const ERROR_LOG_MAX_PER_MIN = 20;
+const ERROR_LOG_MAX_PAYLOAD = 2048; // 2KB max
+
+app.post('/api/logs/error', (req, res) => {
+  try {
+    // Rate limiting per IP
+    const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+    const now = Date.now();
+    const rateEntry = _errorLogRateMap.get(clientIP) || { count: 0, resetTime: now + 60000 };
+
+    if (now > rateEntry.resetTime) {
+      rateEntry.count = 0;
+      rateEntry.resetTime = now + 60000;
+    }
+
+    rateEntry.count++;
+    _errorLogRateMap.set(clientIP, rateEntry);
+
+    if (rateEntry.count > ERROR_LOG_MAX_PER_MIN) {
+      return res.status(429).json({ received: false, error: 'Rate limited' });
+    }
+
+    // Payload size check
+    const rawBody = JSON.stringify(req.body || {});
+    if (rawBody.length > ERROR_LOG_MAX_PAYLOAD) {
+      return res.status(413).json({ received: false, error: 'Payload too large' });
+    }
+
+    const { error, timestamp, source } = req.body || {};
+
+    // Sanitize: strip any tokens/secrets from the logged payload
+    const sanitized = rawBody
+      .replace(/eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[JWT_REDACTED]')
+      .replace(/(token|password|secret|credential|authorization)["\s:=]+["']?[^"',\s}{]+/gi, '$1=[REDACTED]');
+
+    console.error(`[FRONTEND_ERROR] [${source || 'unknown'}] [${clientIP}] [${timestamp || new Date().toISOString()}]`, sanitized);
+    res.status(200).json({ received: true });
+  } catch (e) {
+    res.status(200).json({ received: true });
+  }
+});
+
+// Periodic cleanup of rate limit map (every 5 min)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of _errorLogRateMap) {
+    if (now > entry.resetTime + 60000) _errorLogRateMap.delete(ip);
+  }
+}, 300000);
 
 // ===== VERIFY USER TOKEN MIDDLEWARE =====
 const verifyUserToken = async (req, res, next) => {
@@ -1466,13 +1523,13 @@ async function getNextFromQueueOptimized(currentUserId, currentUserScore = 100) 
       let scoreCompatible = true;
       if (currentUserScore >= 80 && partnerScore < 50) scoreCompatible = false;
       if (currentUserScore < 50 && partnerScore >= 50) scoreCompatible = false;
-      
+
       if (!scoreCompatible) {
-          console.log(`🔄 [QUEUE-GET] Incompatible connection scores (${currentUserScore} vs ${partnerScore}) - returning to back of queue`);
-          await redis.zRem('matching_queue', data);
-          const newScore = Date.now() + 1000;
-          await redis.zAdd('matching_queue', { score: newScore, value: data });
-          continue;
+        console.log(`🔄 [QUEUE-GET] Incompatible connection scores (${currentUserScore} vs ${partnerScore}) - returning to back of queue`);
+        await redis.zRem('matching_queue', data);
+        const newScore = Date.now() + 1000;
+        await redis.zAdd('matching_queue', { score: newScore, value: data });
+        continue;
       }
 
       // ✅ ALL CHECKS PASSED - Remove from queue and return
@@ -1997,116 +2054,83 @@ app.get('/api/turn/credentials', async (req, res) => {
 app.options("/api/turn", cors(corsOptions));
 app.options("/api/get-turn-credentials", cors(corsOptions));
 
-// ===== TURN CREDENTIALS ENDPOINT =====
+// ===== EPHEMERAL TURN CREDENTIALS =====
+// Generates time-limited HMAC-SHA1 credentials for coturn
+// Requires coturn configured with: use-auth-secret + static-auth-secret
+const TURN_SECRET = process.env.TURN_SECRET || 'test123';
+const TURN_CREDENTIAL_TTL = parseInt(process.env.TURN_CREDENTIAL_TTL || '86400', 10); // 24h default
+const TURN_SERVER_URLS = (process.env.TURN_URLS || 'turn:15.206.146.133:3478').split(',').map(u => u.trim());
+
+function generateEphemeralTurnCredentials() {
+  const unixExpiry = Math.floor(Date.now() / 1000) + TURN_CREDENTIAL_TTL;
+  // coturn expects username format: "<unix-expiry>:<arbitrary-id>"
+  const username = `${unixExpiry}:flinxx`;
+  const hmac = crypto.createHmac('sha1', TURN_SECRET);
+  hmac.update(username);
+  const credential = hmac.digest('base64');
+  return { username, credential, ttl: TURN_CREDENTIAL_TTL };
+}
+
+// ===== TURN CREDENTIALS ENDPOINT (POST) =====
 app.post("/api/get-turn-credentials", async (req, res) => {
   try {
-    // ✅ Set CORS headers explicitly for this endpoint
-    const origin = req.headers.origin;
-    const allowedOrigins = [
-      "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003",
-      "http://localhost:3004", "http://localhost:3005", "http://localhost:3006", "http://localhost:3007",
-      "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:3002", "http://127.0.0.1:3003", "https://flinxx.in", "https://www.flinxx.in",
-      "https://d1pphanrf0qsx7.cloudfront.net"
-    ];
+    const { username, credential, ttl } = generateEphemeralTurnCredentials();
 
-    // Allow requests from any of the allowed origins
-    if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, Accept');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Max-Age', '86400');
-    }
-
-    // ✅ Self-hosted TURN server on EC2 (coturn)
     const iceServers = [
+      { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+      { urls: "stun:stun.cloudflare.com:3478" },
       {
-        urls: ["turn:15.206.146.133:3478?transport=udp", "turn:15.206.146.133:3478?transport=tcp"],
-        username: "test",
-        credential: "test123"
+        urls: TURN_SERVER_URLS.flatMap(server => [
+          `${server}?transport=udp`,
+          `${server}?transport=tcp`
+        ]),
+        username,
+        credential
       }
     ];
 
-    console.log("✅ [TURN CREDENTIALS] Returning self-hosted TURN server to origin:", origin);
-    console.log("   CORS headers set:", !!res.getHeader('Access-Control-Allow-Origin'));
-    res.json({ iceServers });
-
+    res.json({ iceServers, ttl });
   } catch (err) {
-    console.error("❌ [TURN CREDENTIALS] Error:", err);
-
-    // ✅ Still set CORS headers on error
-    const origin = req.headers.origin;
-    const allowedOrigins = [
-      "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003",
-      "http://localhost:3004", "http://localhost:3005", "http://localhost:3006", "http://localhost:3007",
-      "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:3002", "http://127.0.0.1:3003", "https://flinxx.in", "https://www.flinxx.in",
-      "https://d1pphanrf0qsx7.cloudfront.net"
-    ];
-
-    if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, Accept');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-    }
-
-    res.status(500).json({ error: "Failed to get TURN servers", iceServers: [] });
+    console.error("❌ [TURN CREDENTIALS] Error:", err.message);
+    // STUN-only fallback — P2P will still work for most connections
+    res.status(200).json({
+      iceServers: [
+        { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+        { urls: "stun:stun.cloudflare.com:3478" }
+      ],
+      ttl: 0
+    });
   }
 });
 
-// ===== TURN ENDPOINT =====
+// ===== TURN ENDPOINT (GET version) =====
 app.get("/api/turn", async (req, res) => {
   try {
-    // ✅ Set CORS headers explicitly for this endpoint
-    const origin = req.headers.origin;
-    const allowedOrigins = [
-      "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003",
-      "http://localhost:3004", "http://localhost:3005", "http://localhost:3006", "http://localhost:3007",
-      "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:3002", "http://127.0.0.1:3003", "https://flinxx.in", "https://www.flinxx.in",
-      "https://d1pphanrf0qsx7.cloudfront.net"
-    ];
+    const { username, credential, ttl } = generateEphemeralTurnCredentials();
 
-    // Allow requests from any of the allowed origins
-    if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, Accept');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Max-Age', '86400');
-    }
-
-    // ✅ Self-hosted TURN server on EC2 (coturn)
     const iceServers = [
+      { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+      { urls: "stun:stun.cloudflare.com:3478" },
       {
-        urls: ["turn:15.206.146.133:3478?transport=udp", "turn:15.206.146.133:3478?transport=tcp"],
-        username: "test",
-        credential: "test123"
+        urls: TURN_SERVER_URLS.flatMap(server => [
+          `${server}?transport=udp`,
+          `${server}?transport=tcp`
+        ]),
+        username,
+        credential
       }
     ];
 
-    console.log("✅ [TURN API] Returning self-hosted TURN server to origin:", origin);
-    console.log("   CORS headers set:", !!res.getHeader('Access-Control-Allow-Origin'));
-    res.json({ iceServers });
+    res.json({ iceServers, ttl });
   } catch (err) {
-    console.error("❌ [TURN API] Error:", err);
-
-    // ✅ Still set CORS headers on error
-    const origin = req.headers.origin;
-    const allowedOrigins = [
-      "http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003",
-      "http://localhost:3004", "http://localhost:3005", "http://localhost:3006", "http://localhost:3007",
-      "http://127.0.0.1:3000", "http://127.0.0.1:3001", "http://127.0.0.1:3002", "http://127.0.0.1:3003", "https://flinxx.in", "https://www.flinxx.in",
-      "https://d1pphanrf0qsx7.cloudfront.net"
-    ];
-
-    if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, Accept');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-    }
-
-    res.status(500).json({ error: "Failed to get TURN servers", iceServers: [] });
+    console.error("❌ [TURN API] Error:", err.message);
+    res.status(200).json({
+      iceServers: [
+        { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+        { urls: "stun:stun.cloudflare.com:3478" }
+      ],
+      ttl: 0
+    });
   }
 });
 
@@ -3151,16 +3175,16 @@ app.post('/api/friends/accept', async (req, res) => {
         // Force emit to BOTH room and direct socket if found in onlineUsers
         const sSockId = onlineUsers.get(sender.id);
         const rSockId = onlineUsers.get(receiver.id);
-        
+
         console.log(`[FRIEND_ACCEPT] senderId: ${sender.id}, room socket: ${sSockId ? 'found' : 'not found in map'}`);
-        
+
         // Emit event to BOTH sender and receiver automatically via their UUID room
         io.to(sender.id).emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
         io.to(receiver.id).emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
-        
+
         // Fallback: emit directly to socket.id if mapped
         if (sSockId) {
-          console.log(`[FRIEND_ACCEPT] Direct emit to sender socket ${sSockId.substring(0,8)}...`);
+          console.log(`[FRIEND_ACCEPT] Direct emit to sender socket ${sSockId.substring(0, 8)}...`);
           io.to(sSockId).emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
         }
         if (rSockId) {
@@ -4210,7 +4234,7 @@ app.get('/api/messages', async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT sender_id, receiver_id, message, message_type, created_at
+      SELECT id, sender_id, receiver_id, message, message_type, created_at, is_deleted, reply_to_id, deleted_for
       FROM messages
       WHERE
         (sender_id = $1 AND receiver_id = $2)
@@ -4221,7 +4245,15 @@ app.get('/api/messages', async (req, res) => {
       [user1, user2]
     );
 
-    res.json(result.rows);
+    // Filter: hide messages deleted_for this user, replace content for is_deleted
+    const rows = result.rows
+      .filter(row => !(row.deleted_for && row.deleted_for.includes(user1)))
+      .map(row => ({
+        ...row,
+        message: row.is_deleted ? 'This message was deleted' : row.message
+      }));
+
+    res.json(rows);
   } catch (error) {
     console.error('❌ Error fetching messages:', error.message);
     res.status(500).json({ error: 'Failed to fetch messages' });
@@ -4842,7 +4874,7 @@ io.on('connection', (socket) => {
 
   // ✅ SEND MESSAGE (friend DM to shared room)
   socket.on('send_message', async (data) => {
-    const { senderId, receiverId, message, to } = data
+    const { senderId, receiverId, message, to, replyToId } = data
 
     // Case 1: WebRTC Partner Chat (1-to-1 via socket, no DB save)
     if (to) {
@@ -4865,27 +4897,124 @@ io.on('connection', (socket) => {
         ? `${senderId}_${receiverId}`
         : `${receiverId}_${senderId}`
 
-      // 1. Save message to database
-      await pool.query(
+      // 1. Save message to database (with optional reply_to_id)
+      const insertResult = await pool.query(
         `
-        INSERT INTO messages (sender_id, receiver_id, message, is_read)
-        VALUES ($1, $2, $3, false)
+        INSERT INTO messages (sender_id, receiver_id, message, is_read, reply_to_id)
+        VALUES ($1, $2, $3, false, $4)
+        RETURNING id
         `,
-        [senderId, receiverId, message]
+        [senderId, receiverId, message, replyToId || null]
       )
 
-      console.log(`💬 Message sent with is_read = false: ${senderId} → ${receiverId}`)
+      const messageId = insertResult.rows[0]?.id
 
-      // 2. Send message to BOTH users in shared room
+      console.log(`💬 Message sent with is_read = false: ${senderId} → ${receiverId} (id: ${messageId})`)
+
+      // 2. If this is a reply, fetch the original message text for preview
+      let replyPreview = null
+      if (replyToId) {
+        const replyResult = await pool.query(
+          `SELECT message, sender_id FROM messages WHERE id = $1`,
+          [replyToId]
+        )
+        if (replyResult.rows[0]) {
+          replyPreview = {
+            id: replyToId,
+            text: replyResult.rows[0].message,
+            senderId: replyResult.rows[0].sender_id
+          }
+        }
+      }
+
+      // 3. Send message to BOTH users in shared room
       io.to(roomId).emit('receive_message', {
+        id: messageId,
         senderId,
-        message
+        message,
+        replyToId: replyToId || null,
+        replyPreview
       })
 
       console.log(`📨 Message delivered to shared room: ${roomId}`)
     } catch (err) {
       console.error('❌ Message send error:', err)
       socket.emit('message_error', { error: 'Failed to send message' })
+    }
+  })
+
+  // ✅ DELETE FOR EVERYONE (sender deletes → both sides see "This message was deleted")
+  socket.on('delete_for_everyone', async (data) => {
+    const { messageId, senderId, receiverId } = data
+
+    if (!messageId || !senderId) {
+      console.warn('❌ Missing delete_for_everyone data:', { messageId, senderId })
+      return
+    }
+
+    try {
+      // Only the sender can delete for everyone
+      const result = await pool.query(
+        `UPDATE messages SET is_deleted = true WHERE id = $1 AND sender_id = $2 RETURNING id, sender_id, receiver_id`,
+        [messageId, senderId]
+      )
+
+      if (result.rows.length === 0) {
+        console.warn('❌ Message not found or not sender:', messageId)
+        socket.emit('message_error', { error: 'Cannot delete this message' })
+        return
+      }
+
+      const msg = result.rows[0]
+      console.log(`🗑️ [DELETE FOR EVERYONE] Message ${messageId} deleted by sender ${senderId}`)
+
+      // Build room ID
+      const roomId = msg.sender_id < msg.receiver_id
+        ? `${msg.sender_id}_${msg.receiver_id}`
+        : `${msg.receiver_id}_${msg.sender_id}`
+
+      // Notify BOTH users → show "This message was deleted"
+      const payload = { messageId, type: 'everyone' }
+      io.to(roomId).emit('message_deleted', payload)
+      io.to(msg.sender_id).emit('message_deleted', payload)
+      io.to(msg.receiver_id).emit('message_deleted', payload)
+
+      console.log(`🗑️ Delete-for-everyone notification sent to room: ${roomId}`)
+    } catch (err) {
+      console.error('❌ Delete for everyone error:', err)
+      socket.emit('message_error', { error: 'Failed to delete message' })
+    }
+  })
+
+  // ✅ DELETE FOR ME (receiver deletes → only hides from their side)
+  socket.on('delete_for_me', async (data) => {
+    const { messageId, userId } = data
+
+    if (!messageId || !userId) {
+      console.warn('❌ Missing delete_for_me data:', { messageId, userId })
+      return
+    }
+
+    try {
+      // Add userId to deleted_for array
+      const result = await pool.query(
+        `UPDATE messages SET deleted_for = array_append(deleted_for, $2) WHERE id = $1 AND NOT ($2 = ANY(deleted_for)) RETURNING id`,
+        [messageId, userId]
+      )
+
+      if (result.rows.length === 0) {
+        console.warn('❌ Message not found or already deleted for user:', messageId)
+        return
+      }
+
+      console.log(`🗑️ [DELETE FOR ME] Message ${messageId} hidden for user ${userId}`)
+
+      // Only notify THIS user → remove from their UI
+      socket.emit('message_deleted_for_me', { messageId })
+
+    } catch (err) {
+      console.error('❌ Delete for me error:', err)
+      socket.emit('message_error', { error: 'Failed to delete message' })
     }
   })
 
@@ -4943,7 +5072,7 @@ io.on('connection', (socket) => {
 
         if (!limitCheck.canSkip) {
           console.warn(`[find_partner] 🚫 Hard block! User ${userId} hit skip limit. Emitting skip_limit_reached to socket.`);
-          
+
           if (socket.connected) {
             socket.emit('skip_limit_reached', {
               limit: limitCheck.limit,
@@ -5028,9 +5157,9 @@ io.on('connection', (socket) => {
         console.warn(`📍 [find_partner] Could not fetch DB location:`, e.message);
       }
       console.log(`📍 [find_partner] Final userLocation: ${userData?.userLocation || 'Unknown'}`)
-      
+
       const userConnectionScore = userData?.connectionScore !== undefined ? userData.connectionScore : 100;
-      
+
       // ✅ HARD BLOCK RULE: Very poor connections wait intentionally before queue entry
       if (userConnectionScore < 20) {
         console.log(`⚠️ [find_partner] Very poor connection score (${userConnectionScore}). Enforcing Hard Block Rule (4s delay).`);
@@ -5718,7 +5847,7 @@ io.on('connection', (socket) => {
 
     // 🧹 Clean up timer
     if (socket.autoSkipTimer) clearTimeout(socket.autoSkipTimer);
-    
+
     // ✅ UPDATE SESSION IN DATABASE - Mark as ended
     if (socket.sessionId) {
       try {
@@ -6383,6 +6512,7 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   // 🎯 SILENT 30-MINUTE AUTO SKIP SYSTEM (28-32 min)
   console.log('\n⏱️ [AUTO-SKIP] Setting up silent session timeout for:', sessionId)
   const SESSION_TIMEOUT = Math.floor((28 + Math.random() * 4) * 60 * 1000);
+  console.log("SESSION TIMEOUT:", SESSION_TIMEOUT);
   console.log(`⏱️ [AUTO-SKIP] Timeout set for ${Math.floor(SESSION_TIMEOUT / 60000)}m ${Math.floor((SESSION_TIMEOUT % 60000) / 1000)}s`);
 
   const sock1 = io.sockets.sockets.get(socketId1);
@@ -6394,32 +6524,32 @@ async function matchUsers(socketId1, userId1, socketId2, userId2, userData1, use
   const timerId = setTimeout(() => {
     try {
       console.log(`\n⏳ [AUTO-SKIP] Timer executed for session: ${sessionId}!`);
-      
+
       const s1 = io.sockets.sockets.get(socketId1);
       const s2 = io.sockets.sockets.get(socketId2);
-      
+
       // Ensure users are still mathematically in the same active session
       if ((s1 && s1.sessionId !== sessionId) || (s2 && s2.sessionId !== sessionId)) {
-          console.log(`⏳ [AUTO-SKIP] Aborted: Users are no longer in this session.`);
-          return;
+        console.log(`⏳ [AUTO-SKIP] Aborted: Users are no longer in this session.`);
+        return;
       }
 
       console.log(`⏳ [AUTO-SKIP] Disconnecting socket ${socketId1} and ${socketId2}...`);
-      
+
       // Emit connection lost (network issue feel)
       if (s1) s1.emit('partner_disconnected', { reason: 'connection_lost' });
       else io.to(socketId1).emit('partner_disconnected', { reason: 'connection_lost' });
-      
+
       if (s2) s2.emit('partner_disconnected', { reason: 'connection_lost' });
       else io.to(socketId2).emit('partner_disconnected', { reason: 'connection_lost' });
 
       // Backend Cleanup
       partnerSockets.delete(socketId1);
       partnerSockets.delete(socketId2);
-      
+
       if (userId1) activeChats.delete(userId1);
       if (userId2) activeChats.delete(userId2);
-      
+
       console.log(`✅ [AUTO-SKIP] Both users silently disconnected as 'network issue'`);
     } catch (err) {
       console.error(`❌ [AUTO-SKIP] Error during auto-skip execution:`, err);
@@ -6762,22 +6892,22 @@ const PORT = process.env.PORT || 10000;
 
           const members = await redis.zRange('matching_queue', 0, -1)
           let changed = false;
-          
+
           for (const entry of members) {
             try {
               const parsed = JSON.parse(entry)
               if (!parsed.joinTime) continue; // Skip legacy entries
-              
+
               const waitTime = Date.now() - parsed.joinTime;
-              
+
               // Recalculate dynamic score: Lower score is better in Redis sorted sets
               let currentScore = parsed.joinTime - (parsed.boostAdvantage || 0);
-              
+
               // Normal protection: After 7 sec -> +3000 priority (subtract 3000 from score)
               if (waitTime >= 7000 && !parsed.hasMatchBoost) {
                 currentScore -= 3000;
               }
-              
+
               // After 10 sec -> force match priority (subtract 100000 from score)
               if (waitTime >= 10000) {
                 currentScore -= 100000;
@@ -6788,11 +6918,11 @@ const PORT = process.env.PORT || 10000;
               changed = true;
             } catch (err) { }
           }
-          
+
           if (changed && queueLen >= 2) {
-             await triggerInstantMatch();
+            await triggerInstantMatch();
           }
-        } catch (err) {}
+        } catch (err) { }
       }, 1000)
 
       // ═══════════════════════════════════════════════════════════

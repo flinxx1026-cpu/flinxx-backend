@@ -1,13 +1,11 @@
-﻿const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
+const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
 /**
  * Get auth token from localStorage with fallback keys
  * ✅ Used by ALL protected API endpoints
  */
 const getToken = () => {
-  const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-  console.log("TOKEN:", token);
-  return token;
+  return localStorage.getItem('token') || localStorage.getItem('authToken');
 };
 
 /**

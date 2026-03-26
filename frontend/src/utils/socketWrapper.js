@@ -7,7 +7,6 @@ export const socketWrapper = (() => {
     // Determine socket URL from environment or use localhost:5000
     const socketUrl = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : (import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_BACKEND_URL);
     
-
     socket = io(socketUrl, {
       transports: ["websocket", "polling"],
       reconnection: true,
@@ -17,11 +16,11 @@ export const socketWrapper = (() => {
     });
     
     socket.on("connect", () => {
-
+      // Connected silently
     });
     
     socket.on("connect_error", (error) => {
-      console.error("❌ [socketWrapper] Connection error:", error);
+      // Connection errors handled silently
     });
   }
   return socket;

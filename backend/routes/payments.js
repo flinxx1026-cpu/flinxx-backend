@@ -28,7 +28,7 @@ console.log(`📍 [CONFIG] BASE_URL set to: ${BASE_URL}`);
 
 // ===== PLAN CONFIG =====
 const PLANS = {
-  blue_tick: { name: 'Blue Tick', amount: 1, currency: 'INR', description: 'Verified Blue Tick Badge', duration_days: 30 }, // TEMP: Changed to ₹1 for testing (normally ₹69)
+  blue_tick: { name: 'Blue Tick', amount: 69, currency: 'INR', description: 'Verified Blue Tick Badge', duration_days: 30 },
   match_boost: { name: 'Match Boost', amount: 189, currency: 'INR', description: '3x More Matches + Daily Picks', duration_days: 30 },
   unlimited_skip: { name: 'Unlimited Skip', amount: 149, currency: 'INR', description: 'Unlimited Skips - No Daily Limit', duration_days: 28 },
 };

@@ -7,86 +7,112 @@ import { UnreadProvider } from './context/UnreadContext'
 import App from './App'
 import './index.css'
 
-// Fallback runtime logger override (Vite esbuild handles primary stripping)
-const originalLog = console.log;
-const originalInfo = console.info;
-const originalWarn = console.warn;
-const originalDebug = console.debug;
-const originalError = console.error;
+// =====================================================================
+// PRODUCTION CONSOLE HARDENING
+// Primary stripping: Vite esbuild `drop: ['console']` removes ALL calls
+// This runtime override is a SECONDARY safety net for:
+//   1. Third-party SDK logs (Firebase, Socket.IO use internal `debug` module)
+//   2. Any dynamically-generated console calls that escape static analysis
+// =====================================================================
 
-// Lightweight redaction to avoid performance overhead in dev
-const redact = (args) => {
-  return args.map(arg => {
-    if (typeof arg === 'string') {
-      let redactedArg = arg;
-      if (/token|password|secret|credential/i.test(redactedArg)) {
-        redactedArg = redactedArg.replace(/(token|password|secret|credential)=[^&\s]+/gi, '$1=[REDACTED]');
-      }
-      return redactedArg;
-    }
-    // Deep JSON.stringify is too expensive for frequent socket logs.
-    // Instead of deep stringifying, we just allow the object in dev for performance,
-    // or do a shallow key check if needed, but dev environment is secure locally.
-    // Prevention at source (which we did by removing logs) is preferred over deep runtime scanning.
-    return arg; 
-  });
-};
+const _originalError = console.error;
 
-// Simple remote error monitor (mimicking Sentry functionality)
-const monitorError = (errorArgs) => {
-  try {
-    // Only send the first argument if it's an Error to avoid large payloads,
-    // or stringify simple messages
-    const errorPayload = errorArgs.map(arg => 
-      arg instanceof Error ? { message: arg.message, stack: arg.stack } : String(arg)
-    );
-    
-    const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : (import.meta.env.VITE_BACKEND_URL || '');
-    if (BACKEND_URL) {
-      // Fire-and-forget remote logging
-      fetch(`${BACKEND_URL}/api/logs/error`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          error: errorPayload, 
-          timestamp: new Date().toISOString(), 
-          source: 'frontend-monitor' 
-        }),
-        keepalive: true
-      }).catch(() => {}); // silent fail
-    }
-  } catch (e) {
-    // Ensure monitoring never crashes the app
-  }
-};
+if (import.meta.env.MODE !== 'development') {
+  // ── PRODUCTION ──
 
-if (import.meta.env.MODE === 'development') {
-  console.log = (...args) => originalLog(...redact(args));
-  console.info = (...args) => originalInfo(...redact(args));
-  console.warn = (...args) => originalWarn(...redact(args));
-  console.debug = (...args) => originalDebug(...redact(args));
-  console.error = (...args) => originalError(...redact(args));
-} else {
-  // Production
-  // 1. Silence third-party SDKs that use the 'debug' module (like Socket.IO)
+  // 1. Kill Socket.IO / debug module logs
   try {
     if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('debug');
       localStorage.debug = '';
     }
-  } catch (e) {}
+  } catch (_) {}
 
-  // 2. Fallback runtime no-op (primary stripping is handled natively by Vite esbuild)
-  console.log = () => {};
-  console.info = () => {};
-  console.warn = () => {};
-  console.debug = () => {};
-  console.trace = () => {};
-  
-  // 3. Keep error but add remote monitoring
-  console.error = (...args) => {
-    monitorError(args);
-    originalError(...redact(args));
+  // 2. Silent remote error monitor (fire-and-forget)
+  const _sendToBackend = (args) => {
+    try {
+      const payload = args.map(a =>
+        a instanceof Error ? { message: a.message, stack: a.stack } : String(a)
+      );
+      const url = import.meta.env.VITE_BACKEND_URL || '';
+      if (url) {
+        fetch(`${url}/api/logs/error`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            error: payload,
+            timestamp: new Date().toISOString(),
+            source: 'frontend'
+          }),
+          keepalive: true
+        }).catch(() => {});
+      }
+    } catch (_) {}
   };
+
+  // 3. Override ALL console methods — complete silence
+  const _noop = () => {};
+  console.log = _noop;
+  console.info = _noop;
+  console.warn = _noop;
+  console.debug = _noop;
+  console.trace = _noop;
+  console.dir = _noop;
+  console.dirxml = _noop;
+  console.table = _noop;
+  console.group = _noop;
+  console.groupEnd = _noop;
+  console.groupCollapsed = _noop;
+  console.clear = _noop;
+  console.count = _noop;
+  console.countReset = _noop;
+  console.time = _noop;
+  console.timeEnd = _noop;
+  console.timeLog = _noop;
+
+  // 4. console.error → filter SDK noise, forward only critical errors silently
+  //    Third-party SDKs (Firebase, Socket.IO, Cashfree) call console.error internally.
+  //    We suppress known SDK noise and only report genuine app errors to backend.
+  const _sdkNoisePatterns = [
+    /firebase/i, /firestore/i, /auth\//i,
+    /socket\.io/i, /websocket/i, /polling/i, /engine\.io/i,
+    /cashfree/i, /sdk/i,
+    /webrtc/i, /rtc/i, /ice/i, /stun/i, /turn/i,
+    /ERR_BLOCKED/i, /net::ERR/i,
+    /ResizeObserver/i,
+    /Loading chunk/i, /dynamically imported module/i,
+  ];
+
+  console.error = (...args) => {
+    // Check if this is SDK noise
+    const msg = args.map(a => (a instanceof Error ? a.message : String(a))).join(' ');
+    const isSDKNoise = _sdkNoisePatterns.some(p => p.test(msg));
+    if (!isSDKNoise) {
+      _sendToBackend(args);
+    }
+  };
+
+} else {
+  // ── DEVELOPMENT ──
+  // Lightweight sensitive-data redaction for local debugging
+  const _origLog = console.log;
+  const _origInfo = console.info;
+  const _origWarn = console.warn;
+  const _origDebug = console.debug;
+
+  const _redact = (args) =>
+    args.map(arg => {
+      if (typeof arg === 'string') {
+        return arg.replace(/(token|password|secret|credential)=[^\s&]+/gi, '$1=[REDACTED]');
+      }
+      return arg;
+    });
+
+  console.log = (...args) => _origLog(..._redact(args));
+  console.info = (...args) => _origInfo(..._redact(args));
+  console.warn = (...args) => _origWarn(..._redact(args));
+  console.debug = (...args) => _origDebug(..._redact(args));
+  console.error = (...args) => _originalError(..._redact(args));
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -96,7 +122,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       onScriptProps={{
         async: true,
         defer: true,
-        nonce: 'YOUR_NONCE_VALUE'
       }}
     >
       <AuthProvider>

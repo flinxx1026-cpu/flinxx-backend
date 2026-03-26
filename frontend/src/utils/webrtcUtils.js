@@ -1,12 +1,16 @@
-﻿// ⚡ WebRTC Utility Functions — Omegle-style stable connections
+// ⚡ WebRTC Utility Functions — Omegle-style stable connections
+
+const BACKEND_URL = import.meta.env.MODE === 'development'
+  ? 'http://localhost:5000'
+  : import.meta.env.VITE_BACKEND_URL;
 
 export const logError = (error, context) => {
   console.error(`[${context}]`, error)
 }
 
 /**
- * STUN-only servers for default P2P connections.
- * TURN is added as a fallback only when ICE fails.
+ * STUN-only servers for initial P2P connections.
+ * Used as Phase 1 — fast direct connection attempt.
  */
 export const getStunServers = () => [
   { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
@@ -14,51 +18,52 @@ export const getStunServers = () => [
 ];
 
 /**
- * TURN servers — only used as fallback when STUN/P2P fails.
+ * Fetch ephemeral TURN credentials from backend.
+ * The backend generates HMAC-SHA1 time-limited credentials.
+ * Returns full ICE servers array (STUN + TURN) from the API.
+ * Falls back to STUN-only if the API call fails.
  */
-export const getTurnServers = () => [
-  // Self-hosted TURN on EC2
-  {
-    urls: [
-      "turn:15.206.146.133:3478?transport=udp",
-      "turn:15.206.146.133:3478?transport=tcp"
-    ],
-    username: "test",
-    credential: "test123"
-  },
-  // Backup: OpenRelay — works in India (Jio, Airtel)
-  {
-    urls: [
-      "turn:openrelay.metered.ca:80?transport=udp",
-      "turn:openrelay.metered.ca:443?transport=tcp"
-    ],
-    username: "openrelayproject",
-    credential: "openrelayproject"
+let _cachedTurnServers = null;
+let _cachedTurnExpiry = 0;
+
+export const fetchTurnServers = async () => {
+  // Return cached credentials if still valid (refresh 5 min before expiry)
+  const now = Math.floor(Date.now() / 1000);
+  if (_cachedTurnServers && now < _cachedTurnExpiry - 300) {
+    return _cachedTurnServers;
   }
-];
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/get-turn-credentials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(5000), // 5s timeout
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+
+    if (data.iceServers && data.iceServers.length > 0) {
+      _cachedTurnServers = data.iceServers;
+      _cachedTurnExpiry = now + (data.ttl || 86400);
+      return data.iceServers;
+    }
+  } catch (err) {
+    // API failed — return STUN-only (P2P will still work for many users)
+  }
+
+  return getStunServers();
+};
 
 /**
- * Full ICE servers — STUN + TURN combined.
- * Used when TURN fallback is needed after P2P failure.
+ * Get full ICE servers (STUN + TURN) via backend API.
+ * This is the primary function all WebRTC code should use.
+ * Returns a Promise.
  */
-export const getIceServers = () => [
-  ...getStunServers(),
-  ...getTurnServers()
-];
-
-export const logIceServers = () => {
-  console.log('\n🧊 ═══════════════════════════════════════════════════════════════');
-  console.log('🧊 [ICE SERVERS — STUN-first P2P with TURN fallback]');
-  console.log('🧊 ═══════════════════════════════════════════════════════════════');
-  console.log('🧊 Phase 1 (default): STUN only — direct P2P');
-  console.log('🧊   - stun:stun.l.google.com:19302');
-  console.log('🧊   - stun:stun.cloudflare.com:3478');
-  console.log('🧊 Phase 2 (fallback): STUN + TURN — relay mode');
-  console.log('🧊   - turn:15.206.146.133:3478 (self-hosted)');
-  console.log('🧊   - turn:openrelay.metered.ca (backup)');
-  console.log('🧊 Video: Fixed 480p (640x480) @ 24fps');
-  console.log('🧊 ═══════════════════════════════════════════════════════════════\n');
-}
+export const getIceServers = async () => {
+  return fetchTurnServers();
+};
 
 /**
  * Media constraints — fixed 480p for consistent quality + low bandwidth.
