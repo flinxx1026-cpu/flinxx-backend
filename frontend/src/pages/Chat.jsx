@@ -1668,6 +1668,9 @@ const Chat = () => {
          return;
       }
 
+      // ✅ Show waiting screen IMMEDIATELY to prevent dashboard flash
+      setIsSearching(true);
+
       // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream before re-queuing
       if (window.innerWidth < 769) {
         try {
@@ -1677,7 +1680,6 @@ const Chat = () => {
         }
       }
       
-      setIsSearching(true);
       setTimeout(() => {
         if (searchCancelledRef.current) return;
         socketRef.current?.emit('find_partner', {
@@ -2023,6 +2025,9 @@ const Chat = () => {
               console.log('🛑 [DISCONNECTED] App in background — returning to home screen');
               setIsSearching(false);
             } else {
+              // ✅ Show waiting screen IMMEDIATELY to prevent dashboard flash
+              setIsSearching(true);
+              
               // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream before re-queuing
               if (window.innerWidth < 769) {
                 try {
@@ -2031,7 +2036,6 @@ const Chat = () => {
                   console.warn('📱 [DISCONNECTED] Stream refresh failed, continuing anyway:', e.message);
                 }
               }
-              setIsSearching(true);
               setTimeout(() => {
                 socketRef.current?.emit('find_partner', {
                   userId: userIdRef.current,
@@ -2072,6 +2076,9 @@ const Chat = () => {
           } else {
             // Wrap in async IIFE for mobile stream refresh
             (async () => {
+              // ✅ Show waiting screen IMMEDIATELY to prevent dashboard flash
+              setIsSearching(true);
+              
               // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream before re-queuing
               if (window.innerWidth < 769) {
                 try {
@@ -2080,7 +2087,6 @@ const Chat = () => {
                   console.warn('📱 [FAILED] Stream refresh failed, continuing anyway:', e.message);
                 }
               }
-              setIsSearching(true);
               setTimeout(() => {
                 socketRef.current?.emit('find_partner', {
                   userId: userIdRef.current,
@@ -2495,6 +2501,9 @@ const Chat = () => {
             console.log('🔴 Search was cancelled — NOT re-queueing, returning to dashboard');
             setIsSearching(false);
           } else {
+            // ✅ Show waiting screen IMMEDIATELY to prevent dashboard flash
+            setIsSearching(true);
+            
             // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream before re-queuing
             if (window.innerWidth < 769) {
               try {
@@ -2503,8 +2512,6 @@ const Chat = () => {
                 console.warn('📱 [DISCONNECTED] Stream refresh failed, continuing anyway:', e.message);
               }
             }
-
-            setIsSearching(true);
             
             // 👉 SILENT 30-MINUTE AUTO SKIP: Show network drop feeling to user
             if (data?.reason === 'connection_lost') {
@@ -2581,6 +2588,9 @@ const Chat = () => {
             return;
           }
 
+          // ✅ Show waiting screen IMMEDIATELY to prevent dashboard flash
+          setIsSearching(true);
+          
           // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream before re-queuing
           if (window.innerWidth < 769) {
             try {
@@ -2589,8 +2599,6 @@ const Chat = () => {
               console.warn('📱 [SKIPPED] Stream refresh failed, continuing anyway:', e.message);
             }
           }
-
-          setIsSearching(true);
           // Re-queue for next partner instantly (Omegle-style seamless transition)
           requeueTimerRef.current = setTimeout(() => {
             if (searchCancelledRef.current || document.visibilityState === 'hidden') {
@@ -3325,6 +3333,10 @@ const Chat = () => {
       remoteVideoRef.current.srcObject = null;
     }
 
+    if (shouldRequeue) {
+      setIsSearching(true);  // ✅ Show waiting screen IMMEDIATELY to prevent dashboard flash
+    }
+
     // 📱 MOBILE CAMERA FREEZE FIX: Refresh local stream on mobile before re-queue
     // This prevents the local camera from freezing after 3-4 skips
     if (shouldRequeue && window.innerWidth < 769) {
@@ -3332,7 +3344,6 @@ const Chat = () => {
     }
 
     if (shouldRequeue) {
-      setIsSearching(true);  // ✅ Return to waiting screen
       // Look for new partner (do NOT stop camera - reuse same stream)
       socketRef.current?.emit('find_partner', {
         userId: userIdRef.current,
