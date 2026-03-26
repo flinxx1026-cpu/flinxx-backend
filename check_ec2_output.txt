@@ -1,0 +1,8 @@
+=== Checking PM2 Restart Status ===
+[PM2] Spawning PM2 daemon with pm2_home=/home/ec2-user/.pm2
+[PM2] PM2 Successfully daemonized
+┌────┬───────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name      │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+└────┴───────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+
+❌ Error: The backend process did NOT start automatically.

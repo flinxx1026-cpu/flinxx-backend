@@ -1,5 +1,7 @@
-﻿import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { signOut } from 'firebase/auth'
+import { auth } from '../config/firebase'
 import CommunityStandardsModal from './CommunityStandardsModal'
 
 const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
@@ -11,6 +13,46 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
   const [showCommunityStandards, setShowCommunityStandards] = useState(false)
   const [updatedUserData, setUpdatedUserData] = useState(null)
   const navigate = useNavigate()
+
+  // ✅ Back to Login: Clear all auth data and go back to login
+  const handleBackToLogin = async () => {
+    try {
+      await signOut(auth)
+    } catch (e) {
+      // Firebase signout may fail if not using Firebase auth, ignore
+    }
+    // Clear ALL auth-related localStorage
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('idToken')
+    localStorage.removeItem('userInfo')
+    localStorage.removeItem('userProfile')
+    localStorage.removeItem('authProvider')
+    localStorage.removeItem('profileCompleted')
+    localStorage.removeItem('oauth_complete')
+    localStorage.removeItem('is_oauth_popup')
+    localStorage.removeItem('cachedIncomingRequests')
+    // Redirect to login page
+    window.location.href = '/login'
+  }
+
+  // ✅ Handle browser back button - go to login page
+  useEffect(() => {
+    // Push a state so we can intercept the back button
+    window.history.pushState({ profileSetup: true }, '')
+
+    const handlePopState = (e) => {
+      // User pressed browser back button → go to login
+      handleBackToLogin()
+    }
+
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Calculate age from birthday
   useEffect(() => {
@@ -155,7 +197,7 @@ const ProfileSetupModal = ({ user, onProfileComplete, isOpen }) => {
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-60"></div>
         
         {/* Profile Form */}
-        <div className="p-8 md:p-12 pt-32">
+        <div className="p-8 md:p-12 pt-12">
           {/* Header with Avatar */}
           <div className="flex flex-col md:flex-row items-start md:items-center gap-8 mb-8 border-b border-[#334155] border-opacity-40 pb-6">
             {/* Avatar */}

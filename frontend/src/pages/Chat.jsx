@@ -1111,6 +1111,15 @@ const Chat = () => {
     checkIfPartnerIsFriend();
   }, [partnerInfo, user?.uuid]);
 
+  // ✅ AUTO-DISMISS friend request popup if partner is already a friend
+  // This prevents the popup from showing when already-friends reconnect
+  useEffect(() => {
+    if (isPartnerFriend && incomingFriendRequest) {
+      console.log('🛡️ [FRIEND CHECK] Partner is already a friend — auto-dismissing friend request popup');
+      setIncomingFriendRequest(null);
+    }
+  }, [isPartnerFriend, incomingFriendRequest, setIncomingFriendRequest]);
+
   // ✅ GLOBAL FRIEND ACCEPTED LISTENER - Shows "Now you are friends" toast for BOTH users
   // AuthContext listens for 'friend_request_accepted' socket event and dispatches
   // a 'global_friend_accepted' window event. This useEffect catches that event
@@ -2058,6 +2067,11 @@ const Chat = () => {
           setPartnerFound(true);
           setIsLoading(false);
 
+          // ✅ CRITICAL FIX: Clear previous chat messages when new partner connects
+          // This ensures each new connection starts with a fresh chat
+          setMessages([]);
+          setMessageInput('');
+
           // CRITICAL: PREVENT SELF-MATCHING
           const myUserId = userIdRef.current;
           const partnerUserId = data.partnerId;
@@ -2373,8 +2387,17 @@ const Chat = () => {
           }
         });
 
-        // ✅ RECEIVE MESSAGE from partner
+        // ✅ RECEIVE MESSAGE from partner (video call in-chat only)
+        // CRITICAL: Only handle messages that are partner chat messages (no senderId = partner chat)
+        // Friend DM messages have senderId field and are handled by ChatBox component
         socket.on('receive_message', (data) => {
+          // ✅ FILTER: Skip friend DM messages (they have senderId field)
+          // Partner chat messages only have { message } field (sent via 'to' socket routing)
+          if (data.senderId) {
+            console.log('💬 Skipping friend DM message in video chat handler (has senderId)');
+            return;
+          }
+          
           console.log('💬 Received message from partner:', data);
           const newMessage = {
             id: Date.now(),
@@ -3053,6 +3076,9 @@ const Chat = () => {
       setIsSearching(true);
       setPartnerFound(false);
       setIsLoading(true);
+      // ✅ Clear any leftover messages from previous chat session
+      setMessages([]);
+      setMessageInput('');
 
       console.log('🎬 [STATE AFTER] Calling setIsSearching(true)');
       console.log('STATE AFTER START SEARCH:', { isStarting: true, isSearching: true, partnerFound: false });
@@ -4315,8 +4341,8 @@ const Chat = () => {
         <div className="absolute inset-0 z-50 w-full h-full">
           {renderVideoChatScreen()}
 
-          {/* ✅ FRIEND REQUEST POPUP - Show ONLY on video chat screen */}
-          {incomingFriendRequest && (
+          {/* ✅ FRIEND REQUEST POPUP - Show ONLY on video chat screen AND NOT if already friends */}
+          {incomingFriendRequest && !isPartnerFriend && (
             <FriendRequestPopup
               request={incomingFriendRequest}
               onAccept={handleAcceptFriendRequest}

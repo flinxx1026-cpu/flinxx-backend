@@ -65,12 +65,30 @@ export const AuthProvider = ({ children }) => {
   // This runs ONCE on mount and keeps listening throughout the app lifecycle
   useEffect(() => {
 
-    const handleFriendRequest = (data) => {
-
-
-
-
+    const handleFriendRequest = async (data) => {
       if (data?.requestId) {
+        // ✅ CHECK: Skip popup if sender is already a friend (status = 'accepted')
+        try {
+          const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+          const myPublicId = currentUser?.publicId || currentUser?.uuid;
+          const senderPId = data.senderPublicId || data.senderId;
+          if (myPublicId && senderPId) {
+            const BU = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
+            const statusRes = await fetch(
+              `${BU}/api/friends/status?senderPublicId=${encodeURIComponent(senderPId)}&receiverPublicId=${encodeURIComponent(myPublicId)}`,
+              { headers: { 'Content-Type': 'application/json' } }
+            );
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              if (statusData.status === 'accepted') {
+                console.log('🛡️ [AuthContext] Already friends — skipping popup');
+                return;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ [AuthContext] Friendship check failed:', err.message);
+        }
 
         setIncomingFriendRequest({
           requestId: data.requestId,
@@ -81,14 +99,11 @@ export const AuthProvider = ({ children }) => {
           createdAt: data.createdAt,
           status: data.status
         });
-
-      } else {
-
       }
     };
 
     // ✅ HANDLE QUICK INVITE (Profile icon flow - direct popup, NOT panel)
-    const handleQuickInvite = (data) => {
+    const handleQuickInvite = async (data) => {
       console.log('\n' + '='.repeat(80))
 
       console.log('='.repeat(80))
@@ -101,6 +116,27 @@ export const AuthProvider = ({ children }) => {
       })
 
       if (data?.senderPublicId) {
+        // ✅ CHECK: Skip popup if sender is already a friend
+        try {
+          const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+          const myPublicId = currentUser?.publicId || currentUser?.uuid;
+          if (myPublicId && data.senderPublicId) {
+            const BU = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
+            const statusRes = await fetch(
+              `${BU}/api/friends/status?senderPublicId=${encodeURIComponent(data.senderPublicId)}&receiverPublicId=${encodeURIComponent(myPublicId)}`,
+              { headers: { 'Content-Type': 'application/json' } }
+            );
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              if (statusData.status === 'accepted') {
+                console.log('🛡️ [QUICK INVITE] Already friends — skipping popup');
+                return;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ [QUICK INVITE] Friendship check failed:', err.message);
+        }
 
         // Generate a temporary request ID for the popup (not a real database request)
         const tempRequestId = `quick-invite-${Date.now()}-${Math.random().toString(36).substring(7)}`;

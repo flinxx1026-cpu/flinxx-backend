@@ -1,0 +1,4 @@
+=== STARTING BACKEND PROCESS ===
+Started flinxx-backend in PM2.
+
+=== FIXING PM2 STARTUP ON BOOT ===

@@ -1,0 +1,28 @@
+Target env path: /home/ec2-user/flinxx-backend/backend/.env
+Successfully updated .env database URL to AWS RDS.
+
+--- Prisma Generate ---
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v5.22.0) to ./../node_modules/@prisma/client in 353ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+
+
+
+--- PM2 Restart ---
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [flinxx-backend](ids: [ 0 ])
+[PM2] [flinxx-backend](0) ✓
+┌────┬───────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name              │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼───────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ flinxx-backend    │ default     │ N/A     │ fork    │ 2691220  │ 0s     │ 26   │ online    │ 0%       │ 16.3mb   │ ec2-user │ disabled │
+└────┴───────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+
+
+--- PM2 Set to Persist on Server Restart ---
+Saved PM2 state.

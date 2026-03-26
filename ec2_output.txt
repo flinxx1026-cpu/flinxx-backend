@@ -1,0 +1,13 @@
+=== PM2 STATUS ===
+┌────┬───────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name              │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼───────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ flinxx-backend    │ default     │ N/A     │ fork    │ 2690699  │ 6m     │ 25   │ online    │ 0%       │ 54.2mb   │ ec2-user │ disabled │
+└────┴───────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+=== FINDING ENV FILES ===
+/home/ec2-user/flinxx-backend/backend/.env
+=== SHOWING DB URLS ===
+File: /home/ec2-user/flinxx-backend/backend/.env
+DATABASE_URL=postgresql://neondb_owner:npg_s5bwKSBpT8AQ@ep-shy-dream-a1fw21bf.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+=== PM2 LOGS ===
+[TAILING] Tailing last 15 lines for [all] processes (cha

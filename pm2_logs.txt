@@ -1,0 +1,105 @@
+[TAILING] Tailing last 50 lines for [flinxx-backend] process (change the value with --lines option)
+/home/ec2-user/.pm2/logs/flinxx-backend-out.log last 50 lines:
+0|flinxx-b | 
+0|flinxx-b | [SOCKET] 🔗 New connection: jUEqZbDVsoF28W48AAAZ
+0|flinxx-b | [SOCKET] ✅ Current socket count: 3
+0|flinxx-b | [SOCKET] ✅ Socket joined room: jUEqZbDVsoF28W48AAAZ
+0|flinxx-b | [SOCKET] ✅ Optimized matching handlers initialized for jUEqZbDVsoF28W48AAAZ
+0|flinxx-b | 
+0|flinxx-b | ✅ [CONNECTION] New socket connection: jUEqZbDVsoF28W48AAAZ
+0|flinxx-b | 📊 [CONNECTION] Total active connections: 3
+0|flinxx-b | 📊 [CONNECTION] Current queue length: pending redis check
+0|flinxx-b | 📊 [CONNECTION] Matching queue size: 0 users waiting
+0|flinxx-b | 
+0|flinxx-b | [SOCKET] 🔗 New connection: Lb6cTzE--fGPVDhkAAAb
+0|flinxx-b | [SOCKET] ✅ Current socket count: 4
+0|flinxx-b | [SOCKET] ✅ Socket joined room: Lb6cTzE--fGPVDhkAAAb
+0|flinxx-b | [SOCKET] ✅ Optimized matching handlers initialized for Lb6cTzE--fGPVDhkAAAb
+0|flinxx-b | 
+0|flinxx-b | ✅ [CONNECTION] New socket connection: Lb6cTzE--fGPVDhkAAAb
+0|flinxx-b | 📊 [CONNECTION] Total active connections: 4
+0|flinxx-b | 📊 [CONNECTION] Current queue length: pending redis check
+0|flinxx-b | 📊 [CONNECTION] Matching queue size: 0 users waiting
+0|flinxx-b | [SOCKET_DISCONNECT] 🔌 Socket Lb6cTzE--fGPVDhkAAAb disconnected (no user)
+0|flinxx-b | 
+0|flinxx-b | 
+0|flinxx-b | 
+0|flinxx-b | ========================================
+0|flinxx-b | ❌ USER DISCONNECTED: Lb6cTzE--fGPVDhkAAAb
+0|flinxx-b | ⏰ Time: 2026-03-25T11:58:21.307Z
+0|flinxx-b | 📋 Disconnect Details:
+0|flinxx-b |    userId: NOT FOUND
+0|flinxx-b |    partnerSocketId: NOT FOUND
+0|flinxx-b |    partnerSockets size: 0
+0|flinxx-b |    All tracked partners: []
+0|flinxx-b | ✅ Disconnection cleanup complete for socket: Lb6cTzE--fGPVDhkAAAb
+0|flinxx-b | ========================================
+0|flinxx-b | 
+0|flinxx-b | [SOCKET_DISCONNECT] 🔌 Socket jUEqZbDVsoF28W48AAAZ disconnected (no user)
+0|flinxx-b | 
+0|flinxx-b | 
+0|flinxx-b | 
+0|flinxx-b | ========================================
+0|flinxx-b | ❌ USER DISCONNECTED: jUEqZbDVsoF28W48AAAZ
+0|flinxx-b | ⏰ Time: 2026-03-25T11:58:21.310Z
+0|flinxx-b | 📋 Disconnect Details:
+0|flinxx-b |    userId: NOT FOUND
+0|flinxx-b |    partnerSocketId: NOT FOUND
+0|flinxx-b |    partnerSockets size: 0
+0|flinxx-b |    All tracked partners: []
+0|flinxx-b | ✅ Disconnection cleanup complete for socket: jUEqZbDVsoF28W48AAAZ
+0|flinxx-b | ========================================
+0|flinxx-b | 
+
+/home/ec2-user/.pm2/logs/flinxx-backend-error.log last 50 lines:
+0|flinxx-b | Invalid `prisma.users.findUnique()` invocation:
+0|flinxx-b | 
+0|flinxx-b | 
+0|flinxx-b | Can't reach database server at `flinxx-db.chiwiam80lbl.eu-north-1.rds.amazonaws.com:5432`
+0|flinxx-b | 
+0|flinxx-b | Please make sure your database server is running at `flinxx-db.chiwiam80lbl.eu-north-1.rds.amazonaws.com:5432`.
+0|flinxx-b |    Stack: PrismaClientInitializationError: 
+0|flinxx-b | Invalid `prisma.users.findUnique()` invocation:
+0|flinxx-b | 
+0|flinxx-b | 
+0|flinxx-b | Can't reach database server at `flinxx-db.chiwiam80lbl.eu-north-1.rds.amazonaws.com:5432`
+0|flinxx-b | 
+0|flinxx-b | Please make sure your database server is running at `flinxx-db.chiwiam80lbl.eu-north-1.rds.amazonaws.com:5432`.
+0|flinxx-b |     at $n.handleRequestError (/home/ec2-user/flinxx-backend/node_modules/@prisma/client/runtime/library.js:121:7615)
+0|flinxx-b |     at $n.handleAndLogRequestError (/home/ec2-user/flinxx-backend/node_modules/@prisma/client/runtime/library.js:121:6623)
+0|flinxx-b |     at $n.request (/home/ec2-user/flinxx-backend/node_modules/@prisma/client/runtime/library.js:121:6307)
+0|flinxx-b |     at async l (/home/ec2-user/flinxx-backend/node_modules/@prisma/client/runtime/library.js:130:9633)
+0|flinxx-b |     at async file:///home/ec2-user/flinxx-backend/backend/server.js:3469:24
+0|flinxx-b |    This user signup will FAIL
+0|flinxx-b | 
+0|flinxx-b | ⚠️ No partner found in mapping for socket: z-WLOEEPwFz7BJHkAAAJ
+0|flinxx-b | ⚠️ This peer may have never established WebRTC connection
+0|flinxx-b | ⚠️ partnerSockets has 0 entries
+0|flinxx-b | ⚠️ No partner found in mapping for socket: Cty5yb2somS3yIaRAAAL
+0|flinxx-b | ⚠️ This peer may have never established WebRTC connection
+0|flinxx-b | ⚠️ partnerSockets has 0 entries
+0|flinxx-b | ⚠️ No partner found in mapping for socket: fKFe_7o10nPl4a_CAAAB
+0|flinxx-b | ⚠️ This peer may have never established WebRTC connection
+0|flinxx-b | ⚠️ partnerSockets has 0 entries
+0|flinxx-b | ⚠️ No partner found in mapping for socket: XXjdTVHOty2_ctRcAAAD
+0|flinxx-b | ⚠️ This peer may have never established WebRTC connection
+0|flinxx-b | ⚠️ partnerSockets has 0 entries
+0|flinxx-b | ⚠️ No partner found in mapping for socket: 1wqX3HI37-Hjx2rQAAAO
+0|flinxx-b | ⚠️ This peer may have never established WebRTC connection
+0|flinxx-b | ⚠️ partnerSockets has 0 entries
+0|flinxx-b | ⚠️ No partner found in mapping for socket: OWGu5rlcm7yY0hR1AAAP
+0|flinxx-b | ⚠️ This peer may have never established WebRTC connection
+0|flinxx-b | ⚠️ partnerSockets has 0 entries
+0|flinxx-b | ⚠️ No partner found in mapping for socket: f_5yLlDUOKvsUA8xAAAR
+0|flinxx-b | ⚠️ This peer may have never established WebRTC connection
+0|flinxx-b | ⚠️ partnerSockets has 0 entries
+0|flinxx-b | ⚠️ No partner found in mapping for socket: rmVAJdShzNUqTI-PAAAT
+0|flinxx-b | ⚠️ This peer may have never established WebRTC connection
+0|flinxx-b | ⚠️ partnerSockets has 0 entries
+0|flinxx-b | ⚠️ No partner found in mapping for socket: Lb6cTzE--fGPVDhkAAAb
+0|flinxx-b | ⚠️ This peer may have never established WebRTC connection
+0|flinxx-b | ⚠️ partnerSockets has 0 entries
+0|flinxx-b | ⚠️ No partner found in mapping for socket: jUEqZbDVsoF28W48AAAZ
+0|flinxx-b | ⚠️ This peer may have never established WebRTC connection
+0|flinxx-b | ⚠️ partnerSockets has 0 entries
+

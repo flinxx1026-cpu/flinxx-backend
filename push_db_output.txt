@@ -1,0 +1,6 @@
+=== PUSHING DATABASE SCHEMA TO NEON/RDS ===
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "flinxx", schema "public" at "flinxx-db.chiwiam80lbl.eu-north-1.rds.amazonaws.com:5432"
+
+

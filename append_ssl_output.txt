@@ -1,0 +1,6 @@
+Added ?sslmode=require to DATABASE_URL
+--- RE-PUSHING SCHEMA ---
+ERROR: Error: P1001: Can't reach database server at `flinxx-db.chiwiam80lbl.eu-north-1.rds.amazonaws.com:5432`
+
+Please make sure your database server is running at `flinxx-db.chiwiam80lbl.eu-north-1.rds.amazonaws.com:5432`.
+
