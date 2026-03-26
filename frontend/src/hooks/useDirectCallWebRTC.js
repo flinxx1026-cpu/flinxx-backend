@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import socketWrapper from '../services/socketService';
 import { getIceServers } from '../utils/webrtcUtils';
 
@@ -191,13 +191,17 @@ export const useDirectCallWebRTC = ({
 
       if (!peerConnectionRef.current) {
         console.log('📩 Creating peer connection for answer...');
-        await createPeerConnection();
+        await createPeerConnection(); // This already adds local tracks
       }
 
       const pc = peerConnectionRef.current;
 
       try {
-        // Flush buffered ICE candidates
+        console.log('📩 Setting remote description (offer)...');
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        console.log('✅ Remote description set');
+
+        // Flush buffered ICE candidates AFTER setting remote description
         console.log('📩 Flushing buffered ICE candidates...');
         while (iceCandidateBufferRef.current.length > 0) {
           const candidate = iceCandidateBufferRef.current.shift();
@@ -207,25 +211,6 @@ export const useDirectCallWebRTC = ({
             console.warn('⚠️ Could not add buffered ICE candidate:', err.message);
           }
         }
-
-        console.log('📩 Setting remote description (offer)...');
-        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-        console.log('✅ Remote description set');
-
-        // Add local tracks before creating answer
-        console.log('\n📹 Adding local tracks...');
-        const allTracks = localStream.getTracks();
-        console.log('📹 Total local tracks:', allTracks.length);
-
-        allTracks.forEach((track, index) => {
-          console.log(`  [${index}] Adding ${track.kind} track`);
-          try {
-            pc.addTrack(track, localStream);
-            console.log(`  [${index}] ✅ addTrack succeeded`);
-          } catch (err) {
-            console.error(`  [${index}] ❌ addTrack failed:`, err.message);
-          }
-        });
 
         // Create and send answer
         console.log('\n📋 ===== ANSWERER CREATING ANSWER =====');
@@ -262,7 +247,11 @@ export const useDirectCallWebRTC = ({
       try {
         const pc = peerConnectionRef.current;
 
-        // Flush buffered ICE candidates
+        console.log('✅ Setting remote description (answer)...');
+        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+        console.log('✅ Remote description set - WebRTC connection should now establish');
+
+        // Flush buffered ICE candidates AFTER setting remote description
         console.log('✅ Flushing buffered ICE candidates...');
         while (iceCandidateBufferRef.current.length > 0) {
           const candidate = iceCandidateBufferRef.current.shift();
@@ -272,10 +261,6 @@ export const useDirectCallWebRTC = ({
             console.warn('⚠️ Could not add buffered ICE candidate:', err.message);
           }
         }
-
-        console.log('✅ Setting remote description (answer)...');
-        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-        console.log('✅ Remote description set - WebRTC connection should now establish');
       } catch (error) {
         console.error('❌ Error handling answer:', error);
       }
@@ -284,8 +269,9 @@ export const useDirectCallWebRTC = ({
     const handleIceCandidate = async (data) => {
       console.log('🧊 Received ICE candidate from:', data.from?.substring(0, 8) + '...');
 
-      if (!peerConnectionRef.current) {
-        console.log('🧊 Peer connection not ready - buffering candidate');
+      // Buffer the candidate if the peer connection doesn't exist AND remote description isn't set
+      if (!peerConnectionRef.current || !peerConnectionRef.current.remoteDescription) {
+        console.log('🧊 Peer connection or remote description not ready - buffering candidate');
         iceCandidateBufferRef.current.push(data.candidate);
         return;
       }
