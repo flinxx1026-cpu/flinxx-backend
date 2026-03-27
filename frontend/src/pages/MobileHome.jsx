@@ -531,9 +531,8 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
         
         {/* Loading Shimmer (Shows until camera starts) */}
         {(!cameraStarted || !localStreamRef?.current) && (
-          <div className="camera-shimmer">
-            <div className="camera-loading-icon"></div>
-            <div className="camera-loading-text">Starting Camera...</div>
+          <div className="camera-shimmer" style={{ background: '#0a0a0a' }}>
+            {/* Blank sleek placeholder */}
           </div>
         )}
 
