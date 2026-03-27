@@ -1059,25 +1059,7 @@ export function setupMatchingHandlers(io, redis, prisma) {
       }
     });
 
-    /**
-     * GESTURE_EFFECT - Relay visual gesture effects to partner (heart, kiss)
-     * Lightweight: just forwards the gesture type string to the matched partner
-     */
-    socket.on('gesture_effect', (data) => {
-      try {
-        const partnerSocketId = io._partnerSockets?.get(socket.id);
-        if (partnerSocketId) {
-          io.to(partnerSocketId).emit('gesture_effect', {
-            type: data?.type || 'heart',
-            handX: data?.handX,
-            handY: data?.handY,
-            from: socket.id
-          });
-        }
-      } catch (err) {
-        // Silent — gesture relay is non-critical
-      }
-    });
+
 
     console.log(`[SOCKET] ✅ Optimized matching handlers initialized for ${socket.id}`);
   });

@@ -27,8 +27,6 @@ import SearchFriendsModal from '../components/SearchFriendsModal';
 import SubscriptionsPage from '../components/SubscriptionsPage';
 import TopActions from '../components/TopActions';
 import TermsConfirmationModal from '../components/TermsConfirmationModal';
-import GestureEffects from '../components/GestureEffects';
-import ReceivedGestureEffects from '../components/ReceivedGestureEffects';
 import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
@@ -4218,11 +4216,9 @@ const Chat = () => {
                   {/* Placeholder when no partner */}
                   {!hasPartner && (
                     <div style={{ width: '100%', height: '100%', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 0, left: 0 }}>
-                      <span style={{ color: '#999', fontSize: '14px' }}>Waiting for partner video...</span>
+                      <span style={{ color: 'gray', fontSize: '14px' }}>Waiting for partner video...</span>
                     </div>
                   )}
-                  {/* ✅ RECEIVED GESTURE EFFECTS - Partner's hearts/kisses appear on THEIR video */}
-                  {hasPartner && <ReceivedGestureEffects socketRef={socketRef} />}
                 </div>
 
                 {/* Skip Button - Bottom Right */}
@@ -4366,9 +4362,6 @@ const Chat = () => {
                     </div>
                   )}
                 </div>
-
-                {/* ✅ GESTURE EFFECTS - Hearts/Kiss animations inside local video panel */}
-                <GestureEffects localStreamRef={localStreamRef} isActive={true} socketRef={socketRef} />
 
                 {/* Chat Messages Area */}
                 {messages.length > 0 && (
