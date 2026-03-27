@@ -28,6 +28,7 @@ import SubscriptionsPage from '../components/SubscriptionsPage';
 import TopActions from '../components/TopActions';
 import TermsConfirmationModal from '../components/TermsConfirmationModal';
 import GestureEffects from '../components/GestureEffects';
+import ReceivedGestureEffects from '../components/ReceivedGestureEffects';
 import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
@@ -4220,6 +4221,8 @@ const Chat = () => {
                       <span style={{ color: '#999', fontSize: '14px' }}>Waiting for partner video...</span>
                     </div>
                   )}
+                  {/* ✅ RECEIVED GESTURE EFFECTS - Partner's hearts/kisses appear on THEIR video */}
+                  {hasPartner && <ReceivedGestureEffects socketRef={socketRef} />}
                 </div>
 
                 {/* Skip Button - Bottom Right */}

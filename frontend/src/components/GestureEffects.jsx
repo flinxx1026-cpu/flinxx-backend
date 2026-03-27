@@ -188,52 +188,9 @@ const GestureEffects = ({ localStreamRef, isActive = true, socketRef }) => {
     console.log('💋 [GESTURE] Kiss spawned!');
   }
 
-  // ─── Socket listener: poll until socket is available, then attach ───
-  useEffect(() => {
-    let gestureHandler = null;
-    let pollTimer = null;
-
-    const attachListener = () => {
-      const sock = socketRef?.current;
-      if (!sock || socketListenerAttached.current) return false;
-
-      gestureHandler = (data) => {
-        console.log('📩 [GESTURE] Received from partner:', data?.type);
-        if (data?.type === 'heart') {
-          doSpawnHearts(true, data?.handX ?? 0.5, data?.handY ?? 0.35);
-        } else if (data?.type === 'kiss') {
-          doSpawnKisses(true);
-        }
-      };
-
-      sock.on('gesture_effect', gestureHandler);
-      socketListenerAttached.current = true;
-      socketCurrent.current = sock;
-      console.log('✅ [GESTURE] Socket listener ATTACHED for gesture_effect!');
-      return true;
-    };
-
-    // Try immediately
-    if (!attachListener()) {
-      // Poll every 500ms until socket is available
-      console.log('⏳ [GESTURE] Socket not ready, polling...');
-      pollTimer = setInterval(() => {
-        if (attachListener()) {
-          clearInterval(pollTimer);
-          pollTimer = null;
-        }
-      }, 500);
-    }
-
-    return () => {
-      if (pollTimer) clearInterval(pollTimer);
-      const sock = socketRef?.current;
-      if (sock && gestureHandler) {
-        sock.off('gesture_effect', gestureHandler);
-      }
-      socketListenerAttached.current = false;
-    };
-  }, []);
+  // ─── Socket listener REMOVED ───
+  // Received gesture effects are now rendered by ReceivedGestureEffects
+  // on the REMOTE video panel (partner's view), not here on the local panel.
 
   // ─── Sync socketCurrent ref continuously ───
   useEffect(() => {
