@@ -1221,7 +1221,18 @@ const Chat = () => {
   useEffect(() => {
     const handleGlobalFriendAccepted = (event) => {
       console.log('🎉🎉🎉 [Chat.jsx] global_friend_accepted window event received!', event.detail);
-      setIsPartnerFriend(true);
+      
+      const { senderId, receiverId } = event.detail || {};
+      const pId = partnerInfo?.partnerId || partnerInfo?.id || partnerInfo?.uuid || partnerInfo?.publicId;
+      
+      // If we are currently in chat with either of these people, update the UI
+      if (pId && (senderId === pId || receiverId === pId)) {
+        setIsPartnerFriend(true);
+      } else if (!pId) {
+        // If we're not currently in a chat, just assume it's for the last person we clicked or generic
+        setIsPartnerFriend(true);
+      }
+      
       showToast('Now you are friends! 🎉');
     };
 
@@ -1229,7 +1240,7 @@ const Chat = () => {
     return () => {
       window.removeEventListener('global_friend_accepted', handleGlobalFriendAccepted);
     };
-  }, []);
+  }, [partnerInfo, showToast]);
 
   // ✅ Attach local stream to localVideoRef when in video chat mode
   useEffect(() => {
@@ -3578,8 +3589,7 @@ const Chat = () => {
     // ✅ Cooldown check for 15 seconds
     if (connectionTime < 15) {
       const remainingSeconds = 15 - connectionTime;
-      setToastMessage(`⏳ Wait ${remainingSeconds}s to add friend`);
-      setTimeout(() => setToastMessage(null), 2000);
+      showToast(`⏳ Wait ${remainingSeconds}s to add friend`);
       return;
     }
 
@@ -3630,13 +3640,12 @@ const Chat = () => {
         const msg = errorData.error || 'Could not send request';
         if (msg.includes('already accepted') || msg.includes('already friends')) {
           setIsPartnerFriend(true); // ✅ They are already friends
-          setToastMessage('Already friends! 💛');
+          showToast('Already friends! 💛');
         } else if (msg.includes('already') || msg.includes('pending')) {
-          setToastMessage('Request already sent');
+          showToast('Request already sent');
         } else {
-          setToastMessage(msg);
+          showToast(msg);
         }
-        setTimeout(() => setToastMessage(null), 3000);
         return;
       }
 
@@ -3647,8 +3656,7 @@ const Chat = () => {
       console.log('   Will appear in Friends & Requests panel');
 
       // ✅ Show "Request Sent" toast for 3 seconds
-      setToastMessage('Request Sent');
-      setTimeout(() => setToastMessage(null), 3000);
+      showToast('Request Sent');
 
       // ✅ CRITICAL FIX: Refresh sent requests immediately after sending
       // This ensures the request appears in Friends & Requests modal right away
