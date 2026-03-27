@@ -4206,34 +4206,14 @@ const Chat = () => {
                       objectFit: 'cover',
                       backgroundColor: '#000',
                       display: 'block',
-                      opacity: (hasPartner && remoteVideoReady) ? 1 : 0,
-                      visibility: (hasPartner && remoteVideoReady) ? 'visible' : 'hidden',
-                      transition: 'opacity 0.15s ease-in-out',
+                      opacity: hasPartner ? 1 : 0,
+                      visibility: hasPartner ? 'visible' : 'hidden',
+                      transition: 'opacity 0.1s ease-in-out',
                       position: 'absolute',
                       top: 0,
                       left: 0
                     }}
                   />
-                  {/* Connecting shimmer while waiting for remote video frames */}
-                  {hasPartner && !remoteVideoReady && (
-                    <div style={{
-                      width: '100%', height: '100%',
-                      backgroundColor: '#0a0a0a',
-                      display: 'flex', flexDirection: 'column',
-                      alignItems: 'center', justifyContent: 'center',
-                      position: 'absolute', top: 0, left: 0,
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{
-                        width: '36px', height: '36px',
-                        border: '3px solid rgba(212,175,55,0.15)',
-                        borderTop: '3px solid #d4af37',
-                        borderRadius: '50%',
-                        animation: 'spin 0.8s linear infinite'
-                      }} />
-                      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                    </div>
-                  )}
                   {/* Placeholder when no partner */}
                   {!hasPartner && (
                     <div style={{ width: '100%', height: '100%', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 0, left: 0 }}>
