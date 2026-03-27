@@ -765,6 +765,19 @@ export function setupMatchingHandlers(io, redis, prisma) {
         // Remove from queue
         await matchingService.handleUserDisconnect(userId);
 
+        // If they were already assigned a partner but cancelled right after, notify the partner
+        if (io._partnerSockets) {
+          const partnerSocketId = io._partnerSockets.get(socket.id);
+          if (partnerSocketId) {
+            console.log(`[MATCH_CANCEL] 🚨 User ${userId} cancelled while paired with ${partnerSocketId}. Notifying partner!`);
+            io.to(partnerSocketId).emit('partner_disconnected', {
+              message: 'Partner cancelled search before connecting.'
+            });
+            io._partnerSockets.delete(partnerSocketId);
+          }
+          io._partnerSockets.delete(socket.id);
+        }
+
         socket.emit('match:cancelled', {
           message: 'Matching cancelled'
         });
@@ -796,10 +809,14 @@ export function setupMatchingHandlers(io, redis, prisma) {
         // Remove from matching queue
         await matchingService.handleUserDisconnect(userId);
 
-        // Clean up partnerSockets mapping
+        // Clean up partnerSockets mapping + notify partner if necessary
         if (io._partnerSockets) {
           const partnerSocketId = io._partnerSockets.get(socket.id);
           if (partnerSocketId) {
+            console.log(`[CANCEL_MATCHING] 🚨 User ${userId} cancelled while paired with ${partnerSocketId}. Notifying partner!`);
+            io.to(partnerSocketId).emit('partner_disconnected', {
+              message: 'Partner cancelled search before connecting.'
+            });
             io._partnerSockets.delete(partnerSocketId);
           }
           io._partnerSockets.delete(socket.id);
@@ -1039,6 +1056,26 @@ export function setupMatchingHandlers(io, redis, prisma) {
         }
       } catch (error) {
         console.error(`[SOCKET_DISCONNECT_ERROR] Disconnect error:`, error);
+      }
+    });
+
+    /**
+     * GESTURE_EFFECT - Relay visual gesture effects to partner (heart, kiss)
+     * Lightweight: just forwards the gesture type string to the matched partner
+     */
+    socket.on('gesture_effect', (data) => {
+      try {
+        const partnerSocketId = io._partnerSockets?.get(socket.id);
+        if (partnerSocketId) {
+          io.to(partnerSocketId).emit('gesture_effect', {
+            type: data?.type || 'heart',
+            handX: data?.handX,
+            handY: data?.handY,
+            from: socket.id
+          });
+        }
+      } catch (err) {
+        // Silent — gesture relay is non-critical
       }
     });
 

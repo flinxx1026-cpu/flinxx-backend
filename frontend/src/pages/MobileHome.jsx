@@ -79,47 +79,55 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
     videoElRef.current = videoElement;
     
     // Immediately try to attach if stream is ready
-    if (localStreamRef?.current && videoElement.srcObject !== localStreamRef.current) {
-      console.log('📱 [MOBILE HOME] handleVideoRef: Attaching stream immediately');
-      videoElement.srcObject = localStreamRef.current;
-      videoElement.muted = true;
-      videoElement.play().catch(() => {});
+    if (localStreamRef?.current) {
+      if (videoElement.srcObject !== localStreamRef.current) {
+        console.log('📱 [MOBILE HOME] handleVideoRef: Attaching stream immediately');
+        videoElement.srcObject = localStreamRef.current;
+        videoElement.muted = true;
+      }
+      // Always ensure it's playing
+      videoElement.play().catch(err => console.warn('📱 [MOBILE HOME] play error:', err));
     }
   }, [localStreamRef]);
 
-  // 🚀 AGGRESSIVE STREAM ATTACHMENT: Poll for stream availability every 100ms
-  // This eliminates the gap between getUserMedia resolving and video displaying
+  // 🚀 AGGRESSIVE STREAM ATTACHMENT: Ensure stream is attached and video is playing
   React.useEffect(() => {
     let pollInterval = null;
-    let attached = false;
 
-    const tryAttach = () => {
+    const ensureStreamPlaying = () => {
       const videoElement = videoElRef.current || document.getElementById('preview-video');
       if (!videoElement || !localStreamRef?.current) return false;
       
+      let needsPlay = false;
+
+      // 1. Check if srcObject is correct
       if (videoElement.srcObject !== localStreamRef.current) {
         console.log('📱 [MOBILE HOME] Stream attached via polling');
         videoElement.srcObject = localStreamRef.current;
         videoElement.muted = true;
-        videoElement.play().catch(() => {});
+        needsPlay = true;
+      }
+
+      // 2. Check if video is paused when it should be playing
+      if (videoElement.paused) {
+        console.log('📱 [MOBILE HOME] Video paused, enforcing play');
+        needsPlay = true;
+      }
+
+      // 3. Play if needed
+      if (needsPlay) {
+        videoElement.play().catch(err => {
+          // Play might fail if DOM not fully interacting, ignore silently to avoid console spam
+        });
       }
       return true;
     };
 
-    // Try immediately first
-    if (tryAttach()) {
-      attached = true;
-    } else {
-      // Poll every 100ms until stream is available (max 5 seconds)
-      let attempts = 0;
-      pollInterval = setInterval(() => {
-        attempts++;
-        if (tryAttach() || attempts > 50) {
-          clearInterval(pollInterval);
-          pollInterval = null;
-        }
-      }, 100);
-    }
+    // Run immediately
+    ensureStreamPlaying();
+
+    // Poll every 500ms (keeps checking even after first attach in case stream changes or pauses)
+    pollInterval = setInterval(ensureStreamPlaying, 500);
 
     return () => {
       if (pollInterval) clearInterval(pollInterval);
@@ -325,6 +333,59 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
           box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
         }
 
+        /* SHIMMER LOADING */
+        .camera-shimmer {
+          position: absolute;
+          inset: 0;
+          background: #111;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          z-index: 5;
+          overflow: hidden;
+        }
+
+        .camera-shimmer::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 200%;
+          height: 100%;
+          background: linear-gradient(
+            to right,
+            transparent 0%,
+            rgba(212, 175, 55, 0.05) 50%,
+            transparent 100%
+          );
+          animation: shimmer 2s infinite linear;
+        }
+
+        @keyframes shimmer {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(50%); }
+        }
+
+        .camera-loading-icon {
+          width: 40px;
+          height: 40px;
+          background: #444;
+          mask: url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/camera-video.svg') no-repeat center;
+          mask-size: contain;
+          -webkit-mask: url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/camera-video.svg') no-repeat center;
+          -webkit-mask-size: contain;
+          margin-bottom: 12px;
+          opacity: 0.5;
+        }
+
+        .camera-loading-text {
+          color: #888;
+          font-family: 'Inter', sans-serif;
+          font-size: 13px;
+          letter-spacing: 0.5px;
+        }
+
         /* MOBILE SCROLL - Only on mobile devices */
         @media (max-width: 768px) {
           .mobile-home-container {
@@ -467,6 +528,14 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
 
       {/* Video Container */}
       <div className="video-container">
+        
+        {/* Loading Shimmer (Shows until camera starts) */}
+        {(!cameraStarted || !localStreamRef?.current) && (
+          <div className="camera-shimmer">
+            <div className="camera-loading-icon"></div>
+            <div className="camera-loading-text">Starting Camera...</div>
+          </div>
+        )}
 
         {/* Video Element */}
         <video
@@ -476,8 +545,8 @@ const MobileHome = ({ user, onStartChat, onModeChange, localStreamRef, cameraSta
           playsInline
           id="preview-video"
           style={{ 
-            backgroundColor: '#000',
-            display: 'block',
+            backgroundColor: 'transparent',
+            display: (cameraStarted && localStreamRef?.current) ? 'block' : 'none',
             width: '100%',
             height: '100%',
             position: 'relative',

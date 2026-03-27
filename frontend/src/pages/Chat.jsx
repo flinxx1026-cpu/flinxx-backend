@@ -27,6 +27,7 @@ import SearchFriendsModal from '../components/SearchFriendsModal';
 import SubscriptionsPage from '../components/SubscriptionsPage';
 import TopActions from '../components/TopActions';
 import TermsConfirmationModal from '../components/TermsConfirmationModal';
+import GestureEffects from '../components/GestureEffects';
 import logo from '../assets/flinxx-logo.svg';
 import './Chat.css';
 
@@ -4109,7 +4110,7 @@ const Chat = () => {
           }
         `}</style>
 
-        <div className="main-layout flex h-full w-full p-8 gap-8 overflow-visible" style={{ backgroundColor: '#000000', justifyContent: 'center' }}>
+        <div className="main-layout flex h-full w-full p-8 gap-8 overflow-visible" style={{ backgroundColor: '#000000', justifyContent: 'center', position: 'relative' }}>
           {/* TOP PANEL - Video Feed */}
           <div className="panel-top flex flex-col premium-panel-container" style={{ flex: 'none', width: '40%' }}>
             <div className="flex-1 flex flex-col bg-background-dark rounded-2xl premium-gold-panel relative overflow-hidden" style={{ backgroundColor: '#000000' }}>
@@ -4346,6 +4347,9 @@ const Chat = () => {
                     </div>
                   )}
                 </div>
+
+                {/* ✅ GESTURE EFFECTS - Hearts/Kiss animations inside local video panel */}
+                <GestureEffects localStreamRef={localStreamRef} isActive={true} socketRef={socketRef} />
 
                 {/* Chat Messages Area */}
                 {messages.length > 0 && (
