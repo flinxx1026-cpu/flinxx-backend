@@ -2213,6 +2213,7 @@ const Chat = () => {
           setIsSearching(false);
           setPartnerFound(true);
           setIsLoading(false);
+          setRemoteVideoReady(false); // ✅ Reset so "Connecting" overlay shows until real frames arrive
 
           // ✅ CRITICAL FIX: Clear previous chat messages when new partner connects
           // This ensures each new connection starts with a fresh chat
@@ -4189,7 +4190,36 @@ const Chat = () => {
                       -moz-transform: scaleX(1) !important;
                     }
                   `}</style>
-                  {/* Remote Video - Desktop */}
+
+                  {/* 🔥 LAYER 1 (z-index:1): Blurred local camera preview — INSTANT live placeholder */}
+                  {/* Shows user's own camera feed (blurred+dimmed) so there's NEVER a black screen */}
+                  {hasPartner && (
+                    <video
+                      autoPlay
+                      muted
+                      playsInline
+                      ref={(el) => {
+                        if (el && localStreamRef.current && el.srcObject !== localStreamRef.current) {
+                          el.srcObject = localStreamRef.current;
+                          el.play().catch(() => {});
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        zIndex: 1,
+                        filter: 'blur(25px) brightness(0.35)',
+                        transform: 'scaleX(-1) scale(1.15)',
+                        pointerEvents: 'none'
+                      }}
+                    />
+                  )}
+
+                  {/* 🔥 LAYER 2 (z-index:2): Actual remote video — appears on top when frames arrive */}
                   <video
                     ref={remoteVideoRefCallback}
                     className="remote-video-feed"
@@ -4203,22 +4233,17 @@ const Chat = () => {
                       width: '100%',
                       height: '100%',
                       objectFit: 'cover',
-                      backgroundColor: '#000',
+                      backgroundColor: 'transparent',
                       display: 'block',
-                      opacity: hasPartner ? 1 : 0,
+                      opacity: (hasPartner && remoteVideoReady) ? 1 : 0,
                       visibility: hasPartner ? 'visible' : 'hidden',
-                      transition: 'opacity 0.1s ease-in-out',
+                      transition: 'opacity 0.15s ease-in',
                       position: 'absolute',
                       top: 0,
-                      left: 0
+                      left: 0,
+                      zIndex: 2
                     }}
                   />
-                  {/* Placeholder when no partner */}
-                  {!hasPartner && (
-                    <div style={{ width: '100%', height: '100%', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 0, left: 0 }}>
-                      <span style={{ color: 'gray', fontSize: '14px' }}>Waiting for partner video...</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Skip Button - Bottom Right */}
