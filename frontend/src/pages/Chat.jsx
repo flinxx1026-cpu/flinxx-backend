@@ -634,6 +634,7 @@ const Chat = () => {
   const [cameraStarted, setCameraStarted] = useState(false);
   const [isMatchingStarted, setIsMatchingStarted] = useState(false);
   const [hasPartner, setHasPartner] = useState(false);
+  const [remoteVideoReady, setRemoteVideoReady] = useState(false); // ✅ True only when remote video has actual frames rendering
   const [isConnected, setIsConnected] = useState(false);
   const [partnerInfo, setPartnerInfo] = useState(null);
   const [isPartnerFriend, setIsPartnerFriend] = useState(false); // ✅ Track if current partner is already a friend
@@ -1660,6 +1661,7 @@ const Chat = () => {
       }
 
       setHasPartner(false);
+    setRemoteVideoReady(false);
       setPartnerFound(false);
       setIsConnected(false);
       setPartnerInfo(null);
@@ -2018,6 +2020,7 @@ const Chat = () => {
             }
 
             setHasPartner(false);
+    setRemoteVideoReady(false);
             setPartnerFound(false);
             setIsConnected(false);
             setPartnerInfo(null);
@@ -2068,6 +2071,7 @@ const Chat = () => {
           }
 
           setHasPartner(false);
+    setRemoteVideoReady(false);
           setPartnerFound(false);
           setPartnerInfo(null);
           setMessages([]);
@@ -2493,6 +2497,7 @@ const Chat = () => {
           // ✅ INLINE STATE RESETS - avoids stale closure issue with endChat()
           console.log('🔴 Resetting UI state (inline - no stale closure)');
           setHasPartner(false);
+    setRemoteVideoReady(false);
           setPartnerFound(false);
           setIsConnected(false);
           setPartnerInfo(null);
@@ -2568,6 +2573,7 @@ const Chat = () => {
 
           // ✅ INLINE STATE RESETS (React setters are stable across renders)
           setHasPartner(false);
+    setRemoteVideoReady(false);
           setPartnerFound(false);
           setIsConnected(false);
           setPartnerInfo(null);
@@ -2653,6 +2659,7 @@ const Chat = () => {
             setIsLoading(false);
             setPartnerFound(false);
             setHasPartner(false);
+    setRemoteVideoReady(false);
             setIsConnected(false);
             
             if (peerConnectionRef.current) {
@@ -3060,6 +3067,7 @@ const Chat = () => {
 
             // Reset UI → Home screen instead of reconnecting while in background
             setHasPartner(false);
+    setRemoteVideoReady(false);
             setPartnerFound(false);
             setIsConnected(false);
             setPartnerInfo(null);
@@ -3274,6 +3282,7 @@ const Chat = () => {
     setIsLoading(false);
     setPartnerFound(false);
     setHasPartner(false);
+    setRemoteVideoReady(false);
     setIsConnected(false);
     setPartnerInfo(null);
     setMessages([]);
@@ -3326,6 +3335,7 @@ const Chat = () => {
     }
 
     setHasPartner(false);
+    setRemoteVideoReady(false);
     setPartnerFound(false);  // ✅ Hide video chat screen (waiting screen already visible above)
     setIsConnected(false);
     setPartnerInfo(null);
@@ -3842,6 +3852,7 @@ const Chat = () => {
       console.error('❌ ANSWERER: Error message:', err.message);
       console.error('❌ ANSWERER: Stack trace:', err.stack);
       setHasPartner(false);
+    setRemoteVideoReady(false);
     }
   };
 
@@ -3875,6 +3886,7 @@ const Chat = () => {
     // Reset state
     setCameraStarted(false);
     setHasPartner(false);
+    setRemoteVideoReady(false);
     setIsConnected(false);
     setMessages([]);
     setConnectionTime(0);
@@ -4184,21 +4196,45 @@ const Chat = () => {
                     className="remote-video-feed"
                     autoPlay
                     playsInline
+                    onPlaying={() => {
+                      console.log('📺 ✅ Remote video onPlaying fired — frames are rendering!');
+                      setRemoteVideoReady(true);
+                    }}
                     style={{
                       width: '100%',
                       height: '100%',
                       objectFit: 'cover',
                       backgroundColor: '#000',
-                      display: 'block',  // ✅ OPTIMIZATION: Always show - let ontrack control visibility via opacity/visibility
-                      opacity: hasPartner ? 1 : 0,  // ✅ Fade in/out without DOM remount
-                      visibility: hasPartner ? 'visible' : 'hidden',
-                      transition: 'opacity 0.3s ease-in-out',
+                      display: 'block',
+                      opacity: (hasPartner && remoteVideoReady) ? 1 : 0,
+                      visibility: (hasPartner && remoteVideoReady) ? 'visible' : 'hidden',
+                      transition: 'opacity 0.15s ease-in-out',
                       position: 'absolute',
                       top: 0,
                       left: 0
                     }}
                   />
-                  {/* Placeholder when no partner or video loading */}
+                  {/* Connecting shimmer while waiting for remote video frames */}
+                  {hasPartner && !remoteVideoReady && (
+                    <div style={{
+                      width: '100%', height: '100%',
+                      backgroundColor: '#0a0a0a',
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center',
+                      position: 'absolute', top: 0, left: 0,
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        width: '36px', height: '36px',
+                        border: '3px solid rgba(212,175,55,0.15)',
+                        borderTop: '3px solid #d4af37',
+                        borderRadius: '50%',
+                        animation: 'spin 0.8s linear infinite'
+                      }} />
+                      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                    </div>
+                  )}
+                  {/* Placeholder when no partner */}
                   {!hasPartner && (
                     <div style={{ width: '100%', height: '100%', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 0, left: 0 }}>
                       <span style={{ color: '#999', fontSize: '14px' }}>Waiting for partner video...</span>
