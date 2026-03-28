@@ -1,4 +1,4 @@
-﻿import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 const Terms = () => {
   const navigate = useNavigate()
@@ -63,87 +63,65 @@ const Terms = () => {
 
         <div className="max-w-4xl mx-auto bg-black/40 border border-amber-700/30 rounded-2xl p-8">
           <div className="terms-content">
-                {/* Section 1 */}
+                {/* Introduction */}
                 <div>
                   <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    By accessing or using Flinxx, you agree to comply with and be bound by these Terms & Conditions and our Privacy Policy. Flinxx is operated and owned by Nikhil Yadav, who is the legal owner and operator of the platform. If you do not agree with any part of these terms, you must immediately discontinue using the service. For any questions, concerns, or support requests regarding the platform, users may contact us through our official email <a href="mailto:contact.flinxx@gmail.com" className="text-white hover:underline">contact.flinxx@gmail.com</a> using the Contact Us option available on the website.
+                    By accessing or using Flinxx, you agree to comply with and be bound by these Terms & Conditions and our Privacy Policy. Flinxx is operated and owned by Nikhil Yadav. If you do not agree with any part of these terms, you must immediately discontinue using the service. Official contact: <a href="mailto:contact.flinxx@gmail.com" className="text-white hover:underline">contact.flinxx@gmail.com</a>.
                   </p>
                 </div>
 
-                {/* Section 2 */}
-                <div>
+                {/* User Safety & Moderation */}
+                <div className="mt-8 border-l-2 border-emerald-500/50 pl-6">
+                  <h3 className="text-emerald-400 font-bold text-xl mb-3">User Safety & Moderation</h3>
                   <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Flinxx is an online communication platform that allows users to interact with random strangers through text, audio, or video conversations over the internet. The platform is designed solely for social communication and entertainment purposes. Flinxx is not a dating website or dating service, and the platform does not promote matchmaking, romantic relationships, or partner finding. Users are connected randomly with other users and any interaction that occurs between users is solely the responsibility of the participating individuals.
+                    Flinxx prioritizes user safety above all else. We maintain active moderation systems, including real-time reporting tools and user blocking features, to prevent any form of misuse. 
+                    <strong> Any user found engaging in inappropriate behavior, harassment, or illegal activity will be immediately suspended or permanently banned from the platform.</strong>
                   </p>
                 </div>
 
-                {/* Section 3 */}
-                <div>
+                {/* Content Policy */}
+                <div className="mt-8 border-l-2 border-red-500/50 pl-6">
+                  <h3 className="text-red-400 font-bold text-xl mb-3">Content Policy</h3>
+                  <p className="text-zinc-300 leading-relaxed text-base font-light mb-3">
+                    Flinxx maintains a zero-tolerance policy regarding prohibited content. The following are strictly forbidden:
+                  </p>
+                  <ul className="list-disc list-inside text-zinc-300 space-y-2 font-light ml-4">
+                    <li><strong className="text-zinc-100">Adult or Explicit Content:</strong> Any form of nudity, sexual behavior, or sexually suggestive content is strictly prohibited.</li>
+                    <li><strong className="text-zinc-100">Harassment or Abuse:</strong> We do not tolerate bullying, hate speech, or offensive language targeting any individual or group.</li>
+                    <li><strong className="text-zinc-100">Illegal Activity:</strong> Any use of the platform for unlawful purposes or to promote illegal acts is forbidden.</li>
+                  </ul>
+                </div>
+
+                {/* Nature of Service */}
+                <div className="mt-8 border-l-2 border-blue-500/50 pl-6">
+                  <h3 className="text-blue-400 font-bold text-xl mb-3">Nature of Service</h3>
                   <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Users must be 18 years of age or older to access or use the Flinxx platform. By continuing to use the website, you confirm that you are legally an adult according to the laws applicable in your jurisdiction. Individuals under the age of 18 are strictly prohibited from accessing the service. If it is discovered that a minor is using the platform, Flinxx reserves the right to immediately restrict, suspend, or permanently ban access.
+                    Flinxx is a social communication platform designed for entertainment and video chatting with people globally. 
+                    <strong> It is NOT a dating platform, NOT an adult service, and DOES NOT facilitate adult-oriented interactions.</strong> 
+                    Our goal is to provide a clean, safe, and fun environment for random video communication.
                   </p>
                 </div>
 
-                {/* Section 4 */}
-                <div>
+                {/* Eligibility */}
+                <div className="mt-8 border-l-2 border-amber-500/50 pl-6">
+                  <h3 className="text-amber-400 font-bold text-xl mb-3">Eligibility (18+)</h3>
                   <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Flinxx allows users to communicate without mandatory identity verification, and users may choose to remain anonymous or use pseudonyms. However, anonymity cannot be guaranteed. Users assume full responsibility for any personal information they choose to share during conversations. Any information disclosed during sessions may become visible to other users and Flinxx is not responsible for any consequences resulting from such disclosure.
+                    Use of Flinxx is strictly restricted to individuals aged 18 and older. By using this platform, you represent and warrant that you meet this age requirement. Underage users will be banned immediately upon discovery.
                   </p>
                 </div>
 
-                {/* Section 5 */}
-                <div>
+                {/* Legal Compliance */}
+                <div className="mt-8 border-l-2 border-zinc-500/50 pl-6">
+                  <h3 className="text-zinc-100 font-bold text-xl mb-3">Legal Compliance</h3>
                   <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    By using Flinxx, you acknowledge and consent that other users may record, stream, capture screenshots, or broadcast interactions without prior notice or permission. Such recordings may be shared on external platforms including social media or other websites. Your use of Flinxx constitutes full and irrevocable consent to the possibility of such actions, and Flinxx is not responsible for the distribution, editing, or reuse of any recordings made by other users.
+                    Users MUST comply with all applicable local, national, and international laws while using Flinxx. We reserve the right to cooperate with legal authorities and provide necessary information if required by law to address illegal activities on the platform.
                   </p>
                 </div>
 
-                {/* Section 6 */}
-                <div>
-                  <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    You further acknowledge and agree that Flinxx may record, store, review, edit, and use interactions including video, audio, or text communications for purposes such as platform operations, safety monitoring, moderation, analytics, marketing, or promotional activities. By continuing to use the service, you grant Flinxx permission to use such interactions without compensation or additional notice.
-                  </p>
-                </div>
-
-                {/* Section 7 */}
-                <div>
-                  <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Your continued use of the platform after viewing or being notified of these terms constitutes implied, voluntary, and irrevocable consent to the possibility of being recorded, streamed, or shared by other users or by the platform itself. Users who do not agree with these conditions must discontinue use of the service.
-                  </p>
-                </div>
-
-                {/* Section 8 */}
-                <div>
-                  <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Users should understand that there is no expectation of privacy while using Flinxx. Communications, video sessions, audio conversations, and text messages may be recorded or shared by other participants or third parties. Content shared on the platform may become public and may be redistributed without the control of Flinxx.
-                  </p>
-                </div>
-
-                {/* Section 9 */}
-                <div>
-                  <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Flinxx is not responsible for the actions, conduct, or content of other users on the platform. Users interact at their own risk. Flinxx does not endorse any content, statements, or actions made by other users and is not liable for any harm, defamation, harassment, or other negative consequences resulting from user interactions.
-                  </p>
-                </div>
-
-                {/* Section 10 */}
-                <div>
-                  <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Users agree to comply with all applicable laws and regulations while using Flinxx. Any use of the platform for illegal activities, harassment, abuse, exploitation, or violation of others' rights is strictly prohibited. Flinxx reserves the right to investigate, suspend, or permanently ban users who violate these terms or engage in harmful behavior.
-                  </p>
-                </div>
-
-                {/* Section 11 */}
-                <div>
-                  <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    These Terms & Conditions may be updated or modified at any time without prior notice. Continued use of the platform after updates indicates your acceptance of the revised terms. Users are responsible for regularly reviewing these terms to stay informed of any changes.
-                  </p>
-                </div>
-
-                {/* Section 12 */}
-                <div>
-                  <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    By using Flinxx, you acknowledge that you have read, understood, and agree to be bound by these Terms & Conditions. If you have any questions or concerns about these terms, please contact us at <a href="mailto:contact.flinxx@gmail.com" className="text-white hover:underline">contact.flinxx@gmail.com</a>.
+                {/* Final Agreement */}
+                <div className="mt-8 pt-6 border-t border-amber-700/20">
+                  <p className="text-zinc-400 leading-relaxed text-sm font-light italic">
+                    By using Flinxx, you acknowledge that you have read and understood these terms. We may update these policies periodically to reflect service improvements or legal updates. Continued use of Flinxx constitutes acceptance of the latest Terms & Conditions.
                   </p>
                 </div>
               </div>

@@ -160,8 +160,35 @@ const Home = () => {
                   {isLoading ? 'Loading...' : 'Start Video Chat'}
                 </span>
               </button>
-              <p className="hero-tagline">Fast, simple video chats • Real users, real time</p>
-
+              
+              <div className="policy-badges" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '1rem' }}>
+                <p className="hero-tagline">Fast, simple video chats • Real users, real time</p>
+                <div style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '12px', 
+                  padding: '8px 20px', 
+                  borderRadius: '24px', 
+                  backgroundColor: 'rgba(239, 68, 68, 0.12)', 
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  alignSelf: 'center',
+                  boxShadow: '0 4px 15px rgba(239, 68, 68, 0.1)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-symbols-outlined" style={{ color: '#EF4444', fontSize: '20px' }}>block</span>
+                    <span style={{ color: '#EF4444', fontSize: '12px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                      No Adult Content
+                    </span>
+                  </div>
+                  <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(239, 68, 68, 0.3)' }}></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-symbols-outlined" style={{ color: '#EF4444', fontSize: '20px' }}>error</span>
+                    <span style={{ color: '#EF4444', fontSize: '12px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                      18+ Only
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -185,8 +212,8 @@ const Home = () => {
               <FaShieldAlt size={22} />
             </div>
             <div className="card-content">
-              <h3 className="card-title">Safe & Secure</h3>
-              <p className="card-description">Our AI moderation keeps the community safe. Report inappropriate behavior instantly.</p>
+              <h3 className="card-title">Safe & Moderated</h3>
+              <p className="card-description">Our systems and reporting tools keep the community safe. 18+ only. Strict anti-harassment policy.</p>
             </div>
           </div>
 
@@ -213,14 +240,19 @@ const Home = () => {
       </button>
 
       {/* Footer */}
-      <footer className="homepage-footer">
-        <div className="footer-content">
-          <p>Â© 2023 FLINXX Inc. All rights reserved.</p>
-          <div className="footer-links">
-            <a href="/about">About Flinxx</a>
-            <a href="/privacy-policy">Privacy</a>
-            <a href="/terms">Terms</a>
-            <a href="/contact">Contact</a>
+      <footer className="homepage-footer" style={{ borderTop: '1px solid rgba(212, 175, 55, 0.1)', paddingTop: '2rem' }}>
+        <div className="footer-content" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+          <div className="footer-top" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div className="footer-links" style={{ gap: '1.5rem' }}>
+              <a href="/about">About</a>
+              <a href="/privacy-policy">Privacy Policy</a>
+              <a href="/terms">Terms & Conditions</a>
+              <a href="/contact">Contact</a>
+            </div>
+          </div>
+          <div className="footer-bottom" style={{ textAlign: 'center', opacity: 0.6, fontSize: '0.85rem' }}>
+            <p>© 2024 FLINXX. All rights reserved. 18+ Only.</p>
+            <p style={{ marginTop: '0.5rem' }}>Contact: <a href="mailto:contact.flinxx@gmail.com" style={{ color: '#d4af37' }}>contact.flinxx@gmail.com</a></p>
           </div>
         </div>
       </footer>

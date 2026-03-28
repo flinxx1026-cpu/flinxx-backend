@@ -304,6 +304,18 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_matches_created_at ON matches(created_at);
     `)
 
+    // Create blocks table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS blocks (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        blocker_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        blocked_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(blocker_id, blocked_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_blocks_blocker ON blocks(blocker_id);
+    `)
+
     // Create payments table for Cashfree transactions
     await pool.query(`
       CREATE TABLE IF NOT EXISTS payments (
@@ -3401,6 +3413,31 @@ app.post('/api/report-user', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('❌ Error submitting report:', error);
     res.status(500).json({ success: false, message: 'Error submitting report', error: error.message });
+  }
+});
+
+app.post('/api/block-user', authMiddleware, async (req, res) => {
+  try {
+    const { blockedUserId } = req.body;
+    const blockerId = req.user.id;
+
+    if (!blockedUserId) {
+      return res.status(400).json({ success: false, message: 'Missing blockedUserId' });
+    }
+
+    // Insert into blocks table
+    await pool.query(
+      `INSERT INTO blocks (blocker_id, blocked_id)
+       VALUES ($1, $2)
+       ON CONFLICT (blocker_id, blocked_id) DO NOTHING`,
+      [blockerId, blockedUserId]
+    );
+
+    console.log(`🚫 User ${blockerId} blocked user ${blockedUserId}`);
+    res.json({ success: true, message: 'User blocked successfully' });
+  } catch (error) {
+    console.error('❌ Error blocking user:', error);
+    res.status(500).json({ success: false, message: 'Error blocking user', error: error.message });
   }
 });
 

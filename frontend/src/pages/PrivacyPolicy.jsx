@@ -1,4 +1,4 @@
-﻿import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 const PrivacyPolicy = () => {
   const navigate = useNavigate()
@@ -63,45 +63,59 @@ const PrivacyPolicy = () => {
 
         <div className="max-w-4xl mx-auto bg-black/40 border border-amber-700/30 rounded-2xl p-8">
           <div className="terms-content">
-                {/* Section 1 */}
+                {/* Introduction */}
                 <div>
                   <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    This Privacy Policy explains how Flinxx handles user information when you access or use the platform. Flinxx is owned and operated by Nikhil Yadav and provides a platform where users can interact with strangers through random text, audio, or video conversations online. By using Flinxx, you agree to this Privacy Policy. If you do not agree with this policy, you should discontinue using the website.
+                    This Privacy Policy explains how Flinxx handles user information when you access or use our platform. Flinxx is owned and operated by Nikhil Yadav. We are committed to protecting your privacy and ensuring a safe environment for all users. By using Flinxx, you agree to this Privacy Policy.
                   </p>
                 </div>
 
-                {/* Section 2 */}
-                <div>
+                {/* Information Collection */}
+                <div className="mt-8 border-l-2 border-indigo-500/50 pl-6">
+                  <h3 className="text-indigo-400 font-bold text-xl mb-3">Information Collection</h3>
+                  <p className="text-zinc-300 leading-relaxed text-base font-light mb-3">
+                    Flinxx collects limited technical data to ensure the platform operates smoothly and securely. This includes:
+                  </p>
+                  <ul className="list-disc list-inside text-zinc-300 space-y-2 font-light ml-4">
+                    <li><strong className="text-zinc-100">Technical Identifiers:</strong> IP addresses and device identifiers to prevent fraud and multi-accounting.</li>
+                    <li><strong className="text-zinc-100">Device Information:</strong> Operating system, browser type, and device model to optimize the video chat experience.</li>
+                    <li><strong className="text-zinc-100">Usage Data:</strong> Anonymous statistics on feature usage and connection stability.</li>
+                  </ul>
+                </div>
+
+                {/* Use of Data */}
+                <div className="mt-8 border-l-2 border-emerald-500/50 pl-6">
+                  <h3 className="text-emerald-400 font-bold text-xl mb-3">Use of Data</h3>
+                  <p className="text-zinc-300 leading-relaxed text-base font-light mb-3">
+                    The data we collect is used exclusively for the following purposes:
+                  </p>
+                  <ul className="list-disc list-inside text-zinc-300 space-y-2 font-light ml-4">
+                    <li><strong className="text-zinc-100">Platform Performance:</strong> To maintain high-quality video connections and resolve technical issues.</li>
+                    <li><strong className="text-zinc-100">Safety & Moderation:</strong> To identify and block users who violate our community guidelines or engage in prohibited behavior.</li>
+                    <li><strong className="text-zinc-100">Security:</strong> To protect our servers from malicious attacks and unauthorized access.</li>
+                  </ul>
+                </div>
+
+                {/* User Safety */}
+                <div className="mt-8 border-l-2 border-amber-500/50 pl-6">
+                  <h3 className="text-amber-400 font-bold text-xl mb-3">User Safety</h3>
                   <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Flinxx is a live interaction platform and because of the nature of real-time communication, complete privacy cannot be guaranteed. Users may record, screenshot, stream, or share interactions on external platforms without notice. Flinxx does not control or monitor every user interaction and cannot guarantee that content shared during a session will remain private.
+                    We employ rigorous moderation tools to keep Flinxx safe. This includes manual reporting features and automated filters. We do not store or monitor private conversations, but we investigate all reports of misconduct to maintain a respectful and adult-content-free community.
                   </p>
                 </div>
 
-                {/* Section 3 */}
-                <div>
+                {/* Data Protection */}
+                <div className="mt-8 border-l-2 border-blue-500/50 pl-6">
+                  <h3 className="text-blue-400 font-bold text-xl mb-3">Data Protection</h3>
                   <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Flinxx does not require users to reveal their real identity. Users may remain anonymous or use pseudonyms. If a user voluntarily shares personal information such as their real name, social media accounts, contact details, or identity during conversations, they do so entirely at their own risk. Flinxx does not encourage the sharing of personal identity information and is not responsible for any consequences that arise from such disclosure.
+                    We value your trust. <strong>Flinxx does not sell, trade, or share your personal data with third-party marketers.</strong> Information is only shared when required by law enforcement or as part of necessary technical processing (though always anonymized where possible).
                   </p>
                 </div>
 
-                {/* Section 4 */}
-                <div>
-                  <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    For safety, moderation, and service improvement, Flinxx may monitor certain interactions or technical data related to the use of the platform. This helps maintain community standards, detect misuse, and improve the service. However, monitoring does not guarantee that all content or interactions are reviewed.
-                  </p>
-                </div>
-
-                {/* Section 5 */}
-                <div>
-                  <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Flinxx is not responsible for any recordings, screenshots, or content that users may distribute outside the platform on social media or other websites. Any content shared externally is the responsibility of the user who created or shared it. By continuing to use Flinxx, users acknowledge and accept the risks associated with live online interactions.
-                  </p>
-                </div>
-
-                {/* Section 6 */}
-                <div>
-                  <p className="text-zinc-300 leading-relaxed text-base font-light">
-                    Flinxx may update this Privacy Policy from time to time to reflect changes in platform features or legal requirements. Continued use of the platform after updates indicates acceptance of the revised policy. For any privacy-related questions or support requests, please contact us at <a href="mailto:contact.flinxx@gmail.com" className="text-white hover:underline">contact.flinxx@gmail.com</a>.
+                {/* Updates & Contact */}
+                <div className="mt-8 pt-6 border-t border-amber-700/20">
+                  <p className="text-zinc-400 leading-relaxed text-sm font-light">
+                    This Privacy Policy may be updated periodically. If you have any privacy concerns or wish to request data deletion, please contact us at <a href="mailto:contact.flinxx@gmail.com" className="text-white hover:underline">contact.flinxx@gmail.com</a>.
                   </p>
                 </div>
               </div>
