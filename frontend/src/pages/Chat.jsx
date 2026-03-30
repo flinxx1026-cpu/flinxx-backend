@@ -771,44 +771,6 @@ const Chat = () => {
     }
   };
 
-  // BLOCK HANDLER
-  const handleBlock = async () => {
-    const blockedUserId = partnerInfo?.partnerId || partnerInfo?.userId || partnerInfo?.id || partnerInfo?.uuid || partnerInfo?.publicId;
-    console.log("BLOCK CLICKED:", blockedUserId);
-
-    if (!blockedUserId) {
-      setToastMessage('Error: Cannot identify partner to block');
-      setTimeout(() => setToastMessage(null), 3000);
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(`${BACKEND_URL}/api/block-user`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ blockedUserId })
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setToastMessage('User blocked successfully');
-        // Automatically skip the user after blocking
-        skipUser();
-      } else {
-        setToastMessage(data.message || 'Failed to block user');
-      }
-    } catch (err) {
-      console.error('Block API error:', err);
-      setToastMessage('Error blocking user');
-    } finally {
-      setTimeout(() => setToastMessage(null), 3000);
-    }
-  };
-
   // ✅ BUY NOW HANDLER for Skip Limit Popup
   const handleBuyNow = () => {
     console.log('💎 [SKIP LIMIT] Buy Now clicked - opening subscriptions');
@@ -4219,15 +4181,6 @@ const Chat = () => {
                       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#d4af37'; }}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18" style={{ pointerEvents: 'none' }}><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
-                    </button>
-                    <button
-                      onClick={handleBlock}
-                      title="Block User"
-                      style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444', backgroundColor: 'transparent', cursor: 'pointer', transition: 'all 0.2s' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#EF4444'; e.currentTarget.style.color = '#000'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#EF4444'; }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>block</span>
                     </button>
                   </div>
                 </header>
