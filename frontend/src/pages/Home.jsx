@@ -163,31 +163,6 @@ const Home = () => {
               
               <div className="policy-badges" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '1rem' }}>
                 <p className="hero-tagline">Fast, simple video chats • Real users, real time</p>
-                <div style={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '12px', 
-                  padding: '8px 20px', 
-                  borderRadius: '24px', 
-                  backgroundColor: 'rgba(239, 68, 68, 0.12)', 
-                  border: '1px solid rgba(239, 68, 68, 0.35)',
-                  alignSelf: 'center',
-                  boxShadow: '0 4px 15px rgba(239, 68, 68, 0.1)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="material-symbols-outlined" style={{ color: '#EF4444', fontSize: '20px' }}>block</span>
-                    <span style={{ color: '#EF4444', fontSize: '12px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                      No Adult Content
-                    </span>
-                  </div>
-                  <div style={{ width: '1px', height: '14px', backgroundColor: 'rgba(239, 68, 68, 0.3)' }}></div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="material-symbols-outlined" style={{ color: '#EF4444', fontSize: '20px' }}>error</span>
-                    <span style={{ color: '#EF4444', fontSize: '12px', fontWeight: '800', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                      18+ Only
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
