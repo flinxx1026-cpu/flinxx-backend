@@ -110,7 +110,9 @@ const MobileWaitingScreen = ({ onCancel, localStreamRef, cameraStarted }) => {
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              backgroundColor: '#000'
+              backgroundColor: '#000',
+              transform: 'scaleX(-1)',
+              WebkitTransform: 'scaleX(-1) translateZ(0)'
             }}
           />
           {!cameraStarted && (
