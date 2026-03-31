@@ -2071,7 +2071,7 @@ app.options("/api/get-turn-credentials", cors(corsOptions));
 // Requires coturn configured with: use-auth-secret + static-auth-secret
 const TURN_SECRET = process.env.TURN_SECRET || 'test123';
 const TURN_CREDENTIAL_TTL = parseInt(process.env.TURN_CREDENTIAL_TTL || '86400', 10); // 24h default
-const TURN_SERVER_URLS = (process.env.TURN_URLS || 'turn:52.66.99.85:3478').split(',').map(u => u.trim());
+const TURN_SERVER_URLS = (process.env.TURN_URLS || 'turn:15.206.146.133:3478').split(',').map(u => u.trim());
 
 function generateEphemeralTurnCredentials() {
   const unixExpiry = Math.floor(Date.now() / 1000) + TURN_CREDENTIAL_TTL;
