@@ -51,6 +51,9 @@ export const AuthProvider = ({ children }) => {
   // ✅ GLOBAL CAMERA STREAM - Store once, reuse everywhere (no repeated permission requests)
   const [localStream, setLocalStream] = useState(null)
 
+  // ✅ GLOBAL TOAST STATE - Shows toast on ANY screen (not just Chat)
+  const [globalToast, setGlobalToast] = useState(null)
+
   // ✅ ACCOUNT WARNING STATE - Show warning modal
   const [accountWarning, setAccountWarning] = useState(() => {
     try {
@@ -253,12 +256,15 @@ export const AuthProvider = ({ children }) => {
     // ✅ Attach specific listener
     socketWrapper.on('call_ended', handleCallEnded);
     
-    // ✅ GLOBAL FRIEND REQUEST ACCEPTED LISTENER
+    // ✅ GLOBAL FRIEND REQUEST ACCEPTED LISTENER - Shows toast for BOTH users on ANY screen
     const handleGlobalFriendAccepted = (data) => {
       console.log('\n' + '='.repeat(80));
-
+      console.log('🎉🎉🎉 [AuthContext] friend_request_accepted socket event received!');
+      console.log('📦 Data:', data);
       console.log('='.repeat(80));
-      // Dispatch custom window event so Chat.jsx can forcefully show the toast!
+      // ✅ DIRECTLY show global toast for BOTH users (works on ANY screen)
+      setGlobalToast('Now you are friends! 🎉');
+      // Also dispatch window event for Chat.jsx partner-friend state update
       window.dispatchEvent(new CustomEvent('global_friend_accepted', { detail: data }));
     };
     socketWrapper.on('friend_request_accepted', handleGlobalFriendAccepted);
@@ -1052,6 +1058,9 @@ export const AuthProvider = ({ children }) => {
       // ✅ GLOBAL CAMERA STREAM (stored once, reused everywhere - no repeated permission requests)
       localStream,
       setLocalStream,
+      // ✅ GLOBAL TOAST (shows on ANY screen for friend accepted, etc)
+      globalToast,
+      setGlobalToast,
       // ✅ ACCOUNT WARNING (show warning modal)
       accountWarning,
       setAccountWarning,

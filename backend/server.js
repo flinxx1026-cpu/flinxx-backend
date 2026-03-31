@@ -302,6 +302,7 @@ async function initializeDatabase() {
       );
       CREATE INDEX IF NOT EXISTS idx_matches_user_id ON matches(user_id);
       CREATE INDEX IF NOT EXISTS idx_matches_created_at ON matches(created_at);
+      CREATE INDEX IF NOT EXISTS idx_matches_uid_created_desc ON matches(user_id, created_at DESC, id DESC);
     `)
 
     // Create blocks table
@@ -3217,23 +3218,27 @@ app.post('/api/friends/accept', async (req, res) => {
       ]);
 
       if (sender && receiver) {
-        // Force emit to BOTH room and direct socket if found in onlineUsers
-        const sSockId = onlineUsers.get(sender.id);
-        const rSockId = onlineUsers.get(receiver.id);
-
-        console.log(`[FRIEND_ACCEPT] senderId: ${sender.id}, room socket: ${sSockId ? 'found' : 'not found in map'}`);
-
         // Emit event to BOTH sender and receiver automatically via their UUID room
         io.to(sender.id).emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
         io.to(receiver.id).emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
 
-        // Fallback: emit directly to socket.id if mapped
-        if (sSockId) {
-          console.log(`[FRIEND_ACCEPT] Direct emit to sender socket ${sSockId.substring(0, 8)}...`);
-          io.to(sSockId).emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
+        // BULLETPROOF FALLBACK: Iterate over ALL connected sockets and emit to matches
+        // This ensures the sender gets the notification even if room/map tracking failed
+        const sockets = await io.fetchSockets();
+        let senderFound = false;
+        for (const sock of sockets) {
+          if (sock.userId === sender.id || sock.userId === sender.public_id) {
+            console.log(`[FRIEND_ACCEPT] ✅ Found SENDER socket directly from clients list: ${sock.id.substring(0,8)}...`);
+            sock.emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
+            senderFound = true;
+          }
+          if (sock.userId === receiver.id || sock.userId === receiver.public_id) {
+            sock.emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
+          }
         }
-        if (rSockId) {
-          io.to(rSockId).emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
+        
+        if (!senderFound) {
+          console.log(`⚠️ [FRIEND_ACCEPT] SENDER socket NOT found in all connected sockets (Offline?)`);
         }
 
         console.log(`📨 Sent friend_request_accepted to sender ${sender.public_id} and receiver ${receiver.public_id}`);
@@ -5985,43 +5990,81 @@ io.on('connection', (socket) => {
 
         partnerUserId = socket.partner.id
 
-        // Save match for the disconnecting user
-        await pool.query(
-          `INSERT INTO matches
-           (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [
-            userId,
-            socket.partner.id,
-            socket.partner.name,
-            socket.partner.country,
-            durationSeconds
-          ]
-        )
-        console.log(`✅ Match saved for disconnecting user ${userId}`)
+        const dbClient = await pool.connect()
+        try {
+          await dbClient.query('BEGIN')
 
-        // ✅ Also save match for the PARTNER (reverse)
-        const partnerSocket = io.sockets.sockets.get(socket.partner.socketId)
-        const realPartnerUserId = userSockets.get(socket.partner.socketId)
-        if (partnerSocket && realPartnerUserId && partnerSocket.partner) {
-          await pool.query(
+          // Save match for the disconnecting user
+          await dbClient.query(
             `INSERT INTO matches
              (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
              VALUES ($1, $2, $3, $4, $5)`,
             [
-              realPartnerUserId,
-              partnerSocket.partner.id,
-              partnerSocket.partner.name,
-              partnerSocket.partner.country,
+              userId,
+              socket.partner.id,
+              socket.partner.name,
+              socket.partner.country,
               durationSeconds
             ]
           )
-          console.log(`✅ Match saved for partner ${realPartnerUserId} (disconnect)`)
-          partnerSocket.callStartTime = null
-          partnerSocket.partner = null
+          
+          // Maintain MAX 15 matches (FIFO) - delete oldest entries safely
+          await dbClient.query(
+            `DELETE FROM matches 
+             WHERE id IN (
+               SELECT id FROM matches 
+               WHERE user_id = $1 
+               ORDER BY created_at DESC, id DESC 
+               OFFSET 15
+             )`,
+            [userId]
+          )
+          
+          console.log(`✅ Match saved for disconnecting user ${userId} and history capped to 15`)
+
+          // ✅ Also save match for the PARTNER (reverse)
+          const partnerSocket = io.sockets.sockets.get(socket.partner.socketId)
+          const realPartnerUserId = userSockets.get(socket.partner.socketId)
+          if (partnerSocket && realPartnerUserId && partnerSocket.partner) {
+            await dbClient.query(
+              `INSERT INTO matches
+               (user_id, matched_user_id, matched_user_name, matched_user_country, duration_seconds)
+               VALUES ($1, $2, $3, $4, $5)`,
+              [
+                realPartnerUserId,
+                partnerSocket.partner.id,
+                partnerSocket.partner.name,
+                partnerSocket.partner.country,
+                durationSeconds
+              ]
+            )
+            
+            // Maintain MAX 15 matches (FIFO) safely
+            await dbClient.query(
+              `DELETE FROM matches 
+               WHERE id IN (
+                 SELECT id FROM matches 
+                 WHERE user_id = $1 
+                 ORDER BY created_at DESC, id DESC 
+                 OFFSET 15
+               )`,
+              [realPartnerUserId]
+            )
+            
+            console.log(`✅ Match saved for partner ${realPartnerUserId} (disconnect) and history capped to 15`)
+            partnerSocket.callStartTime = null
+            partnerSocket.partner = null
+          }
+
+          await dbClient.query('COMMIT')
+        } catch (dbError) {
+          await dbClient.query('ROLLBACK')
+          console.error(`❌ Transaction error saving match to database:`, dbError)
+        } finally {
+          dbClient.release()
         }
       } catch (error) {
-        console.error(`❌ Error saving match to database:`, error)
+        console.error(`❌ Outer error saving match to database:`, error)
       }
     }
 

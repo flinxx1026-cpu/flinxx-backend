@@ -2074,7 +2074,7 @@ app.post('/api/friends/send', async (req, res) => {
 
     // 🔔 EMIT REALTIME NOTIFICATION IF RECEIVER IS ONLINE
     // ✅ FIX: Use UUID for lookup, not numeric ID (frontend sends UUID in register_user)
-    const receiverUuid = receiver.uuid
+    const receiverUuid = receiver.id
     const receiverSocketId = onlineUsers.get(receiverUuid)
     
     console.log(`🔍 [LOOKUP] Looking for receiver UUID: ${receiverUuid.substring(0, 8)}...`)
@@ -2143,27 +2143,43 @@ app.post('/api/friends/accept', async (req, res) => {
     try {
       const senderId = request.sender_id;
       const receiverId = request.receiver_id;
-      // Force emit to BOTH room and direct socket if found in onlineUsers or userSockets
-      const sSockId = onlineUsers.get(senderId) || userSockets?.get?.(senderId);
-      const rSockId = onlineUsers.get(receiverId) || userSockets?.get?.(receiverId);
       
-      console.log(`[FRIEND_ACCEPT] senderId: ${senderId}, room socket: ${sSockId ? 'found' : 'not found in map'}`);
-      
-      // Emit to UUID room natively
-      io.to(senderId).emit('friend_request_accepted', { senderId, receiverId, requestId });
-      io.to(receiverId).emit('friend_request_accepted', { senderId, receiverId, requestId });
-      
-      // Fallback: emit directly to socket.id if mapped
-      if (sSockId) {
-        console.log(`[FRIEND_ACCEPT] Direct emit to sender socket ${sSockId.substring(0,8)}...`);
-        io.to(sSockId).emit('friend_request_accepted', { senderId, receiverId, requestId });
-      }
-      if (rSockId) {
-        io.to(rSockId).emit('friend_request_accepted', { senderId, receiverId, requestId });
-      }
-      
-      console.log(`📨 Emitted friend_request_accepted to sender ${senderId.substring(0, 8)}... and receiver ${receiverId.substring(0, 8)}...`);
+      // Find both users to get their UUIDs and public IDs for the socket lookup
+      const [sender, receiver] = await Promise.all([
+        prisma.users.findUnique({ where: { id: senderId } }),
+        prisma.users.findUnique({ where: { id: receiverId } })
+      ]);
 
+      if (sender && receiver) {
+        // Emit to UUID room natively
+        io.to(sender.id).emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
+        io.to(receiver.id).emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
+        
+        // BULLETPROOF FALLBACK: Iterate over ALL connected sockets and emit to matches
+        // This ensures the sender gets the notification even if room/map tracking failed
+        const sockets = await io.fetchSockets();
+        let senderFound = false;
+        let receiverFound = false;
+        
+        for (const sock of sockets) {
+          if (sock.userId === sender.id || sock.userId === sender.public_id) {
+            console.log(`[FRIEND_ACCEPT] ✅ Found SENDER socket directly from clients list: ${sock.id.substring(0,8)}...`);
+            sock.emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
+            senderFound = true;
+          }
+          if (sock.userId === receiver.id || sock.userId === receiver.public_id) {
+            console.log(`[FRIEND_ACCEPT] ✅ Found RECEIVER socket directly from clients list: ${sock.id.substring(0,8)}...`);
+            sock.emit('friend_request_accepted', { senderId: sender.id, receiverId: receiver.id, requestId });
+            receiverFound = true;
+          }
+        }
+        
+        if (!senderFound) {
+          console.log(`⚠️ [FRIEND_ACCEPT] SENDER socket NOT found in all connected sockets (Offline?)`);
+        }
+        
+        console.log(`📨 Emitted friend_request_accepted to sender ${sender.public_id} and receiver ${receiver.public_id}`);
+      }
     } catch (socketErr) {
       console.warn('⚠️ Could not emit friend_request_accepted socket event:', socketErr.message);
     }

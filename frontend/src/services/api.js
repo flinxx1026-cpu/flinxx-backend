@@ -284,6 +284,31 @@ export const acceptFriendRequest = async (requestId) => {
 };
 
 /**
+ * Instantly accept a quick invite directly establishing a friendship
+ */
+export const acceptQuickInvite = async (senderPublicId, receiverPublicId) => {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/friends/quick-accept`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ senderPublicId, receiverPublicId })
+    });
+
+    if (!response.ok) {
+      console.error('❌ Quick Accept request API error:', response.status);
+      return { success: false };
+    }
+
+    const data = await response.json();
+    console.log('✅ Quick Friend request accepted instantly', data);
+    return { success: true, data };
+  } catch (err) {
+    console.error('Error accepting quick friend request:', err);
+    return { success: false };
+  }
+};
+
+/**
  * Reject a friend request
  */
 export const rejectFriendRequest = async (requestId) => {

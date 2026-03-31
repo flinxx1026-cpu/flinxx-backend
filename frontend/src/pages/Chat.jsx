@@ -1222,16 +1222,9 @@ const Chat = () => {
     const handleGlobalFriendAccepted = (event) => {
       console.log('🎉🎉🎉 [Chat.jsx] global_friend_accepted window event received!', event.detail);
       
-      const { senderId, receiverId } = event.detail || {};
-      const pId = partnerInfo?.partnerId || partnerInfo?.id || partnerInfo?.uuid || partnerInfo?.publicId;
-      
-      // If we are currently in chat with either of these people, update the UI
-      if (pId && (senderId === pId || receiverId === pId)) {
-        setIsPartnerFriend(true);
-      } else if (!pId) {
-        // If we're not currently in a chat, just assume it's for the last person we clicked or generic
-        setIsPartnerFriend(true);
-      }
+      // ALWAYS force update the UI immediately to change the emoji instantly
+      console.log('🎉 [Chat.jsx] Applying instant UI update for emoji change!');
+      setIsPartnerFriend(true);
       
       showToast('Now you are friends! 🎉');
     };
@@ -3691,6 +3684,10 @@ const Chat = () => {
       await acceptFriendRequest(requestId);
       console.log('✅ [Chat] Request accepted');
       setIncomingFriendRequest(null);
+      
+      // ✅ IMMEDIATELY update UI state for the receiver so the emoji changes instantly 🧑‍🤝‍🧑
+      console.log('🎉 [Chat] Applying instant UI update for emoji change (Receiver)!');
+      setIsPartnerFriend(true);
 
       // ✅ Show "Now you are friends" toast for both users
       showToast('Now you are friends! 🎉');

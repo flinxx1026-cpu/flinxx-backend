@@ -45,8 +45,7 @@ router.get('/', authMiddleware, async (req, res) => {
        FROM matches m
        LEFT JOIN users u ON m.matched_user_id = u.id
        WHERE m.user_id = $1
-       ORDER BY m.created_at DESC
-       LIMIT 50`,
+       ORDER BY m.created_at DESC, m.id DESC`,
       [userId]
     )
 

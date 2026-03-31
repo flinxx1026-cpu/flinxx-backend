@@ -1,4 +1,4 @@
-﻿import React, { useContext } from 'react';
+import React, { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { acceptFriendRequest, rejectFriendRequest } from '../services/api';
 import FriendRequestToast from './FriendRequestToast';
@@ -33,18 +33,20 @@ const GlobalFriendRequestPopup = () => {
     const isQuickInvite = incomingFriendRequest?.isQuickInvite === true;
     
     if (isQuickInvite) {
-      console.log('📱 [QUICK INVITE] Accept clicked - creating real friend request now...');
+      console.log('📱 [QUICK INVITE] Accept clicked - creating and instantly accepting real friend request now...');
       try {
-        // ✅ QUICK INVITE ACCEPT: Call the API to create a real friend request
-        const { sendFriendRequest } = await import('../services/api');
+        // ✅ QUICK INVITE ACCEPT: Call the API to create an accepted friendship instantly
+        const { acceptQuickInvite } = await import('../services/api');
         
-        const result = await sendFriendRequest(
-          user?.publicId || user?.uuid,
-          incomingFriendRequest?.senderPublicId
+        // The senderPublicId is the person who sent the invite
+        // The receiverPublicId is the current user (receiver of the invite)
+        const result = await acceptQuickInvite(
+          incomingFriendRequest?.senderPublicId,
+          user?.publicId || user?.uuid
         );
         
         if (result.success) {
-          console.log('✅ [QUICK INVITE ACCEPT] Friend request created!');
+          console.log('✅ [QUICK INVITE ACCEPT] Friendship established instantly!');
           setIncomingFriendRequest(null);
         } else {
           throw new Error('Failed to create friend request');

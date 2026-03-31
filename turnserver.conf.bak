@@ -1,0 +1,17 @@
+listening-ip=0.0.0.0
+listening-port=3478
+use-auth-secret
+static-auth-secret=test123
+realm=flinxx.in
+server-name=flinxx.in
+external-ip=52.66.99.85/172.31.10.23
+min-port=49152
+max-port=65535
+log-file=/var/log/turnserver.log
+simple-log
+total-quota=100
+bps-capacity=0
+stale-nonce=600
+no-multicast-peers
+no-cli
+fingerprint

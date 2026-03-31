@@ -321,6 +321,69 @@ router.post('/quick-invite', async (req, res) => {
   }
 });
 
+// ✅ Accept a quick invite directly (creates an accepted friend request and emits the event)
+router.post('/quick-accept', async (req, res) => {
+  try {
+    const { senderPublicId, receiverPublicId } = req.body;
+
+    if (!senderPublicId || !receiverPublicId) {
+      return res.status(400).json({ error: 'Missing senderPublicId or receiverPublicId' });
+    }
+
+    console.log('✅ Accepting quick invite:', { senderPublicId, receiverPublicId });
+
+    const senderResult = await db.query(
+      `SELECT id, display_name, photo_url FROM users WHERE id::text = $1 OR public_id::text = $1`,
+      [String(senderPublicId)]
+    );
+
+    const receiverResult = await db.query(
+      `SELECT id, display_name, photo_url FROM users WHERE id::text = $1 OR public_id::text = $1`,
+      [String(receiverPublicId)]
+    );
+
+    if (senderResult.rows.length === 0 || receiverResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Users not found' });
+    }
+
+    const sender = senderResult.rows[0];
+    const receiver = receiverResult.rows[0];
+
+    const result = await db.query(
+      `INSERT INTO friend_requests (sender_id, receiver_id, status, created_at)
+       VALUES ($1, $2, 'accepted', NOW())
+       ON CONFLICT (sender_id, receiver_id) DO UPDATE SET status = 'accepted'
+       RETURNING id, status, sender_id, receiver_id`,
+      [sender.id, receiver.id]
+    );
+
+    const request = result.rows[0];
+
+    // ✅ EMIT REAL-TIME SOCKET EVENT to both users (sender and receiver)
+    if (io) {
+      const senderId = request.sender_id;
+      const receiverId = request.receiver_id;
+
+      const eventPayload = {
+        requestId: request.id,
+        senderId: senderId,
+        receiverId: receiverId,
+        status: 'accepted'
+      };
+      
+      console.log(`🔥🔥🔥 [friends.js] INSTANT QUICK FRIEND ACCEPT EVENT 🔥🔥🔥`);
+      // Emit to BOTH users using their UUID rooms
+      io.to(senderId).emit('friend_request_accepted', eventPayload);
+      io.to(receiverId).emit('friend_request_accepted', eventPayload);
+    }
+
+    res.json({ success: true, data: request });
+  } catch (err) {
+    console.error('❌ Quick accept friend request error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ✅ Accept friend request
 router.post('/accept', async (req, res) => {
   try {
@@ -336,7 +399,7 @@ router.post('/accept', async (req, res) => {
       `UPDATE friend_requests
        SET status = 'accepted'
        WHERE id = $1
-       RETURNING id, status`,
+       RETURNING id, status, sender_id, receiver_id`,
       [requestId]
     );
 
@@ -344,8 +407,33 @@ router.post('/accept', async (req, res) => {
       return res.status(404).json({ error: 'Friend request not found' });
     }
 
+    const request = result.rows[0];
+
+    // ✅ EMIT REAL-TIME SOCKET EVENT to both users (sender and receiver)
+    if (io) {
+      const senderId = request.sender_id;
+      const receiverId = request.receiver_id;
+
+      const eventPayload = {
+        requestId: request.id,
+        senderId: senderId,
+        receiverId: receiverId,
+        status: 'accepted'
+      };
+      
+      console.log(`🔥🔥🔥 [friends.js] FRIEND ACCEPT EVENT 🔥🔥🔥`);
+      console.log(`📢 Emitting to socket room sender: ${senderId}`);
+      console.log(`📢 Emitting to socket room receiver: ${receiverId}`);
+      
+      // Emit to BOTH users using their UUID rooms
+      io.to(senderId).emit('friend_request_accepted', eventPayload);
+      io.to(receiverId).emit('friend_request_accepted', eventPayload);
+      
+      console.log(`✅ Accept event emitted successfully`);
+    }
+
     console.log('✅ Friend request accepted');
-    res.json({ success: true, data: result.rows[0] });
+    res.json({ success: true, data: request });
 
   } catch (err) {
     console.error('❌ Accept friend request error:', err.message);
