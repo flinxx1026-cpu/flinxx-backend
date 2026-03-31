@@ -1,5 +1,6 @@
-﻿import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { socketWrapper } from '../utils/socketWrapper'
+import { getIceServers, getStunServers, fetchTurnServers } from '../utils/webrtcUtils'
 
 /**
  * Combined hook for video matching + WebRTC connection
@@ -136,11 +137,14 @@ export const useVideoMatchingWithWebRTC = (userId, userProfile) => {
     try {
       console.log('🧊 [WEBRTC] Creating peer connection...')
 
-      // Get ICE servers
-      const iceServers = [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-      ]
+      // ✅ P2P-FIRST: Start with STUN-only for fast direct connection
+      const iceServers = getStunServers();
+      console.log('🧊 [WEBRTC] P2P direct mode (TURN pre-warmed for fallback)');
+
+      // Pre-warm TURN in background (cached for instant fallback if P2P fails)
+      fetchTurnServers().then(() => {
+        console.log('✅ [WEBRTC] TURN credentials cached for fallback');
+      }).catch(() => {});
 
       const config = {
         iceServers,
@@ -150,6 +154,10 @@ export const useVideoMatchingWithWebRTC = (userId, userProfile) => {
 
       const peerConnection = new RTCPeerConnection(config)
       peerConnectionRef.current = peerConnection
+
+      // Track ICE restart attempts
+      peerConnection._iceRestartCount = 0;
+      const MAX_ICE_RESTARTS = 2;
 
       // Handle ICE candidates
       peerConnection.onicecandidate = (event) => {
@@ -190,8 +198,28 @@ export const useVideoMatchingWithWebRTC = (userId, userProfile) => {
         if (peerConnection.connectionState === 'connected') {
           setConnectionState('connected')
         } else if (peerConnection.connectionState === 'failed') {
-          setError('WebRTC connection failed')
-          setConnectionState('error')
+          // ✅ TURN FALLBACK: If P2P fails, retry with TURN
+          if (peerConnection._iceRestartCount < MAX_ICE_RESTARTS) {
+            peerConnection._iceRestartCount++;
+            console.log(`🔄 [WEBRTC] ICE RESTART #${peerConnection._iceRestartCount}: Adding TURN fallback`);
+            
+            fetchTurnServers().then(fullIceServers => {
+              try {
+                peerConnection.setConfiguration({ iceServers: fullIceServers, iceTransportPolicy: 'all' });
+                console.log('✅ [WEBRTC] TURN servers injected via setConfiguration');
+              } catch (e) {
+                console.warn('⚠️ [WEBRTC] setConfiguration not supported');
+              }
+              peerConnection.restartIce();
+            }).catch(() => {
+              console.warn('⚠️ [WEBRTC] Could not fetch TURN for fallback');
+              setError('WebRTC connection failed')
+              setConnectionState('error')
+            });
+          } else {
+            setError('WebRTC connection failed')
+            setConnectionState('error')
+          }
         }
       }
 

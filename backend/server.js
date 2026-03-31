@@ -2071,7 +2071,7 @@ app.options("/api/get-turn-credentials", cors(corsOptions));
 // Requires coturn configured with: use-auth-secret + static-auth-secret
 const TURN_SECRET = process.env.TURN_SECRET || 'test123';
 const TURN_CREDENTIAL_TTL = parseInt(process.env.TURN_CREDENTIAL_TTL || '86400', 10); // 24h default
-const TURN_SERVER_URLS = (process.env.TURN_URLS || 'turn:15.206.146.133:3478').split(',').map(u => u.trim());
+const TURN_SERVER_URLS = (process.env.TURN_URLS || 'turn:52.66.99.85:3478').split(',').map(u => u.trim());
 
 function generateEphemeralTurnCredentials() {
   const unixExpiry = Math.floor(Date.now() / 1000) + TURN_CREDENTIAL_TTL;
@@ -2100,6 +2100,10 @@ app.post("/api/get-turn-credentials", async (req, res) => {
         credential
       }
     ];
+
+    console.log(`✅ [TURN CREDENTIALS] Generated ephemeral credentials for user: ${username}`);
+    console.log(`   TURN URLs: ${JSON.stringify(iceServers[2].urls)}`);
+    console.log(`   TTL: ${ttl}s`);
 
     res.json({ iceServers, ttl });
   } catch (err) {
@@ -2143,6 +2147,35 @@ app.get("/api/turn", async (req, res) => {
       ],
       ttl: 0
     });
+  }
+});
+
+// ===== TURN CONNECTIVITY DEBUG ENDPOINT =====
+app.get("/api/debug/turn-test", async (req, res) => {
+  try {
+    const { username, credential, ttl } = generateEphemeralTurnCredentials();
+    const turnUrls = TURN_SERVER_URLS.flatMap(server => [
+      `${server}?transport=udp`,
+      `${server}?transport=tcp`
+    ]);
+
+    res.json({
+      status: 'OK',
+      turnConfig: {
+        secret: TURN_SECRET ? '***SET***' : '***MISSING***',
+        urls: turnUrls,
+        credentialTTL: TURN_CREDENTIAL_TTL,
+        generatedUsername: username,
+        generatedCredential: credential.substring(0, 8) + '...',
+      },
+      iceServers: [
+        { urls: ["stun:stun.l.google.com:19302"] },
+        { urls: turnUrls, username, credential }
+      ],
+      instructions: 'Test these credentials at https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

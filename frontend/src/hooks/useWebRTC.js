@@ -25,14 +25,14 @@ export const useWebRTC = (socketId, onRemoteStream) => {
   }
 
   const createPeerConnection = async () => {
-    // Fetch ephemeral TURN credentials from backend API
-    let iceServers;
-    try {
-      iceServers = await fetchTurnServers();
-    } catch (e) {
-      // Fallback to STUN-only if API is unreachable
-      iceServers = getStunServers();
-    }
+    // ✅ P2P-FIRST: Start with STUN-only for fast direct connection
+    const iceServers = getStunServers();
+    console.log('🧊 [useWebRTC] P2P direct mode (TURN pre-warmed for fallback)');
+
+    // Pre-warm TURN in background (cached for instant fallback if P2P fails)
+    fetchTurnServers().then(() => {
+      console.log('✅ [useWebRTC] TURN credentials cached for fallback');
+    }).catch(() => {});
 
     const config = {
       iceServers,
@@ -40,6 +40,10 @@ export const useWebRTC = (socketId, onRemoteStream) => {
       iceCandidatePoolSize: 10
     };
     const peerConnection = new RTCPeerConnection(config)
+
+    // Track ICE restart attempts
+    peerConnection._iceRestartCount = 0;
+    const MAX_ICE_RESTARTS = 2;
 
     // ✅ SEND ICE CANDIDATE THROUGH SOCKET
     peerConnection.onicecandidate = (event) => {
@@ -51,12 +55,30 @@ export const useWebRTC = (socketId, onRemoteStream) => {
       }
     }
 
-    // ✅ MONITOR ICE CONNECTION STATE
+    // ✅ MONITOR ICE CONNECTION STATE + TURN FALLBACK
     peerConnection.oniceconnectionstatechange = () => {
       const state = peerConnection.iceConnectionState;
 
       if (state === 'failed') {
-        console.error('❌ ICE Connection failed - user should retry manually');
+        // ✅ TURN FALLBACK: If P2P fails, retry with TURN
+        if (peerConnection._iceRestartCount < MAX_ICE_RESTARTS) {
+          peerConnection._iceRestartCount++;
+          console.log(`🔄 [useWebRTC] ICE RESTART #${peerConnection._iceRestartCount}: Adding TURN fallback`);
+          
+          fetchTurnServers().then(fullIceServers => {
+            try {
+              peerConnection.setConfiguration({ iceServers: fullIceServers, iceTransportPolicy: 'all' });
+              console.log('✅ [useWebRTC] TURN servers injected');
+            } catch (e) {
+              console.warn('⚠️ [useWebRTC] setConfiguration not supported');
+            }
+            peerConnection.restartIce();
+          }).catch(() => {
+            console.error('❌ [useWebRTC] ICE Connection failed - TURN fetch also failed');
+          });
+        } else {
+          console.error('❌ [useWebRTC] ICE Connection failed - Max restarts exhausted');
+        }
       }
     }
 

@@ -1620,9 +1620,21 @@ const Chat = () => {
     }
 
 
-    // ✅ PHASE 1: Start with STUN-only for fast P2P (TURN added on ICE failure)
+    // ✅ P2P-FIRST STRATEGY: Start with STUN-only for fast direct connection
+    // Most users connect P2P (free + fast). TURN is pre-warmed in background
+    // and used ONLY if direct connection fails (for CGNAT/mobile users).
     const iceServers = getStunServers();
-    console.log('🧊 Phase 1: STUN-only P2P mode');
+    console.log('🧊 Phase 1: STUN-only P2P (TURN pre-warmed in background)');
+
+    // 🔄 Pre-warm TURN credentials in background (don't block — just cache)
+    // fetchTurnServers() deduplicates requests and uses cache, so this is instant
+    // if already pre-warmed on module load
+    fetchTurnServers().then(servers => {
+      const hasTurn = servers.some(s => s.username);
+      console.log(`✅ [TURN PRE-WARM] ${hasTurn ? 'TURN ready' : 'STUN-only'} (${servers.length} entries cached for fallback)`);
+    }).catch(() => {
+      console.warn('⚠️ [TURN PRE-WARM] Could not cache TURN — fallback will be slower');
+    });
 
     const peerConnection = new RTCPeerConnection({
       iceServers,
@@ -1632,7 +1644,7 @@ const Chat = () => {
       iceCandidatePoolSize: 4
     });
     peerConnectionRef.current = peerConnection;
-    console.log('✅ RTCPeerConnection created — STUN-only P2P');
+    console.log('✅ RTCPeerConnection created — P2P direct (TURN on fallback)');
 
     // Track ICE restart attempts (max 2)
     peerConnection._iceRestartCount = 0;
@@ -1861,36 +1873,36 @@ const Chat = () => {
         startIssueTimer();
         console.error('❌ ICE FAILED — candidate pairs exhausted');
 
-        // ✅ AUTO-FALLBACK: Retry with TURN servers added
+        // ✅ P2P FAILED → TURN FALLBACK: Inject TURN servers and restart ICE
         if (peerConnection._iceRestartCount < MAX_ICE_RESTARTS) {
           peerConnection._iceRestartCount++;
-          console.log(`🔄 ICE RESTART #${peerConnection._iceRestartCount}: Adding TURN for relay fallback`);
+          console.log(`🔄 ICE RESTART #${peerConnection._iceRestartCount}: P2P failed → adding TURN relay fallback`);
 
           // Fetch fresh ephemeral TURN credentials from backend
           fetchTurnServers().then(fullIceServers => {
             try {
               peerConnection.setConfiguration({ iceServers: fullIceServers, iceTransportPolicy: 'all' });
-              console.log('✅ TURN servers added via setConfiguration');
+              console.log('✅ TURN credentials refreshed via setConfiguration');
             } catch (configErr) {
-              console.warn('⚠️ setConfiguration not supported — TURN not injectable');
+              console.warn('⚠️ setConfiguration not supported — using existing TURN config for restart');
             }
 
-          peerConnection.restartIce();
-          console.log('🔄 ICE restart triggered with TURN servers');
+            peerConnection.restartIce();
+            console.log('🔄 ICE restart triggered');
 
-          // If we're the offerer, create a new offer with iceRestart flag
-          if (peerConnection.signalingState === 'stable' || peerConnection.signalingState === 'have-local-offer') {
-            peerConnection.createOffer({ iceRestart: true })
-              .then(offer => peerConnection.setLocalDescription(offer))
-              .then(() => {
-                socketRef.current?.emit('webrtc_offer', {
-                  offer: peerConnection.localDescription,
-                  to: partnerSocketIdRef.current
-                });
-                console.log('📤 ICE restart offer sent');
-              })
-              .catch(err => console.error('❌ ICE restart offer failed:', err.message));
-          }
+            // If we're the offerer, create a new offer with iceRestart flag
+            if (peerConnection.signalingState === 'stable' || peerConnection.signalingState === 'have-local-offer') {
+              peerConnection.createOffer({ iceRestart: true })
+                .then(offer => peerConnection.setLocalDescription(offer))
+                .then(() => {
+                  socketRef.current?.emit('webrtc_offer', {
+                    offer: peerConnection.localDescription,
+                    to: partnerSocketIdRef.current
+                  });
+                  console.log('📤 ICE restart offer sent');
+                })
+                .catch(err => console.error('❌ ICE restart offer failed:', err.message));
+            }
           }).catch(() => {
             console.warn('⚠️ Could not fetch TURN credentials for ICE restart');
           });
@@ -2791,14 +2803,9 @@ const Chat = () => {
             }
 
             // Create a NEW send-only PeerConnection for the spectator
+            // ✅ P2P-FIRST: STUN-only for spectators (non-critical, no TURN needed)
             const pc = new RTCPeerConnection({
-              iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' }
-              ]
+              iceServers: getStunServers()
             });
 
             spectatorPCMap.set(spectatorSocketId, pc);

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import socketWrapper from '../services/socketService';
-import { getIceServers } from '../utils/webrtcUtils';
+import { getStunServers, fetchTurnServers } from '../utils/webrtcUtils';
 
 /**
  * useDirectCallWebRTC - Manages WebRTC peer connection for direct user-to-user calls
@@ -54,8 +54,14 @@ export const useDirectCallWebRTC = ({
     const createPeerConnection = async () => {
       console.log('\n🔧 Creating peer connection for direct call');
 
-      const iceServers = await getIceServers();
-      console.log('🧊 ICE servers configured:', iceServers.length > 0 ? 'Yes' : 'No');
+      // ✅ P2P-FIRST: Start with STUN-only for fast direct connection
+      const iceServers = getStunServers();
+      console.log('🧊 [DIRECT CALL] P2P direct mode (TURN pre-warmed for fallback)');
+
+      // Pre-warm TURN in background (cached for instant fallback if P2P fails)
+      fetchTurnServers().then(() => {
+        console.log('✅ [DIRECT CALL] TURN credentials cached for fallback');
+      }).catch(() => {});
 
       const peerConnection = new RTCPeerConnection({
         iceServers,
@@ -63,7 +69,11 @@ export const useDirectCallWebRTC = ({
       });
 
       peerConnectionRef.current = peerConnection;
-      console.log('✅ RTCPeerConnection created');
+      console.log('✅ RTCPeerConnection created — P2P direct (TURN on fallback)');
+
+      // Track ICE restart attempts
+      peerConnection._iceRestartCount = 0;
+      const MAX_ICE_RESTARTS = 2;
 
       // Initialize persistent remote stream
       remoteStreamRef.current = new MediaStream();
@@ -117,7 +127,7 @@ export const useDirectCallWebRTC = ({
         }
       };
 
-      // ✅ Handle connection state changes
+      // ✅ Handle connection state changes with TURN fallback
       peerConnection.onconnectionstatechange = () => {
         console.log('\n🔌 ===== CONNECTION STATE CHANGED =====');
         console.log('🔌 New Connection State:', peerConnection.connectionState);
@@ -125,7 +135,26 @@ export const useDirectCallWebRTC = ({
         if (peerConnection.connectionState === 'connected') {
           console.log('✅ WebRTC connection ESTABLISHED - video should start flowing');
         } else if (peerConnection.connectionState === 'failed') {
-          console.error('❌ Connection FAILED');
+          // ✅ TURN FALLBACK: If P2P fails, retry with TURN
+          if (peerConnection._iceRestartCount < MAX_ICE_RESTARTS) {
+            peerConnection._iceRestartCount++;
+            console.log(`🔄 [DIRECT CALL] ICE RESTART #${peerConnection._iceRestartCount}: Adding TURN fallback`);
+            
+            fetchTurnServers().then(fullIceServers => {
+              try {
+                peerConnection.setConfiguration({ iceServers: fullIceServers, iceTransportPolicy: 'all' });
+                console.log('✅ [DIRECT CALL] TURN servers injected via setConfiguration');
+              } catch (e) {
+                console.warn('⚠️ [DIRECT CALL] setConfiguration not supported');
+              }
+              peerConnection.restartIce();
+              console.log('🔄 [DIRECT CALL] ICE restart triggered with TURN');
+            }).catch(() => {
+              console.error('❌ [DIRECT CALL] Could not fetch TURN for fallback');
+            });
+          } else {
+            console.error('❌ Connection FAILED — Max ICE restarts exhausted');
+          }
         } else if (peerConnection.connectionState === 'closed') {
           console.log('🛑 Connection CLOSED');
         }

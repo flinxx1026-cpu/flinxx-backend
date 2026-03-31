@@ -10,7 +10,7 @@ export const logError = (error, context) => {
 
 /**
  * STUN-only servers for initial P2P connections.
- * Used as Phase 1 — fast direct connection attempt.
+ * Used as primary — fast direct connection attempt.
  */
 export const getStunServers = () => [
   { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
@@ -25,40 +25,85 @@ export const getStunServers = () => [
  */
 let _cachedTurnServers = null;
 let _cachedTurnExpiry = 0;
+let _fetchInFlight = null; // Prevent duplicate fetches
 
 export const fetchTurnServers = async () => {
   // Return cached credentials if still valid (refresh 5 min before expiry)
   const now = Math.floor(Date.now() / 1000);
   if (_cachedTurnServers && now < _cachedTurnExpiry - 300) {
+    console.log('🧊 [ICE] Using cached TURN credentials (valid for', _cachedTurnExpiry - now, 'seconds)');
     return _cachedTurnServers;
   }
 
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/get-turn-credentials`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(5000), // 5s timeout
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const data = await res.json();
-
-    if (data.iceServers && data.iceServers.length > 0) {
-      _cachedTurnServers = data.iceServers;
-      _cachedTurnExpiry = now + (data.ttl || 86400);
-      return data.iceServers;
-    }
-  } catch (err) {
-    // API failed — return STUN-only (P2P will still work for many users)
+  // Deduplicate in-flight requests
+  if (_fetchInFlight) {
+    console.log('🧊 [ICE] TURN fetch already in-flight, waiting...');
+    return _fetchInFlight;
   }
 
-  return getStunServers();
+  _fetchInFlight = (async () => {
+    try {
+      console.log('🧊 [ICE] Fetching TURN credentials from backend...');
+      const res = await fetch(`${BACKEND_URL}/api/get-turn-credentials`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(5000), // 5s timeout
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+
+      if (data.iceServers && data.iceServers.length > 0) {
+        _cachedTurnServers = data.iceServers;
+        _cachedTurnExpiry = now + (data.ttl || 86400);
+        
+        // Log TURN server details for debugging
+        const turnEntry = data.iceServers.find(s => s.username);
+        if (turnEntry) {
+          console.log('✅ [ICE] TURN credentials received:', {
+            urls: turnEntry.urls,
+            username: turnEntry.username,
+            ttl: data.ttl
+          });
+        }
+        
+        return data.iceServers;
+      }
+    } catch (err) {
+      console.warn('⚠️ [ICE] Failed to fetch TURN credentials:', err.message);
+      console.warn('⚠️ [ICE] Falling back to STUN-only — users behind NAT may have connection issues');
+    } finally {
+      _fetchInFlight = null;
+    }
+
+    return getStunServers();
+  })();
+
+  return _fetchInFlight;
 };
 
 /**
+ * 🔥 PRE-WARM TURN credentials in background on app load.
+ * This ensures when P2P fails, TURN is already cached for INSTANT fallback.
+ * No delay = faster recovery for mobile/CGNAT users.
+ */
+export const prewarmTurnCredentials = () => {
+  fetchTurnServers()
+    .then(servers => {
+      const hasTurn = servers.some(s => s.username);
+      console.log(`✅ [ICE PRE-WARM] TURN credentials ${hasTurn ? 'cached' : 'NOT available'} (${servers.length} entries)`);
+    })
+    .catch(() => {
+      console.warn('⚠️ [ICE PRE-WARM] Could not pre-warm TURN — fallback will be slower on first failure');
+    });
+};
+
+// Auto pre-warm on module load — TURN will be cached before any connection
+prewarmTurnCredentials();
+
+/**
  * Get full ICE servers (STUN + TURN) via backend API.
- * This is the primary function all WebRTC code should use.
  * Returns a Promise.
  */
 export const getIceServers = async () => {
