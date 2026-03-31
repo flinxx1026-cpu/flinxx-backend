@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
 import ToastContainer from './ToastContainer';
 import './MatchHistory.css';
+import blueTick from '../assets/bluetick.png';
 
 const BACKEND_URL = import.meta.env.MODE === 'development' ? 'http://localhost:5000' : import.meta.env.VITE_BACKEND_URL;
 
@@ -351,7 +352,7 @@ const MatchHistory = ({ isOpen, onClose }) => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0, flexWrap: 'wrap' }}>
                         <span className="text-sm sm:text-lg font-bold text-white leading-tight truncate">{match.name}</span>
                         {match.hasBlueTick && (
-                          <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', flexShrink: 0, objectFit: 'contain' }} />
+                          <img src={blueTick} alt="Verified" style={{ width: '38px', height: '38px', flexShrink: 0, objectFit: 'contain' }} />
                         )}
                       </div>
                     </div>

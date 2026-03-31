@@ -6,6 +6,7 @@ import { FaTimes } from 'react-icons/fa';
 import { auth } from '../config/firebase';
 import { AuthContext } from '../context/AuthContext';
 import './ProfileModal.css';
+import blueTick from '../assets/bluetick.png';
 
 const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) => {
   const navigate = useNavigate();
@@ -467,7 +468,7 @@ const ProfileModal = ({ isOpen, onClose, onOpenPremium, onReinitializeCamera }) 
                 {profileData.name}
               </h2>
               {profileData.hasBlueTick && (
-                <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '6px', marginTop: '3px', flexShrink: 0, objectFit: 'contain', verticalAlign: 'middle', display: 'block' }} />
+                <img src={blueTick} alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '6px', marginTop: '3px', flexShrink: 0, objectFit: 'contain', verticalAlign: 'middle', display: 'block' }} />
               )}
             </div>
             <div className="flex items-center justify-center space-x-1 text-slate-500 dark:text-slate-400">

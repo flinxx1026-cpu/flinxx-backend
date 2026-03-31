@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import blueTick from '../assets/bluetick.png';
 
 const PremiumPopup = ({ isOpen, onClose, onConfirm, message }) => {
   if (!isOpen) return null;
@@ -115,7 +116,7 @@ const PremiumPopup = ({ isOpen, onClose, onConfirm, message }) => {
                background: 'transparent'
              }}>
                 <img 
-                  src="/bluetick.png" 
+                  src={blueTick} 
                   alt="Verified" 
                   style={{ 
                     width: '100px', 

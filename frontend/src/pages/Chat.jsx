@@ -18,6 +18,7 @@ import { getIceServers, getStunServers, fetchTurnServers, getMediaConstraints, f
 import GenderFilterModal from '../components/GenderFilterModal';
 import ProfileModal from '../components/ProfileModal';
 import FriendRequestPopup from '../components/FriendRequestPopup';
+import blueTick from '../assets/bluetick.png';
 import PremiumPopup from '../components/PremiumPopup';
 import SkipLimitPopup from '../components/SkipLimitPopup';
 import WarningModal from '../components/WarningModal';
@@ -4155,7 +4156,7 @@ const Chat = () => {
                           {partnerInfo?.userName || 'Partner'}
                         </h2>
                         {partnerInfo?.hasBlueTick && (
-                          <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '6px', marginTop: '3px', flexShrink: 0, objectFit: 'contain', verticalAlign: 'middle', display: 'block' }} />
+                          <img src={blueTick} alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '6px', marginTop: '3px', flexShrink: 0, objectFit: 'contain', verticalAlign: 'middle', display: 'block' }} />
                         )}
                       </div>
                       <span style={{ color: '#c8ba93', fontSize: '11px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0' }}>

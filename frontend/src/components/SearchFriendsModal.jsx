@@ -6,6 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 import { useUnread } from '../context/UnreadContext';
 import ChatBox from './ChatBox';
 import socketWrapper from '../services/socketService';
+import blueTick from '../assets/bluetick.png';
 
 const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) => {
   const { markAsRead } = useContext(MessageContext) || {};
@@ -637,7 +638,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                       <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
                         <p className="result-name" style={{ margin: 0 }}>{user.name}</p>
                         {user.hasBlueTick && (
-                          <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '6px', flexShrink: 0, objectFit: 'contain' }} />
+                          <img src={blueTick} alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '6px', flexShrink: 0, objectFit: 'contain' }} />
                         )}
                       </div>
                       <button
@@ -852,7 +853,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                         <div style={{ display: 'inline-flex', alignItems: 'center', position: 'relative' }}>
                           <p className="result-name" style={{ margin: 0 }}>{friend.display_name}</p>
                           {friend.hasBlueTick && (
-                            <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '3px', marginTop: '-7px', marginBottom: '-11px', flexShrink: 0, objectFit: 'contain', display: 'block' }} />
+                            <img src={blueTick} alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '3px', marginTop: '-7px', marginBottom: '-11px', flexShrink: 0, objectFit: 'contain', display: 'block' }} />
                           )}
                         </div>
                         <p className="tap-to-chat" style={{ margin: 0, marginTop: '2px' }}>
@@ -915,7 +916,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                               <strong>{req.display_name}</strong>
                               {req.hasBlueTick && (
-                                <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '4px', marginTop: '-9px', marginBottom: '-9px', flexShrink: 0, objectFit: 'contain' }} />
+                                <img src={blueTick} alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '4px', marginTop: '-9px', marginBottom: '-9px', flexShrink: 0, objectFit: 'contain' }} />
                               )}
                             </div>
                             <p className="compact-request-status">Pending</p>
@@ -965,7 +966,7 @@ const SearchFriendsModal = ({ isOpen, onClose, onUserSelect, mode = 'search' }) 
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                               <strong>{req.display_name}</strong>
                               {req.hasBlueTick && (
-                                <img src="/bluetick.png" alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '4px', marginTop: '-9px', marginBottom: '-9px', flexShrink: 0, objectFit: 'contain' }} />
+                                <img src={blueTick} alt="Verified" style={{ width: '38px', height: '38px', marginLeft: '4px', marginTop: '-9px', marginBottom: '-9px', flexShrink: 0, objectFit: 'contain' }} />
                               )}
                             </div>
                             <p className="compact-request-status">Pending</p>
